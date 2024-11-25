@@ -1,5 +1,4 @@
 import wx
-import uuid
 import wmi
 import psutil
 
