@@ -72,6 +72,8 @@ class MyThread(threading.Thread):
     def __init__(self, scriptName):
         super().__init__()
         self.userInfoMac = ["B0-25-AA-26-64-03", "50-9A-4C-C9-FE-BA"]
+        # 创建子线程
+        self.child_thread = threading.Thread(target=self.child_task)
         self.guanDuCount = 0
         self.scriptName = scriptName
         self.confidenceNum = 0.9
@@ -122,11 +124,13 @@ class MyThread(threading.Thread):
         # for item in c.Win32_BaseBoard():
         #     hardware_serial = item.SerialNumber
         mac_address = self.get_mac_address()
+
         if mac_address in self.userInfoMac:
             print("已注册用户")
         else:
             self.show_error_message("未注册用户，请联系管理员")
             return
+
         print("鼠标放屏幕左上角退出当前脚本")
         if self.scriptName == "官渡":
             self.guanduWhile()
@@ -138,6 +142,61 @@ class MyThread(threading.Thread):
             self.zhengDian()
         elif self.scriptName == "祭坛魔镜":
             self.mojingWhile()
+        elif self.scriptName == "战魂+红+整点":
+            self.guanduAndHongAndZd()
+
+    def child_task(self):
+        while True:
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            # 去除获得铜币黑框
+            self.click_image(
+                self.get_resource_path("images/huodetongbi.png"),
+                self.confidenceNum,
+                (
+                    self.locationX,
+                    self.locationY,
+                    self.locationWidth,
+                    self.locationHeight,
+                ),
+            )
+            # 点击取消
+            self.click_image(
+                self.get_resource_path("images/closeJJ.png"),
+                self.confidenceNum,
+                (
+                    self.locationX,
+                    self.locationY,
+                    self.locationWidth,
+                    self.locationHeight,
+                ),
+            )
+            # 点击x
+            self.click_image(
+                self.get_resource_path("images/close.png"),
+                self.confidenceNum,
+                (
+                    self.locationX,
+                    self.locationY,
+                    self.locationWidth,
+                    self.locationHeight,
+                ),
+            )
+            # 点自动
+            if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜":
+                self.click_image(
+                    self.get_resource_path("images/zidong.png"),
+                    self.confidenceNum,
+                    (
+                        self.locationX,
+                        self.locationY,
+                        self.locationWidth,
+                        self.locationHeight,
+                    ),
+                )
+            # self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
+            # self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
 
     def get_mac_address(self):
         # 使用 psutil 获取所有网络接口信息
@@ -621,6 +680,11 @@ class MyThread(threading.Thread):
                 self.get_resource_path("images/mojing/fubenmojingshizhe.png"), False
             )
             self.mojingWhile()
+        elif self.scriptName == "战魂+红+整点":
+            self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
+            time.sleep(0.5)
+            self.feiFb(self.get_resource_path("images/dituzhanhun.png"), True)
+            self.guanduAndHongAndZd()
 
     # 飞副本
     def feiFb(self, image_path, isJy):
@@ -790,48 +854,6 @@ class MyThread(threading.Thread):
         else:
             return False
 
-    # 使用键盘命令找图
-    def press_keys_until_image_found(self, image_path1, image_path2, key1, key2):
-        if key2:
-            pyautogui.keyDown(key2)
-            time.sleep(1)
-            pyautogui.keyUp(key2)
-        while pyautogui.locateOnScreen(
-            image_path2,
-            confidence=self.confidenceNum,
-            region=(
-                self.locationX,
-                self.locationY,
-                self.locationWidth,
-                self.locationHeight,
-            ),
-        ):
-            with condition:
-                if self.stoped:
-                    condition.wait()
-            pyautogui.keyDown(key1)
-            image_path1Location = self.waitFor(
-                image_path1,
-                (
-                    self.locationX,
-                    self.locationY,
-                    self.locationWidth,
-                    self.locationHeight,
-                ),
-            )
-            if image_path1Location:
-                pyautogui.keyUp(key1)
-                self.click_image_with_min_x(
-                    image_path1,
-                    (
-                        self.locationX,
-                        self.locationY,
-                        self.locationWidth,
-                        self.locationHeight,
-                    ),
-                    image_path2,
-                )
-
     # 找一样的图，点击最左边的图
     def click_image_with_min_x(self, image_path, image_region, image_path2):
         image_locations = list(
@@ -904,13 +926,52 @@ class MyThread(threading.Thread):
         return res
 
     # 等待图片1出现，一直点击图2
-    def waitForBAndClickA(self, image_pathA, image_pathB, image_regionA):
+    def waitForAAndClickB(
+        self,
+        image_pathA,
+        image_pathB,
+        image_regionA,
+        image_regionB=None,
+    ):
+        if not image_regionB:
+            image_regionB = (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            )
         while not pyautogui.locateOnScreen(
             image_pathA, confidence=self.confidenceNum, region=image_regionA
         ):
             self.click_image(
                 image_pathB,
                 self.confidenceNum,
+                image_regionB,
+            )
+            time.sleep(0.2)
+
+    # 使用键盘命令找图
+    def press_keys_until_image_found(self, image_path1, image_path2, key1, key2):
+        if key2:
+            pyautogui.keyDown(key2)
+            time.sleep(1)
+            pyautogui.keyUp(key2)
+        while pyautogui.locateOnScreen(
+            image_path2,
+            confidence=self.confidenceNum,
+            region=(
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        ):
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            pyautogui.keyDown(key1)
+            image_path1Location = self.waitFor(
+                image_path1,
                 (
                     self.locationX,
                     self.locationY,
@@ -918,7 +979,18 @@ class MyThread(threading.Thread):
                     self.locationHeight,
                 ),
             )
-            time.sleep(0.2)
+            if image_path1Location:
+                pyautogui.keyUp(key1)
+                self.click_image_with_min_x(
+                    image_path1,
+                    (
+                        self.locationX,
+                        self.locationY,
+                        self.locationWidth,
+                        self.locationHeight,
+                    ),
+                    image_path2,
+                )
 
     # 找图并且点击
     def findAndClickPic(self, A, B1, B2, C1, C2, D, E, E2=None, E2DownTime=1):
@@ -928,18 +1000,7 @@ class MyThread(threading.Thread):
         self.clickBTime = 0
         self.clickBX = 0
         self.clickBy = 0
-        # 点自动
-        if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜":
-            self.click_image(
-                self.get_resource_path("images/zidong.png"),
-                self.confidenceNum,
-                (
-                    self.locationX,
-                    self.locationY,
-                    self.locationWidth,
-                    self.locationHeight,
-                ),
-            )
+
         with condition:
             if self.stoped:
                 condition.wait()
@@ -979,41 +1040,6 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
-            # 去除获得铜币黑框
-            self.click_image(
-                self.get_resource_path("images/huodetongbi.png"),
-                self.confidenceNum,
-                (
-                    self.locationX,
-                    self.locationY,
-                    self.locationWidth,
-                    self.locationHeight,
-                ),
-            )
-            # 点击取消
-            self.click_image(
-                self.get_resource_path("images/closeJJ.png"),
-                self.confidenceNum,
-                (
-                    self.locationX,
-                    self.locationY,
-                    self.locationWidth,
-                    self.locationHeight,
-                ),
-            )
-            # 点击x
-            self.click_image(
-                self.get_resource_path("images/close.png"),
-                self.confidenceNum,
-                (
-                    self.locationX,
-                    self.locationY,
-                    self.locationWidth,
-                    self.locationHeight,
-                ),
-            )
-            # self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-            # self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 3)
             if time.time() - startTime > 20:
                 if self.scriptName == "官渡":
                     print("超过20s没找到目标,重新进入官渡")
@@ -1565,6 +1591,7 @@ class MyThread(threading.Thread):
             "",
             "up",
             "left",
+            int(0.6),
         )
         # 进入帐篷
         self.findAndClickPic(
@@ -1605,7 +1632,6 @@ class MyThread(threading.Thread):
             self.get_resource_path("images/zhanhun/inzhanhunD.png"),
             "",
         )
-
         self.findAndClickPic(
             self.get_resource_path("images/zhanhun/luoyangdadao.png"),
             self.get_resource_path("images/zhanhun/inzhanhun.png"),
@@ -2191,6 +2217,208 @@ class MyThread(threading.Thread):
 
     # 魔镜脚本
     def mojingScript(self):
+        print("开始祭坛魔镜")
+        # 进入魔镜
+        inLuoYangChengXi = self.waitFor(
+            self.get_resource_path(
+                "images/mojing/luyangchengxi.png",
+            ),
+            (
+                self.locationRightTopX,
+                self.locationRightTopY,
+                self.locationRightTopWidth,
+                self.locationRightTopHeight,
+            ),
+            5,
+        )
+        if not inLuoYangChengXi:
+            self.feiFb(
+                self.get_resource_path("images/mojing/fubenmojingshizhe.png"), False
+            )
+        if not pyautogui.locateOnScreen(
+            self.get_resource_path("images/mojing/injitan.png"),
+            confidence=self.confidenceNum,
+            region=(
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        ):
+            self.waitForAAndClickB(
+                self.get_resource_path("images/mojing/mojingshizhe.png"),
+                self.get_resource_path("images/mojing/mojingD.png"),
+                (
+                    self.locationX,
+                    self.locationY,
+                    self.locationWidth,
+                    self.locationHeight,
+                ),
+            )
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/injitan.png"),
+            self.get_resource_path("images/mojing/mojingshizhe.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        )
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/jingxiangdiceng.png"),
+            self.get_resource_path("images/mojing/injitan.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        )
+        # 关闭右边框
+        self.click_image(
+            self.get_resource_path("images/closeright.png"),
+            self.confidenceNum,
+            (self.locationX, self.locationY, self.locationWidth, self.locationHeight),
+        )
+        # 打一个第一层的怪
+        self.press_keys_until_image_found(
+            self.get_resource_path("images/mojing/chirenyao.png"),
+            self.get_resource_path("images/zdzd.png"),
+            "right",
+            "",
+        )
+        # 进入第二层
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/go2.png"),
+            self.get_resource_path("images/xiaolvren.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+            (
+                self.locationRightTopX,
+                self.locationRightTopY,
+                self.locationRightTopWidth,
+                self.locationRightTopHeight,
+            ),
+        )
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/yijijingxiang.png"),
+            self.get_resource_path("images/mojing/go2.png"),
+            (
+                self.locationRightTopX,
+                self.locationRightTopY,
+                self.locationRightTopWidth,
+                self.locationRightTopHeight,
+            ),
+        )
+        # 打狮王
+        self.waitForAAndClickB(
+            self.get_resource_path("images/zdzd.png"),
+            self.get_resource_path("images/mojing/shiwanghun.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        )
+        # 进入第三层
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/go2.png"),
+            self.get_resource_path("images/xiaolvren.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+            (
+                self.locationRightTopX,
+                self.locationRightTopY,
+                self.locationRightTopWidth,
+                self.locationRightTopHeight,
+            ),
+        )
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/mihuanjing.png"),
+            self.get_resource_path("images/mojing/go2.png"),
+            (
+                self.locationRightTopX,
+                self.locationRightTopY,
+                self.locationRightTopWidth,
+                self.locationRightTopHeight,
+            ),
+        )
+        # 打虚实
+        self.waitForAAndClickB(
+            self.get_resource_path("images/zdzd.png"),
+            self.get_resource_path("images/mojing/xu.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        )
+        self.press_keys_until_image_found(
+            self.get_resource_path("images/mojing/shi.png"),
+            self.get_resource_path("images/zdzd.png"),
+            "left",
+            "",
+        )
+        # 进入第四层
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/go2.png"),
+            self.get_resource_path("images/xiaolvren.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+            (
+                self.locationRightTopX,
+                self.locationRightTopY,
+                self.locationRightTopWidth,
+                self.locationRightTopHeight,
+            ),
+        )
+        self.waitForAAndClickB(
+            self.get_resource_path("images/mojing/yujing.png"),
+            self.get_resource_path("images/mojing/go2.png"),
+            (
+                self.locationRightTopX,
+                self.locationRightTopY,
+                self.locationRightTopWidth,
+                self.locationRightTopHeight,
+            ),
+        )
+        # 打黑白无常
+        self.waitForAAndClickB(
+            self.get_resource_path("images/zdzd.png"),
+            self.get_resource_path("images/mojing/heiwuchang.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        )
+        self.press_keys_until_image_found(
+            self.get_resource_path("images/mojing/baiwuchang.png"),
+            self.get_resource_path("images/zdzd.png"),
+            "left",
+            "",
+        )
+        # 退出副本
+        self.outScript(self.get_resource_path("images/mojing/yujing.png"))
+        # 魔镜脚本
+
+    def mojingScriptOld(self):
         print("开始魔镜祭坛")
         # 进入魔镜
         self.findAndClickPic(
@@ -2360,6 +2588,16 @@ class MyThread(threading.Thread):
         while True:
             self.mojingScript()
 
+    # 一次战魂一次红+整点
+    def guanduAndHongAndZd(self):
+        self.beginFun()
+        self.zhanhunScript()
+        time.sleep(1)
+        self.feiFb(self.get_resource_path("images/mojing/ditudianwei.png"), True)
+        self.hongScript()
+        time.sleep(1)
+        self.zhengDian()
+
 
 class MyFrame(wx.Frame):
     def __init__(self):
@@ -2428,7 +2666,14 @@ class MyFrame(wx.Frame):
             self.panel,
             pos=(10, 10),
             size=(225, 30),
-            choices=["官渡", "嗜血战场(精英)", "战魂楼(精英)", "祭坛魔镜", "整点"],
+            choices=[
+                "官渡",
+                "嗜血战场(精英)",
+                "战魂楼(精英)",
+                "祭坛魔镜",
+                "战魂+红+整点",
+                "整点",
+            ],
         )
         self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
         self.dropdown.SetHint("选择一个要执行的脚本")
