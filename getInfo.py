@@ -2,6 +2,8 @@ import wx
 import wmi
 import psutil
 
+# 打包：pyinstaller -F -w .\getInfo.py
+
 
 class DeviceInfoFrame(wx.Frame):
     def __init__(self):
