@@ -125,7 +125,7 @@ class MyThread(threading.Thread):
         if mac_address in self.userInfoMac:
             print("已注册用户")
         else:
-            print("未注册用户，请联系管理员")
+            self.show_error_message("未注册用户，请联系管理员")
             return
         print("鼠标放屏幕左上角退出当前脚本")
         if self.scriptName == "官渡":
@@ -474,7 +474,9 @@ class MyThread(threading.Thread):
     # 	return None
 
     # 整点
-    def zhengDian(self):
+    def zhengDian(
+        self,
+    ):
         print("打整点")
         with condition:
             if self.stoped:
@@ -611,18 +613,31 @@ class MyThread(threading.Thread):
         if closeTalkXY:
             pyautogui.click(closeTalkXY.x, closeTalkXY.y, clicks=4, interval=0.2)
         if self.scriptName == "官渡":
-            tuLocation = self.waitFor(
-                self.get_resource_path("images/xiulian.png"),
-                (
-                    self.locationX,
-                    self.locationY,
-                    self.locationWidth,
-                    self.locationHeight,
-                ),
+            self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
+            self.guanduWhile()
+
+        elif self.scriptName == "祭坛魔镜":
+            self.feiFb(
+                self.get_resource_path("images/mojing/fubenmojingshizhe.png"), False
             )
-            if tuLocation:
-                pyautogui.click(int(tuLocation.x + 24), int(tuLocation.y - 34))
-            time.sleep(0.8)
+            self.mojingWhile()
+
+    # 飞副本
+    def feiFb(self, image_path, isJy):
+        # 打开副本
+        tuLocation = self.waitFor(
+            self.get_resource_path("images/xiulian.png"),
+            (
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        )
+        if tuLocation:
+            pyautogui.click(int(tuLocation.x + 24), int(tuLocation.y - 34))
+        time.sleep(0.8)
+        if isJy:
             self.click_image(
                 self.get_resource_path("images/activejy.png"),
                 self.confidenceNum,
@@ -647,8 +662,8 @@ class MyThread(threading.Thread):
                 with condition:
                     if self.stoped:
                         condition.wait()
-                ditucaocaoLocation = pyautogui.locateOnScreen(
-                    self.get_resource_path("images/ditucaocao.png"),
+                imagePathLocation = pyautogui.locateOnScreen(
+                    image_path,
                     confidence=self.confidenceNum,
                     region=(
                         self.locationX,
@@ -657,34 +672,20 @@ class MyThread(threading.Thread):
                         self.locationHeight,
                     ),
                 )
-                if ditucaocaoLocation:
+                if imagePathLocation:
                     break
             feiLocation = self.waitFor(
                 self.get_resource_path("images/fubenfei.png"),
                 (
-                    ditucaocaoLocation.left,
-                    ditucaocaoLocation.top,
-                    ditucaocaoLocation.width,
-                    ditucaocaoLocation.height,
+                    imagePathLocation.left,
+                    imagePathLocation.top,
+                    imagePathLocation.width,
+                    imagePathLocation.height,
                 ),
             )
             if feiLocation:
                 pyautogui.click(feiLocation.x, feiLocation.y)
-            self.guanduWhile()
-
-        elif self.scriptName == "祭坛魔镜":
-            tuLocation = self.waitFor(
-                self.get_resource_path("images/xiulian.png"),
-                (
-                    self.locationX,
-                    self.locationY,
-                    self.locationWidth,
-                    self.locationHeight,
-                ),
-            )
-            if tuLocation:
-                pyautogui.click(int(tuLocation.x + 24), int(tuLocation.y - 34))
-            time.sleep(0.8)
+        else:
             self.click_image(
                 self.get_resource_path("images/activeFb.png"),
                 self.confidenceNum,
@@ -706,7 +707,7 @@ class MyThread(threading.Thread):
                 ),
             )
             while not pyautogui.locateOnScreen(
-                self.get_resource_path("images/mojing/fubenmojingshizhe.png"),
+                image_path,
                 confidence=self.confidenceNum,
                 region=(
                     self.locationX,
@@ -732,8 +733,8 @@ class MyThread(threading.Thread):
                 with condition:
                     if self.stoped:
                         condition.wait()
-                mojingLocation = pyautogui.locateOnScreen(
-                    self.get_resource_path("images/mojing/fubenmojingshizhe.png"),
+                imagePathLocation = pyautogui.locateOnScreen(
+                    image_path,
                     confidence=self.confidenceNum,
                     region=(
                         self.locationX,
@@ -742,20 +743,19 @@ class MyThread(threading.Thread):
                         self.locationHeight,
                     ),
                 )
-                if mojingLocation:
+                if imagePathLocation:
                     break
             feiLocation = self.waitFor(
                 self.get_resource_path("images/fubenfei.png"),
                 (
-                    mojingLocation.left,
-                    mojingLocation.top,
-                    mojingLocation.width,
-                    mojingLocation.height,
+                    imagePathLocation.left,
+                    imagePathLocation.top,
+                    imagePathLocation.width,
+                    imagePathLocation.height,
                 ),
             )
             if feiLocation:
                 pyautogui.click(feiLocation.x, feiLocation.y)
-            self.mojingWhile()
 
     # 找图并且点击
     def click_image(self, image_path, image_confidence, image_region):
