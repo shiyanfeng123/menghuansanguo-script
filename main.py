@@ -785,32 +785,46 @@ class MyThread(threading.Thread):
             return False
 
     # 使用键盘命令找图
-    def press_keys_until_image_found(
-        self, image_path1, image_path2, image_region, key1, key2
-    ):
-        found = False
+    def press_keys_until_image_found(self, image_path1, image_path2, key1, key2):
         if key2:
             pyautogui.keyDown(key2)
-            time.sleep(1.5)
+            time.sleep(1)
             pyautogui.keyUp(key2)
-        while not found:
+        while pyautogui.locateOnScreen(
+            image_path2,
+            confidence=self.confidenceNum,
+            region=(
+                self.locationX,
+                self.locationY,
+                self.locationWidth,
+                self.locationHeight,
+            ),
+        ):
             with condition:
                 if self.stoped:
                     condition.wait()
             pyautogui.keyDown(key1)
-            if (
-                pyautogui.locateOnScreen(
-                    image_path1, confidence=self.confidenceNum, region=image_region
-                )
-                is not None
-                or pyautogui.locateOnScreen(
-                    image_path2, confidence=self.confidenceNum, region=image_region
-                )
-                is not None
-            ):
-                time.sleep(0.5)
+            image_path1Location = self.waitFor(
+                image_path1,
+                (
+                    self.locationX,
+                    self.locationY,
+                    self.locationWidth,
+                    self.locationHeight,
+                ),
+            )
+            if image_path1Location:
                 pyautogui.keyUp(key1)
-                found = True
+                self.click_image_with_min_x(
+                    image_path1,
+                    (
+                        self.locationX,
+                        self.locationY,
+                        self.locationWidth,
+                        self.locationHeight,
+                    ),
+                    image_path2,
+                )
 
     # 找一样的图，点击最左边的图
     def click_image_with_min_x(self, image_path, image_region, image_path2):
@@ -883,9 +897,22 @@ class MyThread(threading.Thread):
         self.confidenceNum = 0.9
         return res
 
-    # 等待图片2出现，一直点击图一
+    # 等待图片1出现，一直点击图2
     def waitForBAndClickA(self, image_pathA, image_pathB, image_regionA):
-        print("等待图片2出现，一直点击图一")
+        while not pyautogui.locateOnScreen(
+            image_pathA, confidence=self.confidenceNum, region=image_regionA
+        ):
+            self.click_image(
+                image_pathB,
+                self.confidenceNum,
+                (
+                    self.locationX,
+                    self.locationY,
+                    self.locationWidth,
+                    self.locationHeight,
+                ),
+            )
+            time.sleep(0.2)
 
     # 找图并且点击
     def findAndClickPic(self, A, B1, B2, C1, C2, D, E, E2=None, E2DownTime=1):
