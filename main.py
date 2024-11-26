@@ -71,6 +71,7 @@ condition = threading.Condition()
 class MyThread(threading.Thread):
     def __init__(self, scriptName):
         super().__init__()
+        self.userInfoMac = ["B0-25-AA-26-64-03", "50-9A-4C-C9-FE-BA"]
         self.guanDuCount = 0
         self.scriptName = scriptName
         self.confidenceNum = 0.9
@@ -117,10 +118,15 @@ class MyThread(threading.Thread):
         self.shengxiaoLocation = None
 
     def run(self):
-        c = wmi.WMI()
-        for item in c.Win32_BaseBoard():
-            hardware_serial = item.SerialNumber
+        # c = wmi.WMI()
+        # for item in c.Win32_BaseBoard():
+        #     hardware_serial = item.SerialNumber
         mac_address = self.get_mac_address()
+        if mac_address in self.userInfoMac:
+            print("已注册用户")
+        else:
+            print("未注册用户，请联系管理员")
+            return
         print("鼠标放屏幕左上角退出当前脚本")
         if self.scriptName == "官渡":
             self.guanduWhile()
