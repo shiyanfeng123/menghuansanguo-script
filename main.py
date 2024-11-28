@@ -872,7 +872,7 @@ class MyThread(threading.Thread):
 				pyautogui.click(target_x, int(target_y - 90), clicks=3, interval=0.008)
 				time.sleep(1)
 			else:
-				pyautogui.click(target_x, target_y)
+				pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
 			self.clickBTime = time.time()
 			self.clickBX = target_x
 			self.clickBy = target_y
@@ -884,7 +884,6 @@ class MyThread(threading.Thread):
 	# 等待图片出现
 	def waitFor(self, image_path, image_region, timeout=None):
 		start_time = time.time()
-		xy = None
 		while True:
 			xy = pyautogui.locateCenterOnScreen(
 				image_path, confidence=self.confidenceNum, region=image_region
@@ -925,6 +924,32 @@ class MyThread(threading.Thread):
 				self.confidenceNum -= 0.1
 		self.confidenceNum = 0.9
 		return res
+
+	# 等待图片1出现，一直点击图2
+	def waitForAAndClickB1(
+			self,
+			image_pathA,
+			image_pathB,
+			image_regionA,
+			image_regionB=None
+	):
+		if not image_regionB:
+			image_regionB = (
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			)
+		while not pyautogui.locateOnScreen(
+				image_pathA, confidence=self.confidenceNum, region=image_regionA
+		):
+			clickB = self.click_image(
+				image_pathB,
+				self.confidenceNum,
+				image_regionB,
+			)
+			if clickB:
+				break
 
 	# 等待图片1出现，一直点击图2
 	def waitForAAndClickB(
@@ -1197,6 +1222,43 @@ class MyThread(threading.Thread):
 		except Exception as e:
 			self.show_error_message(f"发生错误: {e}")
 
+	def find_and_click_images(self, A, B1, B2, C1, C2, D, E, E2=None, E2DownTime=1):
+		# 循环找图片A
+		while not pyautogui.locateOnScreen(A, confidence=0.9):
+			time.sleep(0.1)  # 等待0.1秒，防止CPU占用过高
+
+		print("找到图片A")
+		# 如果E2存在，按下E2持续E2DownTime秒
+		if E2:
+			print(f"按下按键{E2}持续{E2DownTime}秒")
+			keyboard.press(E2)
+			time.sleep(E2DownTime)
+			keyboard.release(E2)
+		# 找到图片A后，开始找图片C
+		while not pyautogui.locateOnScreen(C1, confidence=0.9):
+			# 在找C的过程中，如果D图片存在，则在屏幕上找D的位置并且点击中心位置
+			location_D = pyautogui.locateCenterOnScreen(D, confidence=0.9)
+			if location_D:
+				print("找到图片D，点击其中心位置")
+				pyautogui.click(location_D)
+			# 如果E存在，按下按键E
+			if E:
+				print(f"按下按键{E}")
+				keyboard.press(E)
+
+			# 一直查找图片B，如果找到则点击其中心位置，并松开按键E
+			while True:
+				location_B = pyautogui.locateCenterOnScreen(B1, confidence=0.9)
+				if location_B:
+					print("找到图片B，点击其中心位置")
+					if E:
+						keyboard.release(E)  # 松开按键E
+					pyautogui.click(location_B)
+					break  # 找到图片B后退出内层循环
+		time.sleep(0.1)  # 等待0.1秒，防止CPU占用过高
+
+		print("找到图片B，退出找C的循环")
+
 	# if E != "":
 	# 	with condition:
 	# 		if self.stoped:
@@ -1232,28 +1294,52 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		# 进入第一层
-		self.findAndClickPic(
-			self.get_resource_path("images/guanDu1.png"),
-			self.get_resource_path("images/inguanDu.png"),
-			self.get_resource_path("images/inguanDu.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/caoyindazhang.png"),
-			self.get_resource_path("images/caoyindazhang.png"),
-			"",
-			"",
+			self.get_resource_path("images/inguanDu.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), None,
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/guanDu1.png"),
+		# 	self.get_resource_path("images/inguanDu.png"),
+		# 	self.get_resource_path("images/inguanDu.png"),
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	"",
+		# 	"",
+		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyindazhang.png"),
-			self.get_resource_path("images/dycrk2.png"),
-			self.get_resource_path("images/dycrk2.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			"",
-			"",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
-
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	self.get_resource_path("images/dycrk2.png"),
+		# 	self.get_resource_path("images/dycrk2.png"),
+		# 	self.get_resource_path("images/caoyuanzhanchang.png"),
+		# 	self.get_resource_path("images/caoyuanzhanchang.png"),
+		# 	"",
+		# 	"",
+		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
@@ -1362,40 +1448,80 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		# 去大帐
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/caoyindazhang.png"),
-			self.get_resource_path("images/godazhang.png"),
-			self.get_resource_path("images/caoyindazhang.png"),
-			self.get_resource_path("images/caoyindazhang.png"),
-			"",
-			"left",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/caoyuanzhanchang.png"),
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	self.get_resource_path("images/godazhang.png"),
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	"",
+		# 	"left",
+		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 找到曹操进入乌巢
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyindazhang.png"),
-			self.get_resource_path("images/caochengxiang.png"),
-			self.get_resource_path("images/caochengxiang1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/gowuchao.png"),
-			self.get_resource_path("images/gowuchao.png"),
-			"",
-			"down",
+			self.get_resource_path("images/xiaolvren.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	self.get_resource_path("images/caochengxiang.png"),
+		# 	self.get_resource_path("images/caochengxiang1.png"),
+		# 	self.get_resource_path("images/gowuchao.png"),
+		# 	self.get_resource_path("images/gowuchao.png"),
+		# 	"",
+		# 	"down",
+		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyindazhang.png"),
-			self.get_resource_path("images/gowuchao.png"),
-			self.get_resource_path("images/gowuchao.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/wuchao.png"),
-			self.get_resource_path("images/wuchao.png"),
-			"",
-			"",
+			self.get_resource_path("images/gowuchao.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), None,
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/caoyindazhang.png"),
+		# 	self.get_resource_path("images/gowuchao.png"),
+		# 	self.get_resource_path("images/gowuchao.png"),
+		# 	self.get_resource_path("images/wuchao.png"),
+		# 	self.get_resource_path("images/wuchao.png"),
+		# 	"",
+		# 	"",
+		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
@@ -1417,15 +1543,30 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		# 魂殿进乌巢
-		self.findAndClickPic(
-			self.get_resource_path("images/hundian.png"),
-			self.get_resource_path("images/gowuchao2.png"),
-			self.get_resource_path("images/gowuchao2.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/wuchao.png"),
-			self.get_resource_path("images/wuchao.png"),
-			"",
-			"",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/hundian.png"),
+		# 	self.get_resource_path("images/gowuchao2.png"),
+		# 	self.get_resource_path("images/gowuchao2.png"),
+		# 	self.get_resource_path("images/wuchao.png"),
+		# 	self.get_resource_path("images/wuchao.png"),
+		# 	"",
+		# 	"",
+		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
@@ -1474,7 +1615,7 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/hong/inhongD.png"),
 			"",
 		)
-		self.waitForAAndClickB(
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/hong/junyin.png"),
 			self.get_resource_path("images/hong/inhong.png"),
 			(
@@ -1483,8 +1624,6 @@ class MyThread(threading.Thread):
 				self.locationRightTopWidth,
 				self.locationRightTopHeight,
 			), None,
-			self.get_resource_path("images/hong/junyin.png"),
-			self.get_resource_path("images/hong/inhong.png"),
 		)
 		isInHong = self.waitFor(self.get_resource_path("images/hong/junyin.png"), (
 			self.locationRightTopX,
@@ -1534,16 +1673,31 @@ class MyThread(threading.Thread):
 			"right",
 		)
 		# 进入军粮营
-		self.findAndClickPic(
-			self.get_resource_path("images/hong/junyin.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/hong/junliangyin.png"),
-			self.get_resource_path("images/hong/gojunliangyin1.png"),
-			self.get_resource_path("images/hong/junliangyin.png"),
-			self.get_resource_path("images/hong/junliangyin.png"),
-			"",
-			"left",
-			"down",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				int(self.locationRightTopWidth * 0.5),
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/hong/junyin.png"),
+		# 	self.get_resource_path("images/hong/junliangyin.png"),
+		# 	self.get_resource_path("images/hong/gojunliangyin1.png"),
+		# 	self.get_resource_path("images/hong/junliangyin.png"),
+		# 	self.get_resource_path("images/hong/junliangyin.png"),
+		# 	"",
+		# 	"left",
+		# 	"down",
+		# )
 		# 第一个护卫兵
 		self.findAndClickPic(
 			self.get_resource_path("images/hong/junliangyin.png"),
@@ -1553,7 +1707,6 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/zdzd1.png"),
 			"",
 			"right",
-			"down",
 		)
 		# 第二个护卫兵
 		self.findAndClickPic(
@@ -1576,15 +1729,30 @@ class MyThread(threading.Thread):
 			"right",
 		)
 		# 进入训兵营
-		self.findAndClickPic(
-			self.get_resource_path("images/hong/junliangyin.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/hong/xunbinyin.png"),
-			self.get_resource_path("images/hong/goxunbinyin1.png"),
-			self.get_resource_path("images/hong/xunbinyin.png"),
-			self.get_resource_path("images/hong/xunbinyin.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), (
+				int(self.locationRightTopX + (self.locationRightTopWidth * 0.5)),
+				self.locationRightTopY,
+				int(self.locationRightTopWidth * 0.5),
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/hong/junliangyin.png"),
+		# 	self.get_resource_path("images/hong/xunbinyin.png"),
+		# 	self.get_resource_path("images/hong/goxunbinyin1.png"),
+		# 	self.get_resource_path("images/hong/xunbinyin.png"),
+		# 	self.get_resource_path("images/hong/xunbinyin.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 第一个骑兵
 		self.findAndClickPic(
 			self.get_resource_path("images/hong/xunbinyin.png"),
@@ -1639,15 +1807,30 @@ class MyThread(threading.Thread):
 			int(0.5),
 		)
 		# 进入帐篷
-		self.findAndClickPic(
-			self.get_resource_path("images/hong/junyin.png"),
-			self.get_resource_path("images/hong/gozhangpeng.png"),
-			self.get_resource_path("images/hong/gozhangpeng1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/hong/zhangpeng.png"),
-			self.get_resource_path("images/hong/zhangpeng.png"),
-			"",
-			"left",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			), (
+				int(self.locationRightTopX + (self.locationRightTopWidth * 0.5)),
+				self.locationRightTopY,
+				int(self.locationRightTopWidth * 0.5),
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/hong/junyin.png"),
+		# 	self.get_resource_path("images/hong/gozhangpeng.png"),
+		# 	self.get_resource_path("images/hong/gozhangpeng1.png"),
+		# 	self.get_resource_path("images/hong/zhangpeng.png"),
+		# 	self.get_resource_path("images/hong/zhangpeng.png"),
+		# 	"",
+		# 	"left",
+		# )
 		# boss
 		self.findAndClickPic(
 			self.get_resource_path("images/hong/zhangpeng.png"),
@@ -1678,7 +1861,7 @@ class MyThread(threading.Thread):
 			"",
 		)
 		# 点击进入战魂
-		self.waitForAAndClickB(
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/zhanhunlou1.png"),
 			self.get_resource_path("images/zhanhun/inzhanhun.png"),
 			(
@@ -1687,8 +1870,6 @@ class MyThread(threading.Thread):
 				self.locationRightTopWidth,
 				self.locationRightTopHeight,
 			), None,
-			self.get_resource_path("images/zhanhun/zhanhunlou1.png"),
-			self.get_resource_path("images/zhanhun/inzhanhun.png"),
 		)
 		isInZhanhun = self.waitFor(self.get_resource_path("images/zhanhun/zhanhunlou1.png"), (
 			self.locationRightTopX,
@@ -1709,16 +1890,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou1.png"),
-			self.get_resource_path("images/zhanhun/go2.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/zhangliang.png"),
-			self.get_resource_path("images/zhanhun/zhangliang.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou1.png"),
+		# 	self.get_resource_path("images/zhanhun/go2.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/zhangliang.png"),
+		# 	self.get_resource_path("images/zhanhun/zhangliang.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 2
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou2.png"),
@@ -1729,15 +1924,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou2.png"),
-			self.get_resource_path("images/zhanhun/go3.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/zhangjiao.png"),
-			self.get_resource_path("images/zhanhun/zhangjiao.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou2.png"),
+		# 	self.get_resource_path("images/zhanhun/go3.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/zhangjiao.png"),
+		# 	self.get_resource_path("images/zhanhun/zhangjiao.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 3
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou3.png"),
@@ -1748,15 +1958,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou3.png"),
-			self.get_resource_path("images/zhanhun/go4.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/wenchou.png"),
-			self.get_resource_path("images/zhanhun/wenchou.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou3.png"),
+		# 	self.get_resource_path("images/zhanhun/go4.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/wenchou.png"),
+		# 	self.get_resource_path("images/zhanhun/wenchou.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 4
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou4.png"),
@@ -1767,15 +1992,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou4.png"),
-			self.get_resource_path("images/zhanhun/go5.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/yanliang.png"),
-			self.get_resource_path("images/zhanhun/yanliang.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou4.png"),
+		# 	self.get_resource_path("images/zhanhun/go5.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/yanliang.png"),
+		# 	self.get_resource_path("images/zhanhun/yanliang.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 5
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou5.png"),
@@ -1786,15 +2026,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou5.png"),
-			self.get_resource_path("images/zhanhun/go6.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/huaxiong.png"),
-			self.get_resource_path("images/zhanhun/huaxiong.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou5.png"),
+		# 	self.get_resource_path("images/zhanhun/go6.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/huaxiong.png"),
+		# 	self.get_resource_path("images/zhanhun/huaxiong.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 6
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou6.png"),
@@ -1805,15 +2060,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou6.png"),
-			self.get_resource_path("images/zhanhun/go7.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/sunce.png"),
-			self.get_resource_path("images/zhanhun/sunce.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou6.png"),
+		# 	self.get_resource_path("images/zhanhun/go7.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/sunce.png"),
+		# 	self.get_resource_path("images/zhanhun/sunce.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 7
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou7.png"),
@@ -1824,15 +2094,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou7.png"),
-			self.get_resource_path("images/zhanhun/go8.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/dianwei.png"),
-			self.get_resource_path("images/zhanhun/dianwei.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou7.png"),
+		# 	self.get_resource_path("images/zhanhun/go8.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/dianwei.png"),
+		# 	self.get_resource_path("images/zhanhun/dianwei.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 8
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou8.png"),
@@ -1843,15 +2128,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou8.png"),
-			self.get_resource_path("images/zhanhun/go9.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/guojia.png"),
-			self.get_resource_path("images/zhanhun/guojia.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou8.png"),
+		# 	self.get_resource_path("images/zhanhun/go9.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/guojia.png"),
+		# 	self.get_resource_path("images/zhanhun/guojia.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 9
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou9.png"),
@@ -1862,15 +2162,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou9.png"),
-			self.get_resource_path("images/zhanhun/go10.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/liubei.png"),
-			self.get_resource_path("images/zhanhun/liubei.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou9.png"),
+		# 	self.get_resource_path("images/zhanhun/go10.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/liubei.png"),
+		# 	self.get_resource_path("images/zhanhun/liubei.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 10
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou10.png"),
@@ -1881,15 +2196,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou10.png"),
-			self.get_resource_path("images/zhanhun/go11.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/caocao.png"),
-			self.get_resource_path("images/zhanhun/caocao.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou10.png"),
+		# 	self.get_resource_path("images/zhanhun/go11.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/caocao.png"),
+		# 	self.get_resource_path("images/zhanhun/caocao.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 11
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou11.png"),
@@ -1900,15 +2230,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou11.png"),
-			self.get_resource_path("images/zhanhun/go12.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou11.png"),
+		# 	self.get_resource_path("images/zhanhun/go12.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
+		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 12
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou12.png"),
@@ -1919,15 +2264,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou12.png"),
-			self.get_resource_path("images/zhanhun/go13.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/zhangfei.png"),
-			self.get_resource_path("images/zhanhun/zhangfei.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou12.png"),
+		# 	self.get_resource_path("images/zhanhun/go13.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/zhangfei.png"),
+		# 	self.get_resource_path("images/zhanhun/zhangfei.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 13
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou13.png"),
@@ -1938,15 +2298,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou13.png"),
-			self.get_resource_path("images/zhanhun/go14.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/daqiao.png"),
-			self.get_resource_path("images/zhanhun/daqiao.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou13.png"),
+		# 	self.get_resource_path("images/zhanhun/go14.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/daqiao.png"),
+		# 	self.get_resource_path("images/zhanhun/daqiao.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 14
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou14.png"),
@@ -1957,15 +2332,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou14.png"),
-			self.get_resource_path("images/zhanhun/go15.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/guanyu.png"),
-			self.get_resource_path("images/zhanhun/guanyu.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou14.png"),
+		# 	self.get_resource_path("images/zhanhun/go15.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/guanyu.png"),
+		# 	self.get_resource_path("images/zhanhun/guanyu.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 15
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou15.png"),
@@ -1976,15 +2366,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou15.png"),
-			self.get_resource_path("images/zhanhun/go16.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/lvbu.png"),
-			self.get_resource_path("images/zhanhun/lvbu.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou15.png"),
+		# 	self.get_resource_path("images/zhanhun/go16.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
+		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 16
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou16.png"),
@@ -1995,15 +2400,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou16.png"),
-			self.get_resource_path("images/zhanhun/go17.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
-			self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou16.png"),
+		# 	self.get_resource_path("images/zhanhun/go17.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
+		# 	self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 17
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou17.png"),
@@ -2014,15 +2434,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou17.png"),
-			self.get_resource_path("images/zhanhun/go18.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
-			self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou17.png"),
+		# 	self.get_resource_path("images/zhanhun/go18.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
+		# 	self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 18
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou18.png"),
@@ -2033,15 +2468,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou18.png"),
-			self.get_resource_path("images/zhanhun/go19.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou18.png"),
+		# 	self.get_resource_path("images/zhanhun/go19.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
+		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 19
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou19.png"),
@@ -2052,15 +2502,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou19.png"),
-			self.get_resource_path("images/zhanhun/go20.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			"",
-			"right",
+		self.waitForAAndClickB1(
+			self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou19.png"),
+		# 	self.get_resource_path("images/zhanhun/go20.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
+		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 20
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou20.png"),
@@ -2071,15 +2536,30 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou20.png"),
-			self.get_resource_path("images/zhanhun/go21.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/liubei.png"),
-			self.get_resource_path("images/zhanhun/liubei.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou20.png"),
+		# 	self.get_resource_path("images/zhanhun/go21.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/liubei.png"),
+		# 	self.get_resource_path("images/zhanhun/liubei.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 21
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
@@ -2103,15 +2583,30 @@ class MyThread(threading.Thread):
 		if waitForTwoRes == "second":
 			print("21层没打过")
 			return
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
-			self.get_resource_path("images/zhanhun/go22.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
+		# 	self.get_resource_path("images/zhanhun/go22.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
+		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 22
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
@@ -2135,15 +2630,30 @@ class MyThread(threading.Thread):
 		if waitForTwoRes == "second":
 			print("22层没打过")
 			return
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
-			self.get_resource_path("images/zhanhun/go23.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/caocao.png"),
-			self.get_resource_path("images/zhanhun/caocao.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
+		# 	self.get_resource_path("images/zhanhun/go23.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/caocao.png"),
+		# 	self.get_resource_path("images/zhanhun/caocao.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 23
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
@@ -2167,15 +2677,30 @@ class MyThread(threading.Thread):
 		if waitForTwoRes == "second":
 			print("23层没打过")
 			return
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
-			self.get_resource_path("images/zhanhun/go24.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/lvbu.png"),
-			self.get_resource_path("images/zhanhun/lvbu.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
+		# 	self.get_resource_path("images/zhanhun/go24.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
+		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 24
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
@@ -2199,15 +2724,30 @@ class MyThread(threading.Thread):
 		if waitForTwoRes == "second":
 			print("24层没打过")
 			return
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
-			self.get_resource_path("images/zhanhun/go25.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
+		# 	self.get_resource_path("images/zhanhun/go25.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
+		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 25
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
@@ -2231,15 +2771,30 @@ class MyThread(threading.Thread):
 		if waitForTwoRes == "second":
 			print("25层没打过")
 			return
-		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
-			self.get_resource_path("images/zhanhun/go26.png"),
-			self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/renshengwa.png"),
-			self.get_resource_path("images/zhanhun/renshengwa.png"),
-			"",
-			"right",
+			self.get_resource_path("images/chuansongmen.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			), (
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
 		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
+		# 	self.get_resource_path("images/zhanhun/go26.png"),
+		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
+		# 	self.get_resource_path("images/zhanhun/renshengwa.png"),
+		# 	self.get_resource_path("images/zhanhun/renshengwa.png"),
+		# 	"",
+		# 	"right",
+		# )
 		# 26
 		self.findAndClickPic(
 			self.get_resource_path("images/zhanhun/zhanhunlou26.png"),
@@ -2267,7 +2822,7 @@ class MyThread(threading.Thread):
 		self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou26.png"))
 
 	# 魔镜脚本
-	def mojingScript(self):
+	def mojingScriptOld(self):
 		print("开始祭坛魔镜")
 		# 进入魔镜
 		inLuoYangChengXi = self.waitFor(
@@ -2319,7 +2874,7 @@ class MyThread(threading.Thread):
 		# 		self.get_resource_path("images/mojing/mojingD.png"),
 		# 	)
 
-		self.waitForAAndClickB(
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/mojing/injitan.png"),
 			self.get_resource_path("images/mojing/mojingshizhe.png"),
 			(
@@ -2328,22 +2883,18 @@ class MyThread(threading.Thread):
 				self.locationWidth,
 				self.locationHeight,
 			),
-			None,
-			self.get_resource_path("images/mojing/injitan.png"),
-			self.get_resource_path("images/mojing/mojingshizhe.png"),
+			None
 		)
-		self.waitForAAndClickB(
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
 			self.get_resource_path("images/mojing/injitan.png"),
 			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
 			),
-			None,
-			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
-			self.get_resource_path("images/mojing/injitan.png"),
+			None
 		)
 		if time.localtime().tm_min == 58:
 			# 打整点
@@ -2534,7 +3085,15 @@ class MyThread(threading.Thread):
 
 	# 魔镜脚本
 
-	def mojingScriptOld(self):
+	def mojingScript(self):
+		isInGuanDu = self.waitFor(self.get_resource_path("images/mojing/luyangchengxi.png"), (
+			self.locationRightTopX,
+			self.locationRightTopY,
+			self.locationRightTopWidth,
+			self.locationRightTopHeight,
+		), 5)
+		if not isInGuanDu:
+			self.feiFb(self.get_resource_path("images/mojing/fubenmojingshizhe.png"), False)
 		print("开始魔镜祭坛")
 		# 进入魔镜
 		self.findAndClickPic(
@@ -2546,15 +3105,37 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/mojing/mojingD.png"),
 			"",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/mojing/luyangchengxi.png"),
+		self.waitForAAndClickB1(
 			self.get_resource_path("images/mojing/injitan.png"),
-			self.get_resource_path("images/mojing/injitan.png"),
-			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
-			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
-			"",
-			"",
+			self.get_resource_path("images/mojing/mojingshizhe.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			),
+			None
 		)
+		self.waitForAAndClickB1(
+			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
+			self.get_resource_path("images/mojing/injitan.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
+			None
+		)
+		# self.findAndClickPic(
+		# 	self.get_resource_path("images/mojing/luyangchengxi.png"),
+		# 	self.get_resource_path("images/mojing/injitan.png"),
+		# 	self.get_resource_path("images/mojing/injitan.png"),
+		# 	self.get_resource_path("images/mojing/jingxiangdiceng.png"),
+		# 	self.get_resource_path("images/mojing/jingxiangdiceng.png"),
+		# 	"",
+		# 	"",
+		# )
 		# 打一个第一层的怪
 		self.findAndClickPic(
 			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
@@ -2563,26 +3144,39 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/zdzd.png"),
 			self.get_resource_path("images/zdzd1.png"),
 			"",
-			"",
-		)
-		# 进入第二层
-		self.findAndClickPic(
-			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
-			self.get_resource_path("images/mojing/tiaoyuetu.png"),
-			self.get_resource_path("images/mojing/tiaoyuetu.png"),
-			self.get_resource_path("images/mojing/go2.png"),
-			self.get_resource_path("images/mojing/go2.png"),
-			"",
 			"right",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/mojing/jingxiangdiceng.png"),
+		# 进入第二层
+		self.waitForAAndClickB(
 			self.get_resource_path("images/mojing/go2.png"),
+			self.get_resource_path("images/xiaolvren.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
+			self.get_resource_path("images/mojing/go3.png"),
+			self.get_resource_path("images/mojing/go3.png"),
+		)
+		self.waitForAAndClickB(
+			self.get_resource_path("images/mojing/yijijingxiang.png"),
 			self.get_resource_path("images/mojing/go2.png"),
-			self.get_resource_path("images/mojing/yijijingxiang.png"),
-			self.get_resource_path("images/mojing/yijijingxiang.png"),
-			"",
-			"",
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
+			None,
+			self.get_resource_path("images/mojing/go3.png"),
+			self.get_resource_path("images/mojing/go3.png"),
 		)
 		# 打狮王
 		self.findAndClickPic(
@@ -2595,23 +3189,36 @@ class MyThread(threading.Thread):
 			"right",
 		)
 		# 进入第三层
-		self.findAndClickPic(
-			self.get_resource_path("images/mojing/yijijingxiang.png"),
-			self.get_resource_path("images/mojing/tiaoyuetu.png"),
-			self.get_resource_path("images/mojing/tiaoyuetu.png"),
+		self.waitForAAndClickB(
 			self.get_resource_path("images/mojing/go2.png"),
-			self.get_resource_path("images/mojing/go2.png"),
-			"",
-			"right",
+			self.get_resource_path("images/xiaolvren.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
+			self.get_resource_path("images/mojing/go3.png"),
+			self.get_resource_path("images/mojing/go3.png"),
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/mojing/yijijingxiang.png"),
-			self.get_resource_path("images/mojing/go2.png"),
-			self.get_resource_path("images/mojing/go2.png"),
+		self.waitForAAndClickB(
 			self.get_resource_path("images/mojing/mihuanjing.png"),
-			self.get_resource_path("images/mojing/mihuanjing.png"),
-			"",
-			"",
+			self.get_resource_path("images/mojing/go2.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
+			None,
+			self.get_resource_path("images/mojing/go3.png"),
+			self.get_resource_path("images/mojing/go3.png"),
 		)
 		# 打虚实
 		self.findAndClickPic(
@@ -2634,25 +3241,47 @@ class MyThread(threading.Thread):
 		)
 
 		# 进入第四层
+		self.waitForAAndClickB(
+			self.get_resource_path("images/mojing/go2.png"),
+			self.get_resource_path("images/xiaolvren.png"),
+			(
+				self.locationX,
+				self.locationY,
+				self.locationWidth,
+				self.locationHeight,
+			),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
+			self.get_resource_path("images/mojing/go3.png"),
+			self.get_resource_path("images/mojing/go3.png"),
+		)
+		self.waitForAAndClickB(
+			self.get_resource_path("images/mojing/yujing.png"),
+			self.get_resource_path("images/mojing/go2.png"),
+			(
+				self.locationRightTopX,
+				self.locationRightTopY,
+				self.locationRightTopWidth,
+				self.locationRightTopHeight,
+			),
+			None,
+			self.get_resource_path("images/mojing/go3.png"),
+			self.get_resource_path("images/mojing/go3.png"),
+		)
+		# 打黑白无常
 		self.findAndClickPic(
-			self.get_resource_path("images/mojing/mihuanjing.png"),
-			self.get_resource_path("images/mojing/tiaoyuetu.png"),
-			self.get_resource_path("images/mojing/tiaoyuetu.png"),
-			self.get_resource_path("images/mojing/go2.png"),
-			self.get_resource_path("images/mojing/go2.png"),
+			self.get_resource_path("images/mojing/yujing.png"),
+			self.get_resource_path("images/mojing/heiwuchang.png"),
+			self.get_resource_path("images/mojing/heiwuchang.png"),
+			self.get_resource_path("images/zdzd.png"),
+			self.get_resource_path("images/zdzd1.png"),
 			"",
 			"right",
 		)
-		self.findAndClickPic(
-			self.get_resource_path("images/mojing/mihuanjing.png"),
-			self.get_resource_path("images/mojing/go2.png"),
-			self.get_resource_path("images/mojing/go2.png"),
-			self.get_resource_path("images/mojing/yujing.png"),
-			self.get_resource_path("images/mojing/yujing.png"),
-			"",
-			"",
-		)
-		# 打黑白无常
 		self.findAndClickPic(
 			self.get_resource_path("images/mojing/yujing.png"),
 			self.get_resource_path("images/mojing/baiwuchang.png"),
@@ -2661,15 +3290,6 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/zdzd1.png"),
 			"",
 			"left",
-		)
-		self.findAndClickPic(
-			self.get_resource_path("images/mojing/yujing.png"),
-			self.get_resource_path("images/mojing/heiwuchang.png"),
-			self.get_resource_path("images/mojing/heiwuchang.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"right",
 		)
 		# 退出副本
 		self.outScript(self.get_resource_path("images/mojing/yujing.png"))
@@ -2688,8 +3308,8 @@ class MyThread(threading.Thread):
 			if not hongRes:
 				print('红没次数')
 				break
+		self.guanduWhile()
 
-	# self.guanduWhile()
 	# 一直执行战魂
 	def zhanhunWhile(self):
 		self.beginFun()
@@ -2698,8 +3318,8 @@ class MyThread(threading.Thread):
 			if not zhanhunRes:
 				print('战魂没次数')
 				break
+		self.guanduWhile()
 
-	# self.guanduWhile()
 	# 一直执行魔镜
 	def mojingWhile(self):
 		self.beginFun()
@@ -2712,7 +3332,9 @@ class MyThread(threading.Thread):
 		self.zhanhunScript()
 		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditudianwei.png"), True)
-		self.hongScript()
+		hongOver = self.hongScript()
+		if not hongOver:
+			self.guanduWhile()
 		time.sleep(1)
 		self.zhengDian()
 

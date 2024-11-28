@@ -141,74 +141,80 @@ import pyautogui
 #
 # # 释放鼠标
 # pyautogui.mouseUp()
-import wx
-import wx.lib.scrolledpanel as scrolled
-
-class HelpDialog(wx.Dialog):
-    def __init__(self, parent, title, content, images):
-        super(HelpDialog, self).__init__(parent, title=title, size=(600, 400))
-
-        panel = scrolled.ScrolledPanel(self, -1, style=wx.TAB_TRAVERSAL | wx.SUNKEN_BORDER)
-        panel.SetupScrolling()
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-
-        # 添加文字内容
-        for text in content:
-            text_ctrl = wx.StaticText(panel, label=text)
-            sizer.Add(text_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-
-        # 添加图片
-        for image_path in images:
-            image = wx.Image(image_path, wx.BITMAP_TYPE_ANY)
-            # 获取弹窗的宽度
-            dialog_width = self.GetSize().width
-            # 计算新的高度以保持宽高比
-            original_width = image.GetWidth()
-            original_height = image.GetHeight()
-            new_height = int((dialog_width / original_width) * original_height)
-            # 调整图片宽度为弹窗宽度的100%，高度自适应
-            image = image.Scale(dialog_width, new_height, wx.IMAGE_QUALITY_HIGH)
-            bitmap = wx.StaticBitmap(panel, -1, image.ConvertToBitmap())
-            sizer.Add(bitmap, 0, wx.ALL | wx.CENTER, 5)
-
-        panel.SetSizer(sizer)
-
-class MainFrame(wx.Frame):
-    def __init__(self, *args, **kwargs):
-        super(MainFrame, self).__init__(*args, **kwargs)
-
-        self.panel = wx.Panel(self)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-
-        # 创建一个带有蓝色文字和下划线的链接控件
-        self.help_link = wx.StaticText(self.panel, label="使用说明", style=wx.ST_NO_AUTORESIZE)
-        self.help_link.SetForegroundColour(wx.BLUE)
-        self.help_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.help_link.Bind(wx.EVT_LEFT_DOWN, self.on_help_link_click)
-        self.sizer.Add(self.help_link, 0, wx.ALL | wx.CENTER, 5)
-
-        self.panel.SetSizer(self.sizer)
-
-    def on_help_link_click(self, event):
-        # 定义弹窗的内容和图片路径
-        content = [
-            "这是使用说明的第一段文字。",
-            "这是使用说明的第二段文字。",
-            "这是使用说明的第三段文字。"
-        ]
-        images = [
-            "images/shiyongshuoming.png",
-            "images/game.png"
-        ]
-
-        # 打开弹窗
-        dialog = HelpDialog(self, "使用说明", content, images)
-        dialog.ShowModal()
-        dialog.Destroy()
-
-if __name__ == "__main__":
-    app = wx.App(False)
-    frame = MainFrame(None, title="主窗口")
-    frame.Show()
-    app.MainLoop()
+# import wx
+# import wx.lib.scrolledpanel as scrolled
+#
+# class HelpDialog(wx.Dialog):
+#     def __init__(self, parent, title, content, images):
+#         super(HelpDialog, self).__init__(parent, title=title, size=(600, 400))
+#
+#         panel = scrolled.ScrolledPanel(self, -1, style=wx.TAB_TRAVERSAL | wx.SUNKEN_BORDER)
+#         panel.SetupScrolling()
+#
+#         sizer = wx.BoxSizer(wx.VERTICAL)
+#
+#         # 添加文字内容
+#         for text in content:
+#             text_ctrl = wx.StaticText(panel, label=text)
+#             sizer.Add(text_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+#
+#         # 添加图片
+#         for image_path in images:
+#             image = wx.Image(image_path, wx.BITMAP_TYPE_ANY)
+#             # 获取弹窗的宽度
+#             dialog_width = self.GetSize().width
+#             # 计算新的高度以保持宽高比
+#             original_width = image.GetWidth()
+#             original_height = image.GetHeight()
+#             new_height = int((dialog_width / original_width) * original_height)
+#             # 调整图片宽度为弹窗宽度的100%，高度自适应
+#             image = image.Scale(dialog_width, new_height, wx.IMAGE_QUALITY_HIGH)
+#             bitmap = wx.StaticBitmap(panel, -1, image.ConvertToBitmap())
+#             sizer.Add(bitmap, 0, wx.ALL | wx.CENTER, 5)
+#
+#         panel.SetSizer(sizer)
+#
+# class MainFrame(wx.Frame):
+#     def __init__(self, *args, **kwargs):
+#         super(MainFrame, self).__init__(*args, **kwargs)
+#
+#         self.panel = wx.Panel(self)
+#         self.sizer = wx.BoxSizer(wx.VERTICAL)
+#
+#         # 创建一个带有蓝色文字和下划线的链接控件
+#         self.help_link = wx.StaticText(self.panel, label="使用说明", style=wx.ST_NO_AUTORESIZE)
+#         self.help_link.SetForegroundColour(wx.BLUE)
+#         self.help_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+#         self.help_link.Bind(wx.EVT_LEFT_DOWN, self.on_help_link_click)
+#         self.sizer.Add(self.help_link, 0, wx.ALL | wx.CENTER, 5)
+#
+#         self.panel.SetSizer(self.sizer)
+#
+#     def on_help_link_click(self, event):
+#         # 定义弹窗的内容和图片路径
+#         content = [
+#             "这是使用说明的第一段文字。",
+#             "这是使用说明的第二段文字。",
+#             "这是使用说明的第三段文字。"
+#         ]
+#         images = [
+#             "images/shiyongshuoming.png",
+#             "images/game.png"
+#         ]
+#
+#         # 打开弹窗
+#         dialog = HelpDialog(self, "使用说明", content, images)
+#         dialog.ShowModal()
+#         dialog.Destroy()
+#
+# if __name__ == "__main__":
+#     app = wx.App(False)
+#     frame = MainFrame(None, title="主窗口")
+#     frame.Show()
+#     app.MainLoop()
+# keyboard.press('up')
+# time.sleep(2)
+# keyboard.release('up')
+pyautogui.keyDown('right')
+time.sleep(2)
+pyautogui.keyUp('right')
