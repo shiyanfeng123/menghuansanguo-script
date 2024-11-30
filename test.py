@@ -75,6 +75,7 @@ from pywinauto import Application
 # print(res)
 import pyautogui
 
+
 # 在屏幕上查找所有与指定的图像匹配的位置
 
 # def click_image_with_min_x(image_path):
@@ -215,6 +216,71 @@ import pyautogui
 # keyboard.press('up')
 # time.sleep(2)
 # keyboard.release('up')
-pyautogui.keyDown('right')
-time.sleep(2)
-pyautogui.keyUp('right')
+# pyautogui.keyDown('right')
+# time.sleep(2)
+# pyautogui.keyUp('right')
+class MyFrame(wx.Frame):
+	def __init__(self, *args, **kw):
+		super(MyFrame, self).__init__(*args, **kw)
+		self.InitUI()
+
+	def InitUI(self):
+		panel = wx.Panel(self)
+		vbox = wx.BoxSizer(wx.VERTICAL)
+
+		self.start_button = wx.Button(panel, label='Start')
+		self.pause_button = wx.Button(panel, label='Pause')
+		self.resume_button = wx.Button(panel, label='Resume')
+		self.stop_button = wx.Button(panel, label='Stop')
+
+		vbox.Add(self.start_button, flag=wx.ALL | wx.EXPAND, border=5)
+		vbox.Add(self.pause_button, flag=wx.ALL | wx.EXPAND, border=5)
+		vbox.Add(self.resume_button, flag=wx.ALL | wx.EXPAND, border=5)
+		vbox.Add(self.stop_button, flag=wx.ALL | wx.EXPAND, border=5)
+
+		panel.SetSizer(vbox)
+
+		self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
+		self.Bind(wx.EVT_BUTTON, self.on_pause, self.pause_button)
+		self.Bind(wx.EVT_BUTTON, self.on_resume, self.resume_button)
+		self.Bind(wx.EVT_BUTTON, self.on_stop, self.stop_button)
+
+		self.thread = None
+
+		self.Bind(wx.EVT_CLOSE, self.on_close)
+
+	def on_start(self, event):
+		if self.thread is None or not self.thread.is_alive():
+			self.thread = FindPicThread()
+			self.thread.start()
+
+	def on_pause(self, event):
+		if self.thread and self.thread.is_alive():
+			self.thread.pause()
+
+	def on_resume(self, event):
+		if self.thread and self.thread.is_alive():
+			self.thread.resume()
+
+	def on_stop(self, event):
+		if self.thread and self.thread.is_alive():
+			self.thread.stop()
+			self.thread.join()
+			self.thread = None
+
+	def on_close(self, event):
+		if self.thread and self.thread.is_alive():
+			self.thread.stop()
+			self.thread.join()
+		self.Destroy()
+
+
+def main():
+	app = wx.App()
+	frame = MyFrame(None, title='FindPic Control', size=(300, 200))
+	frame.Show()
+	app.MainLoop()
+
+
+if __name__ == '__main__':
+	main()
