@@ -219,68 +219,129 @@ import pyautogui
 # pyautogui.keyDown('right')
 # time.sleep(2)
 # pyautogui.keyUp('right')
+# class MyFrame(wx.Frame):
+# 	def __init__(self, *args, **kw):
+# 		super(MyFrame, self).__init__(*args, **kw)
+# 		self.InitUI()
+
+# 	def InitUI(self):
+# 		panel = wx.Panel(self)
+# 		vbox = wx.BoxSizer(wx.VERTICAL)
+
+# 		self.start_button = wx.Button(panel, label='Start')
+# 		self.pause_button = wx.Button(panel, label='Pause')
+# 		self.resume_button = wx.Button(panel, label='Resume')
+# 		self.stop_button = wx.Button(panel, label='Stop')
+
+# 		vbox.Add(self.start_button, flag=wx.ALL | wx.EXPAND, border=5)
+# 		vbox.Add(self.pause_button, flag=wx.ALL | wx.EXPAND, border=5)
+# 		vbox.Add(self.resume_button, flag=wx.ALL | wx.EXPAND, border=5)
+# 		vbox.Add(self.stop_button, flag=wx.ALL | wx.EXPAND, border=5)
+
+# 		panel.SetSizer(vbox)
+
+# 		self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
+# 		self.Bind(wx.EVT_BUTTON, self.on_pause, self.pause_button)
+# 		self.Bind(wx.EVT_BUTTON, self.on_resume, self.resume_button)
+# 		self.Bind(wx.EVT_BUTTON, self.on_stop, self.stop_button)
+
+# 		self.thread = None
+
+# 		self.Bind(wx.EVT_CLOSE, self.on_close)
+
+# 	def on_start(self, event):
+# 		if self.thread is None or not self.thread.is_alive():
+# 			self.thread = FindPicThread()
+# 			self.thread.start()
+
+# 	def on_pause(self, event):
+# 		if self.thread and self.thread.is_alive():
+# 			self.thread.pause()
+
+# 	def on_resume(self, event):
+# 		if self.thread and self.thread.is_alive():
+# 			self.thread.resume()
+
+# 	def on_stop(self, event):
+# 		if self.thread and self.thread.is_alive():
+# 			self.thread.stop()
+# 			self.thread.join()
+# 			self.thread = None
+
+# 	def on_close(self, event):
+# 		if self.thread and self.thread.is_alive():
+# 			self.thread.stop()
+# 			self.thread.join()
+# 		self.Destroy()
+
+
+# def main():
+# 	app = wx.App()
+# 	frame = MyFrame(None, title='FindPic Control', size=(300, 200))
+# 	frame.Show()
+# 	app.MainLoop()
+
+
+# if __name__ == '__main__':
+# 	main()
+import wx
+
+class NumberValidator(wx.Validator):
+    def __init__(self):
+        wx.Validator.__init__(self)
+
+    def Clone(self):
+        return NumberValidator()
+
+    def Validate(self, win):
+        text_ctrl = self.GetWindow()
+        value = text_ctrl.GetValue()
+        if not value.isdigit():
+            wx.MessageBox("请输入数字", "错误", wx.OK | wx.ICON_ERROR)
+            text_ctrl.SetBackgroundColour("pink")
+            text_ctrl.SetFocus()
+            text_ctrl.Refresh()
+            return False
+        else:
+            text_ctrl.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
+            text_ctrl.Refresh()
+            return True
+
+    def TransferToWindow(self):
+        return True
+
+    def TransferFromWindow(self):
+        return True
+
 class MyFrame(wx.Frame):
-	def __init__(self, *args, **kw):
-		super(MyFrame, self).__init__(*args, **kw)
-		self.InitUI()
+    def __init__(self, *args, **kw):
+        super(MyFrame, self).__init__(*args, **kw)
+        panel = wx.Panel(self)
+        vbox = wx.BoxSizer(wx.VERTICAL)
 
-	def InitUI(self):
-		panel = wx.Panel(self)
-		vbox = wx.BoxSizer(wx.VERTICAL)
+        # 创建一个只能输入数字的文本输入框
+        self.number_input = wx.TextCtrl(panel, validator=NumberValidator())
+        vbox.Add(self.number_input, flag=wx.ALL, border=10)
 
-		self.start_button = wx.Button(panel, label='Start')
-		self.pause_button = wx.Button(panel, label='Pause')
-		self.resume_button = wx.Button(panel, label='Resume')
-		self.stop_button = wx.Button(panel, label='Stop')
+        # 添加一个按钮来测试输入是否有效
+        self.test_button = wx.Button(panel, label="测试")
+        self.test_button.Bind(wx.EVT_BUTTON, self.on_test)
+        vbox.Add(self.test_button, flag=wx.ALL, border=10)
 
-		vbox.Add(self.start_button, flag=wx.ALL | wx.EXPAND, border=5)
-		vbox.Add(self.pause_button, flag=wx.ALL | wx.EXPAND, border=5)
-		vbox.Add(self.resume_button, flag=wx.ALL | wx.EXPAND, border=5)
-		vbox.Add(self.stop_button, flag=wx.ALL | wx.EXPAND, border=5)
+        panel.SetSizer(vbox)
 
-		panel.SetSizer(vbox)
+    def on_test(self, event):
+        if self.number_input.GetValidator().Validate(self.number_input):
+            wx.MessageBox(f"输入的数字是: {self.number_input.GetValue()}", "成功", wx.OK | wx.ICON_INFORMATION)
+        else:
+            wx.MessageBox("输入无效", "错误", wx.OK | wx.ICON_ERROR)
 
-		self.Bind(wx.EVT_BUTTON, self.on_start, self.start_button)
-		self.Bind(wx.EVT_BUTTON, self.on_pause, self.pause_button)
-		self.Bind(wx.EVT_BUTTON, self.on_resume, self.resume_button)
-		self.Bind(wx.EVT_BUTTON, self.on_stop, self.stop_button)
+class MyApp(wx.App):
+    def OnInit(self):
+        frame = MyFrame(None, title="数字输入框示例", size=(300, 200))
+        frame.Show()
+        return True
 
-		self.thread = None
-
-		self.Bind(wx.EVT_CLOSE, self.on_close)
-
-	def on_start(self, event):
-		if self.thread is None or not self.thread.is_alive():
-			self.thread = FindPicThread()
-			self.thread.start()
-
-	def on_pause(self, event):
-		if self.thread and self.thread.is_alive():
-			self.thread.pause()
-
-	def on_resume(self, event):
-		if self.thread and self.thread.is_alive():
-			self.thread.resume()
-
-	def on_stop(self, event):
-		if self.thread and self.thread.is_alive():
-			self.thread.stop()
-			self.thread.join()
-			self.thread = None
-
-	def on_close(self, event):
-		if self.thread and self.thread.is_alive():
-			self.thread.stop()
-			self.thread.join()
-		self.Destroy()
-
-
-def main():
-	app = wx.App()
-	frame = MyFrame(None, title='FindPic Control', size=(300, 200))
-	frame.Show()
-	app.MainLoop()
-
-
-if __name__ == '__main__':
-	main()
+if __name__ == "__main__":
+    app = MyApp()
+    app.MainLoop()
