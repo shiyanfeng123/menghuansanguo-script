@@ -30,7 +30,7 @@ condition = threading.Condition()
 class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
-		self.userInfoMac = ["50-9A-4C-C9-FE-BA"]
+		# self.userInfoMac = ["50-9A-4C-C9-FE-BA"]
 		# 烈烈残阳mac：00-E2-69-6A-22-81
 		# self.userInfoMac = ["00-E2-69-6A-22-81"]
 		# 黑北：E4-60-17-15-B4-73
@@ -39,6 +39,7 @@ class MyThread(threading.Thread):
 		# self.userInfoMac = ["7C-21-4A-48-36-7D"]
 		# 三千梨树：08-8F-C3-75-B5-7A
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A"]
+		self.userInfoMac = ["08-8F-C3-75-B5-7A"]
 		# self.userInfoMac = ["50-9A-4C-C9-FE-BA", "B0-25-AA-26-64-03", "00-E2-69-6A-22-81", "E4-60-17-15-B4-73", "7C-21-4A-48-36-7D", "08-8F-C3-75-B5-7A"]
 		self.frame = None
 		self.zhanhunFloor = ''
@@ -95,9 +96,9 @@ class MyThread(threading.Thread):
 		# 	print('脚本已过期!')
 		# 	return
 		# 七天脚本
-		if time.time() - startTime > self.oneWeek:
-			print('脚本已过期!')
-			return
+		# if time.time() - startTime > self.oneWeek:
+		# 	print('脚本已过期!')
+		# 	return
 		# 一天脚本
 		# if time.time() - startTime > self.oneDay:
 		# 	print('脚本已过期!')
@@ -112,8 +113,8 @@ class MyThread(threading.Thread):
 		isFindGame = self.findGame()
 		if not isFindGame:
 			return
-		app = pywinauto.Application(backend="uia").connect(title="11")
-		self.game = app.window(title="11")
+		# app = pywinauto.Application(backend="uia").connect(title="11")
+		# self.game = app.window(title="11")
 		self.child_thread.start()
 		if self.scriptName == "官渡":
 			self.guanduWhile()

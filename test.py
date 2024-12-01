@@ -344,66 +344,31 @@ import pyautogui
 # if __name__ == "__main__":
 #     app = MyApp()
 #     app.MainLoop()
-# import pywinauto
-# import pyautogui
-# import time
-# import logging
-
-# # 启用调试日志
-# logging.basicConfig(level=logging.DEBUG)
-
-# try:
-#     # 获取目标窗口的句柄
-#     app = pywinauto.Application(backend="uia").connect(title="11")
-#     dlg = app.window(title="11")
-
-#     # 获取窗口的位置和大小
-#     rect = dlg.rectangle()
-#     print(rect)
-
-#     # 模拟鼠标点击
-#     dlg.click_input(coords=(475, 632))
-#     # pyautogui.moveTo(475, 632)
-#     # pyautogui.click()
-
-# except Exception as e:
-#     print(f"Error: {e}")
 import pywinauto
-import logging
+import pyautogui
+import time
+from pywinauto import Desktop
+# 获取所有窗口的标题
+all_windows = Desktop(backend="uia").windows()
 
-# 启用调试日志
-logging.basicConfig(level=logging.DEBUG)
+# 打印所有窗口的标题
+for window in all_windows:
+    print(window.window_text())
+# 获取目标窗口的句柄
+# app = pywinauto.Application(backend="uia").connect(title="11")
+# dlg = app.window(title="11")
 
-def get_window_controls_info(window_title):
-    try:
-        # 连接到目标应用程序
-        app = pywinauto.Application(backend="uia").connect(title=window_title)
-        dlg = app.window(title=window_title)
+# # 获取窗口的位置和大小
+# rect = dlg.rectangle()
+# print(rect)
+# # x = rect.left + 50  # 相对于窗口左上角的 x 坐标
+# # y = rect.top + 50   # 相对于窗口左上角的 y 坐标
 
-        # 获取所有子控件
-        controls = dlg.descendants()
+# # 模拟鼠标点击
+# pyautogui.moveTo(475, 632)
+# pyautogui.click()
 
-        # 打印每个控件的信息
-        for idx, ctrl in enumerate(controls):
-            info = {
-                'Index': idx,
-                'Class Name': ctrl.class_name(),
-                'Control Type': ctrl.element_info.control_type,  # 使用 element_info.control_type
-                'Name': ctrl.window_text(),
-                'Rectangle': ctrl.rectangle(),
-                'Is Enabled': ctrl.is_enabled(),
-                'Is Visible': ctrl.is_visible(),
-                'Automation ID': ctrl.automation_id(),
-                'Handle': ctrl.handle
-            }
-            print(f"Control {idx}:")
-            for key, value in info.items():
-                print(f"  {key}: {value}")
-            print("-" * 40)
+# 或者直接使用相对位置点击
+# pyautogui.click(x, y)
 
-    except Exception as e:
-        print(f"Error: {e}")
-
-if __name__ == "__main__":
-    window_title = "11"  # 替换为你的窗口标题
-    get_window_controls_info(window_title)
+# print(f"Clicked at ({x}, {y})")
