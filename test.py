@@ -75,7 +75,6 @@ from pywinauto import Application
 # print(res)
 import pyautogui
 
-
 # 在屏幕上查找所有与指定的图像匹配的位置
 
 # def click_image_with_min_x(image_path):
@@ -284,64 +283,88 @@ import pyautogui
 
 # if __name__ == '__main__':
 # 	main()
-import wx
+# import wx
+#
+# class NumberValidator(wx.Validator):
+#     def __init__(self):
+#         wx.Validator.__init__(self)
+#
+#     def Clone(self):
+#         return NumberValidator()
+#
+#     def Validate(self, win):
+#         text_ctrl = self.GetWindow()
+#         value = text_ctrl.GetValue()
+#         if not value.isdigit():
+#             wx.MessageBox("请输入数字", "错误", wx.OK | wx.ICON_ERROR)
+#             text_ctrl.SetBackgroundColour("pink")
+#             text_ctrl.SetFocus()
+#             text_ctrl.Refresh()
+#             return False
+#         else:
+#             text_ctrl.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
+#             text_ctrl.Refresh()
+#             return True
+#
+#     def TransferToWindow(self):
+#         return True
+#
+#     def TransferFromWindow(self):
+#         return True
+#
+# class MyFrame(wx.Frame):
+#     def __init__(self, *args, **kw):
+#         super(MyFrame, self).__init__(*args, **kw)
+#         panel = wx.Panel(self)
+#         vbox = wx.BoxSizer(wx.VERTICAL)
+#
+#         # 创建一个只能输入数字的文本输入框
+#         self.number_input = wx.TextCtrl(panel, validator=NumberValidator())
+#         vbox.Add(self.number_input, flag=wx.ALL, border=10)
+#
+#         # 添加一个按钮来测试输入是否有效
+#         self.test_button = wx.Button(panel, label="测试")
+#         self.test_button.Bind(wx.EVT_BUTTON, self.on_test)
+#         vbox.Add(self.test_button, flag=wx.ALL, border=10)
+#
+#         panel.SetSizer(vbox)
+#
+#     def on_test(self, event):
+#         if self.number_input.GetValidator().Validate(self.number_input):
+#             wx.MessageBox(f"输入的数字是: {self.number_input.GetValue()}", "成功", wx.OK | wx.ICON_INFORMATION)
+#         else:
+#             wx.MessageBox("输入无效", "错误", wx.OK | wx.ICON_ERROR)
+#
+# class MyApp(wx.App):
+#     def OnInit(self):
+#         frame = MyFrame(None, title="数字输入框示例", size=(300, 200))
+#         frame.Show()
+#         return True
+#
+# if __name__ == "__main__":
+#     app = MyApp()
+#     app.MainLoop()
+import pywinauto
+import pyautogui
+import time
+import logging
 
-class NumberValidator(wx.Validator):
-    def __init__(self):
-        wx.Validator.__init__(self)
+# 启用调试日志
+logging.basicConfig(level=logging.DEBUG)
 
-    def Clone(self):
-        return NumberValidator()
+try:
+    # 获取目标窗口的句柄
+    app = pywinauto.Application(backend="uia").connect(title="11")
+    dlg = app.window(title="11")
 
-    def Validate(self, win):
-        text_ctrl = self.GetWindow()
-        value = text_ctrl.GetValue()
-        if not value.isdigit():
-            wx.MessageBox("请输入数字", "错误", wx.OK | wx.ICON_ERROR)
-            text_ctrl.SetBackgroundColour("pink")
-            text_ctrl.SetFocus()
-            text_ctrl.Refresh()
-            return False
-        else:
-            text_ctrl.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
-            text_ctrl.Refresh()
-            return True
+    # 获取窗口的位置和大小
+    rect = dlg.rectangle()
+    print(rect)
 
-    def TransferToWindow(self):
-        return True
+    # 模拟鼠标点击
+    dlg.click_input(coords=(475, 632))
+    # pyautogui.moveTo(475, 632)
+    # pyautogui.click()
 
-    def TransferFromWindow(self):
-        return True
-
-class MyFrame(wx.Frame):
-    def __init__(self, *args, **kw):
-        super(MyFrame, self).__init__(*args, **kw)
-        panel = wx.Panel(self)
-        vbox = wx.BoxSizer(wx.VERTICAL)
-
-        # 创建一个只能输入数字的文本输入框
-        self.number_input = wx.TextCtrl(panel, validator=NumberValidator())
-        vbox.Add(self.number_input, flag=wx.ALL, border=10)
-
-        # 添加一个按钮来测试输入是否有效
-        self.test_button = wx.Button(panel, label="测试")
-        self.test_button.Bind(wx.EVT_BUTTON, self.on_test)
-        vbox.Add(self.test_button, flag=wx.ALL, border=10)
-
-        panel.SetSizer(vbox)
-
-    def on_test(self, event):
-        if self.number_input.GetValidator().Validate(self.number_input):
-            wx.MessageBox(f"输入的数字是: {self.number_input.GetValue()}", "成功", wx.OK | wx.ICON_INFORMATION)
-        else:
-            wx.MessageBox("输入无效", "错误", wx.OK | wx.ICON_ERROR)
-
-class MyApp(wx.App):
-    def OnInit(self):
-        frame = MyFrame(None, title="数字输入框示例", size=(300, 200))
-        frame.Show()
-        return True
-
-if __name__ == "__main__":
-    app = MyApp()
-    app.MainLoop()
+except Exception as e:
+    print(f"Error: {e}")

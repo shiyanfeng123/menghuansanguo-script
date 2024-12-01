@@ -16,7 +16,7 @@ import pygame
 
 pyautogui.PAUSE = 0.005
 pyautogui.FAILSAFE = True  # 鼠标光标在屏幕左上角，会导致程序异常，用于终止程序运行。
-# 打包命令：pyinstaller -F -w --add-data "images;images" --icon=images\script.ico .\main.py
+# 打包命令：pyinstaller -F -w --add-data "images;images" --icon=images\script.ico .\main.pyc
 # pyinstaller main.spec
 
 # 创建一个线程
