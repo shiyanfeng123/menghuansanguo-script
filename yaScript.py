@@ -1,479 +1,41 @@
-# from datetime import time
-# import uuid
-import pyautogui
-import time
-# import wmi
-# import webbrowser
-import os
-import sys
-import pywinauto
-# import pywebview
-# webview = pywebview.WebView()
-import keyboard
-import threading
-import wx
-import cv2
-# import pygame
-import wx.lib.scrolledpanel as scrolled
-import psutil
-
-# import pygetwindow as gw
-# !/usr/bin/env python
-# -*- encoding: utf-8 -*-
-'''
-@File    :   AutoClick.py
-@Time    :   2021/10/09 15:10:01
-@Author  :   Yaadon 
-'''
-
 # here put the import lib
 import win32con
 import win32gui
 import win32ui
+import win32api
 import time
-# import threading
+
 import numpy as np
 import os
 from PIL import Image
-from PIL import ImageOps
 import aircv as ac
-import pytesseract
 from ctypes import windll, byref
 from ctypes.wintypes import HWND, POINT
 import string
-
-# import sys
-# import cv2
-# from memory_pic import *
-# import win32api
-# import autopy
-# from PIL import ImageGrab
-
-scale = 1.0  # 电脑的缩放比例
-radius = 5  # 随机半径
-x_coor = 10  # 窗口位置
-y_coor = 10  # 窗口位置
-
-
-class AutoClick():
-	"""
-	@description  :自动点击类，包含后台截图、图像匹配
-	---------
-	@param  :
-	-------
-	@Returns  :
-	-------
-	"""
-
-	__PostMessageW = windll.user32.PostMessageW
-	__SendMessageW = windll.user32.SendMessageW
-	__MapVirtualKeyW = windll.user32.MapVirtualKeyW
-	__VkKeyScanA = windll.user32.VkKeyScanA
-	__ClientToScreen = windll.user32.ClientToScreen
-
-	__WM_KEYDOWN = 0x100
-	__WM_KEYUP = 0x101
-	__WM_MOUSEMOVE = 0x0200
-	__WM_LBUTTONDOWN = 0x0201
-	__WM_LBUTTONUP = 0x202
-	__WM_MOUSEWHEEL = 0x020A
-	__WHEEL_DELTA = 120
-	__WM_SETCURSOR = 0x20
-	__WM_MOUSEACTIVATE = 0x21
-
-	__HTCLIENT = 1
-	__MA_ACTIVATE = 1
-
-	__VkCode = {
-		"back": 0x08,
-		"tab": 0x09,
-		"return": 0x0D,
-		"shift": 0x10,
-		"control": 0x11,
-		"menu": 0x12,
-		"pause": 0x13,
-		"capital": 0x14,
-		"escape": 0x1B,
-		"space": 0x20,
-		"end": 0x23,
-		"home": 0x24,
-		"left": 0x25,
-		"up": 0x26,
-		"right": 0x27,
-		"down": 0x28,
-		"print": 0x2A,
-		"snapshot": 0x2C,
-		"insert": 0x2D,
-		"delete": 0x2E,
-		"lwin": 0x5B,
-		"rwin": 0x5C,
-		"numpad0": 0x60,
-		"numpad1": 0x61,
-		"numpad2": 0x62,
-		"numpad3": 0x63,
-		"numpad4": 0x64,
-		"numpad5": 0x65,
-		"numpad6": 0x66,
-		"numpad7": 0x67,
-		"numpad8": 0x68,
-		"numpad9": 0x69,
-		"multiply": 0x6A,
-		"add": 0x6B,
-		"separator": 0x6C,
-		"subtract": 0x6D,
-		"decimal": 0x6E,
-		"divide": 0x6F,
-		"f1": 0x70,
-		"f2": 0x71,
-		"f3": 0x72,
-		"f4": 0x73,
-		"f5": 0x74,
-		"f6": 0x75,
-		"f7": 0x76,
-		"f8": 0x77,
-		"f9": 0x78,
-		"f10": 0x79,
-		"f11": 0x7A,
-		"f12": 0x7B,
-		"numlock": 0x90,
-		"scroll": 0x91,
-		"lshift": 0xA0,
-		"rshift": 0xA1,
-		"lcontrol": 0xA2,
-		"rcontrol": 0xA3,
-		"lmenu": 0xA4,
-		"rmenu": 0XA5
-	}
-
-	def __get_virtual_keycode(self, key: str):
-		"""根据按键名获取虚拟按键码
-
-		Args:
-			key (str): 按键名
-
-		Returns:
-			int: 虚拟按键码
-		"""
-		if len(key) == 1 and key in string.printable:
-			# https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-vkkeyscana
-			return self.__VkKeyScanA(ord(key)) & 0xff
-		else:
-			return self.__VkCode[key]
-
-	def __key_down(self, handle: HWND, key: str):
-		"""按下指定按键
-
-		Args:
-			handle (HWND): 窗口句柄
-			key (str): 按键名
-		"""
-		vk_code = self.__get_virtual_keycode(key)
-		scan_code = self.__MapVirtualKeyW(vk_code, 0)
-		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
-		wparam = vk_code
-		lparam = (scan_code << 16) | 1
-		self.__PostMessageW(handle, self.__WM_KEYDOWN, wparam, lparam)
-
-	def __key_up(self, handle: HWND, key: str):
-		"""放开指定按键
-
-		Args:
-			handle (HWND): 窗口句柄
-			key (str): 按键名
-		"""
-		vk_code = self.__get_virtual_keycode(key)
-		scan_code = self.__MapVirtualKeyW(vk_code, 0)
-		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-keyup
-		wparam = vk_code
-		lparam = (scan_code << 16) | 0XC0000001
-		self.__PostMessageW(handle, self.__WM_KEYUP, wparam, lparam)
-
-	def __activate_mouse(self, handle: HWND):
-		"""
-		@Description : 激活窗口接受鼠标消息
-		---------
-		@Args : handle (HWND): 窗口句柄
-		-------
-		@Returns :
-		-------
-		"""
-		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-mouseactivate
-		lparam = (self.__WM_LBUTTONDOWN << 16) | self.__HTCLIENT
-		self.__SendMessageW(handle, self.__WM_MOUSEACTIVATE, self.__handle, lparam)
-
-	def __set_cursor(self, handle: HWND, msg):
-		"""
-		@Description : Sent to a window if the mouse causes the cursor to move within a window and mouse input is not captured
-		---------
-		@Args : handle (HWND): 窗口句柄, msg : setcursor消息
-		-------
-		@Returns :
-		-------
-		"""
-		# https://docs.microsoft.com/en-us/windows/win32/menurc/wm-setcursor
-		lparam = (msg << 16) | self.__HTCLIENT
-		self.__SendMessageW(handle, self.__WM_SETCURSOR, handle, lparam)
-
-	def __move_to(self, handle: HWND, x: int, y: int):
-		"""移动鼠标到坐标（x, y)
-
-		Args:
-			handle (HWND): 窗口句柄
-			x (int): 横坐标
-			y (int): 纵坐标
-		"""
-		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-mousemove
-		wparam = 0
-		lparam = y << 16 | x
-		self.__PostMessageW(handle, self.__WM_MOUSEMOVE, wparam, lparam)
-
-	def __left_down(self, handle: HWND, x: int, y: int):
-		"""在坐标(x, y)按下鼠标左键
-
-		Args:
-			handle (HWND): 窗口句柄
-			x (int): 横坐标
-			y (int): 纵坐标
-		"""
-		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-lbuttondown
-		wparam = 0x001
-		lparam = y << 16 | x
-		self.__PostMessageW(handle, self.__WM_LBUTTONDOWN, wparam, lparam)
-
-	def __left_up(self, handle: HWND, x: int, y: int):
-		"""在坐标(x, y)放开鼠标左键
-
-		Args:
-			handle (HWND): 窗口句柄
-			x (int): 横坐标
-			y (int): 纵坐标
-		"""
-		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-lbuttonup
-		wparam = 0
-		lparam = y << 16 | x
-		self.__PostMessageW(handle, self.__WM_LBUTTONUP, wparam, lparam)
-
-	def __scroll(self, handle: HWND, delta: int, x: int, y: int):
-		"""在坐标(x, y)滚动鼠标滚轮
-
-		Args:
-			handle (HWND): 窗口句柄
-			delta (int): 为正向上滚动，为负向下滚动
-			x (int): 横坐标
-			y (int): 纵坐标
-		"""
-		self.__move_to(handle, x, y)
-		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-mousewheel
-		wparam = delta << 16
-		p = POINT(x, y)
-		self.__ClientToScreen(handle, byref(p))
-		lparam = p.y << 16 | p.x
-		self.__PostMessageW(handle, self.__WM_MOUSEWHEEL, wparam, lparam)
-
-	def __scroll_up(self, handle: HWND, x: int, y: int):
-		"""在坐标(x, y)向上滚动鼠标滚轮
-
-		Args:
-			handle (HWND): 窗口句柄
-			x (int): 横坐标
-			y (int): 纵坐标
-		"""
-		self.__scroll(handle, self.__WHEEL_DELTA, x, y)
-
-	def __scroll_down(self, handle: HWND, x: int, y: int):
-		"""在坐标(x, y)向下滚动鼠标滚轮
-
-		Args:
-			handle (HWND): 窗口句柄
-			x (int): 横坐标
-			y (int): 纵坐标
-		"""
-		self.__scroll(handle, -self.__WHEEL_DELTA, x, y)
-
-	def get_winds(self, title: str):
-		"""
-		@description : 获取游戏句柄 ,并把游戏窗口置顶并激活窗口
-		---------
-		@param : 窗口名
-		-------
-		@Returns : 窗口句柄
-		-------
-		"""
-		# self.__handle = win32gui.FindWindowEx(0, 0, "Qt5QWindowIcon", "MuMu模拟器")
-		self.__handle = windll.user32.FindWindowW(None, title)
-		self.__classname = win32gui.GetClassName(self.__handle)
-		# print(self.__classname)
-		if self.__classname == 'Qt5QWindowIcon':
-			self.__mainhandle = win32gui.FindWindowEx(self.__handle, 0, "Qt5QWindowIcon", "MainWindowWindow")
-			# print(self.__mainhandle)
-			self.__centerhandle = win32gui.FindWindowEx(self.__mainhandle, 0, "Qt5QWindowIcon", "CenterWidgetWindow")
-			# print(self.__centerhandle)
-			self.__renderhandle = win32gui.FindWindowEx(self.__centerhandle, 0, "Qt5QWindowIcon", "RenderWindowWindow")
-			# print(self.__renderhandle)
-			self.__clickhandle = self.__renderhandle
-		else:
-			self.__clickhandle = self.__handle
-		# self.__subhandle = win32gui.FindWindowEx(self.__renderhandle, 0, "subWin", "sub")
-		# print(self.__subhandle)
-		# self.__subsubhandle = win32gui.FindWindowEx(self.__subhandle, 0, "subWin", "sub")
-		# print(self.__subsubhandle)
-		# win32gui.ShowWindow(hwnd1, win32con.SW_RESTORE)
-		# print(win32gui.GetWindowRect(hwnd1))
-		win32gui.SetWindowPos(self.__handle, win32con.HWND_TOP, x_coor, y_coor, 0, 0, win32con.SWP_SHOWWINDOW | win32con.SWP_NOSIZE)
-		print(self.__clickhandle)
-		return self.__handle
-
-	def get_src(self):
-		"""
-		@description : 获得后台窗口截图
-		---------
-		@param : None
-		-------
-		@Returns : None
-		-------
-		"""
-
-		left, top, right, bot = win32gui.GetWindowRect(self.__handle)
-		# Remove border around window (8 pixels on each side)
-		bl = 8
-		# Remove border on top
-		bt = 39
-
-		width = int((right - left + 1) * scale) - 2 * bl
-		height = int((bot - top + 1) * scale) - bt - bl
-		# 返回句柄窗口的设备环境，覆盖整个窗口，包括非客户区，标题栏，菜单，边框
-		hWndDC = win32gui.GetWindowDC(self.__handle)
-		# 创建设备描述表
-		mfcDC = win32ui.CreateDCFromHandle(hWndDC)
-		# 创建内存设备描述表
-		saveDC = mfcDC.CreateCompatibleDC()
-		# 创建位图对象准备保存图片
-		saveBitMap = win32ui.CreateBitmap()
-		# 为bitmap开辟存储空间
-		saveBitMap.CreateCompatibleBitmap(mfcDC, width, height)
-		# 将截图保存到saveBitMap中
-		saveDC.SelectObject(saveBitMap)
-		# 保存bitmap到内存设备描述表
-		saveDC.BitBlt((0, 0), (width, height), mfcDC, (bl, bt), win32con.SRCCOPY)
-		###获取位图信息
-		bmpinfo = saveBitMap.GetInfo()
-		bmpstr = saveBitMap.GetBitmapBits(True)
-		###生成图像
-		im_PIL = Image.frombuffer('RGB', (bmpinfo['bmWidth'], bmpinfo['bmHeight']), bmpstr, 'raw', 'BGRX', 0, 1)
-		# 内存释放
-		win32gui.DeleteObject(saveBitMap.GetHandle())
-		saveDC.DeleteDC()
-		mfcDC.DeleteDC()
-		win32gui.ReleaseDC(self.__handle, hWndDC)
-		###PrintWindow成功,保存到文件,显示到屏幕
-		im_PIL.save("src.jpg")  # 保存
-
-	# im_PIL.show()  # 显示
-
-	def recognize(self, objs):
-		"""
-		@description : 图像识别之模板匹配
-		---------
-		@param : 需要匹配的模板名
-		-------
-		@Returns : 将传进来的图片和全屏截图匹配如果找到就返回图像在屏幕的坐标 否则返回None
-		-------
-		"""
-
-		imobj = ac.imread(objs)
-		imsrc = ac.imread('%s\\src.jpg' % os.getcwd())
-		pos = ac.find_template(imsrc, imobj, 0.5)
-		return pos
-
-	def mouse_click(self, x, y, times=0.5):
-		"""
-		@description : 单击左键
-		---------
-		@param : 位置坐标x,y 单击后延时times(s)
-		-------
-		@Returns :
-		-------
-		"""
-		# self.__set_cursor(self.__clickhandle, self.__WM_MOUSEACTIVATE)
-		# self.__move_to(self.__clickhandle, int(x / scale), int(y / scale))
-		# self.__activate_mouse(self.__clickhandle)
-		# self.__set_cursor(self.__clickhandle, self.__WM_LBUTTONDOWN)
-		self.__left_down(self.__clickhandle, int(x / scale), int(y / scale))
-		self.__move_to(self.__clickhandle, int(x / scale), int(y / scale))
-		self.__left_up(self.__clickhandle, int(x / scale), int(y / scale))
-		time.sleep(times)
-
-	def mouse_click_image(self, name: str, times=0.5):
-		"""
-		@Description : 鼠标左键点击识别到的图片位置
-		---------
-		@Args : name:输入图片名; times:单击后延时
-		-------
-		@Returns : None
-		-------
-		"""
-		try:
-			result = self.recognize(name)
-			if result is None or result['confidence'] < 0.9:
-				print("No results!")
-			else:
-				print(result['result'][0] + x_coor * scale + 8, " ", result['result'][1] + y_coor * scale + 39)
-				self.mouse_click(result['result'][0] + x_coor * scale + 8, result['result'][1] + y_coor * scale + 39)
-		except:
-			raise Exception("error")
-
-	def mouse_click_radius(self, x, y, times=0.5):
-		"""
-		@description : 在范围内随机位置单击（防检测）
-		---------
-		@param : 位置坐标x,y 单击后延时times(s)
-		-------
-		@Returns :
-		-------
-		"""
-
-		random_x = np.random.randint(-radius, radius)
-		random_y = np.random.randint(-radius, radius)
-		self.mouse_click(x + random_x, y + random_y)
-		# self.__left_down(self.__clickhandle, int((x + random_x) / scale), int((y + random_y) / scale))
-		# time.sleep(0.1)
-		# self.__left_up(self.__clickhandle, int((x + random_x) / scale), int((y + random_y) / scale))
-		time.sleep(times)
-
-	def push_key(self, key: str, times=1):
-		"""
-		@Description : 按键
-		---------
-		@Args : key:按键 times:按下改键后距松开的延时
-		-------
-		@Returns : None
-		-------
-		"""
-		self.__key_down(self.__clickhandle, key)
-		time.sleep(times)
-		self.__key_up(self.__clickhandle, key)
-		time.sleep(0.5)
-
-	def type_str(self, msg: str):
-		"""
-		@Description : 打字
-		---------
-		@Args : msg:目标字符
-		-------
-		@Returns : None
-		-------
-		"""
-		for i in msg:
-			self.__PostMessageW(self.__clickhandle, win32con.WM_CHAR, ord(i), 0)
-
+import sys
+import pyautogui
+import random
+import time
+import os
+import sys
+import keyboard
+import threading
+import wx
+import wx.lib.scrolledpanel as scrolled
+import psutil
+import cv2
 
 pyautogui.PAUSE = 0.005
 pyautogui.FAILSAFE = True  # 鼠标光标在屏幕左上角，会导致程序异常，用于终止程序运行。
+sys.coinit_flags = 0
+
+scale = 1  # 电脑的缩放比例
+radius = 2  # 随机半径
+x_coor = 0  # 窗口位置
+y_coor = 0  # 窗口位置
 # 打包命令：pyinstaller -F -w --add-data "images;images" --icon=images\script.ico .\main.py
 # pyinstaller main.spec
 
-# paused = threading.Event()
-# terminate = threading.Event()
 condition = threading.Condition()
 
 
@@ -489,10 +51,11 @@ class MyThread(threading.Thread):
 		# self.userInfoMac = ["7C-21-4A-48-36-7D"]
 		# 三千梨树：08-8F-C3-75-B5-7A
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A"]
-		# self.userInfoMac = ["08-8F-C3-75-B5-7A"]
+		# self.userInfoMac = ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"]
 		# self.userInfoMac = ["50-9A-4C-C9-FE-BA", "B0-25-AA-26-64-03", "00-E2-69-6A-22-81", "E4-60-17-15-B4-73", "7C-21-4A-48-36-7D", "08-8F-C3-75-B5-7A"]
 		self.frame = None
 		self.zhanhunFloor = ''
+		self.autoClick = AutoClick()
 		# 创建子线程
 		self.child_thread = threading.Thread(target=self.child_task)
 		self.guanDuCount = 0
@@ -531,12 +94,6 @@ class MyThread(threading.Thread):
 		self.heifengWhileCount = 0
 
 	def run(self):
-		if not windll.shell32.IsUserAnAdmin():
-			# 不是管理员就提权
-			windll.shell32.ShellExecuteW(
-				None, "runas", sys.executable, __file__, None, 1)
-
-		self.handle = windll.user32.FindWindowW(None, "魔关2 | 11")
 		# c = wmi.WMI()
 		# for item in c.Win32_BaseBoard():
 		#     hardware_serial = item.SerialNumber
@@ -544,9 +101,9 @@ class MyThread(threading.Thread):
 		self.heifengWhileCount = int(self.frame.heifengCount)
 		startTime = 1732958685
 		# 一个月脚本
-		# if time.time() - startTime > self.monthDays:
-		# 	print('脚本已过期!')
-		# 	return
+		if time.time() - startTime > self.monthDays:
+			print('脚本已过期!')
+			return
 		# 三天脚本
 		# if time.time() - startTime > self.threeDays:
 		# 	print('脚本已过期!')
@@ -565,13 +122,15 @@ class MyThread(threading.Thread):
 		else:
 			self.show_error_message("未注册用户，请联系管理员")
 			return
-		print("鼠标放屏幕左上角退出当前脚本")
-		isFindGame = self.findGame()
-		if not isFindGame:
+		isFind = self.autoClick.get_winds(self.frame.game_name)
+		if not isFind:
+			print('未找到游戏')
 			return
-		# app = pywinauto.Application(backend="uia").connect(title="11")
-		# self.game = app.window(title="11")
-		self.child_thread.start()
+		self.autoClick.get_src()
+		# isFindGame = self.findGame()
+		# if not isFindGame:
+		# 	return
+		# self.child_thread.start()
 		if self.scriptName == "官渡":
 			self.guanduWhile()
 		elif self.scriptName == "嗜血战场(精英)":
@@ -600,6 +159,8 @@ class MyThread(threading.Thread):
 			self.liandanWhile()
 		elif self.scriptName == "黑风山寨":
 			self.heifengWhile()
+		elif self.scriptName == "战魂+红+官渡+整点":
+			self.zhanhunHongGdWhile()
 		elif self.scriptName == "官渡精英":
 			self.beginFun()
 			self.guanduJyScript()
@@ -616,76 +177,51 @@ class MyThread(threading.Thread):
 			self.beginFun()
 			self.laoshuJyScript()
 			self.guanduWhile()
+		elif self.scriptName == "test":
+			print('111')
+			self.click_image(self.get_resource_path("images/closetalk.png"), self.confidenceNum)
 
-	# self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-	# self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
+	# self.autoClick.mouse_click(785, 388)
 
-	def findGame(self):
-		# while True:
-		# 	if pyautogui.locateOnScreen(
-		# 			self.get_resource_path("images/2.png"),
-		# 			confidence=0.5,
-		# 			region=(0, 0, 1920, 1080),
-		# 	) and pyautogui.locateOnScreen(
-		# 		self.get_resource_path("images/3.png"),
-		# 		confidence=0.5,
-		# 		region=(0, 0, 1920, 1080),
-		# 	):
-		# 		time.sleep(0.5)
-		# 		break
-		self.righttop1 = pyautogui.locateOnScreen(
-			self.get_resource_path("images/2.png"), confidence=0.5, region=(0, 0, 1920, 1080)
-		)
-		self.leftbottom = pyautogui.locateOnScreen(
-			self.get_resource_path("images/3.png"), confidence=0.5, region=(0, 0, 1920, 1080)
-		)
-		if not self.righttop1 or not self.leftbottom:
-			self.show_error_message("未检测到游戏页面")
-			return False
-		print('已找到游戏画面')
-		self.locationX = self.leftbottom.left
-		self.locationY = self.righttop1.top - 10
-		self.locationWidth = self.righttop1.left + self.righttop1.width - self.locationX
-		self.locationHeight = (
-				self.leftbottom.top + self.leftbottom.height - self.locationY
-		)
-		self.locationRightTopX = self.righttop1.left
-		self.locationRightTopY = self.righttop1.top
-		self.locationRightTopWidth = self.righttop1.width
-		self.locationRightTopHeight = self.righttop1.height
-		self.gameLocation = (
-			self.locationX,
-			self.locationY,
-			self.locationWidth,
-			self.locationHeight,
-		)
-		self.dituLeftLocation = (
-			self.locationRightTopX,
-			self.locationRightTopY,
-			int(self.locationRightTopWidth * 0.5),
-			self.locationRightTopHeight,
-		)
-		self.dituRightLocation = (
-			int(self.locationRightTopX + (self.locationRightTopWidth * 0.5)),
-			self.locationRightTopY,
-			int(self.locationRightTopWidth * 0.5),
-			self.locationRightTopHeight,
-		)
-		self.talkLocation = (
-			self.locationX,
-			int(self.locationY + (self.locationHeight * 0.5)),
-			int(self.locationWidth * 0.5),
-			self.locationHeight,
-		)
-		self.dituLocation = (
-			self.locationRightTopX,
-			self.locationRightTopY,
-			self.locationRightTopWidth,
-			self.locationRightTopHeight,
-		)
-		return True
+	# self.autoClick.mouse_click_image("images/xiulian.png")
+
+	def find_template_location(self, template, threshold, type):
+		if type != 'all':
+			template_pos = self.autoClick.recognize(template, threshold)
+			if template_pos is not None:
+				if type == 'location':
+					class Res:
+						def __init__(resInit, left, top, width, height):
+							resInit.left = left
+							resInit.top = top
+							resInit.width = width
+							resInit.height = height
+
+					left, top, right, bottom = template_pos['rectangle']
+					res = Res(left[0], left[1], bottom[0], bottom[1])
+					return res
+				elif type == 'center':
+					x, y = template_pos['result']
+
+					class ResXy:
+						def __init__(resInit, x, y):
+							resInit.x = x
+							resInit.y = y
+
+					res = ResXy(x, y)
+					return res
+			else:
+				return None
+		else:
+			template_pos = self.autoClick.recognize_all(template, threshold)
+			if template_pos is not None:
+				return template_pos
+			else:
+				return None
 
 	def child_task(self):
+		# res = self.find_template_location(self.get_resource_path("images/closeright.png"), self.confidenceNum, 'all')
+		# print(res, 'resresres')
 		while True:
 			# 去除获得铜币黑框
 			# self.click_image(
@@ -699,30 +235,14 @@ class MyThread(threading.Thread):
 			#     ),
 			# )
 			# 点击取消
-			# self.click_image(
-			#     self.get_resource_path("images/closeJJ.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
+			if self.find_template_location(self.get_resource_path("images/jingji.png"), self.confidenceNum, 'location'):
+				self.click_image(
+					self.get_resource_path("images/closeJJ.png"),
+					self.confidenceNum
+				)
 			# 去掉副本奖励精英弹窗
 			# self.click_image(
 			#     self.get_resource_path("images/fubenjiangli.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
-			# 点击x
-			# self.click_image(
-			#     self.get_resource_path("images/close.png"),
 			#     self.confidenceNum,
 			#     (
 			#         self.locationX,
@@ -735,43 +255,25 @@ class MyThread(threading.Thread):
 			self.click_image(
 				self.get_resource_path("images/closeright.png"),
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
 			)
 			# 点击拒绝
 			self.click_image(
 				self.get_resource_path("images/jujue.png"),
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
 			)
 			# 点自动
 			if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜":
 				self.click_image(
 					self.get_resource_path("images/zidong.png"),
 					self.confidenceNum,
-					(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
 				)
-			time.sleep(0.1)
+			time.sleep(0.5)
 
 	def addBloud(self):
-		self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-		self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-		self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-		self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
+		self.click_image(self.get_resource_path("images/addBloud.png"), self.confidenceNum, )
+		self.click_image(self.get_resource_path("images/addBloud1.png"), self.confidenceNum, )
+		self.click_image(self.get_resource_path("images/addBloud.png"), self.confidenceNum, )
+		self.click_image(self.get_resource_path("images/addBloud1.png"), self.confidenceNum, )
 
 	def get_mac_address(self):
 		# 使用 psutil 获取所有网络接口信息
@@ -785,58 +287,109 @@ class MyThread(threading.Thread):
 
 		return "MAC address not found"
 
-	def beginFun(self):
-		closeTalkXY = pyautogui.locateCenterOnScreen(
-			self.get_resource_path("images/closetalk.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				int(self.locationY + (self.locationHeight * 0.5)),
-				int(self.locationWidth * 0.5),
-				self.locationHeight,
-			),
+	def beginFun(self, check=False):
+		# 点击x
+		self.click_image(
+			self.get_resource_path("images/close.png"),
+			self.confidenceNum,
 		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		if closeTalkXY:
-			pyautogui.click(closeTalkXY.x, closeTalkXY.y, clicks=4, interval=0.3)
+		self.click_image(self.get_resource_path("images/closetalk.png"), self.confidenceNum)
 		self.click_image(
 			self.get_resource_path("images/hide.png"),
-			self.confidenceNum,
-			(self.locationX, self.locationY, self.locationWidth, self.locationHeight),
-		)
+			self.confidenceNum)
 		with condition:
 			if self.stoped:
 				condition.wait()
-		yseXY = pyautogui.locateCenterOnScreen(
+		self.click_image(
 			self.get_resource_path("images/yes.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
-		)
-		if yseXY:
-			pyautogui.click(yseXY.x, yseXY.y)
+			self.confidenceNum)
 		time.sleep(0.5)
 		with condition:
 			if self.stoped:
 				condition.wait()
-		yseXY = pyautogui.locateCenterOnScreen(
+		self.click_image(
 			self.get_resource_path("images/yes.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
-		)
-		if yseXY:
-			pyautogui.click(yseXY.x, yseXY.y)
+			self.confidenceNum)
+
+	# if not check:
+	# 	yseXY = pyautogui.locateCenterOnScreen(
+	# 		self.get_resource_path("images/yes.png"),
+	# 		confidence=self.confidenceNum,
+	# 		region=(
+	# 			self.locationX,
+	# 			self.locationY,
+	# 			self.locationWidth,
+	# 			self.locationHeight,
+	# 		),
+	# 	)
+	# 	if yseXY:
+	# 		pyautogui.click(yseXY.x, yseXY.y)
+	# 	time.sleep(0.5)
+	# 	with condition:
+	# 		if self.stoped:
+	# 			condition.wait()
+	# 	yseXY = pyautogui.locateCenterOnScreen(
+	# 		self.get_resource_path("images/yes.png"),
+	# 		confidence=self.confidenceNum,
+	# 		region=(
+	# 			self.locationX,
+	# 			self.locationY,
+	# 			self.locationWidth,
+	# 			self.locationHeight,
+	# 		),
+	# 	)
+	# 	if yseXY:
+	# 		pyautogui.click(yseXY.x, yseXY.y)
+	# else:
+	# 	showBloudLocation = pyautogui.locateCenterOnScreen(
+	# 		self.get_resource_path("images/xianshixueliang.png"),
+	# 		confidence=self.confidenceNum,
+	# 		region=(
+	# 			self.locationX,
+	# 			self.locationY,
+	# 			self.locationWidth,
+	# 			self.locationHeight,
+	# 		),
+	# 	)
+	# 	if showBloudLocation:
+	# 		noXY = pyautogui.locateCenterOnScreen(
+	# 			self.get_resource_path("images/noCheck.png"),
+	# 			confidence=self.confidenceNum,
+	# 			region=(
+	# 				showBloudLocation.left,
+	# 				showBloudLocation.top - 20,
+	# 				120,
+	# 				40,
+	# 			),
+	# 		)
+	# 		if noXY:
+	# 			pyautogui.click(noXY.x, noXY.y)
+	# 	else:
+	# 		noXY = pyautogui.locateCenterOnScreen(
+	# 			self.get_resource_path("images/noCheck.png"),
+	# 			confidence=self.confidenceNum,
+	# 			region=(
+	# 				showBloudLocation.left,
+	# 				showBloudLocation.top - 20,
+	# 				120,
+	# 				40,
+	# 			),
+	# 		)
+	# 		if noXY:
+	# 			pyautogui.click(noXY.x, noXY.y)
+	# 		time.sleep(0.5)
+	# 		noXY = pyautogui.locateCenterOnScreen(
+	# 			self.get_resource_path("images/noCheck.png"),
+	# 			confidence=self.confidenceNum,
+	# 			region=(
+	# 				showBloudLocation.left,
+	# 				showBloudLocation.top - 20,
+	# 				120,
+	# 				40,
+	# 			),
+	# 		)
+	# 		if noXY:
+	# 			pyautogui.click(noXY.x, noXY.y)
 
 	# self.click_image(
 	# 	self.get_resource_path("images/yes.png"),
@@ -857,70 +410,37 @@ class MyThread(threading.Thread):
 			return os.path.join(sys._MEIPASS, relative_path)
 		return os.path.join(os.path.abspath("."), relative_path)
 
-	# 战斗结束去除黑色弹框
-	def clearBox(self, current):
-		while True:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if pyautogui.locateOnScreen(
-					current,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-				break
-
 	# 退出当前副本
 	def outScript(self, current):
 		while True:
 			with condition:
 				if self.stoped:
 					condition.wait()
-			if pyautogui.locateOnScreen(
+			if self.find_template_location(
 					current,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
+					self.confidenceNum,
+					'location',
 			):
 				break
 		while True:
 			with condition:
 				if self.stoped:
 					condition.wait()
-			if pyautogui.locateOnScreen(
+			if self.find_template_location(
 					self.get_resource_path("images/xiulian.png"),
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
+					self.confidenceNum,
+					'location',
 			):
 				break
-		locationOut = pyautogui.locateCenterOnScreen(
+		locationOut = self.find_template_location(
 			self.get_resource_path("images/xiulian.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+			self.confidenceNum,
+			'center',
 		)
 		with condition:
 			if self.stoped:
 				condition.wait()
-		pyautogui.click(int(locationOut.x - 20), int(locationOut.y - 40))
+		self.autoClick.mouse_click(int(locationOut.x - 20), int(locationOut.y - 40))
 		locationQueding = self.waitFor(
 			self.get_resource_path("images/queding.png"),
 			(
@@ -932,7 +452,7 @@ class MyThread(threading.Thread):
 			3,
 		)
 		if locationQueding:
-			pyautogui.click(locationQueding.x, locationQueding.y)
+			self.autoClick.mouse_click(locationQueding.x, locationQueding.y)
 			huodetongbiLocation = self.waitFor(self.get_resource_path("images/huodetongbi.png"), (
 				self.locationX,
 				self.locationY,
@@ -940,53 +460,35 @@ class MyThread(threading.Thread):
 				self.locationHeight,
 			), 1)
 			if huodetongbiLocation:
-				pyautogui.click(huodetongbiLocation.x, huodetongbiLocation.y)
-
+				self.autoClick.mouse_click(huodetongbiLocation.x, huodetongbiLocation.y)
 		else:
 			return
 
 	# 飞整点等到打完
 	def feiZhengDian(self, fei_image, base_image, scroll_deg):
 		findSmallFeiTime = time.time()
-		while not pyautogui.locateOnScreen(
+		while not self.find_template_location(
 				fei_image,
-				confidence=self.confidenceNum,
-				region=(
-						self.locationX,
-						int(self.locationY + (self.locationHeight * 0.5)),
-						int(self.locationWidth * 0.5),
-						self.locationHeight,
-				),
+				self.confidenceNum,
+				'location',
 		):
 			if time.time() - findSmallFeiTime > 15:
 				return
 			# 去除获得铜币黑框
 			self.click_image(
 				self.get_resource_path("images/huodetongbi.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
-			)
+				self.confidenceNum)
 			with condition:
 				if self.stoped:
 					condition.wait()
-			jindutiaoLocation = pyautogui.locateCenterOnScreen(
+			jindutiaoLocation = self.find_template_location(
 				self.get_resource_path("images/downTalk.png"),
-				confidence=self.confidenceNum,
-				region=(
-					self.locationX,
-					int(self.locationY + (self.locationHeight * 0.5)),
-					int(self.locationWidth * 0.5),
-					self.locationHeight,
-				),
+				self.confidenceNum,
+				'center',
 			)
 			if jindutiaoLocation:
-				pyautogui.moveTo(jindutiaoLocation.x, jindutiaoLocation.y)
-				pyautogui.scroll(scroll_deg)
+				self.autoClick.move_to(jindutiaoLocation.x, jindutiaoLocation.y)
+				self.autoClick.scroll_up(jindutiaoLocation.x, jindutiaoLocation.y)
 		findShengXiaoTime = time.time()
 		while True:
 			with condition:
@@ -994,28 +496,14 @@ class MyThread(threading.Thread):
 					condition.wait()
 			if time.time() - findShengXiaoTime > 5:
 				return
-			self.shengxiaoLocation = pyautogui.locateOnScreen(
-				fei_image,
-				confidence=self.confidenceNum,
-				region=(
-					self.locationX,
-					int(self.locationY + (self.locationHeight * 0.5)),
-					int(self.locationWidth * 0.5),
-					self.locationHeight,
-				),
+			self.shengxiaoLocation = self.find_template_location(
+				fei_image, self.confidenceNum, 'location',
 			)
 			if self.shengxiaoLocation is not None:
 				break
 		feiTime = time.time()
-		while not pyautogui.locateOnScreen(
-				base_image,
-				confidence=self.confidenceNum,
-				region=(
-						self.locationRightTopX,
-						self.locationRightTopY,
-						self.locationRightTopWidth,
-						self.locationRightTopHeight,
-				),
+		while not self.find_template_location(
+				base_image, self.confidenceNum, 'location',
 		):
 			if time.time() - feiTime > 6:
 				return
@@ -1033,8 +521,8 @@ class MyThread(threading.Thread):
 				2,
 			)
 			if feiLocation:
-				pyautogui.click(feiLocation.x, feiLocation.y)
-				pyautogui.moveTo(feiLocation.x - 200, feiLocation.y - 200)
+				self.autoClick.mouse_click(feiLocation.x, feiLocation.y)
+				self.autoClick.move_to(feiLocation.x - 200, feiLocation.y - 200)
 				time.sleep(1.3)
 			else:
 				return
@@ -1042,24 +530,12 @@ class MyThread(threading.Thread):
 		self.click_image(
 			self.get_resource_path("images/huodetongbi.png"),
 			self.confidenceNum,
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
 		)
 		time.sleep(0.2)
 		# 有人在打
 		hasZhengDian = self.click_image(
 			self.get_resource_path("images/dajiuda.png"),
 			self.confidenceNum,
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
 		)
 		if not hasZhengDian:
 			return
@@ -1072,30 +548,18 @@ class MyThread(threading.Thread):
 			if time.time() - queryTime > 5:
 				zhengdianHas = False
 				break
-			if pyautogui.locateOnScreen(
+			if self.find_template_location(
 					self.get_resource_path("images/zdzd.png"),
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
+					self.confidenceNum, 'location',
 			):
 				zhengdianHas = True
 				break
-			yourendaLocation = pyautogui.locateCenterOnScreen(
+			yourendaLocation = self.find_template_location(
 				self.get_resource_path("images/yourenda1.png"),
-				confidence=self.confidenceNum,
-				region=(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.confidenceNum, 'center',
 			)
 			if yourendaLocation:
-				pyautogui.click(yourendaLocation.x, yourendaLocation.y)
+				self.autoClick.mouse_click(yourendaLocation.x, yourendaLocation.y)
 				zhengdianHas = False
 				break
 		if not zhengdianHas:
@@ -1160,7 +624,13 @@ class MyThread(threading.Thread):
 			),
 		)
 		if openTalkXY:
-			pyautogui.click(openTalkXY.x, openTalkXY.y, clicks=4, interval=0.2)
+			self.autoClick.mouse_click(openTalkXY.x, openTalkXY.y)
+			time.sleep(0.2)
+			self.autoClick.mouse_click(openTalkXY.x, openTalkXY.y)
+			time.sleep(0.2)
+			self.autoClick.mouse_click(openTalkXY.x, openTalkXY.y)
+			time.sleep(0.2)
+			self.autoClick.mouse_click(openTalkXY.x, openTalkXY.y)
 		bangpaiTalkXY = self.waitFor(
 			self.get_resource_path("images/bangpaitalk.png"),
 			(
@@ -1171,7 +641,7 @@ class MyThread(threading.Thread):
 			),
 		)
 		if bangpaiTalkXY:
-			pyautogui.click(bangpaiTalkXY.x, bangpaiTalkXY.y)
+			self.autoClick.mouse_click(bangpaiTalkXY.x, bangpaiTalkXY.y)
 		huodongTalkXY = self.waitFor(
 			self.get_resource_path("images/huodongtalk.png"),
 			(
@@ -1182,7 +652,7 @@ class MyThread(threading.Thread):
 			),
 		)
 		if huodongTalkXY:
-			pyautogui.click(huodongTalkXY.x, huodongTalkXY.y)
+			self.autoClick.mouse_click(huodongTalkXY.x, huodongTalkXY.y)
 		while True:
 			with condition:
 				if self.stoped:
@@ -1246,11 +716,12 @@ class MyThread(threading.Thread):
 			),
 		)
 		if dragBox:
-			pyautogui.moveTo(dragBox.x, dragBox.y)
-			pyautogui.mouseDown()
-			pyautogui.dragRel(0, 150, duration=0.5)
+			self.autoClick.move_to(dragBox.x, dragBox.y)
+			self.autoClick.left_down(dragBox.x, dragBox.y)
+			self.autoClick.move_to(dragBox.x, dragBox.y + 150)
+			# pyautogui.dragRel(0, 150, duration=0.5)
 			time.sleep(0.5)
-			pyautogui.mouseUp()
+			self.autoClick.left_up(dragBox.x, dragBox.y)
 			# 飞羊
 			self.feiZhengDian(
 				self.get_resource_path("images/yangshengxiao1.png"),
@@ -1279,7 +750,13 @@ class MyThread(threading.Thread):
 			),
 		)
 		if closeTalkXY:
-			pyautogui.click(closeTalkXY.x, closeTalkXY.y, clicks=4, interval=0.2)
+			self.autoClick.mouse_click(closeTalkXY.x, closeTalkXY.y)
+			time.sleep(0.2)
+			self.autoClick.mouse_click(closeTalkXY.x, closeTalkXY.y)
+			time.sleep(0.2)
+			self.autoClick.mouse_click(closeTalkXY.x, closeTalkXY.y)
+			time.sleep(0.2)
+			self.autoClick.mouse_click(closeTalkXY.x, closeTalkXY.y)
 		if self.scriptName == "官渡":
 			self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 			self.guanduWhile()
@@ -1291,6 +768,7 @@ class MyThread(threading.Thread):
 			if findMojingshizhe:
 				self.mojingWhile()
 			else:
+				self.scriptName = "官渡"
 				self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 				self.guanduWhile()
 		elif self.scriptName == "战魂+红+整点":
@@ -1319,28 +797,16 @@ class MyThread(threading.Thread):
 			),
 		)
 		if tuLocation:
-			pyautogui.click(int(tuLocation.x + 24), int(tuLocation.y - 34))
+			self.autoClick.mouse_click(int(tuLocation.x + 24), int(tuLocation.y - 34))
 		time.sleep(0.8)
 		if isJy:
 			self.click_image(
 				self.get_resource_path("images/activejy.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.confidenceNum
 			)
 			self.click_image(
 				self.get_resource_path("images/unActivejy.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.confidenceNum
 			)
 			findPerTime = time.time()
 			while True:
@@ -1349,15 +815,9 @@ class MyThread(threading.Thread):
 						condition.wait()
 				if time.time() - findPerTime > 10:
 					return False
-				imagePathLocation = pyautogui.locateOnScreen(
+				imagePathLocation = self.find_template_location(
 					image_path,
-					confidence=self.confidenceNum,
-					region=(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
+					self.confidenceNum, 'location',
 				)
 				if imagePathLocation:
 					break
@@ -1371,37 +831,18 @@ class MyThread(threading.Thread):
 				),
 			)
 			if feiLocation:
-				pyautogui.click(feiLocation.x, feiLocation.y)
+				self.autoClick.mouse_click(feiLocation.x, feiLocation.y)
 		else:
 			self.click_image(
 				self.get_resource_path("images/activeFb.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.confidenceNum
 			)
 			self.click_image(
 				self.get_resource_path("images/unActiveFb.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.confidenceNum
 			)
-			while not pyautogui.locateOnScreen(
-					image_path,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
+			while not self.find_template_location(
+					image_path, self.confidenceNum, 'location'
 			):
 
 				downTalk = self.waitFor(
@@ -1414,7 +855,8 @@ class MyThread(threading.Thread):
 					),
 				)
 				if downTalk:
-					pyautogui.click(downTalk.x, downTalk.y, clicks=10)
+					for i in range(10):
+						self.autoClick.mouse_click(downTalk.x, downTalk.y)
 					time.sleep(1)
 			findPerTime = time.time()
 			while True:
@@ -1423,15 +865,8 @@ class MyThread(threading.Thread):
 						condition.wait()
 				if time.time() - findPerTime > 15:
 					return False
-				imagePathLocation = pyautogui.locateOnScreen(
-					image_path,
-					confidence=self.confidenceNum,
-					region=(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
+				imagePathLocation = self.find_template_location(
+					image_path, self.confidenceNum, 'location',
 				)
 				if imagePathLocation:
 					break
@@ -1445,96 +880,88 @@ class MyThread(threading.Thread):
 				),
 			)
 			if feiLocation:
-				pyautogui.click(feiLocation.x, feiLocation.y)
+				self.autoClick.mouse_click(feiLocation.x, feiLocation.y)
 		return True
 
 	# 找图并且点击
-	def click_image(self, image_path, image_confidence, image_region):
-		image_locations = pyautogui.locateCenterOnScreen(
-			image_path, confidence=image_confidence, region=image_region
-		)
-		if image_locations:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			pyautogui.click(image_locations.x, image_locations.y)
-			pyautogui.moveTo(image_locations.x + 200, image_locations.y + 200)
-			return True
-		else:
-			return False
+	def click_image(self, image_path, image_confidence):
+		res = self.autoClick.mouse_click_image(image_path, image_confidence)
+		return res
 
 	# 找出一样的图，点击第N个图
-	def click_nth_image(self, image_path, image_region, n):
-		images = list(
-			pyautogui.locateAllOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
-			)
-		)
-		if len(images) >= n:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			target_location = images[n - 1]
-			target_x = target_location.left + target_location.width // 2
-			target_y = target_location.top + target_location.height // 2
-			pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
-			return True
-		else:
-			return False
+	# def click_nth_image(self, image_path, image_region, n):
+	# 	images = list(
+	# 		pyautogui.locateAllOnScreen(
+	# 			image_path, confidence=self.confidenceNum, region=image_region
+	# 		)
+	# 	)
+	# 	if len(images) >= n:
+	# 		with condition:
+	# 			if self.stoped:
+	# 				condition.wait()
+	# 		target_location = images[n - 1]
+	# 		target_x = target_location.left + target_location.width // 2
+	# 		target_y = target_location.top + target_location.height // 2
+	# 		pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
+	# 		return True
+	# 	else:
+	# 		return False
 
 	# 找一样的图，点击最左边的图
 	def click_image_with_min_x(self, image_path, image_region, image_path2):
-		image_locations = list(
-			pyautogui.locateAllOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
-			)
-		)
+		image_locations = list(self.find_template_location(
+			image_path, self.confidenceNum, 'all'
+		))
 		if image_locations:
 			with condition:
 				if self.stoped:
 					condition.wait()
-			min_x_location = min(image_locations, key=lambda loc: loc.left)
-			target_x = min_x_location.left + min_x_location.width // 2
-			target_y = min_x_location.top + min_x_location.height // 2
+			min_x_match = min(image_locations, key=lambda match: match['result'][0])
+			# 获取匹配项的中心坐标
+			center_x = min_x_match['result'][0] + min_x_match['rectangle'][2] // 2
+			center_y = min_x_match['result'][1] + min_x_match['rectangle'][3] // 2
 			if image_path2 == self.zdzdPath:
-				pyautogui.click(target_x, int(target_y - 90), clicks=3, interval=0.008)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
+				for i in range(3):
+					self.autoClick.mouse_click(center_x, int(center_y - 90))
+					time.sleep(0.008)
+				self.autoClick.move_to(center_x + 200, center_y + 200)
 				time.sleep(1)
 			else:
-				pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
+				self.autoClick.mouse_click(center_x, center_y)
+				self.autoClick.move_to(center_x + 200, center_y + 200)
 			self.clickBTime = time.time()
-			self.clickBX = target_x
-			self.clickBy = target_y
-			pyautogui.moveTo(target_x + 200, target_y + 200)
+			self.clickBX = center_x
+			self.clickBy = center_y
+			self.autoClick.move_to(center_x + 200, center_y + 200)
 			return True
 		else:
 			return False
 
 	def click_image_with_min_x1(self, image_path, image_region, image_path2):
-		image_locations = list(
-			pyautogui.locateAllOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
-			)
-		)
+		image_locations = list(self.find_template_location(
+			image_path, self.confidenceNum, 'all'
+		))
 		if image_locations:
 			with condition:
 				if self.stoped:
 					condition.wait()
-			min_x_location = min(image_locations, key=lambda loc: loc.left)
-			target_x = min_x_location.left + min_x_location.width // 2
-			target_y = min_x_location.top + min_x_location.height // 2
+			min_x_match = min(image_locations, key=lambda loc: loc['result'][0])
+			# 获取匹配项的中心坐标
+			center_x = min_x_match['result'][0] + min_x_match['rectangle'][2] // 2
+			center_y = min_x_match['result'][1] + min_x_match['rectangle'][3] // 2
 			if image_path2 == self.zdzdPath:
-				pyautogui.click(target_x, target_y, clicks=3, interval=0.008)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
+				for i in range(3):
+					self.autoClick.mouse_click(center_x, int(center_y))
+					time.sleep(0.008)
+				self.autoClick.move_to(center_x + 200, center_y + 200)
 				time.sleep(1)
 			else:
-				pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
+				self.autoClick.mouse_click(center_x, center_y)
+				self.autoClick.move_to(center_x + 200, center_y + 200)
 			self.clickBTime = time.time()
-			self.clickBX = target_x
-			self.clickBy = target_y
-			pyautogui.moveTo(target_x + 200, target_y + 200)
+			self.clickBX = center_x
+			self.clickBy = center_y
+			self.autoClick.move_to(center_x + 200, center_y + 200)
 			return True
 		else:
 			return False
@@ -1546,8 +973,8 @@ class MyThread(threading.Thread):
 			with condition:
 				if self.stoped:
 					condition.wait()
-			xy = pyautogui.locateCenterOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
+			xy = self.find_template_location(
+				image_path, self.confidenceNum, 'center'
 			)
 			if xy:
 				break
@@ -1568,14 +995,14 @@ class MyThread(threading.Thread):
 			with condition:
 				if self.stoped:
 					condition.wait()
-			xy = pyautogui.locateCenterOnScreen(
-				image1_path, confidence=self.confidenceNum, region=image_region
+			xy = self.find_template_location(
+				image1_path, self.confidenceNum, 'center'
 			)
 			if xy:
 				res = "first"
 				break
-			xy2 = pyautogui.locateCenterOnScreen(
-				image2_path, confidence=self.confidenceNum, region=image_region
+			xy2 = self.find_template_location(
+				image2_path, self.confidenceNum, 'center'
 			)
 			if xy2:
 				res = "second"
@@ -1604,16 +1031,15 @@ class MyThread(threading.Thread):
 				self.locationWidth,
 				self.locationHeight,
 			)
-		while not pyautogui.locateOnScreen(
-				image_pathA, confidence=self.confidenceNum, region=image_regionA
+		while not self.find_template_location(
+				image_pathA, self.confidenceNum, 'location'
 		):
 			with condition:
 				if self.stoped:
 					condition.wait()
 			clickB = self.click_image(
 				image_pathB,
-				self.confidenceNum,
-				image_regionB,
+				self.confidenceNum
 			)
 			if clickB:
 				break
@@ -1639,25 +1065,23 @@ class MyThread(threading.Thread):
 				self.locationWidth,
 				self.locationHeight,
 			)
-		while not pyautogui.locateOnScreen(
-				image_pathA, confidence=self.confidenceNum, region=image_regionA
-		) or not pyautogui.locateOnScreen(
-			image_pathA2, confidence=self.confidenceNum, region=image_regionA
+		while not self.find_template_location(
+				image_pathA, self.confidenceNum, 'location'
+		) or not self.find_template_location(
+			image_pathA2, self.confidenceNum, 'location'
 		):
 			with condition:
 				if self.stoped:
 					condition.wait()
 			clickB = self.click_image(
 				image_pathB,
-				self.confidenceNum,
-				image_regionB,
+				self.confidenceNum
 			)
 			if clickB:
 				break
 			clickB = self.click_image(
 				image_pathB2,
-				self.confidenceNum,
-				image_regionB,
+				self.confidenceNum
 			)
 			if clickB:
 				break
@@ -1668,49 +1092,28 @@ class MyThread(threading.Thread):
 		# 去除获得铜币黑框
 		self.click_image(
 			self.get_resource_path("images/huodetongbi.png"),
-			self.confidenceNum,
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+			self.confidenceNum
 		)
 		if key2:
-			keyboard.press(key2)
-			time.sleep(key2DownTime)
-			keyboard.release(key2)
-		while not pyautogui.locateOnScreen(
-				image_path2,
-				confidence=self.confidenceNum,
-				region=(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-				),
+			self.autoClick.push_key(key2, key2DownTime)
+		while not self.find_template_location(
+				image_path2, self.confidenceNum, 'location'
 		):
 			with condition:
 				if self.stoped:
 					condition.wait()
 			if key1 and not key1IsUp:
-				keyboard.press(key1)
+				self.autoClick.key_down(key1)
 				key1IsUp = True
 			# 去除获得铜币黑框
 			self.click_image(
 				self.get_resource_path("images/huodetongbi.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.confidenceNum
 			)
-			image_pathisOk = pyautogui.locateOnScreen(image_path, confidence=self.confidenceNum, region=self.gameLocation)
+			image_pathisOk = self.find_template_location(image_path, self.confidenceNum, 'location')
 			if image_pathisOk:
 				if key1:
-					keyboard.release(key1)
+					self.autoClick.key_up(key1)
 					key1IsUp = True
 				self.click_image_with_min_x1(
 					image_path,
@@ -1722,10 +1125,10 @@ class MyThread(threading.Thread):
 					),
 					image_path2,
 				)
-			image_path1isOk = pyautogui.locateOnScreen(image_path1, confidence=self.confidenceNum, region=self.gameLocation)
+			image_path1isOk = self.find_template_location(image_path1, self.confidenceNum, 'location')
 			if image_path1isOk:
 				if key1:
-					keyboard.release(key1)
+					self.autoClick.key_up(key1)
 					key1IsUp = True
 				self.click_image_with_min_x1(
 					image_path1,
@@ -1739,10 +1142,25 @@ class MyThread(threading.Thread):
 				)
 		# 点过b之后如果过了4秒还没有找到C，重新点一次b的坐标
 		if self.clickBTime > 0 and time.time() - self.clickBTime > 4:
+			self.autoClick.mouse_click(self.clickBX, self.clickBy)
 			self.clickBTime = time.time()
-			pyautogui.click(self.clickBX, self.clickBy)
 		if key1:
-			keyboard.release(key1)
+			self.autoClick.key_up(key1)
+
+	def get_random_number(self):
+		numbers = [-2, -1, 0, 1, 2]
+		return random.choice(numbers)
+
+	# 点小地图
+	def clickDitu(self, x, y, find_image, find_region, break_image):
+		while not self.find_template_location(break_image, self.confidenceNum, 'location'):
+			self.autoClick.mouse_click(int(x + self.get_random_number()), int(y + self.get_random_number()))
+			time.sleep(0.1)
+			isFind = self.click_image_with_min_x1(find_image, find_region, break_image)
+			if isFind:
+				time.sleep(0.7)
+			else:
+				time.sleep(0.3)
 
 	# 找图并且点击6
 	def findAndClickPic(self, A, B1, B2, C1, C2, D, E, E2=None, E2DownTime=0.6):
@@ -1777,31 +1195,16 @@ class MyThread(threading.Thread):
 			# 去除获得铜币黑框
 			self.click_image(
 				self.get_resource_path("images/huodetongbi.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.confidenceNum
 			)
 			# 按下E2
 			if E2 and not E2IsDown:
-				keyboard.press(E2)
+				self.autoClick.push_key(E2, E2DownTime)
 				E2IsDown = True
-				time.sleep(E2DownTime)
-				keyboard.release(E2)
 			# 开始找C的时间
 			startTime = time.time()
-			while not pyautogui.locateOnScreen(
-					C1,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
+			while not self.find_template_location(
+					C1, self.confidenceNum, 'location'
 			):
 				with condition:
 					if self.stoped:
@@ -1827,12 +1230,7 @@ class MyThread(threading.Thread):
 					with condition:
 						if self.stoped:
 							condition.wait()
-					self.click_image(D, self.confidenceNum, (
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					))
+					self.click_image(D, self.confidenceNum)
 				# Dxy = pyautogui.locateCenterOnScreen(
 				# 	D,
 				# 	confidence=self.confidenceNum,
@@ -1853,7 +1251,7 @@ class MyThread(threading.Thread):
 					with condition:
 						if self.stoped:
 							condition.wait()
-					keyboard.press(E)
+					self.autoClick.key_down(E)
 					B1Location = self.waitFor(
 						B1,
 						(
@@ -1865,7 +1263,7 @@ class MyThread(threading.Thread):
 					)
 					if B1Location:
 						EIsDown = True
-						keyboard.release(E)
+						self.autoClick.key_up(E)
 					# if E2 is not None and E2IsDown:
 					# 	keyboard.release(E2)
 					# break
@@ -1883,19 +1281,12 @@ class MyThread(threading.Thread):
 					# 	if E2 is not None and E2IsDown:
 					# 		keyboard.release(E2)
 					# 	break
-					if pyautogui.locateOnScreen(
-							C1,
-							confidence=self.confidenceNum,
-							region=(
-									self.locationX,
-									self.locationY,
-									self.locationWidth,
-									self.locationHeight,
-							),
+					if self.find_template_location(
+							C1, self.confidenceNum, 'location'
 					):
 						EIsDown = True
 						time.sleep(0.1)
-						keyboard.release(E)
+						self.autoClick.key_up(E)
 						# if E2 is not None and E2IsDown:
 						# 	pyautogui.keyUp(E2)
 						break
@@ -1909,15 +1300,8 @@ class MyThread(threading.Thread):
 				with condition:
 					if self.stoped:
 						condition.wait()
-				if pyautogui.locateOnScreen(
-						C1,
-						confidence=self.confidenceNum,
-						region=(
-								self.locationX,
-								self.locationY,
-								self.locationWidth,
-								self.locationHeight,
-						),
+				if self.find_template_location(
+						C1, self.confidenceNum, 'location'
 				):
 					break
 				# 点击B
@@ -1933,8 +1317,8 @@ class MyThread(threading.Thread):
 				)
 				# 点过b之后如果过了4秒还没有找到C，重新点一次b的坐标
 				if self.clickBTime > 0 and time.time() - self.clickBTime > 4:
+					self.autoClick.mouse_click(self.clickBX, self.clickBy)
 					self.clickBTime = time.time()
-					pyautogui.click(self.clickBX, self.clickBy)
 		# 	if self.confidenceNum > 0.8:
 		# 		self.confidenceNum -= 0.1
 		# self.confidenceNum = 0.9
@@ -2306,8 +1690,8 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/hong/hongdianwei.png"),
 			self.get_resource_path("images/hong/inhong.png"),
 			self.get_resource_path("images/hong/inhong.png"),
-			self.get_resource_path("images/hong/inhongD.png"),
 			"",
+			"down",
 		)
 		# self.waitForAAndClickB1(
 		# 	self.get_resource_path("images/hong/inhong.png"),
@@ -2487,17 +1871,19 @@ class MyThread(threading.Thread):
 		)
 		self.waitFor(self.get_resource_path("images/hong/xunbinyin.png"), self.dituLocation)
 		# 第2个骑兵
-		keyboard.press('down')
-		time.sleep(1)
-		keyboard.release('down')
-		self.press_keys_until_image_found(
-			self.get_resource_path("images/hong/qibin1.png"),
-			self.get_resource_path("images/hong/qibin2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			"right",
-			"",
-			# 1.3
-		)
+		# 109  81
+		self.clickDitu(int(self.righttop1.left + 101), int(self.righttop1.top + 83), self.get_resource_path("images/hong/qibin.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.7), self.locationHeight), self.get_resource_path("images/zdzd.png"))
+		# keyboard.press('down')
+		# time.sleep(1)
+		# keyboard.release('down')
+		# self.press_keys_until_image_found(
+		# 	self.get_resource_path("images/hong/qibin1.png"),
+		# 	self.get_resource_path("images/hong/qibin2.png"),
+		# 	self.get_resource_path("images/zdzd.png"),
+		# 	"right",
+		# 	"",
+		# 	# 1.3
+		# )
 		# self.waitFor(self.get_resource_path("images/hong/xunbinyin.png"), self.dituLocation)
 
 		# self.findAndClickPic(
@@ -4149,6 +3535,9 @@ class MyThread(threading.Thread):
 		isInGuanDu = self.waitFor(self.get_resource_path("images/guanDu1.png"), self.dituLocation, 5)
 		if not isInGuanDu:
 			self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
+		guaiwugongjiLocation = self.find_template_location(self.get_resource_path("images/guaiwugongji.png"), self.confidenceNum, 'location')
+		if guaiwugongjiLocation:
+			self.click_image(self.get_resource_path("images/check.png"), self.confidenceNum)
 		# 进入官渡
 		self.findAndClickPic(
 			self.get_resource_path("images/guanDu1.png"),
@@ -4188,14 +3577,17 @@ class MyThread(threading.Thread):
 		self.waitFor(self.get_resource_path("images/caoyuanzhangchangjy.png"), self.dituLocation)
 
 		# 第二个河北军
-		self.press_keys_until_image_found(
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/hbj1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			"",
-			"right",
-			1.9
-		)
+		self.clickDitu(int(self.righttop1.left + 85), int(self.righttop1.top + 71), self.get_resource_path("images/hbj4.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.7), self.locationHeight), self.get_resource_path("images/zdzd.png"))
+
+		# 84  71
+		# self.press_keys_until_image_found(
+		# 	self.get_resource_path("images/hbj4.png"),
+		# 	self.get_resource_path("images/hbj1.png"),
+		# 	self.get_resource_path("images/zdzd.png"),
+		# 	"",
+		# 	"right",
+		# 	1.9
+		# )
 		# self.findAndClickPic(
 		# 	self.get_resource_path("images/caoyuanzhangchangjy.png"),
 		# 	self.get_resource_path("images/hbj4.png"),
@@ -4308,7 +3700,7 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/yuanshao1.png"),
 			self.get_resource_path("images/yuanshao2.png"),
 			self.get_resource_path("images/zdzd.png"),
-			"right",
+			"",
 			"",
 		)
 		# self.findAndClickPic(
@@ -4632,19 +4024,22 @@ class MyThread(threading.Thread):
 				"left",
 			)
 		self.waitFor(self.get_resource_path("images/heifeng/heifengshanzhai.png"), self.dituLocation)
-		self.press_keys_until_image_found(
-			self.get_resource_path("images/heifeng/daozei2.png"),
-			self.get_resource_path("images/heifeng/daozei3.png"),
-			self.get_resource_path("images/zdzd.png"),
-			"", "left"
-		)
+		self.clickDitu(int(self.righttop1.left + 103), int(self.righttop1.top + 72), self.get_resource_path("images/heifeng/daozei.png"), (int(self.locationX + self.locationWidth * 0.3), self.locationY, int(self.locationWidth * 0.7), self.locationHeight), self.get_resource_path("images/zdzd.png"))
+		# self.press_keys_until_image_found(
+		# 	self.get_resource_path("images/heifeng/daozei2.png"),
+		# 	self.get_resource_path("images/heifeng/daozei3.png"),
+		# 	self.get_resource_path("images/zdzd.png"),
+		# 	"", "left"
+		# )
 		self.waitFor(self.get_resource_path("images/heifeng/heifengshanzhai.png"), self.dituLocation)
-		self.press_keys_until_image_found(
-			self.get_resource_path("images/heifeng/daozei.png"),
-			self.get_resource_path("images/heifeng/daozei.png"),
-			self.get_resource_path("images/zdzd.png"),
-			"", "left", 0.9
-		)
+		self.clickDitu(int(self.righttop1.left + 84), int(self.righttop1.top + 75), self.get_resource_path("images/heifeng/daozei.png"), (int(self.locationX + self.locationWidth * 0.3), self.locationY, int(self.locationWidth * 0.7), self.locationHeight), self.get_resource_path("images/zdzd.png"))
+		# self.press_keys_until_image_found(
+		# 	self.get_resource_path("images/heifeng/daozei.png"),
+		# 	self.get_resource_path("images/heifeng/daozei.png"),
+		# 	self.get_resource_path("images/zdzd.png"),
+		# 	"", "left", 0.9
+		# )
+		# 81  72
 		self.findAndClickPic(
 			self.get_resource_path("images/heifeng/heifengshanzhai.png"),
 			self.get_resource_path("images/heifeng/daozeitoumu.png"),
@@ -4686,6 +4081,9 @@ class MyThread(threading.Thread):
 
 	def heifengWhile(self):
 		self.beginFun()
+		guaiwugongjiLocation = self.find_template_location(self.get_resource_path("images/heifeng/guaiwugongji.png"), self.confidenceNum, 'location')
+		if guaiwugongjiLocation:
+			self.click_image(self.get_resource_path("images/heifeng/check.png"), self.confidenceNum)
 		for i in range(self.heifengWhileCount):
 			self.heifengScript()
 			if self.heifengCount == self.heifengWhileCount:
@@ -4822,6 +4220,22 @@ class MyThread(threading.Thread):
 				break
 		self.guanduWhile()
 
+	# 战魂红官渡
+	def zhanhunHongGdWhile(self):
+		self.beginFun()
+		for i in range(7):
+			hasHong = self.hongScript()
+			if not hasHong:
+				break
+		self.feiFb(self.get_resource_path("images/dituzhanhun.png"), True)
+		for i in range(6):
+			hasZhanhun = self.zhanhunScript()
+			if not hasZhanhun:
+				break
+		self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
+		while True:
+			self.guanduScript()
+
 
 class MyFrame(wx.Frame):
 	def __init__(self):
@@ -4886,6 +4300,7 @@ class MyFrame(wx.Frame):
 				"祭坛魔镜",
 				"日常",
 				"战魂+红+整点",
+				"战魂+红+官渡+整点",
 				"战魂楼(精英)",
 				"嗜血战场(精英)",
 				"黑风山寨",
@@ -4897,6 +4312,7 @@ class MyFrame(wx.Frame):
 				"80精英",
 				"100精英",
 				"整点",
+				"test",
 			],
 		)
 		self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
@@ -4904,6 +4320,8 @@ class MyFrame(wx.Frame):
 		self.text_ctrl = wx.TextCtrl(
 			self.panel, pos=(10, 100), size=(225, 130), style=wx.TE_MULTILINE
 		)
+		self.button = wx.Button(self.panel, label="设置队友信息", pos=(155, 5), size=(80, 25))
+		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
 		# 创建第二个下拉框，初始状态下隐藏
 		self.choiceCeng = wx.ComboBox(self.panel, pos=(155, 5), size=(80, 30), choices=['21层', '22层', '23层', '24层', '25层', '26层'])
 		self.choiceCeng.SetHint("战魂层数")
@@ -4925,18 +4343,31 @@ class MyFrame(wx.Frame):
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
+		self.game_name = ""
+		self.teammate1_name = ""
+		self.teammate2_name = ""
+		self.selections = ""
+
+	def on_button_click(self, event):
+		dialog = MyDialog(self)
+		if dialog.ShowModal() == wx.ID_OK:
+			# 在对话框结束后，获取对话框中输入的数据
+			print(self.game_name)
+
+		dialog.Destroy()
 
 	def on_help_link_click(self, event):
 		# 定义弹窗的内容和图片路径
 		content = [
 			"脚本说明：",
-			"1.官渡、魔镜、黑风自带打整点，打整点是58分之后退出副本等待整点；",
-			"2.战魂、嗜血战场结束后自动去官渡,战魂21以上会自动加血；",
-			"3.战魂+红+整点内容是一次战魂，红的次数是根据到整点时间算的，10分钟以下不打，10分钟-20分钟打一次，20分钟以上打两次，一次整点，建议每个小时刚开始启动，战魂跟红都没次数之后会自动去官渡。",
-			"4.黑风只打二当家，选择黑风之后填入黑风剩余次数，打完次数会自动去官渡",
-			"5.日常跟每一个单独的日常打完都会去打官渡",
-			"6.日常脚本:炼丹=>五行=>溶洞=>80精英=>云游精英=>100精英=>官渡精英=>官渡",
-			"7.自动去打的官渡都带整点",
+			"1.官渡、魔镜、黑风自带打整点，打整点是58分之后退出副本等待整点，魔镜只做了刷包的版本，打完虚实就退；",
+			"2.战魂、嗜血战场结束后自动去官渡,战魂21以上会自动加血,战魂不选择层数默认打26；",
+			"3.战魂+红+整点内容是一次战魂，红的次数是根据到整点时间算的，10分钟以下不打，10分钟-20分钟打一次，20分钟以上打两次，一次整点，建议每个小时刚开始启动，战魂跟红都没次数之后会自动去官渡；",
+			"4.战魂+红+官渡+整点是先打红，把红的次数打完，打战魂的次数，打完了去官渡+整点；",
+			"5.黑风只打二当家，选择黑风之后填入黑风剩余次数，打完次数会自动去官渡；",
+			"6.日常跟每一个单独的日常打完都会去打官渡",
+			"7.日常脚本:炼丹=>五行=>溶洞=>80精英=>云游精英=>100精英=>官渡精英=>官渡；",
+			"8.自动去打的官渡都带整点。",
 			"使用说明：",
 			"1.请将电脑的屏幕分辨率调到1920*1080；",
 			"2.请将电脑的缩放比放到100%;",
@@ -5025,6 +4456,7 @@ class MyFrame(wx.Frame):
 			condition = threading.Condition()
 			self.thread = None
 			self.choiceCeng.Hide()
+			self.number_input.Hide()
 
 	def on_close(self, event):
 		if self.thread is not None:
@@ -5120,6 +4552,616 @@ class HelpDialog(wx.Dialog):
 			sizer.Add(bitmap, 0, wx.ALL | wx.CENTER, 5)
 
 		panel.SetSizer(sizer)
+
+
+class MyDialog(wx.Dialog):
+	def __init__(self, parent):
+		super().__init__(parent, title="输入信息", size=(300, 200))
+
+		panel = wx.Panel(self)
+
+		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 10))
+		self.team_leader_text.SetHint("游戏名称")
+		self.teammate1_text = wx.TextCtrl(panel, pos=(10, 40))
+		self.teammate1_text.SetHint("队友1名称")
+		self.teammate2_text = wx.TextCtrl(panel, pos=(10, 70))
+		self.teammate2_text.SetHint("队友2名称")
+		self.button = wx.Button(panel, label="确定", pos=(100, 120))
+		self.button.Disable()  # 初始化时禁用确定按钮
+		# self.button.SetBackgroundColour(wx.Colour(20, 180, 168))  # 设置为红色背景
+		# self.button.SetForegroundColour(
+		# 	wx.Colour(255, 255, 255)
+		# )  # 设置为白色文字
+		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
+
+		self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
+		self.teammate1_text.Bind(wx.EVT_TEXT, self.on_text_change)
+		self.teammate2_text.Bind(wx.EVT_TEXT, self.on_text_change)
+		choices = ["加血", "卖装备", "拆分强化石", "换大丹"]
+		self.checklist = wx.CheckListBox(panel, choices=choices, pos=(130, 10))
+
+	# self.checklist.Bind(wx.EVT_CHECKLISTBOX, self.on_checklistbox)
+
+	# def on_checklistbox(self, event):
+	# 	selections = [self.checklist.GetString(i) for i in range(self.checklist.GetCount()) if self.checklist.IsChecked(i)]
+	# 	print("选中的值为:", selections)
+
+	def on_text_change(self, event):
+		if self.team_leader_text.GetValue() and self.teammate1_text.GetValue() and self.teammate2_text.GetValue():
+			self.button.Enable()
+		else:
+			self.button.Disable()
+
+	def on_button_click(self, event):
+		# 获取文本框中的值并保存在父窗口(MyFrame)中
+		parent = self.GetParent()
+		selections = [self.checklist.GetString(i) for i in range(self.checklist.GetCount()) if self.checklist.IsChecked(i)]
+		parent.game_name = self.team_leader_text.GetValue()
+		parent.teammate1_name = self.teammate1_text.GetValue()
+		parent.teammate2_name = self.teammate2_text.GetValue()
+		parent.selections = selections
+
+		# 关闭对话框
+		self.EndModal(wx.ID_OK)
+
+
+class AutoClick():
+	"""
+	@description  :自动点击类，包含后台截图、图像匹配
+	---------
+	@param  :
+	-------
+	@Returns  :
+	-------
+	"""
+
+	__PostMessageW = windll.user32.PostMessageW
+	__SendMessageW = windll.user32.SendMessageW
+	__MapVirtualKeyW = windll.user32.MapVirtualKeyW
+	__VkKeyScanA = windll.user32.VkKeyScanA
+	__ClientToScreen = windll.user32.ClientToScreen
+	# __PostMessageW = win32gui.PostMessage
+	# __SendMessageW = win32gui.SendMessage
+	# __MapVirtualKeyW = win32api.MapVirtualKey
+	# __VkKeyScanA = win32api.VkKeyScan
+	# __ClientToScreen = win32gui.ClientToScreen
+
+	__WM_KEYDOWN = 0x100
+	__WM_KEYUP = 0x101
+	__WM_MOUSEMOVE = 0x0200
+	__WM_LBUTTONDOWN = 0x0201
+	__WM_LBUTTONUP = 0x202
+	__WM_MOUSEWHEEL = 0x020A
+	__WHEEL_DELTA = 120
+	__WM_SETCURSOR = 0x20
+	__WM_MOUSEACTIVATE = 0x21
+
+	__HTCLIENT = 1
+	__MA_ACTIVATE = 1
+
+	__VkCode = {
+		"back": 0x08,
+		"tab": 0x09,
+		"return": 0x0D,
+		"shift": 0x10,
+		"control": 0x11,
+		"menu": 0x12,
+		"pause": 0x13,
+		"capital": 0x14,
+		"escape": 0x1B,
+		"space": 0x20,
+		"end": 0x23,
+		"home": 0x24,
+		"left": 0x25,
+		"up": 0x26,
+		"right": 0x27,
+		"down": 0x28,
+		"print": 0x2A,
+		"snapshot": 0x2C,
+		"insert": 0x2D,
+		"delete": 0x2E,
+		"lwin": 0x5B,
+		"rwin": 0x5C,
+		"numpad0": 0x60,
+		"numpad1": 0x61,
+		"numpad2": 0x62,
+		"numpad3": 0x63,
+		"numpad4": 0x64,
+		"numpad5": 0x65,
+		"numpad6": 0x66,
+		"numpad7": 0x67,
+		"numpad8": 0x68,
+		"numpad9": 0x69,
+		"multiply": 0x6A,
+		"add": 0x6B,
+		"separator": 0x6C,
+		"subtract": 0x6D,
+		"decimal": 0x6E,
+		"divide": 0x6F,
+		"f1": 0x70,
+		"f2": 0x71,
+		"f3": 0x72,
+		"f4": 0x73,
+		"f5": 0x74,
+		"f6": 0x75,
+		"f7": 0x76,
+		"f8": 0x77,
+		"f9": 0x78,
+		"f10": 0x79,
+		"f11": 0x7A,
+		"f12": 0x7B,
+		"numlock": 0x90,
+		"scroll": 0x91,
+		"lshift": 0xA0,
+		"rshift": 0xA1,
+		"lcontrol": 0xA2,
+		"rcontrol": 0xA3,
+		"lmenu": 0xA4,
+		"rmenu": 0XA5
+	}
+
+	def __get_virtual_keycode(self, key: str):
+		"""根据按键名获取虚拟按键码
+
+		Args:
+			key (str): 按键名
+
+		Returns:
+			int: 虚拟按键码
+		"""
+		if len(key) == 1 and key in string.printable:
+			# https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-vkkeyscana
+			return self.__VkKeyScanA(ord(key)) & 0xff
+		else:
+			return self.__VkCode[key]
+
+	def key_down(self, key: str):
+		"""按下指定按键
+
+		Args:
+			handle (HWND): 窗口句柄
+			key (str): 按键名
+		"""
+		vk_code = self.__get_virtual_keycode(key)
+		scan_code = self.__MapVirtualKeyW(vk_code, 0)
+		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
+		wparam = vk_code
+		lparam = (scan_code << 16) | 1
+		self.__PostMessageW(self.__clickhandle, self.__WM_KEYDOWN, wparam, lparam)
+
+	def key_up(self, key: str):
+		"""放开指定按键
+
+		Args:
+			handle (HWND): 窗口句柄
+			key (str): 按键名
+		"""
+		vk_code = self.__get_virtual_keycode(key)
+		scan_code = self.__MapVirtualKeyW(vk_code, 0)
+		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-keyup
+		wparam = vk_code
+		lparam = (scan_code << 16) | 0XC0000001
+		self.__PostMessageW(self.__clickhandle, self.__WM_KEYUP, wparam, lparam)
+
+	def drag_mouse(self, start_x, start_y, end_x, end_y):
+		"""
+		在指定窗口句柄中模拟鼠标从 (start_x, start_y) 拖拽到 (end_x, end_y) 的操作。
+
+		:param start_x: 起始横坐标
+		:param start_y: 起始纵坐标
+		:param end_x: 结束横坐标
+		:param end_y: 结束纵坐标
+		"""
+		self.left_down(int(start_x / scale), int(start_y / scale))
+		self.move_to(int(end_x / scale), int(end_y / scale))
+		self.left_up(int(end_x / scale), int(end_y / scale))
+
+	def __activate_mouse(self, handle: HWND):
+		"""
+		@Description : 激活窗口接受鼠标消息
+		---------
+		@Args : handle (HWND): 窗口句柄
+		-------
+		@Returns :
+		-------
+		"""
+		# https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-mouseactivate
+		lparam = (self.__WM_LBUTTONDOWN << 16) | self.__HTCLIENT
+		self.__PostMessageW(handle, self.__WM_MOUSEACTIVATE, self.__handle, lparam)
+
+	def __set_cursor(self, handle: HWND, msg):
+		"""
+		@Description : Sent to a window if the mouse causes the cursor to move within a window and mouse input is not captured
+		---------
+		@Args : handle (HWND): 窗口句柄, msg : setcursor消息
+		-------
+		@Returns :
+		-------
+		"""
+		lparam = (msg << 16) | self.__HTCLIENT
+		self.__SendMessageW(handle, self.__WM_SETCURSOR, handle, lparam)
+
+	def move_to(self, x: int, y: int):
+		"""移动鼠标到坐标（x, y)
+
+		Args:
+			x (int): 横坐标
+			y (int): 纵坐标
+		"""
+		print(x, y)
+		wparam = 0
+		lparam = y << 16 | x
+		self.__PostMessageW(self.__clickhandle, self.__WM_MOUSEMOVE, wparam, lparam)
+
+	def left_down(self, x: int, y: int):
+		"""在坐标(x, y)按下鼠标左键
+
+		Args:
+			x (int): 横坐标
+			y (int): 纵坐标
+		"""
+		wparam = 0x001
+		lparam = y << 16 | x
+		self.__PostMessageW(self.__clickhandle, self.__WM_LBUTTONDOWN, wparam, lparam)
+
+	def left_up(self, x: int, y: int):
+		"""在坐标(x, y)放开鼠标左键
+
+		Args:
+			handle (HWND): 窗口句柄
+			x (int): 横坐标
+			y (int): 纵坐标
+		"""
+
+		wparam = 0
+		lparam = y << 16 | x
+		self.__PostMessageW(self.__clickhandle, self.__WM_LBUTTONUP, wparam, lparam)
+
+	def scroll(self, handle: HWND, delta: int, x: int, y: int):
+		"""在坐标(x, y)滚动鼠标滚轮
+
+		Args:
+			handle (HWND): 窗口句柄
+			delta (int): 为正向上滚动，为负向下滚动
+			x (int): 横坐标
+			y (int): 纵坐标
+		"""
+		self.move_to(handle, x, y)
+		wparam = delta << 16
+		p = POINT(x, y)
+		self.__ClientToScreen(handle, byref(p))
+		lparam = p.y << 16 | p.x
+		self.__SendMessageW(handle, self.__WM_MOUSEWHEEL, wparam, lparam)
+
+	def scroll_up(self, x: int, y: int):
+		"""在坐标(x, y)向上滚动鼠标滚轮
+
+		Args:
+			handle (HWND): 窗口句柄
+			x (int): 横坐标
+			y (int): 纵坐标
+		"""
+		self.scroll(self.__clickhandle, self.__WHEEL_DELTA, x, y)
+
+	def scroll_down(self, x: int, y: int):
+		"""在坐标(x, y)向下滚动鼠标滚轮
+
+		Args:
+			handle (HWND): 窗口句柄
+			x (int): 横坐标
+			y (int): 纵坐标
+		"""
+		self.scroll(self.__clickhandle, -self.__WHEEL_DELTA, x, y)
+
+	def get_winds(self, title: str):
+		"""
+		@description : 获取游戏句柄 ,并把游戏窗口置顶并激活窗口
+		---------
+		@param : 窗口名
+		-------
+		@Returns : 窗口句柄
+		-------
+		"""
+		# self.__handle = win32gui.FindWindowEx(0, 0, "Qt5QWindowIcon", "MuMu模拟器")
+		parent_hwnd = win32gui.FindWindow(None, title)
+		self.get_child_windows(parent_hwnd)
+
+		# self.__classname = win32gui.GetClassName(self.__handle)
+		# print(self.__classname, self.__handle)
+		self.__clickhandle = self.__handle
+		if self.__handle:
+			return True
+		else:
+			return False
+
+	def get_child_windows(self, parent_hwnd):
+		"""
+		打印指定句柄下的所有子孙控件及其位置
+		:param parent_hwnd: 父窗口句柄
+		"""
+
+		def callback(hwnd, _):
+			screen_width, screen_height = pyautogui.size()
+			# 获取窗口类名和标题
+			class_name = win32gui.GetClassName(hwnd)
+			window_title = win32gui.GetWindowText(hwnd)
+			# 获取窗口位置
+			left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+			if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+				print(hwnd)
+				self.__handle = hwnd
+				print(left, top, right, bottom)
+				return
+			# 递归调用，查找子控件
+			self.get_child_windows(hwnd)
+			return True
+
+		# 枚举所有子窗口
+		return win32gui.EnumChildWindows(parent_hwnd, callback, None)
+
+	def get_src(self):
+		"""
+		@description : 获得后台窗口截图
+		---------
+		@param : None
+		-------
+		@Returns : None
+		-------
+		"""
+
+		left, top, right, bot = win32gui.GetWindowRect(self.__handle)
+		# Remove border around window (8 pixels on each side)
+		bl = 0
+		# Remove border on top
+		bt = 0
+
+		width = int((right - left + 1) * scale) - 2 * bl
+		height = int((bot - top + 1) * scale) - bt - bl
+		# 返回句柄窗口的设备环境，覆盖整个窗口，包括非客户区，标题栏，菜单，边框
+		hWndDC = win32gui.GetDC(self.__handle)
+		# 创建设备描述表
+		mfcDC = win32ui.CreateDCFromHandle(hWndDC)
+		# 创建内存设备描述表
+		saveDC = mfcDC.CreateCompatibleDC()
+		# 创建位图对象准备保存图片
+		saveBitMap = win32ui.CreateBitmap()
+		# 为bitmap开辟存储空间
+		saveBitMap.CreateCompatibleBitmap(mfcDC, width, height)
+		# 将截图保存到saveBitMap中
+		saveDC.SelectObject(saveBitMap)
+		# 保存bitmap到内存设备描述表
+		saveDC.BitBlt((0, 0), (width, height), mfcDC, (bl, bt), win32con.SRCCOPY)
+		###获取位图信息
+		bmpinfo = saveBitMap.GetInfo()
+		bmpstr = saveBitMap.GetBitmapBits(True)
+		###生成图像
+		im_PIL = Image.frombuffer('RGB', (bmpinfo['bmWidth'], bmpinfo['bmHeight']), bmpstr, 'raw', 'BGRX', 0, 1)
+		# 内存释放
+		win32gui.DeleteObject(saveBitMap.GetHandle())
+		saveDC.DeleteDC()
+		mfcDC.DeleteDC()
+		win32gui.ReleaseDC(self.__handle, hWndDC)
+		###PrintWindow成功,保存到文件,显示到屏幕
+		im_PIL.save("src.jpg")  # 保存
+
+	# im_PIL.show()  # 显示
+
+	def recognize(self, template, threshold=0.9):
+		"""
+		@description : 图像识别之模板匹配
+		---------
+		@param : 需要匹配的模板名
+		-------
+		@Returns : 将传进来的图片和全屏截图匹配如果找到就返回图像在屏幕的坐标 否则返回None
+		-------
+		"""
+
+		imobj = ac.imread(template)
+		imsrc = ac.imread('%s\\src.jpg' % os.getcwd())
+		pos = ac.find_template(imsrc, imobj, 0.7)
+		return pos
+
+	def recognize_all(self, template, threshold=0.9):
+		"""
+		@description : 图像识别之模板匹配
+		---------
+		@param : 需要匹配的模板名
+		-------
+		@Returns : 将传进来的图片和全屏截图匹配如果找到就返回图像在屏幕的坐标 否则返回None
+		-------
+		"""
+
+		imobj = ac.imread(template)
+		imsrc = ac.imread('%s\\src.jpg' % os.getcwd())
+		pos = ac.find_all_template(imsrc, imobj, threshold)
+		return pos
+
+	def find_image_in_screenshot(self, screenshot, template):
+		"""在截图中查找模板图像的位置"""
+		result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+		min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+		h, w = template.shape[:2]
+		center = (max_loc[0] + w // 2, max_loc[1] + h // 2)
+		return center, max_val
+
+	def match_images(self, parent_image_path, template_image_path):
+		"""匹配父图像中的模板图像，并返回模板图像在窗口中的中心点"""
+		# 读取父图像和模板图像
+		parent_image = cv2.imread(parent_image_path)
+		template_image = cv2.imread(template_image_path)
+
+		if parent_image is None or template_image is None:
+			raise ValueError("图像文件路径无效或图像无法读取")
+
+		# 查找 parent_image 在窗口中的位置
+		self.get_src()
+		screenshot = ac.imread('%s\\src.jpg' % os.getcwd())
+
+		if screenshot is None:
+			raise ValueError("截图无法读取")
+
+		parent_center, parent_confidence = self.find_image_in_screenshot(screenshot, parent_image)
+		if parent_confidence < 0.8:  # 可以根据需要调整阈值
+			raise ValueError("未找到父图像")
+
+		# 查找 template_image 在 parent_image 中的位置
+		template_center, template_confidence = self.find_image_in_screenshot(parent_image, template_image)
+		if template_confidence < 0.8:  # 可以根据需要调整阈值
+			raise ValueError("未找到模板图像")
+
+		# 计算 template_image 在窗口中的中心点
+		final_center = (parent_center[0] + template_center[0], parent_center[1] + template_center[1])
+		return final_center
+
+	def grab_screen(self, region=None):
+		"""
+		截取指定窗口句柄的屏幕区域
+		:param hwnd: 窗口句柄
+		:param region: 区域元组 (left, top, width, height)
+		:return: 截图的numpy数组
+		"""
+		left, top, right, bottom = win32gui.GetWindowRect(self.__handle)
+		if region:
+			left += region[0]
+			top += region[1]
+			right = left + region[2]
+			bottom = top + region[3]
+
+		width = right - left
+		height = bottom - top
+
+		hwindc = win32gui.GetWindowDC(self.__handle)
+		srcdc = win32ui.CreateDCFromHandle(hwindc)
+		memdc = srcdc.CreateCompatibleDC()
+		bmp = win32ui.CreateBitmap()
+		bmp.CreateCompatibleBitmap(srcdc, width, height)
+		memdc.SelectObject(bmp)
+		memdc.BitBlt((0, 0), (width, height), srcdc, (0, 0), win32con.SRCCOPY)
+
+		signedIntsArray = bmp.GetBitmapBits(True)
+		img = np.frombuffer(signedIntsArray, dtype='uint8')
+		img.shape = (height, width, 4)
+
+		srcdc.DeleteDC()
+		memdc.DeleteDC()
+		win32gui.ReleaseDC(self.__handle, hwindc)
+		img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
+		return img
+
+	def find_template_in_region(self, template_img, search_region):
+		"""
+		在指定窗口句柄的屏幕区域内查找模板图像
+		:param hwnd: 窗口句柄
+		:param template_img: 模板图像路径或numpy数组
+		:param search_region: 查找区域元组 (left, top, width, height)
+		:return: 查找结果字典
+		"""
+		# 截取指定区域的屏幕图像
+		screen_img = self.grab_screen(search_region)
+
+		# 读取图像
+		template_img = ac.imread(template_img)
+		# 查找模板图像
+		res = ac.find_template(screen_img, template_img)
+
+		if res['result']:
+			# 调整找到的坐标到原始屏幕坐标系
+			res['rectangle'] = [
+				(res['rectangle'][0][0] + search_region[0], res['rectangle'][0][1] + search_region[1]),
+				(res['rectangle'][1][0] + search_region[0], res['rectangle'][1][1] + search_region[1]),
+				(res['rectangle'][2][0] + search_region[0], res['rectangle'][2][1] + search_region[1]),
+				(res['rectangle'][3][0] + search_region[0], res['rectangle'][3][1] + search_region[1])
+			]
+			res['result'] = (
+				res['result'][0] + search_region[0],
+				res['result'][1] + search_region[1]
+			)
+
+		return res
+
+	def mouse_click(self, x, y, times=0.5):
+		"""
+		@description : 单击左键
+		---------
+		@param : 位置坐标x,y 单击后延时times(s)
+		-------
+		@Returns :
+		-------
+		"""
+		# self.__set_cursor(self.__clickhandle, self.__WM_MOUSEACTIVATE)
+		# self.move_to(self.__clickhandle, int(x / scale), int(y / scale))
+		# self.__activate_mouse(self.__clickhandle)
+		# self.__set_cursor(self.__clickhandle, self.__WM_LBUTTONDOWN)
+		self.left_down(int(x / scale), int(y / scale))
+		self.move_to(int(x / scale), int(y / scale))
+		self.left_up(int(x / scale), int(y / scale))
+
+	# time.sleep(times)
+
+	def mouse_click_image(self, name: any, confidence=0.9, times=0.5):
+		"""
+		@Description : 鼠标左键点击识别到的图片位置
+		---------
+		@Args : name:输入图片名; times:单击后延时
+		-------
+		@Returns : None
+		-------
+		"""
+		try:
+			result = self.recognize(name)
+			print(result, 'result')
+			if result is None or result['confidence'] < 0.7:
+				return False
+			else:
+				self.mouse_click(result['result'][0] + x_coor * scale + 8, result['result'][1] + y_coor * scale + 39)
+				return True
+		except:
+			return False
+
+	def mouse_click_radius(self, x, y, times=0.2):
+		"""
+		@description : 在范围内随机位置单击（防检测）
+		---------
+		@param : 位置坐标x,y 单击后延时times(s)
+		-------
+		@Returns :
+		-------
+		"""
+
+		random_x = np.random.randint(-radius, radius)
+		random_y = np.random.randint(-radius, radius)
+		self.mouse_click(x + random_x, y + random_y)
+		# self.__left_down(self.__clickhandle, int((x + random_x) / scale), int((y + random_y) / scale))
+		# time.sleep(0.1)
+		# self.__left_up(self.__clickhandle, int((x + random_x) / scale), int((y + random_y) / scale))
+		time.sleep(times)
+
+	def push_key(self, key: str, times=0.9):
+		"""
+		@Description : 按键
+		---------
+		@Args : key:按键 times:按下改键后距松开的延时
+		-------
+		@Returns : None
+		-------
+		"""
+		self.key_down(self.__clickhandle, key)
+		time.sleep(times)
+		self.key_up(self.__clickhandle, key)
+
+	# time.sleep(0.5)
+
+	def type_str(self, msg: str):
+		"""
+		@Description : 打字
+		---------
+		@Args : msg:目标字符
+		-------
+		@Returns : None
+		-------
+		"""
+		for i in msg:
+			self.__SendMessageW(self.__clickhandle, win32con.WM_CHAR, ord(i), 0)
 
 
 if __name__ == "__main__":

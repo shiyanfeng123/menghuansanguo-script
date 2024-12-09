@@ -1,48 +1,53 @@
-# from datetime import time
-# import uuid
 import pyautogui
 import random
 import time
-# import wmi
-# import webbrowser
 import os
 import sys
-# import pywinauto
-# import pywebview
-# webview = pywebview.WebView()
 import keyboard
 import threading
 import wx
-# import pygame
 import wx.lib.scrolledpanel as scrolled
 import psutil
-
-# import pygetwindow as gw
+import ctypes
+from comtypes.client import CreateObject
+import subprocess
 
 pyautogui.PAUSE = 0.005
 pyautogui.FAILSAFE = True  # 鼠标光标在屏幕左上角，会导致程序异常，用于终止程序运行。
 # 打包命令：pyinstaller -F -w --add-data "images;images" --icon=images\script.ico .\main.py
 # pyinstaller main.spec
-
-# paused = threading.Event()
-# terminate = threading.Event()
 condition = threading.Condition()
+
+
+class ResXy:
+	def __init__(resInit, x, y):
+		resInit.x = x
+		resInit.y = y
 
 
 class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
-		self.userInfoMac = ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"]
+		self.userInfoMac = ["50-9A-4C-C9-FE-BA"]
 		# 烈烈残阳mac：00-E2-69-6A-22-81
 		# self.userInfoMac = ["00-E2-69-6A-22-81"]
 		# 黑北：E4-60-17-15-B4-73,BC-EC-A0-28-FA-5C
-		# self.userInfoMac = ["BC-EC-A0-28-FA-5C", '00-FF-8A-69-61-03', "E4-60-17-15-B4-73"]
+		# self.userInfoMac = ["BC-EC-A0-28-FA-5C"]
 		# 山竹:7C-21-4A-48-36-7D
 		# self.userInfoMac = ["7C-21-4A-48-36-7D"]
 		# 三千梨树：08-8F-C3-75-B5-7A
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A"]
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"]
 		# self.userInfoMac = ["50-9A-4C-C9-FE-BA", "B0-25-AA-26-64-03"]
+		regPath = self.get_resource_path('serveAssets/plugins/RegDll.dll')
+		dms = ctypes.windll.LoadLibrary(str(regPath))
+		dmPath = self.get_resource_path('serveAssets/plugins/dm.dll')
+		# 构建 regsvr32 命令，添加 /s 参数以静默运行
+		command = ['regsvr32', '/s', dmPath]
+		# 执行命令
+		subprocess.run(command, check=True, capture_output=True, text=True)
+		dms.DllRegisterServer(dmPath, 0)
+		self.dm = CreateObject('dm.dmsoft')
 		self.frame = None
 		self.zhanhunFloor = ''
 		# 创建子线程
@@ -61,7 +66,7 @@ class MyThread(threading.Thread):
 		self.locationRightTopWidth = None
 		self.locationRightTopHeight = None
 		self.stoped = False
-		self.zdzdPath = self.get_resource_path("images/zdzd.png")
+		self.zdzdPath = self.get_resource_path("serveAssets/images/zdzd.bmp")
 		self.Dx = 0
 		self.Dy = 0
 		self.BisClick = False
@@ -71,6 +76,8 @@ class MyThread(threading.Thread):
 		self.shengxiaoLocation = None
 		self.mojingCount = 0
 		self.gameLocation = None
+		self.gameLeftLocation = None
+		self.gameRightLocation = None
 		self.gameBottomLocation = None
 		self.dituLocation = None
 		self.dituLeftLocation = None
@@ -82,6 +89,8 @@ class MyThread(threading.Thread):
 		self.oneDay = 86400
 		self.heifengCount = 0
 		self.heifengWhileCount = 0
+		self.click_hwnd = 0
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000'
 
 	def run(self):
 		# c = wmi.WMI()
@@ -172,7 +181,7 @@ class MyThread(threading.Thread):
 		elif self.scriptName == "49日常":
 			self.richang49Script()
 		elif self.scriptName == "49战魂":
-			self.zhanhun49While()
+			self.zhanhun49Script()
 		elif self.scriptName == "49祭坛魔镜":
 			self.mojing49While()
 		elif self.scriptName == "49嗜血战场(精英)":
@@ -180,53 +189,92 @@ class MyThread(threading.Thread):
 		elif self.scriptName == "49名将挑战赛":
 			self.hong49While()
 
-	# self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-	# self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-
 	def findGame(self):
-		# while True:
-		# 	if pyautogui.locateOnScreen(
-		# 			self.get_resource_path("images/2.png"),
-		# 			confidence=0.5,
-		# 			region=(0, 0, 1920, 1080),
-		# 	) and pyautogui.locateOnScreen(
-		# 		self.get_resource_path("images/3.png"),
-		# 		confidence=0.5,
-		# 		region=(0, 0, 1920, 1080),
-		# 	):
-		# 		time.sleep(0.5)
-		# 		break
-		self.righttop1 = pyautogui.locateOnScreen(
-			self.get_resource_path("images/2.png"), confidence=0.5, region=(0, 0, 1920, 1080)
-		)
-		self.leftbottom = pyautogui.locateOnScreen(
-			self.get_resource_path("images/3.png"), confidence=0.5, region=(0, 0, 1920, 1080)
-		)
-		if not self.righttop1 or not self.leftbottom:
+		ENUMWINDOWSPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+		self.click_hwnd = 0
+
+		# 定义回调函数
+		def enum_child_windows_callback(hwnd, lParam):
+			window_text = self.dm.GetWindowText(hwnd)
+			class_name = self.dm.GetClassName(hwnd)
+			print(f'子窗口句柄: {hwnd}, 标题: {window_text}, 类名: {class_name}')
+			return True  # 返回 True 继续枚举
+
+		# 将回调函数转换为 ctypes 函数指针
+		enum_child_windows_callback_func = ENUMWINDOWSPROC(enum_child_windows_callback)
+		# 查找目标窗口句柄
+		target_window_title = self.frame.game_name
+		target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
+		hwnd = self.dm.FindWindowEx(0, target_window_class, target_window_title)
+		print(hwnd)
+		if hwnd:
+			#
+			# 使用 Windows API 的 EnumChildWindows
+			user32 = ctypes.WinDLL('user32', use_last_error=True)
+			# 获取屏幕分辨率
+			screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
+			screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
+
+			def enum_child_proc(hwnd, lParam):
+				class_name = self.dm.GetWindowClass(hwnd)
+				child_rect = self.dm.GetWindowRect(hwnd)
+				if child_rect != 0:
+					left, top, right, bottom, isFind = child_rect
+					if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+						self.click_hwnd = hwnd
+						return False
+				return True
+
+			enum_child_proc_type = ENUMWINDOWSPROC(enum_child_proc)
+			user32.EnumChildWindows(hwnd, enum_child_proc_type, 0)
+		else:
+			print('未找到游戏窗口，请检查输入的游戏名称是否正确！')
+		# 绑定窗口到后台模式
+		bind_result = self.dm.BindWindowEx(self.click_hwnd, "gdi", "windows3", "windows", '', 0)
+		if bind_result == 1:
+			print("窗口绑定成功")
+		else:
+			print("窗口绑定失败")
+		location = self.dm.GetClientSize(self.click_hwnd)
+		x, y, res = location
+		print(x, y)
+		if res == 1:
+			print('已找到游戏画面')
+		else:
 			self.show_error_message("未检测到游戏页面")
 			return False
-		print('已找到游戏画面')
-		self.locationX = self.leftbottom.left
-		self.locationY = self.righttop1.top - 10
-		self.locationWidth = self.righttop1.left + self.righttop1.width - self.locationX
-		self.locationHeight = (
-				self.leftbottom.top + self.leftbottom.height - self.locationY
-		)
-		self.locationRightTopX = self.righttop1.left
-		self.locationRightTopY = self.righttop1.top
-		self.locationRightTopWidth = self.righttop1.width
-		self.locationRightTopHeight = self.righttop1.height
+		self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/guandu.txt"))  # 字库文件路径
+		self.locationX = 0
+		self.locationY = 0
+		self.locationWidth = x
+		self.locationHeight = y
+		self.locationRightTopX = x * 0.8
+		self.locationRightTopY = 0
+		self.locationRightTopWidth = x
+		self.locationRightTopHeight = y * 0.2
 		self.gameLocation = (
 			self.locationX,
 			self.locationY,
 			self.locationWidth,
 			self.locationHeight,
 		)
+		self.gameLeftLocation = (
+			self.locationX,
+			int(self.locationY + (self.locationHeight * 0.3)),
+			int(self.locationWidth * 0.7),
+			self.locationHeight
+		)
+		self.gameRightLocation = (
+			int(self.locationX + int(self.locationWidth * 0.3)),
+			int(self.locationY + (self.locationHeight * 0.3)),
+			int(self.locationWidth * 0.7),
+			self.locationHeight
+		)
 		self.gameBottomLocation = (
 			self.locationX,
 			int(self.locationY + (self.locationHeight * 0.3)),
 			self.locationWidth,
-			int(self.locationHeight * 0.7),
+			self.locationHeight
 		)
 		self.dituLeftLocation = (
 			self.locationRightTopX,
@@ -244,7 +292,7 @@ class MyThread(threading.Thread):
 			self.locationX,
 			int(self.locationY + (self.locationHeight * 0.5)),
 			int(self.locationWidth * 0.5),
-			self.locationHeight,
+			self.locationHeight
 		)
 		self.dituLocation = (
 			self.locationRightTopX,
@@ -254,93 +302,131 @@ class MyThread(threading.Thread):
 		)
 		return True
 
+	def find_pic_or_str(self, find, region, find_dir):
+		types = 'serveAssets' in find
+		if not types:
+			res = self.find_str(find, region, find_dir)
+		else:
+			res = self.find_pic(find, region, find_dir)
+		return res
+
+	# 找图方法
+	def find_pic(self, image_path, image_region, find_dir):
+		find_path = image_path
+		# picSize = self.dm.GetPicSize(image_path)
+		# picSize = picSize.split(',')
+		# picW, picH = picSize[0], picSize[1]
+		x, y, w, h = image_region
+		pos = self.dm.FindPicEx(int(x), int(y), int(w), int(h), find_path, "", self.confidenceNum, find_dir)
+		if not pos:
+			return False
+		pos = pos.split('|')
+		# if len(pos) == 1:
+		# 	pos_res = pos[0].split(',')
+		# else:
+		# 	# 初始化最小值和对应的项
+		# 	min_x_value = float('inf')
+		# 	min_item = None
+		# 	# 遍历数组，找到第二个数值最小的那一项
+		# 	for item in pos:
+		# 		# 解析每一项
+		# 		parts = item.split(',')
+		# 		x_value = int(parts[1])
+		# 		# 比较并更新最小值和对应的项
+		# 		if x_value < min_x_value:
+		# 			min_x_value = x_value
+		# 			min_item = item
+		# 	pos_res = min_item.split(',')
+		pos_res = pos[0].split(',')
+		pics = image_path.split('|')
+		picSize = self.dm.GetPicSize(pics[int(pos_res[0])])
+		picSize = picSize.split(',')
+		picW, picH = picSize[0], picSize[1]
+		posX = int(pos_res[1]) + (int(picW) * 0.5)
+		posY = int(pos_res[2]) + (int(picH) * 0.5)
+		res = ResXy(int(posX), int(posY))
+		return res
+
+	# 找字方法
+	def find_str(self, text, region, find_dir):
+		x, y, w, h = region
+		find_str_result = self.dm.FindStrFastE(int(x), int(y), int(w), int(h), text, self.color_format, self.confidenceNum)
+		find_str_result = find_str_result.split('|')
+		if int(find_str_result[0]) < 0:
+			return False
+		else:
+			pos_res = None
+			if len(find_str_result) == 3:
+				pos_res = find_str_result
+			elif len(find_str_result) > 3:
+				if int(find_str_result[1]) < int(find_str_result[4]) and find_dir in [0, 1]:
+					pos_res = find_str_result[:3]
+				else:
+					pos_res = find_str_result[3:6]
+			posX = pos_res[1]
+			posY = pos_res[2]
+			res = ResXy(int(posX), int(posY))
+			return res
+
+	# 图中找图
+	def fing_fei_in_image_or_str(self, base, base_region, h, fei_image):
+		base_pos = self.find_pic_or_str(base, base_region, 0)
+		if not base_pos:
+			return False
+		find_fei_h = base_pos.y + h
+		x1, y1, w1, h1 = base_region
+		fei_pox = self.dm.FindPicEx(int(x1), int(y1), int(w1), int(h1), fei_image, "", self.confidenceNum, 0)
+		if not fei_pox:
+			return False
+		fei_pox = fei_pox.split('|')
+		res_pos = None
+		min_difference = float('inf')  # 初始化为无穷大
+		for item in fei_pox:
+			parts = item.split(',')
+			if len(parts) >= 3:
+				try:
+					second_value = int(parts[2])
+					if second_value <= find_fei_h:
+						difference = find_fei_h - second_value
+						if difference < min_difference:
+							min_difference = difference
+							res_pos = item
+				except ValueError:
+					print(f"无法将 {parts[1]} 转换为整数，跳过该项")
+		res_pos = res_pos.split(',')
+		posX = int(res_pos[1])
+		posY = int(res_pos[2])
+		res = ResXy(int(posX), int(posY))
+		return res
+
 	def child_task(self):
 		while True:
-			# 去除获得铜币黑框
-			# self.click_image(
-			#     self.get_resource_path("images/huodetongbi.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
-			# 点击取消
-			# self.click_image(
-			#     self.get_resource_path("images/closeJJ.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
-			# 去掉副本奖励精英弹窗
-			# self.click_image(
-			#     self.get_resource_path("images/fubenjiangli.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
-			# 点击x
-			# self.click_image(
-			#     self.get_resource_path("images/close.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
 			# 关闭右边
 			self.click_image(
-				self.get_resource_path("images/closeright.png"),
+				self.get_resource_path("serveAssets/images/closeright.bmp"),
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.gameRightLocation,
 			)
 			# 点击拒绝
 			self.click_image(
-				self.get_resource_path("images/jujue.png"),
+				self.get_resource_path("serveAssets/images/jujue.bmp"),
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.gameBottomLocation,
 			)
 			# 点自动
 			if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜":
 				self.click_image(
-					self.get_resource_path("images/zidong.png"),
+					self.get_resource_path("serveAssets/images/zidong.bmp"),
 					self.confidenceNum,
-					(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
+					self.gameBottomLocation,
 				)
-			time.sleep(0.1)
+			time.sleep(0.8)
 
 	def addBloud(self):
-		self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-		self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-		self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-		self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
 
 	def get_mac_address(self):
 		# 使用 psutil 获取所有网络接口信息
@@ -355,143 +441,38 @@ class MyThread(threading.Thread):
 		return "MAC address not found"
 
 	def beginFun(self, check=False):
-		closeTalkXY = pyautogui.locateCenterOnScreen(
-			self.get_resource_path("images/closetalk.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				int(self.locationY + (self.locationHeight * 0.5)),
-				int(self.locationWidth * 0.5),
-				self.locationHeight,
-			),
+		closeTalkXY = self.find_pic(
+			self.get_resource_path("serveAssets/images/closeTalk.bmp"),
+			self.talkLocation,
+			1
 		)
 		with condition:
 			if self.stoped:
 				condition.wait()
 		if closeTalkXY:
-			pyautogui.click(closeTalkXY.x, closeTalkXY.y, clicks=4, interval=0.3)
+			self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
+			for i in range(4):
+				time.sleep(0.001)
+				self.dm.LeftClick()
 		self.click_image(
-			self.get_resource_path("images/hide.png"),
+			self.get_resource_path("serveAssets/images/yincang.bmp"),
 			self.confidenceNum,
-			(self.locationX, self.locationY, self.locationWidth, self.locationHeight),
+			self.gameLocation,
 		)
 		with condition:
 			if self.stoped:
 				condition.wait()
-		yseXY = pyautogui.locateCenterOnScreen(
-			self.get_resource_path("images/yes.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+		self.click_image(
+			self.get_resource_path("serveAssets/images/yes.bmp"),
+			self.confidenceNum,
+			self.gameLocation,
 		)
-		if yseXY:
-			pyautogui.click(yseXY.x, yseXY.y)
-		time.sleep(0.5)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		yseXY = pyautogui.locateCenterOnScreen(
-			self.get_resource_path("images/yes.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+		time.sleep(0.3)
+		self.click_image(
+			self.get_resource_path("serveAssets/images/yes.bmp"),
+			self.confidenceNum,
+			self.gameLocation,
 		)
-		if yseXY:
-			pyautogui.click(yseXY.x, yseXY.y)
-
-	# if not check:
-	# 	yseXY = pyautogui.locateCenterOnScreen(
-	# 		self.get_resource_path("images/yes.png"),
-	# 		confidence=self.confidenceNum,
-	# 		region=(
-	# 			self.locationX,
-	# 			self.locationY,
-	# 			self.locationWidth,
-	# 			self.locationHeight,
-	# 		),
-	# 	)
-	# 	if yseXY:
-	# 		pyautogui.click(yseXY.x, yseXY.y)
-	# 	time.sleep(0.5)
-	# 	with condition:
-	# 		if self.stoped:
-	# 			condition.wait()
-	# 	yseXY = pyautogui.locateCenterOnScreen(
-	# 		self.get_resource_path("images/yes.png"),
-	# 		confidence=self.confidenceNum,
-	# 		region=(
-	# 			self.locationX,
-	# 			self.locationY,
-	# 			self.locationWidth,
-	# 			self.locationHeight,
-	# 		),
-	# 	)
-	# 	if yseXY:
-	# 		pyautogui.click(yseXY.x, yseXY.y)
-	# else:
-	# 	showBloudLocation = pyautogui.locateCenterOnScreen(
-	# 		self.get_resource_path("images/xianshixueliang.png"),
-	# 		confidence=self.confidenceNum,
-	# 		region=(
-	# 			self.locationX,
-	# 			self.locationY,
-	# 			self.locationWidth,
-	# 			self.locationHeight,
-	# 		),
-	# 	)
-	# 	if showBloudLocation:
-	# 		noXY = pyautogui.locateCenterOnScreen(
-	# 			self.get_resource_path("images/noCheck.png"),
-	# 			confidence=self.confidenceNum,
-	# 			region=(
-	# 				showBloudLocation.left,
-	# 				showBloudLocation.top - 20,
-	# 				120,
-	# 				40,
-	# 			),
-	# 		)
-	# 		if noXY:
-	# 			pyautogui.click(noXY.x, noXY.y)
-	# 	else:
-	# 		noXY = pyautogui.locateCenterOnScreen(
-	# 			self.get_resource_path("images/noCheck.png"),
-	# 			confidence=self.confidenceNum,
-	# 			region=(
-	# 				showBloudLocation.left,
-	# 				showBloudLocation.top - 20,
-	# 				120,
-	# 				40,
-	# 			),
-	# 		)
-	# 		if noXY:
-	# 			pyautogui.click(noXY.x, noXY.y)
-	# 		time.sleep(0.5)
-	# 		noXY = pyautogui.locateCenterOnScreen(
-	# 			self.get_resource_path("images/noCheck.png"),
-	# 			confidence=self.confidenceNum,
-	# 			region=(
-	# 				showBloudLocation.left,
-	# 				showBloudLocation.top - 20,
-	# 				120,
-	# 				40,
-	# 			),
-	# 		)
-	# 		if noXY:
-	# 			pyautogui.click(noXY.x, noXY.y)
-
-	# self.click_image(
-	# 	self.get_resource_path("images/yes.png"),
-	# 	self.confidenceNum,
-	# 	(self.locationX, self.locationY, self.locationWidth, self.locationHeight),
-	# )
 
 	def show_error_message(self, message):
 		app = wx.App()
@@ -506,137 +487,61 @@ class MyThread(threading.Thread):
 			return os.path.join(sys._MEIPASS, relative_path)
 		return os.path.join(os.path.abspath("."), relative_path)
 
-	# 战斗结束去除黑色弹框
-	def clearBox(self, current):
-		while True:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if pyautogui.locateOnScreen(
-					current,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-				break
-
 	# 退出当前副本
 	def outScript(self, current):
-		while True:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if pyautogui.locateOnScreen(
-					current,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-				break
-		while True:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if pyautogui.locateOnScreen(
-					self.get_resource_path("images/xiulian.png"),
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-				break
-		locationOut = pyautogui.locateCenterOnScreen(
-			self.get_resource_path("images/xiulian.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
-		)
+		self.waitFor(current, self.dituLocation)
 		with condition:
 			if self.stoped:
 				condition.wait()
-		pyautogui.click(int(locationOut.x - 20), int(locationOut.y - 40))
+		time.sleep(0.3)
+		outX = self.locationWidth * 0.61
+		outY = self.locationHeight * 0.077
+		self.dm.MoveTo(int(outX), int(outY))
+		time.sleep(0.001)
+		self.dm.LeftClick()
 		locationQueding = self.waitFor(
-			self.get_resource_path("images/queding.png"),
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+			self.get_resource_path("serveAssets/images/outFb.bmp"),
+			self.gameLocation,
 			3,
 		)
 		if locationQueding:
-			pyautogui.click(locationQueding.x, locationQueding.y)
-			huodetongbiLocation = self.waitFor(self.get_resource_path("images/huodetongbi.png"), (
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			), 1)
+			self.dm.MoveTo(locationQueding.x, locationQueding.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			huodetongbiLocation = self.waitFor('获得铜币', self.gameLeftLocation, 1)
 			if huodetongbiLocation:
-				pyautogui.click(huodetongbiLocation.x, huodetongbiLocation.y)
-			else:
-				return
+				self.dm.MoveTo(huodetongbiLocation.x, huodetongbiLocation.y)
+				time.sleep(0.001)
+				self.dm.LeftClick()
 		else:
 			return
 
 	# 飞整点等到打完
 	def feiZhengDian(self, fei_image, base_image, scroll_deg):
 		findSmallFeiTime = time.time()
-		while not pyautogui.locateOnScreen(
+		jindutiaoLocation = self.waitFor(
+			self.get_resource_path("serveAssets/images/downTalk.bmp"),
+			self.talkLocation,
+		)
+		while not self.find_str(
 				fei_image,
-				confidence=self.confidenceNum,
-				region=(
-						self.locationX,
-						int(self.locationY + (self.locationHeight * 0.5)),
-						int(self.locationWidth * 0.5),
-						self.locationHeight,
-				),
+				self.talkLocation,
+				1
 		):
 			if time.time() - findSmallFeiTime > 15:
 				return
 			# 去除获得铜币黑框
 			self.click_image(
-				self.get_resource_path("images/huodetongbi.png"),
+				'获得铜币',
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.gameBottomLocation,
 			)
 			with condition:
 				if self.stoped:
 					condition.wait()
-			jindutiaoLocation = pyautogui.locateCenterOnScreen(
-				self.get_resource_path("images/downTalk.png"),
-				confidence=self.confidenceNum,
-				region=(
-					self.locationX,
-					int(self.locationY + (self.locationHeight * 0.5)),
-					int(self.locationWidth * 0.5),
-					self.locationHeight,
-				),
-			)
 			if jindutiaoLocation:
-				pyautogui.moveTo(jindutiaoLocation.x, jindutiaoLocation.y)
-				pyautogui.scroll(scroll_deg)
+				self.dm.MoveTo(jindutiaoLocation.x, jindutiaoLocation.y)
+				self.dm.WheelUp()
 		findShengXiaoTime = time.time()
 		while True:
 			with condition:
@@ -644,72 +549,44 @@ class MyThread(threading.Thread):
 					condition.wait()
 			if time.time() - findShengXiaoTime > 5:
 				return
-			self.shengxiaoLocation = pyautogui.locateOnScreen(
+			self.shengxiaoLocation = self.fing_fei_in_image_or_str(
 				fei_image,
-				confidence=self.confidenceNum,
-				region=(
-					self.locationX,
-					int(self.locationY + (self.locationHeight * 0.5)),
-					int(self.locationWidth * 0.5),
-					self.locationHeight,
-				),
+				self.talkLocation,
+				(87, 6, 210, 50),
+				self.get_resource_path("serveAssets/images/fei.bmp")
 			)
-			if self.shengxiaoLocation is not None:
+			if self.shengxiaoLocation:
 				break
 		feiTime = time.time()
-		while not pyautogui.locateOnScreen(
+		while not self.find_str(
 				base_image,
-				confidence=self.confidenceNum,
-				region=(
-						self.locationRightTopX,
-						self.locationRightTopY,
-						self.locationRightTopWidth,
-						self.locationRightTopHeight,
-				),
+				self.dituLocation,
+				2
 		):
 			if time.time() - feiTime > 6:
 				return
 			with condition:
 				if self.stoped:
 					condition.wait()
-			feiLocation = self.waitFor(
-				self.get_resource_path("images/fei.png"),
-				(
-					self.shengxiaoLocation.left - 50,
-					self.shengxiaoLocation.top,
-					self.shengxiaoLocation.left + 150,
-					self.shengxiaoLocation.top + 45,
-				),
-				2,
-			)
-			if feiLocation:
-				pyautogui.click(feiLocation.x, feiLocation.y)
-				pyautogui.moveTo(feiLocation.x - 200, feiLocation.y - 200)
+			if self.shengxiaoLocation:
+				self.dm.MoveTo(self.shengxiaoLocation.x, self.shengxiaoLocation.y)
+				time.sleep(0.001)
+				self.dm.LeftClick()
 				time.sleep(1.3)
 			else:
 				return
 		# 去除获得铜币黑框
 		self.click_image(
-			self.get_resource_path("images/huodetongbi.png"),
+			'获得铜币',
 			self.confidenceNum,
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+			self.gameBottomLocation,
 		)
 		time.sleep(0.2)
 		# 有人在打
 		hasZhengDian = self.click_image(
-			self.get_resource_path("images/dajiuda.png"),
+			'打就打',
 			self.confidenceNum,
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+			self.gameBottomLocation,
 		)
 		if not hasZhengDian:
 			return
@@ -722,98 +599,60 @@ class MyThread(threading.Thread):
 			if time.time() - queryTime > 5:
 				zhengdianHas = False
 				break
-			if pyautogui.locateOnScreen(
-					self.get_resource_path("images/zdzd.png"),
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
+			if self.find_pic(
+					self.get_resource_path("serveAssets/images/zdzd.bmp"),
+					self.gameBottomLocation, 0
 			):
 				zhengdianHas = True
 				break
-			yourendaLocation = pyautogui.locateCenterOnScreen(
-				self.get_resource_path("images/yourenda1.png"),
-				confidence=self.confidenceNum,
-				region=(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+			yourendaLocation = self.find_str(
+				'点击',
+				self.gameBottomLocation, 0
 			)
 			if yourendaLocation:
-				pyautogui.click(yourendaLocation.x, yourendaLocation.y)
+				self.dm.MoveTo(yourendaLocation.x, yourendaLocation.y)
+				time.sleep(0.001)
+				self.dm.LeftClick()
 				zhengdianHas = False
 				break
 		if not zhengdianHas:
 			return
 		self.waitFor(
-			self.get_resource_path("images/zdjs.png"),
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+			self.get_resource_path("serveAssets/images/zdjs.bmp"),
+			self.gameBottomLocation,
 		)
 
 	# 清包
 	def clearBag(self):
-		bagPos = self.waitFor(self.get_resource_path("images/beibao.png"), self.gameLocation)
-		if bagPos:
-			pyautogui.click(bagPos.x, bagPos.y)
-		chushou = self.waitFor(self.get_resource_path("images/chushou.png"), self.gameLocation)
+		self.dm.KeyPressChar('e')
+		# bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation)
+		# if bagPos:
+		# 	self.dm.MoveTo(bagPos.x, bagPos.y)
+		# 	time.sleep(0.001)
+		# 	self.dm.LeftClick()
+		# self.get_resource_path("serveAssets/images/yijianchushou.bmp")
+		chushou = self.waitFor('一键出售', self.gameBottomLocation)
 		if chushou:
-			pyautogui.click(chushou.x, chushou.y)
+			self.dm.MoveTo(chushou.x, chushou.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		time.sleep(0.5)
-		zise = self.waitFor(self.get_resource_path("images/zisezhuangbei.png"), self.gameLocation)
+		zise = self.waitFor('紫色', self.gameBottomLocation)
 		if zise:
-			pyautogui.click(zise.x, zise.y)
-		# zise = self.waitFor(self.get_resource_path("images/zisezhuangbei.png"), self.gameLocation)
-		# if zise:
-		# 	pyautogui.click(zise.x, zise.y)
+			self.dm.MoveTo(zise.x, zise.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		time.sleep(0.5)
-		quedingchushou = self.waitFor(self.get_resource_path("images/quedingchushou.png"), self.gameLocation)
+		quedingchushou = self.waitFor(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation)
 		if quedingchushou:
-			pyautogui.click(quedingchushou.x, quedingchushou.y)
+			self.dm.MoveTo(quedingchushou.x, quedingchushou.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		time.sleep(0.5)
-		while pyautogui.locateOnScreen(self.get_resource_path("images/closebeibao.png"), confidence=self.confidenceNum, region=self.gameLocation):
-			self.click_image(self.get_resource_path("images/closebeibao.png"), self.confidenceNum, self.gameLocation)
+		self.waitFor(self.get_resource_path("serveAssets/images/closeBag.bmp"), self.gameLocation)
+		while self.find_pic(self.get_resource_path("serveAssets/images/closeBag.bmp"), self.gameLocation, 1):
+			self.click_image(self.get_resource_path("serveAssets/images/closeBag.bmp"), self.confidenceNum, self.gameLocation)
 			time.sleep(0.8)
-
-	# # 在屏幕找整点
-	# def findZd_and_click(self, image_path_1, image_path_2, image_path_3):
-	# 	# 找到屏幕上所有匹配第一张图片的位置
-	# 	matches_1 = list(pyautogui.locateAllOnScreen(image_path_1, confidence=self.confidenceNum, region=(self.locationRightTopX, self.locationRightTopY, self.locationRightTopWidth, self.locationRightTopHeight)))
-	# 	if not matches_1:
-	# 		print("没有找到第一张图片。")
-	# 		return
-	# 	for match_1 in matches_1:
-	# 		# 获取第一张图片位置的中心点坐标
-	# 		x_1, y_1 = pyautogui.center(match_1)
-	# 		# 移动鼠标到第一张图片位置
-	# 		pyautogui.moveTo(x_1, y_1)
-	# 		# 等待鼠标移动到该位置
-	# 		time.sleep(0.5)
-	# 		# 在该位置查找第二张图片
-	# 		match_2 = pyautogui.locateOnScreen(image_path_2)
-	#
-	# 		if match_2:
-	# 			x_2, y_2 = pyautogui.center(match_2)
-	# 			pyautogui.click(x_2, y_2)
-	# 			time.sleep(0.5)
-	#
-	# 		# 查找第三张图片
-	# 		match_3 = pyautogui.locateOnScreen(image_path_3)
-	#
-	# 		if match_3:
-	# 			x_3, y_3 = pyautogui.center(match_3)
-	# 			return x_3, y_3
-	#
-	# 	return None
 
 	# 整点
 	def zhengDian(
@@ -825,38 +664,30 @@ class MyThread(threading.Thread):
 				condition.wait()
 		time.sleep(1.5)
 		openTalkXY = self.waitFor(
-			self.get_resource_path("images/opentalk.png"),
-			(
-				self.locationX,
-				int(self.locationY + (self.locationHeight * 0.5)),
-				int(self.locationWidth * 0.5),
-				self.locationHeight,
-			),
+			self.get_resource_path("serveAssets/images/openTalk.bmp"),
+			self.talkLocation
 		)
 		if openTalkXY:
-			pyautogui.click(openTalkXY.x, openTalkXY.y, clicks=4, interval=0.2)
+			self.dm.MoveTo(openTalkXY.x, openTalkXY.y)
+			for i in range(4):
+				time.sleep(0.2)
+				self.dm.LeftClick()
 		bangpaiTalkXY = self.waitFor(
-			self.get_resource_path("images/bangpaitalk.png"),
-			(
-				self.locationX,
-				int(self.locationY + (self.locationHeight * 0.5)),
-				int(self.locationWidth * 0.5),
-				self.locationHeight,
-			),
+			'帮派',
+			self.talkLocation,
 		)
 		if bangpaiTalkXY:
-			pyautogui.click(bangpaiTalkXY.x, bangpaiTalkXY.y)
+			self.dm.MoveTo(bangpaiTalkXY.x, bangpaiTalkXY.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		huodongTalkXY = self.waitFor(
-			self.get_resource_path("images/huodongtalk.png"),
-			(
-				self.locationX,
-				int(self.locationY + (self.locationHeight * 0.5)),
-				int(self.locationWidth * 0.5),
-				self.locationHeight,
-			),
+			'活动',
+			self.talkLocation,
 		)
 		if huodongTalkXY:
-			pyautogui.click(huodongTalkXY.x, huodongTalkXY.y)
+			self.dm.MoveTo(huodongTalkXY.x, huodongTalkXY.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		time.sleep(2)
 		self.clearBag()
 		time.sleep(2)
@@ -872,91 +703,86 @@ class MyThread(threading.Thread):
 			time.sleep(1)  # 每秒钟检查一次
 		# 飞牛
 		self.feiZhengDian(
-			self.get_resource_path("images/niushengxiao1.png"),
-			self.get_resource_path("images/mohunshan.png"),
+			'牛',
+			'魔魂山',
 			350,
 		)
 		# 飞老虎
 		self.feiZhengDian(
-			self.get_resource_path("images/hushengxiao1.png"),
-			self.get_resource_path("images/jiulizujitan.png"),
+			'虎',
+			'九黎族祭坛',
 			350,
 		)
 		# 飞兔子
 		self.feiZhengDian(
-			self.get_resource_path("images/tushengxiao1.png"),
-			self.get_resource_path("images/xuzhou.png"),
+			'兔',
+			'徐州',
 			200,
 		)
 		# 飞牛
 		self.feiZhengDian(
-			self.get_resource_path("images/niushengxiao1.png"),
-			self.get_resource_path("images/mohunshan.png"),
+			'牛',
+			'魔魂山',
 			300,
 		)
 		# 飞老虎
 		self.feiZhengDian(
-			self.get_resource_path("images/hushengxiao1.png"),
-			self.get_resource_path("images/jiulizujitan.png"),
+			'虎',
+			'九黎族祭坛',
 			350,
 		)
 		# 飞兔子
 		self.feiZhengDian(
-			self.get_resource_path("images/tushengxiao1.png"),
-			self.get_resource_path("images/xuzhou.png"),
+			'兔',
+			'徐州',
 			200,
 		)
 		# 飞猴子
 		self.feiZhengDian(
-			self.get_resource_path("images/houshengxiao1.png"),
-			self.get_resource_path("images/youanmilin.png"),
+			'猴',
+			'幽暗密林',
 			100,
 		)
 		# 将进度条拖动到最底下
 		dragBox = self.waitFor(
-			self.get_resource_path("images/dragBox.png"),
-			(
-				self.locationX,
-				int(self.locationY + (self.locationHeight * 0.5)),
-				int(self.locationWidth * 0.5),
-				self.locationHeight,
-			),
+			self.get_resource_path("serveAssets/images/dragBox.bmp"),
+			self.talkLocation,
 		)
 		if dragBox:
-			pyautogui.moveTo(dragBox.x, dragBox.y)
-			pyautogui.mouseDown()
-			pyautogui.dragRel(0, 150, duration=0.5)
-			time.sleep(0.5)
-			pyautogui.mouseUp()
+			self.dm.MoveTo(dragBox.x, dragBox.y)
+			time.sleep(0.001)
+			self.dm.LeftDown()
+			time.sleep(0.001)
+			self.dm.MoveTo(dragBox.x, int(dragBox.y + 150))
+			time.sleep(0.001)
+			self.dm.LeftUp()
 			# 飞羊
 			self.feiZhengDian(
-				self.get_resource_path("images/yangshengxiao1.png"),
-				self.get_resource_path("images/moguxi.png"),
+				'羊',
+				'魔谷西',
 				300,
 			)
 			# 飞猴子
 			self.feiZhengDian(
-				self.get_resource_path("images/houshengxiao1.png"),
-				self.get_resource_path("images/youanmilin.png"),
+				'猴',
+				'幽暗密林',
 				350,
 			)
 			# 飞羊
 			self.feiZhengDian(
-				self.get_resource_path("images/yangshengxiao1.png"),
-				self.get_resource_path("images/moguxi.png"),
+				'羊',
+				'魔谷西',
 				350,
 			)
 		closeTalkXY = self.waitFor(
-			self.get_resource_path("images/closetalk.png"),
-			(
-				self.locationX,
-				int(self.locationY + (self.locationHeight * 0.5)),
-				int(self.locationWidth * 0.5),
-				self.locationHeight,
-			),
+			self.get_resource_path("serveAssets/images/closetalk.bmp"),
+			self.talkLocation,
 		)
 		if closeTalkXY:
-			pyautogui.click(closeTalkXY.x, closeTalkXY.y, clicks=4, interval=0.2)
+			self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
+			for i in range(4):
+				time.sleep(0.2)
+				self.dm.LeftClick()
 		if self.scriptName == "官渡":
 			self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 			self.guanduWhile()
@@ -987,103 +813,48 @@ class MyThread(threading.Thread):
 	# 飞副本
 	def feiFb(self, image_path, isJy):
 		# 打开副本
-		tuLocation = self.waitFor(
-			self.get_resource_path("images/xiulian.png"),
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
-		)
-		if tuLocation:
-			pyautogui.click(int(tuLocation.x + 24), int(tuLocation.y - 34))
-		time.sleep(0.8)
+		time.sleep(0.3)
+		outX = self.locationWidth * 0.673
+		outY = self.locationHeight * 0.077
+		self.dm.MoveTo(int(outX), int(outY))
+		time.sleep(0.001)
+		self.dm.LeftClick()
+		self.waitForTwo('精英', '精英1', self.gameLocation)
 		if isJy:
 			self.click_image(
-				self.get_resource_path("images/activejy.png"),
+				'精英',
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.gameLocation,
 			)
 			self.click_image(
-				self.get_resource_path("images/unActivejy.png"),
+				'精英1',
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.gameLocation,
 			)
 			findPerTime = time.time()
 			while True:
-				with condition:
-					if self.stoped:
-						condition.wait()
-				if time.time() - findPerTime > 10:
-					return False
-				imagePathLocation = pyautogui.locateOnScreen(
-					image_path,
-					confidence=self.confidenceNum,
-					region=(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
-				)
-				if imagePathLocation:
+				fei_pos = self.fing_fei_in_image_or_str(image_path, self.gameLocation, 5, self.get_resource_path("serveAssets/images/fubenfei.bmp"))
+				print(fei_pos, 'fei_pos')
+				if fei_pos:
 					break
-			feiLocation = self.waitFor(
-				self.get_resource_path("images/fubenfei.png"),
-				(
-					imagePathLocation.left,
-					imagePathLocation.top,
-					imagePathLocation.width,
-					imagePathLocation.height,
-				),
-			)
-			if feiLocation:
-				pyautogui.click(feiLocation.x, feiLocation.y)
+			if fei_pos:
+				self.dm.MoveTo(fei_pos.x, fei_pos.y)
+				time.sleep(0.001)
+				self.dm.LeftClick()
 		else:
 			self.click_image(
-				self.get_resource_path("images/activeFb.png"),
+				'普通',
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.gameLocation,
 			)
 			self.click_image(
-				self.get_resource_path("images/unActiveFb.png"),
+				'普通1',
 				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
+				self.gameLocation,
 			)
-			while not pyautogui.locateOnScreen(
-					image_path,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-
+			while not self.find_str(image_path, self.gameLocation, 0):
 				downTalk = self.waitFor(
-					self.get_resource_path("images/downFuben.png"),
+					self.get_resource_path("serveAssets/images/downFb.bmp"),
 					(
 						self.locationX,
 						self.locationY,
@@ -1092,130 +863,99 @@ class MyThread(threading.Thread):
 					),
 				)
 				if downTalk:
-					pyautogui.click(downTalk.x, downTalk.y, clicks=10)
+					self.dm.MoveTo(downTalk.x, downTalk.y)
+					for i in range(10):
+						time.sleep(0.001)
+						self.dm.LeftClick()
 					time.sleep(1)
 			findPerTime = time.time()
 			while True:
-				with condition:
-					if self.stoped:
-						condition.wait()
-				if time.time() - findPerTime > 15:
-					return False
-				imagePathLocation = pyautogui.locateOnScreen(
-					image_path,
-					confidence=self.confidenceNum,
-					region=(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
-				)
-				if imagePathLocation:
+				fei_pos = self.fing_fei_in_image_or_str(image_path, self.gameLocation, 5, self.get_resource_path("serveAssets/images/fubenfei.bmp"))
+				if fei_pos:
 					break
-			feiLocation = self.waitFor(
-				self.get_resource_path("images/fubenfei.png"),
-				(
-					imagePathLocation.left,
-					imagePathLocation.top,
-					imagePathLocation.width,
-					imagePathLocation.height,
-				),
-			)
-			if feiLocation:
-				pyautogui.click(feiLocation.x, feiLocation.y)
+			if fei_pos:
+				self.dm.MoveTo(fei_pos.x, fei_pos.y)
+				time.sleep(0.001)
+				self.dm.LeftClick()
 		return True
 
 	# 找图并且点击
-	def click_image(self, image_path, image_confidence, image_region):
-		image_locations = pyautogui.locateCenterOnScreen(
-			image_path, confidence=image_confidence, region=image_region
-		)
+	def click_image(self, image_path, image_confidence, image_region, find_dir=0):
+		image_locations = self.find_pic_or_str(image_path, image_region, find_dir)
 		if image_locations:
 			with condition:
 				if self.stoped:
 					condition.wait()
-			pyautogui.click(image_locations.x, image_locations.y)
-			pyautogui.moveTo(image_locations.x + 200, image_locations.y + 200)
+			self.dm.MoveTo(image_locations.x, image_locations.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 			return True
 		else:
 			return False
 
-	# 找出一样的图，点击第N个图
-	def click_nth_image(self, image_path, image_region, n):
-		images = list(
-			pyautogui.locateAllOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
-			)
-		)
-		if len(images) >= n:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			target_location = images[n - 1]
-			target_x = target_location.left + target_location.width // 2
-			target_y = target_location.top + target_location.height // 2
-			pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
-			return True
+	# 找一样的字，点击最左边的图
+	def click_image_with_min_x(self, image_path, image_region, image_path2, find_dir=0):
+		types = 'serveAssets' in image_path
+		target = None
+		if not types:
+			target = self.find_str(image_path, image_region, find_dir)
+			if target:
+				target.x = target.x + 25
+				target.y = target.y + 5
 		else:
+			target = self.find_pic(image_path, image_region, find_dir)
+		if not target:
 			return False
+		yjian = 90 if not types else 20
+		if image_path2 == self.zdzdPath:
+			self.dm.MoveTo(target.x, int(target.y - yjian))
+			time.sleep(0.001)
+			self.dm.LeftDoubleClick()
+			self.dm.MoveTo(target.x + 200, target.y + 200)
+			time.sleep(1)
+		else:
+			self.dm.MoveTo(target.x, target.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			self.dm.MoveTo(target.x + 200, target.y + 200)
+			time.sleep(0.3)
+		self.clickBTime = time.time()
+		self.clickBX = target.x
+		self.clickBy = target.y
+		return True
 
-	# 找一样的图，点击最左边的图
-	def click_image_with_min_x(self, image_path, image_region, image_path2):
-		image_locations = list(
-			pyautogui.locateAllOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
-			)
-		)
-		if image_locations:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			min_x_location = min(image_locations, key=lambda loc: loc.left)
-			target_x = min_x_location.left + min_x_location.width // 2
-			target_y = min_x_location.top + min_x_location.height // 2
-			if image_path2 == self.zdzdPath:
-				pyautogui.click(target_x, int(target_y - 90), clicks=3, interval=0.008)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
-				time.sleep(1)
-			else:
-				pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
-			self.clickBTime = time.time()
-			self.clickBX = target_x
-			self.clickBy = target_y
-			pyautogui.moveTo(target_x + 200, target_y + 200)
-			return True
+	def click_image_with_min_x1(self, image_path, image_region, image_path2, find_dir=0):
+		types = 'serveAssets' in image_path
+		target = None
+		if not types:
+			target = self.find_str(image_path, image_region, find_dir)
+			if target:
+				target.x = target.x + 25
+				target.y = target.y + 5
 		else:
+			target = self.find_pic(image_path, image_region, find_dir)
+			if target:
+				self.dm.MoveTo(target.x, target.y)
+		if not target:
 			return False
-
-	def click_image_with_min_x1(self, image_path, image_region, image_path2):
-		image_locations = list(
-			pyautogui.locateAllOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
-			)
-		)
-		if image_locations:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			min_x_location = min(image_locations, key=lambda loc: loc.left)
-			target_x = min_x_location.left + min_x_location.width // 2
-			target_y = min_x_location.top + min_x_location.height // 2
-			if image_path2 == self.zdzdPath:
-				pyautogui.click(target_x, target_y, clicks=3, interval=0.008)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
-				time.sleep(1)
-			else:
-				pyautogui.click(target_x, target_y, clicks=1, interval=0.01)
-				pyautogui.moveTo(target_x + 200, target_y + 200)
-			self.clickBTime = time.time()
-			self.clickBX = target_x
-			self.clickBy = target_y
-			pyautogui.moveTo(target_x + 200, target_y + 200)
-			return True
+		target_x = target.x
+		target_y = target.y
+		if image_path2 == self.zdzdPath:
+			self.dm.MoveTo(target.x, target.y)
+			time.sleep(0.001)
+			self.dm.LeftDoubleClick()
+			self.dm.MoveTo(target.x + 200, target.y + 200)
+			time.sleep(1)
 		else:
-			return False
+			self.dm.MoveTo(target.x, target.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			self.dm.MoveTo(target.x + 200, target.y + 200)
+			time.sleep(0.3)
+		self.clickBTime = time.time()
+		self.clickBX = target.x
+		self.clickBy = target.y
+		return True
 
 	# 等待图片出现
 	def waitFor(self, image_path, image_region, timeout=None):
@@ -1224,36 +964,31 @@ class MyThread(threading.Thread):
 			with condition:
 				if self.stoped:
 					condition.wait()
-			xy = pyautogui.locateCenterOnScreen(
-				image_path, confidence=self.confidenceNum, region=image_region
-			)
-			if xy:
+			target = self.find_pic_or_str(image_path, image_region, 0)
+			if target:
 				break
 			if timeout is not None:
 				if time.time() - start_time > timeout:
 					return False
 			time.sleep(0.1)
-			if self.confidenceNum > 0.8:
-				self.confidenceNum -= 0.1
-		self.confidenceNum = 0.9
-		return xy
+		return target
 
 	# 等待两张图片出现
-	def waitForTwo(self, image1_path, image2_path, image_region, timeout=None):
+	def waitForTwo(self, image1_path, image2_path, image_region, timeout=None, find_dir=1):
 		start_time = time.time()
 		res = ""
 		while True:
 			with condition:
 				if self.stoped:
 					condition.wait()
-			xy = pyautogui.locateCenterOnScreen(
-				image1_path, confidence=self.confidenceNum, region=image_region
+			xy = self.find_pic_or_str(
+				image1_path, image_region, find_dir
 			)
 			if xy:
 				res = "first"
 				return res
-			xy2 = pyautogui.locateCenterOnScreen(
-				image2_path, confidence=self.confidenceNum, region=image_region
+			xy2 = self.find_pic_or_str(
+				image2_path, image_region, find_dir
 			)
 			if xy2:
 				res = "second"
@@ -1270,21 +1005,14 @@ class MyThread(threading.Thread):
 	# 等待图片1出现，一直点击图2
 	def waitForAAndClickB1(
 			self,
-			image_pathA,
+			find_text,
 			image_pathB,
-			image_regionA,
+			find_region,
 			image_regionB=None
 	):
 		if not image_regionB:
-			image_regionB = (
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			)
-		while not pyautogui.locateOnScreen(
-				image_pathA, confidence=self.confidenceNum, region=image_regionA
-		):
+			image_regionB = self.gameLocation
+		while not self.find_str(find_text, find_region, 0):
 			with condition:
 				if self.stoped:
 					condition.wait()
@@ -1355,72 +1083,53 @@ class MyThread(threading.Thread):
 		# 	),
 		# )
 		if key2:
-			keyboard.press(key2)
+			self.dm.KeyDownChar(key2)
 			time.sleep(key2DownTime)
-			keyboard.release(key2)
-		while not pyautogui.locateOnScreen(
-				image_path2,
-				confidence=self.confidenceNum,
-				region=(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-				),
-		):
+			self.dm.KeyUpChar(key2)
+		find_dir = 1 if key1 == 'right' else 2
+		while not self.find_pic(image_path2, self.gameBottomLocation, find_dir):
 			with condition:
 				if self.stoped:
 					condition.wait()
 			if key1 and not key1IsUp:
-				keyboard.press(key1)
+				self.dm.KeyDownChar(key1)
 				key1IsUp = True
 			# 去除获得铜币黑框
-			self.click_image(
-				self.get_resource_path("images/huodetongbi.png"),
-				self.confidenceNum,
-				(
-					self.locationX,
-					self.locationY,
-					self.locationWidth,
-					self.locationHeight,
-				),
-			)
-			image_pathisOk = pyautogui.locateOnScreen(image_path, confidence=self.confidenceNum, region=self.gameLocation)
+			# self.click_image(
+			# 	self.get_resource_path("images/huodetongbi.png"),
+			# 	self.confidenceNum,
+			# 	self.gameBottomLocation,
+			# )
+			image_pathisOk = self.find_pic(image_path, self.gameBottomLocation, find_dir)
 			if image_pathisOk:
 				if key1:
-					keyboard.release(key1)
+					self.dm.KeyUpChar(key1)
 					key1IsUp = True
 				self.click_image_with_min_x1(
 					image_path,
-					(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
+					self.gameBottomLocation,
 					image_path2,
+					0
 				)
-			image_path1isOk = pyautogui.locateOnScreen(image_path1, confidence=self.confidenceNum, region=self.gameLocation)
+			image_path1isOk = self.find_pic(image_path1, self.gameBottomLocation, find_dir)
 			if image_path1isOk:
 				if key1:
-					keyboard.release(key1)
+					self.dm.KeyUpChar(key1)
 					key1IsUp = True
 				self.click_image_with_min_x1(
 					image_path1,
-					(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
+					self.gameBottomLocation,
 					image_path2,
+					0
 				)
 		# 点过b之后如果过了4秒还没有找到C，重新点一次b的坐标
 		if self.clickBTime > 0 and time.time() - self.clickBTime > 4:
-			pyautogui.click(self.clickBX, self.clickBy)
+			self.dm.MoveTo(self.clickBX, self.clickBy)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 			self.clickBTime = time.time()
 		if key1:
-			keyboard.release(key1)
+			self.dm.KeyUpChar(key1)
 
 	def get_random_number(self):
 		numbers = [-2, -1, 0, 1, 2]
@@ -1428,17 +1137,17 @@ class MyThread(threading.Thread):
 
 	# 点小地图
 	def clickDitu(self, x, y, find_image, find_region, break_image):
-		while not pyautogui.locateOnScreen(break_image, confidence=self.confidenceNum, region=self.gameLocation):
-			pyautogui.click(int(x + self.get_random_number()), y)
+		while not self.find_pic(break_image, self.gameBottomLocation, 0):
+			self.dm.LeftClick(int(x + self.get_random_number()), y)
 			time.sleep(0.1)
-			isFind = self.click_image_with_min_x1(find_image, find_region, break_image)
+			isFind = self.click_image_with_min_x1(find_image, find_region, break_image, 0)
 			if isFind:
 				time.sleep(0.7)
 			else:
 				time.sleep(0.3)
 
 	# 找图并且点击6
-	def findAndClickPic(self, A, B1, B2, C1, C2, D, E, E2=None, E2DownTime=0.6):
+	def findAndClickPic(self, A, B, B1, B2, C1, C2, D, E, E2=None, E2DownTime=0.6):
 		EIsDown = False
 		E2IsDown = False
 		self.BisClick = False
@@ -1457,40 +1166,27 @@ class MyThread(threading.Thread):
 				self.show_error_message("未找到开始地点")
 				return
 			if time.localtime().tm_min == 58:
-				if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜" or self.scriptName == "黑风山寨" or self.scriptName == "战魂+红+整点":
+				if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜" or self.scriptName == "黑风山寨":
 					# 打整点
 					self.outScript(A)
 					self.zhengDian()
 					return
 			# # 去除获得铜币黑框
-			# self.click_image(
-			# 	self.get_resource_path("images/huodetongbi.png"),
-			# 	self.confidenceNum,
-			# 	(
-			# 		self.locationX,
-			# 		self.locationY,
-			# 		self.locationWidth,
-			# 		self.locationHeight,
-			# 	),
-			# )
+			self.click_image(
+				'获得铜币',
+				self.confidenceNum,
+				self.gameLeftLocation,
+			)
 			# 按下E2
 			if E2 and not E2IsDown:
-				keyboard.press(E2)
+				self.dm.KeyDownChar(E2)
 				E2IsDown = True
 				time.sleep(E2DownTime)
-				keyboard.release(E2)
+				self.dm.KeyUpChar(E2)
 			# 开始找C的时间
 			startTime = time.time()
-			while not pyautogui.locateOnScreen(
-					C1,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
+			find_dir = 2 if E == 'left' else 1
+			while not self.find_pic_or_str(C1, C2, find_dir):
 				with condition:
 					if self.stoped:
 						condition.wait()
@@ -1511,89 +1207,70 @@ class MyThread(threading.Thread):
 						self.heifengWhile()
 						return
 				#   D找图片D点击
-				if D and not self.BisClick:
+				if D and self.clickBTime == 0:
 					with condition:
 						if self.stoped:
 							condition.wait()
-					self.click_image(D, self.confidenceNum, (
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					))
+					d_pos = D.split(',')
+					d_pos[0] = (1000 - int(float(d_pos[0]) * 1000)) / 1000 * self.locationWidth
+					d_pos[1] = (int(float(d_pos[1]) * 1000)) / 1000 * self.locationHeight
+					self.dm.MoveToEx(int(d_pos[0]), int(d_pos[1]), 3, 2)
+					time.sleep(0.001)
+					self.dm.LeftClick()
+					time.sleep(0.3)
+				if self.find_pic_or_str(C1, C2, find_dir):
+					break
 				while E != "" and not EIsDown:
 					with condition:
 						if self.stoped:
 							condition.wait()
-					keyboard.press(E)
-					B1Location = self.waitFor(
+					self.dm.KeyDownChar(E)
+					B1Location = self.waitForTwo(
+						B,
 						B1,
-						(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-						),
+						B2,
 					)
 					if B1Location:
 						EIsDown = True
-						keyboard.release(E)
-					isClick = self.click_image_with_min_x(
-						B1,
-						(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-						),
+						self.dm.KeyUpChar(E)
+					self.click_image_with_min_x(
+						B,
+						B2,
 						C1,
 					)
-					if pyautogui.locateOnScreen(
-							C1,
-							confidence=self.confidenceNum,
-							region=(
-									self.locationX,
-									self.locationY,
-									self.locationWidth,
-									self.locationHeight,
-							),
-					):
+					self.click_image_with_min_x(
+						B1,
+						B2,
+						C1,
+					)
+					if self.find_pic_or_str(C1, C2, find_dir):
 						EIsDown = True
 						time.sleep(0.1)
-						keyboard.release(E)
+						self.dm.KeyUpChar(E)
 						break
 				with condition:
 					if self.stoped:
 						condition.wait()
-				if pyautogui.locateOnScreen(
-						C1,
-						confidence=self.confidenceNum,
-						region=(
-								self.locationX,
-								self.locationY,
-								self.locationWidth,
-								self.locationHeight,
-						),
-				):
+				if self.find_pic_or_str(C1, C2, find_dir):
 					break
 				# 点击B
 				self.BisClick = self.click_image_with_min_x(
+					B,
+					B2,
+					C1,
+				)
+				self.BisClick = self.click_image_with_min_x(
 					B1,
-					(
-						self.locationX,
-						self.locationY,
-						self.locationWidth,
-						self.locationHeight,
-					),
+					B2,
 					C1,
 				)
 				# 点过b之后如果过了4秒还没有找到C，重新点一次b的坐标
 				if self.clickBTime > 0 and time.time() - self.clickBTime > 4:
-					pyautogui.click(self.clickBX, self.clickBy)
+					print('click')
+					self.dm.MoveTo(self.clickBX, self.clickBy)
+					time.sleep(0.001)
+					self.dm.LeftClick()
 					self.clickBTime = time.time()
-		# 	if self.confidenceNum > 0.8:
-		# 		self.confidenceNum -= 0.1
-		# self.confidenceNum = 0.9
 		except Exception as e:
 			self.show_error_message(f"发生错误: {e}")
 
@@ -1604,282 +1281,119 @@ class MyThread(threading.Thread):
 		with condition:
 			if self.stoped:
 				condition.wait()
-		isInGuanDu = self.waitFor(self.get_resource_path("images/guanDu1.png"), (
-			self.locationRightTopX,
-			self.locationRightTopY,
-			self.locationRightTopWidth,
-			self.locationRightTopHeight,
-		), 5)
+		isInGuanDu = self.waitFor('官渡', self.dituLocation, 5)
 		if not isInGuanDu:
-			self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
+			self.feiFb('副本曹操', True)
 		# 进入官渡
 		self.findAndClickPic(
-			self.get_resource_path("images/guanDu1.png"),
-			self.get_resource_path("images/caoCao.png"),
-			self.get_resource_path("images/caoCao2.png"),
-			self.get_resource_path("images/inguanDu.png"),
-			self.get_resource_path("images/inguanDu.png"),
-			self.get_resource_path("images/guanduD.png"),
-			"down",
+			'官渡',
+			self.get_resource_path("serveAssets/images/guandu/caocao.bmp"),
+			self.get_resource_path("serveAssets/images/guandu/caocao.bmp"),
+			self.gameBottomLocation,
+			'进入',
+			self.gameBottomLocation,
+			'0.038,0.134',
+			"",
 		)
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 进入第一层
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/dazhang.png"),
-			self.get_resource_path("images/inguanDu.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			), None,
+			'曹操大帐',
+			'进入',
+			self.dituLocation, self.gameLeftLocation,
 		)
-		self.waitFor(self.get_resource_path("images/caoyindazhang.png"), (
-			self.locationRightTopX,
-			self.locationRightTopY,
-			self.locationRightTopWidth,
-			self.locationRightTopHeight,
-		), 5)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/guanDu1.png"),
-		# 	self.get_resource_path("images/inguanDu.png"),
-		# 	self.get_resource_path("images/inguanDu.png"),
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	"",
-		# 	"",
-		# )
+		self.waitFor('曹操大帐', self.dituLocation, 5)
 		with condition:
 			if self.stoped:
 				condition.wait()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/chuansongmen.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			), (
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'曹袁战场',
+			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
+			self.dituLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	self.get_resource_path("images/dycrk2.png"),
-		# 	self.get_resource_path("images/dycrk2.png"),
-		# 	self.get_resource_path("images/caoyuanzhanchang.png"),
-		# 	self.get_resource_path("images/caoyuanzhanchang.png"),
-		# 	"",
-		# 	"",
-		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 第一个河北军
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		# 第二个河北军
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/hbj1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"right",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		# 第三个河北军
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/hbj1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"right",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		# 第四个河北军
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/hbj1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"right",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		# 第五个河北军
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/hbj1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"right",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		# 第6个河北军
-		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/hbj4.png"),
-			self.get_resource_path("images/hbj1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"right",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
+		hbjLocations = ['0.163,0.122', '0.141,0.122', '0.116,0.127', '0.085,0.118', '0.066,0.117', '0.044,0.12']
+		for i in range(6):
+			self.findAndClickPic(
+				'曹袁战场',
+				'河北军',
+				f"{self.get_resource_path('serveAssets/images/guandu/hbj2.bmp')}|{self.get_resource_path('serveAssets/images/guandu/hbj1.bmp')}",
+				self.gameLeftLocation,
+				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.gameLeftLocation,
+				hbjLocations[i],
+				"",
+			)
 		# 颜良
+		# 0.091,0.118
 		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/yanliang.png"),
-			self.get_resource_path("images/yanliang1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
+			'曹袁战场',
+			self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp'),
+			self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp'),
+			self.gameLeftLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameLeftLocation,
+			"0.097,0.118",
 			"",
-			"left",
 		)
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 文丑
 		self.findAndClickPic(
-			self.get_resource_path("images/caoyuanzhanchang.png"),
-			self.get_resource_path("images/wenchou.png"),
-			self.get_resource_path("images/wenchou1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
+			'曹袁战场',
+			'文丑',
+			f"{self.get_resource_path('serveAssets/images/guandu/wenchou1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/wenchou2.bmp')}",
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameLeftLocation,
 			"",
-			"right",
+			"",
 		)
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 去大帐
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/dazhang.png"),
-			self.get_resource_path("images/chuansongmenLeft.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			), (
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'曹操大帐',
+			self.get_resource_path("serveAssets/images/guandu/guandu1chuansongmen.bmp"),
+			self.dituLocation, self.dituLocation,
 		)
-		self.waitFor(self.get_resource_path("images/dazhang.png"), (
-			self.locationRightTopX,
-			self.locationRightTopY,
-			self.locationRightTopWidth,
-			self.locationRightTopHeight,
-		))
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/caoyuanzhanchang.png"),
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	self.get_resource_path("images/godazhang.png"),
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	"",
-		# 	"left",
-		# )
+		self.waitFor('曹操大帐', self.dituLocation)
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 找到曹操进入乌巢
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/gowuchao.png"),
-			self.get_resource_path("images/xiaolvren.png"),
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			), (
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'知道了',
+			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.gameLeftLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	self.get_resource_path("images/caochengxiang.png"),
-		# 	self.get_resource_path("images/caochengxiang1.png"),
-		# 	self.get_resource_path("images/gowuchao.png"),
-		# 	self.get_resource_path("images/gowuchao.png"),
-		# 	"",
-		# 	"down",
-		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/wuchao.png"),
-			self.get_resource_path("images/gowuchao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			), None,
+			'鸟巢粮仓',
+			'知道了',
+			self.dituLocation, self.gameLeftLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/caoyindazhang.png"),
-		# 	self.get_resource_path("images/gowuchao.png"),
-		# 	self.get_resource_path("images/gowuchao.png"),
-		# 	self.get_resource_path("images/wuchao.png"),
-		# 	self.get_resource_path("images/wuchao.png"),
-		# 	"",
-		# 	"",
-		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 进入魂殿打魂
-		# self.findAndClickPic(self.get_resource_path("images/wuchao.png"), self.get_resource_path("images/inhundian1.png"), self.get_resource_path("images/inhundian1.png"),self.get_resource_path("images/hundian.png"),self.get_resource_path("images/hundian.png"),'', 'left')
-		# with condition:
-		#   if self.stoped:
-		#     condition.wait()
+		# 0.161,0.106
 		self.findAndClickPic(
-			self.get_resource_path("images/wuchao.png"),
-			self.get_resource_path("images/wenchouzhihun.png"),
-			self.get_resource_path("images/wenchouzhihun1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
+			'鸟巢粮仓',
+			'文丑之魂',
+			'文丑之魂',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameLeftLocation,
 			"",
 			"left",
 		)
@@ -1888,39 +1402,21 @@ class MyThread(threading.Thread):
 				condition.wait()
 		# 魂殿进乌巢
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/wuchao.png"),
-			self.get_resource_path("images/chuansongmen.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			), (
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'鸟巢粮仓',
+			self.get_resource_path("serveAssets/images/guandu/hundianchuansongmen.bmp"),
+			self.dituLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/hundian.png"),
-		# 	self.get_resource_path("images/gowuchao2.png"),
-		# 	self.get_resource_path("images/gowuchao2.png"),
-		# 	self.get_resource_path("images/wuchao.png"),
-		# 	self.get_resource_path("images/wuchao.png"),
-		# 	"",
-		# 	"",
-		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 打淳
 		self.findAndClickPic(
-			self.get_resource_path("images/wuchao.png"),
-			self.get_resource_path("images/cyq.png"),
-			self.get_resource_path("images/cyq1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
+			'鸟巢粮仓',
+			'淳于琼',
+			f"{self.get_resource_path('serveAssets/images/guandu/cyq1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/cyq2.bmp')}",
+			self.gameLeftLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameLeftLocation,
 			"",
 			"",
 		)
@@ -1929,11 +1425,12 @@ class MyThread(threading.Thread):
 				condition.wait()
 		# 打袁绍
 		self.findAndClickPic(
-			self.get_resource_path("images/wuchao.png"),
-			self.get_resource_path("images/yuanshao.png"),
-			self.get_resource_path("images/yuanshao1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
+			'鸟巢粮仓',
+			'袁绍',
+			f"{self.get_resource_path('serveAssets/images/guandu/yuanshao1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yuanshao2.bmp')}",
+			self.gameLeftLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameLeftLocation,
 			"",
 			"",
 		)
@@ -1941,7 +1438,7 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		# 退出副本
-		self.outScript(self.get_resource_path("images/wuchao.png"))
+		self.outScript('鸟巢粮仓')
 
 	# 红脚本
 	def hongScript(self):
@@ -1998,6 +1495,7 @@ class MyThread(threading.Thread):
 		# 	"",
 		# )
 		# 第一个弓兵
+		# 0.121，0.125  0.064，0.125 0.036，0.12
 		self.findAndClickPic(
 			self.get_resource_path("images/hong/junyin.png"),
 			self.get_resource_path("images/hong/gongbin.png"),
@@ -2233,6 +1731,7 @@ class MyThread(threading.Thread):
 		return True
 
 	#  战魂脚本
+	# 0.098,0.113
 	def zhanhunScript(self):
 		print("开始战魂")
 		with condition:
@@ -2734,10 +2233,6 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		if self.zhanhunFloor == '21层':
-			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou20.png"))
-			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/liubei.png"),
@@ -3275,7 +2770,7 @@ class MyThread(threading.Thread):
 				self.get_resource_path("images/zdzd.png"),
 				self.get_resource_path("images/zdzd1.png"),
 				"",
-				"up",
+				"down",
 			)
 		self.findAndClickPic(
 			self.get_resource_path("images/liandan/liandanfang.png"),
@@ -4258,9 +3753,10 @@ class MyThread(threading.Thread):
 
 	# 一直执行官渡
 	def guanduWhile(self):
-		self.beginFun()
-		while True:
-			self.guanduScript()
+		dict_id = self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/guandu.txt"))  # 字库文件路径
+		# self.beginFun()
+		# while True:
+		self.guanduScript()
 
 	# 一直执行红
 	def hongWhile(self):
@@ -4326,6 +3822,7 @@ class MyThread(threading.Thread):
 			liandanHas = self.liandanScript()
 			if not liandanHas:
 				break
+		time.sleep(2)
 		# 飞五行
 		self.feiFb(self.get_resource_path("images/ditubanbuduolaoban.png"), True)
 		time.sleep(1)
@@ -4333,6 +3830,7 @@ class MyThread(threading.Thread):
 			hasWuxing = self.wuxingScript()
 			if not hasWuxing:
 				break
+		time.sleep(2)
 		# 飞溶洞
 		self.feiFb(self.get_resource_path("images/ditulongxiaotian.png"), False)
 		time.sleep(1)
@@ -4340,15 +3838,18 @@ class MyThread(threading.Thread):
 			hasRongdong = self.rongdongScript()
 			if not hasRongdong:
 				break
+		time.sleep(2)
 		# 飞80精英
 		self.feiFb(self.get_resource_path("images/dituzuocifenshen.png"), True)
 		time.sleep(1)
 		self.bamenScript()
+		time.sleep(2)
 		# 飞云游精英
 		self.feiFb(self.get_resource_path("images/dituyunyouxianren.png"), True)
 		time.sleep(1)
 		self.yunyouJyScript()
 		# 飞名将挑战赛
+		time.sleep(2)
 		self.feiFb(self.get_resource_path("images/dituzhanhun.png"), True)
 		time.sleep(1)
 		for i in range(8):
@@ -4361,6 +3862,7 @@ class MyThread(threading.Thread):
 		self.feiFb(self.get_resource_path("images/ditulieshuren.png"), True)
 		time.sleep(1)
 		self.laoshuJyScript()
+		time.sleep(2)
 		# 飞官渡精英
 		self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 		time.sleep(1)
@@ -4951,10 +4453,6 @@ class MyThread(threading.Thread):
 			"",
 			"",
 		)
-		if self.zhanhunFloor == '21层':
-			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou20.png"))
-			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
 			self.get_resource_path("images/zhanhun/liubei.png"),
@@ -5211,14 +4709,6 @@ class MyThread(threading.Thread):
 		self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou26.png"))
 		return True
 
-	def zhanhun49While(self):
-		self.beginFun()
-		for i in range(6):
-			hasCount = self.zhanhun49Script()
-			if not hasCount:
-				print('没次数了')
-				return
-
 	# 49天外天
 	def mingjiangtiaozhan49While(self):
 		self.beginFun()
@@ -5336,8 +4826,10 @@ class MyFrame(wx.Frame):
 		self.text_ctrl = wx.TextCtrl(
 			self.panel, pos=(10, 100), size=(225, 130), style=wx.TE_MULTILINE
 		)
+		self.button = wx.Button(self.panel, label="设置队友信息", pos=(155, 5), size=(80, 25))
+		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
 		# 创建第二个下拉框，初始状态下隐藏
-		self.choiceCeng = wx.ComboBox(self.panel, pos=(155, 5), size=(80, 30), choices=['20层', '21层', '22层', '23层', '24层', '25层', '26层'])
+		self.choiceCeng = wx.ComboBox(self.panel, pos=(155, 5), size=(80, 30), choices=['21层', '22层', '23层', '24层', '25层', '26层'])
 		self.choiceCeng.SetHint("战魂层数")
 		self.choiceCeng.Hide()
 		self.Bind(wx.EVT_COMBOBOX, self.choiceCengScript, self.choiceCeng)
@@ -5357,6 +4849,10 @@ class MyFrame(wx.Frame):
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
+		self.game_name = ""
+		self.teammate1_name = ""
+		self.teammate2_name = ""
+		self.selections = ""
 
 	def on_help_link_click(self, event):
 		# 定义弹窗的内容和图片路径
@@ -5389,6 +4885,14 @@ class MyFrame(wx.Frame):
 		if hasattr(sys, "_MEIPASS"):
 			return os.path.join(sys._MEIPASS, relative_path)
 		return os.path.join(os.path.abspath("."), relative_path)
+
+	def on_button_click(self, event):
+		dialog = MyDialog(self)
+		if dialog.ShowModal() == wx.ID_OK:
+			# 在对话框结束后，获取对话框中输入的数据
+			print(self.game_name)
+
+		dialog.Destroy()
 
 	def write(self, text):
 		self.text_ctrl.WriteText(text)
@@ -5496,6 +5000,57 @@ class MyFrame(wx.Frame):
 
 	def button_stop_click(self, event):
 		self.stop_script()
+
+
+class MyDialog(wx.Dialog):
+	def __init__(self, parent):
+		super().__init__(parent, title="输入信息", size=(300, 200))
+
+		panel = wx.Panel(self)
+
+		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 10))
+		self.team_leader_text.SetHint("游戏名称")
+		self.teammate1_text = wx.TextCtrl(panel, pos=(10, 40))
+		self.teammate1_text.SetHint("队友1名称")
+		self.teammate2_text = wx.TextCtrl(panel, pos=(10, 70))
+		self.teammate2_text.SetHint("队友2名称")
+		self.button = wx.Button(panel, label="确定", pos=(100, 120))
+		self.button.Disable()  # 初始化时禁用确定按钮
+		# self.button.SetBackgroundColour(wx.Colour(20, 180, 168))  # 设置为红色背景
+		# self.button.SetForegroundColour(
+		# 	wx.Colour(255, 255, 255)
+		# )  # 设置为白色文字
+		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
+
+		self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
+		self.teammate1_text.Bind(wx.EVT_TEXT, self.on_text_change)
+		self.teammate2_text.Bind(wx.EVT_TEXT, self.on_text_change)
+		choices = ["加血", "卖装备", "拆分强化石", "换大丹"]
+		self.checklist = wx.CheckListBox(panel, choices=choices, pos=(130, 10))
+
+	# self.checklist.Bind(wx.EVT_CHECKLISTBOX, self.on_checklistbox)
+
+	# def on_checklistbox(self, event):
+	# 	selections = [self.checklist.GetString(i) for i in range(self.checklist.GetCount()) if self.checklist.IsChecked(i)]
+	# 	print("选中的值为:", selections)
+
+	def on_text_change(self, event):
+		if self.team_leader_text.GetValue():
+			self.button.Enable()
+		else:
+			self.button.Disable()
+
+	def on_button_click(self, event):
+		# 获取文本框中的值并保存在父窗口(MyFrame)中
+		parent = self.GetParent()
+		selections = [self.checklist.GetString(i) for i in range(self.checklist.GetCount()) if self.checklist.IsChecked(i)]
+		parent.game_name = self.team_leader_text.GetValue()
+		parent.teammate1_name = self.teammate1_text.GetValue()
+		parent.teammate2_name = self.teammate2_text.GetValue()
+		parent.selections = selections
+
+		# 关闭对话框
+		self.EndModal(wx.ID_OK)
 
 
 class NumberValidator(wx.Validator):
