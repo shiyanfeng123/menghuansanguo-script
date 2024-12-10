@@ -38,7 +38,7 @@ class MyThread(threading.Thread):
 		# 三千梨树：08-8F-C3-75-B5-7A
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A"]
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"]
-		# self.userInfoMac = ["50-9A-4C-C9-FE-BA", "B0-25-AA-26-64-03"]
+		# self.userInfoMac = ["50-9A-4C-C9-FE-BA"]
 		regPath = self.get_resource_path('serveAssets/plugins/RegDll.dll')
 		dms = ctypes.windll.LoadLibrary(str(regPath))
 		dmPath = self.get_resource_path('serveAssets/plugins/dm.dll')
@@ -129,6 +129,7 @@ class MyThread(threading.Thread):
 		# self.game = app.window(title="11")
 		self.child_thread.start()
 		if self.scriptName == "官渡":
+			self.beginFun()
 			self.guanduWhile()
 		elif self.scriptName == "嗜血战场(精英)":
 			self.hongWhile()
@@ -267,7 +268,7 @@ class MyThread(threading.Thread):
 		self.gameRightLocation = (
 			int(self.locationX + int(self.locationWidth * 0.3)),
 			int(self.locationY + (self.locationHeight * 0.3)),
-			int(self.locationWidth * 0.7),
+			self.locationWidth,
 			self.locationHeight
 		)
 		self.gameBottomLocation = (
@@ -279,13 +280,13 @@ class MyThread(threading.Thread):
 		self.dituLeftLocation = (
 			self.locationRightTopX,
 			self.locationRightTopY,
-			int(self.locationRightTopWidth * 0.5),
+			int(self.locationRightTopWidth - (self.locationRightTopWidth * 0.1)),
 			self.locationRightTopHeight,
 		)
 		self.dituRightLocation = (
-			int(self.locationRightTopX + (self.locationRightTopWidth * 0.5)),
+			int(self.locationRightTopX + (self.locationRightTopWidth * 0.1)),
 			self.locationRightTopY,
-			int(self.locationRightTopWidth * 0.5),
+			int(self.locationRightTopWidth - (self.locationRightTopWidth * 0.1)),
 			self.locationRightTopHeight,
 		)
 		self.talkLocation = (
@@ -401,6 +402,8 @@ class MyThread(threading.Thread):
 
 	def child_task(self):
 		while True:
+			self.click_image(self.get_resource_path("serveAssets/images/guandu/dialog.bmp"), self.confidenceNum, self.gameBottomLocation)
+			self.click_image(self.get_resource_path("serveAssets/images/guandu/dialog1.bmp"), self.confidenceNum, self.gameBottomLocation)
 			# 关闭右边
 			self.click_image(
 				self.get_resource_path("serveAssets/images/closeright.bmp"),
@@ -420,7 +423,7 @@ class MyThread(threading.Thread):
 					self.confidenceNum,
 					self.gameBottomLocation,
 				)
-			time.sleep(0.8)
+			time.sleep(0.4)
 
 	def addBloud(self):
 		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
@@ -552,7 +555,7 @@ class MyThread(threading.Thread):
 			self.shengxiaoLocation = self.fing_fei_in_image_or_str(
 				fei_image,
 				self.talkLocation,
-				(87, 6, 210, 50),
+				50,
 				self.get_resource_path("serveAssets/images/fei.bmp")
 			)
 			if self.shengxiaoLocation:
@@ -813,7 +816,7 @@ class MyThread(threading.Thread):
 	# 飞副本
 	def feiFb(self, image_path, isJy):
 		# 打开副本
-		time.sleep(0.3)
+		time.sleep(1.5)
 		outX = self.locationWidth * 0.673
 		outY = self.locationHeight * 0.077
 		self.dm.MoveTo(int(outX), int(outY))
@@ -974,21 +977,23 @@ class MyThread(threading.Thread):
 		return target
 
 	# 等待两张图片出现
-	def waitForTwo(self, image1_path, image2_path, image_region, timeout=None, find_dir=1):
+	def waitForTwo(self, image1_path, image2_path, image_region1, image_region2=None, timeout=None, find_dir=1):
 		start_time = time.time()
 		res = ""
+		if image_region2 is None:
+			image_region2 = image_region1
 		while True:
 			with condition:
 				if self.stoped:
 					condition.wait()
 			xy = self.find_pic_or_str(
-				image1_path, image_region, find_dir
+				image1_path, image_region1, find_dir
 			)
 			if xy:
 				res = "first"
 				return res
 			xy2 = self.find_pic_or_str(
-				image2_path, image_region, find_dir
+				image2_path, image_region2, find_dir
 			)
 			if xy2:
 				res = "second"
@@ -997,10 +1002,6 @@ class MyThread(threading.Thread):
 				if time.time() - start_time > timeout:
 					return False
 			time.sleep(0.2)
-
-	# 	if self.confidenceNum > 0.8:
-	# 		self.confidenceNum -= 0.1
-	# self.confidenceNum = 0.9
 
 	# 等待图片1出现，一直点击图2
 	def waitForAAndClickB1(
@@ -1024,9 +1025,6 @@ class MyThread(threading.Thread):
 			if clickB:
 				break
 			time.sleep(0.2)
-
-	# if clickB:
-	# 	break
 
 	# 等待图片1出现，一直点击图2
 	def waitForAAndClickB(
@@ -1147,7 +1145,7 @@ class MyThread(threading.Thread):
 				time.sleep(0.3)
 
 	# 找图并且点击6
-	def findAndClickPic(self, A, B, B1, B2, C1, C2, D, E, E2=None, E2DownTime=0.6):
+	def findAndClickPic(self, A, B, B1, B2, C1, C2, D, E=None, E2=None, E2DownTime=0.6):
 		EIsDown = False
 		E2IsDown = False
 		self.BisClick = False
@@ -1287,7 +1285,7 @@ class MyThread(threading.Thread):
 		# 进入官渡
 		self.findAndClickPic(
 			'官渡',
-			self.get_resource_path("serveAssets/images/guandu/caocao.bmp"),
+			self.get_resource_path("serveAssets/images/guandu/caocao1.bmp"),
 			self.get_resource_path("serveAssets/images/guandu/caocao.bmp"),
 			self.gameBottomLocation,
 			'进入',
@@ -1313,6 +1311,7 @@ class MyThread(threading.Thread):
 			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
 			self.dituLocation, self.dituLocation,
 		)
+
 		with condition:
 			if self.stoped:
 				condition.wait()
@@ -1323,9 +1322,9 @@ class MyThread(threading.Thread):
 				'曹袁战场',
 				'河北军',
 				f"{self.get_resource_path('serveAssets/images/guandu/hbj2.bmp')}|{self.get_resource_path('serveAssets/images/guandu/hbj1.bmp')}",
-				self.gameLeftLocation,
+				self.gameBottomLocation,
 				self.get_resource_path("serveAssets/images/zdzd.bmp"),
-				self.gameLeftLocation,
+				self.gameBottomLocation,
 				hbjLocations[i],
 				"",
 			)
@@ -1335,9 +1334,9 @@ class MyThread(threading.Thread):
 			'曹袁战场',
 			self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp'),
 			self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp'),
-			self.gameLeftLocation,
+			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
-			self.gameLeftLocation,
+			self.gameBottomLocation,
 			"0.097,0.118",
 			"",
 		)
@@ -1347,12 +1346,12 @@ class MyThread(threading.Thread):
 		# 文丑
 		self.findAndClickPic(
 			'曹袁战场',
-			'文丑',
-			f"{self.get_resource_path('serveAssets/images/guandu/wenchou1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/wenchou2.bmp')}",
+			self.get_resource_path('serveAssets/images/guandu/wenchou1.bmp'),
+			self.get_resource_path('serveAssets/images/guandu/wenchou2.bmp'),
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
-			self.gameLeftLocation,
-			"",
+			self.gameBottomLocation,
+			"0.081,0.12",
 			"",
 		)
 		with condition:
@@ -1426,9 +1425,9 @@ class MyThread(threading.Thread):
 		# 打袁绍
 		self.findAndClickPic(
 			'鸟巢粮仓',
-			'袁绍',
+			'官渡袁绍',
 			f"{self.get_resource_path('serveAssets/images/guandu/yuanshao1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yuanshao2.bmp')}",
-			self.gameLeftLocation,
+			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameLeftLocation,
 			"",
@@ -1456,16 +1455,6 @@ class MyThread(threading.Thread):
 			"",
 			"down",
 		)
-		# self.waitForAAndClickB1(
-		# 	self.get_resource_path("images/hong/inhong.png"),
-		# 	self.get_resource_path("images/hong/hongdianwei.png"),
-		# 	(
-		# 		self.locationX,
-		# 		self.locationY,
-		# 		self.locationWidth,
-		# 		self.locationHeight,
-		# 	), None,
-		# )
 		self.waitForAAndClickB1(
 			self.get_resource_path("images/hong/junyin.png"),
 			self.get_resource_path("images/hong/inhong.png"),
@@ -1485,15 +1474,6 @@ class MyThread(threading.Thread):
 		if not isInHong:
 			print('红没次数了')
 			return False
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/hong/hulaoguanwai.png"),
-		# 	self.get_resource_path("images/hong/inhong.png"),
-		# 	self.get_resource_path("images/hong/inhong.png"),
-		# 	self.get_resource_path("images/hong/junyin.png"),
-		# 	self.get_resource_path("images/hong/junyin.png"),
-		# 	"",
-		# 	"",
-		# )
 		# 第一个弓兵
 		# 0.121，0.125  0.064，0.125 0.036，0.12
 		self.findAndClickPic(
@@ -1739,754 +1719,495 @@ class MyThread(threading.Thread):
 				condition.wait()
 		# 进入战魂
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			self.get_resource_path("images/zhanhun/zhanhun.png"),
-			self.get_resource_path("images/zhanhun/zhanhun1.png"),
-			self.get_resource_path("images/zhanhun/inzhanhun.png"),
-			self.get_resource_path("images/zhanhun/inzhanhun.png"),
-			self.get_resource_path("images/zhanhun/inzhanhunD.png"),
+			'洛阳',
+			self.get_resource_path("serveAssets/images/zhanhun/zhanhuntiaozhan.bmp"),
+			self.get_resource_path("serveAssets/images/zhanhun/mingjiangtiaozhan1.bmp"),
+			self.gameBottomLocation,
+			'战魂楼',
+			self.gameBottomLocation,
 			"",
+			"down"
 		)
 		# 点击进入战魂
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/zhanhunlou1.png"),
-			self.get_resource_path("images/zhanhun/inzhanhun.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			), None,
+			'战魂',
+			'战魂楼',
+			self.dituLocation, self.gameBottomLocation,
 		)
-		isInZhanhun = self.waitFor(self.get_resource_path("images/zhanhun/zhanhunlou1.png"), (
-			self.locationRightTopX,
-			self.locationRightTopY,
-			self.locationRightTopWidth,
-			self.locationRightTopHeight,
-		), 5)
+		isInZhanhun = self.waitFor('战魂', self.dituLocation, 5)
 		if not isInZhanhun:
 			print('战魂没次数了')
 			return False
 		# 1
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou1.png"),
-			self.get_resource_path("images/zhanhun/zhangbao.png"),
-			self.get_resource_path("images/zhanhun/zhangbao2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			'战魂',
+			'张宝',
+			'张宝',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/zhangliang.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'张梁',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou1.png"),
-		# 	self.get_resource_path("images/zhanhun/go2.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/zhangliang.png"),
-		# 	self.get_resource_path("images/zhanhun/zhangliang.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 2
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou2.png"),
-			self.get_resource_path("images/zhanhun/zhangliang.png"),
-			self.get_resource_path("images/zhanhun/zhangliang.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/2.bmp"),
+			'张梁',
+			'张梁',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/zhangjiao.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'张角',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou2.png"),
-		# 	self.get_resource_path("images/zhanhun/go3.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/zhangjiao.png"),
-		# 	self.get_resource_path("images/zhanhun/zhangjiao.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 3
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou3.png"),
-			self.get_resource_path("images/zhanhun/zhangjiao.png"),
-			self.get_resource_path("images/zhanhun/zhangjiao2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/3.bmp"),
+			'张角',
+			'张角',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/wenchou.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'文丑',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou3.png"),
-		# 	self.get_resource_path("images/zhanhun/go4.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/wenchou.png"),
-		# 	self.get_resource_path("images/zhanhun/wenchou.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 4
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou4.png"),
-			self.get_resource_path("images/zhanhun/wenchou.png"),
-			self.get_resource_path("images/zhanhun/wenchou1.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/4.bmp"),
+			'文丑',
+			'文丑',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/yanliang.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'颜良',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou4.png"),
-		# 	self.get_resource_path("images/zhanhun/go5.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/yanliang.png"),
-		# 	self.get_resource_path("images/zhanhun/yanliang.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 5
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou5.png"),
-			self.get_resource_path("images/zhanhun/yanliang.png"),
-			self.get_resource_path("images/zhanhun/yanliang2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/5.bmp"),
+			'颜良',
+			'颜良',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/huaxiong.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'华雄',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou5.png"),
-		# 	self.get_resource_path("images/zhanhun/go6.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/huaxiong.png"),
-		# 	self.get_resource_path("images/zhanhun/huaxiong.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 6
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou6.png"),
-			self.get_resource_path("images/zhanhun/huaxiong.png"),
-			self.get_resource_path("images/zhanhun/huaxiong2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/6.bmp"),
+			'华雄',
+			'华雄',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/sunce.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'孙策',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou6.png"),
-		# 	self.get_resource_path("images/zhanhun/go7.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/sunce.png"),
-		# 	self.get_resource_path("images/zhanhun/sunce.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 7
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou7.png"),
-			self.get_resource_path("images/zhanhun/sunce.png"),
-			self.get_resource_path("images/zhanhun/sunce2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/7.bmp"),
+			'孙策',
+			'孙策',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/dianwei.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'典韦',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou7.png"),
-		# 	self.get_resource_path("images/zhanhun/go8.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/dianwei.png"),
-		# 	self.get_resource_path("images/zhanhun/dianwei.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 8
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou8.png"),
-			self.get_resource_path("images/zhanhun/dianwei.png"),
-			self.get_resource_path("images/zhanhun/dianwei2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/8.bmp"),
+			'典韦',
+			'典韦',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/guojia.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'郭嘉',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou8.png"),
-		# 	self.get_resource_path("images/zhanhun/go9.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/guojia.png"),
-		# 	self.get_resource_path("images/zhanhun/guojia.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 9
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou9.png"),
-			self.get_resource_path("images/zhanhun/guojia.png"),
-			self.get_resource_path("images/zhanhun/guojia2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/9.bmp"),
+			'郭嘉',
+			'郭嘉',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/liubei.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'刘备',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou9.png"),
-		# 	self.get_resource_path("images/zhanhun/go10.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/liubei.png"),
-		# 	self.get_resource_path("images/zhanhun/liubei.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 10
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou10.png"),
-			self.get_resource_path("images/zhanhun/liubei.png"),
-			self.get_resource_path("images/zhanhun/liubei2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/10.bmp"),
+			'刘备',
+			'刘备',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/caocao.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'曹操',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou10.png"),
-		# 	self.get_resource_path("images/zhanhun/go11.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/caocao.png"),
-		# 	self.get_resource_path("images/zhanhun/caocao.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 11
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou11.png"),
-			self.get_resource_path("images/zhanhun/caocao.png"),
-			self.get_resource_path("images/zhanhun/caocao2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/11.bmp"),
+			'曹操',
+			'曹操',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'袁绍',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou11.png"),
-		# 	self.get_resource_path("images/zhanhun/go12.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
-		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 12
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou12.png"),
-			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			self.get_resource_path("images/zhanhun/yuanshao2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/12.bmp"),
+			'袁绍',
+			'袁绍',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/zhangfei.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'张飞',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou12.png"),
-		# 	self.get_resource_path("images/zhanhun/go13.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/zhangfei.png"),
-		# 	self.get_resource_path("images/zhanhun/zhangfei.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 13
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou13.png"),
-			self.get_resource_path("images/zhanhun/zhangfei.png"),
-			self.get_resource_path("images/zhanhun/zhangfei2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/13.bmp"),
+			'张飞',
+			'张飞',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/daqiao.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'大乔',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou13.png"),
-		# 	self.get_resource_path("images/zhanhun/go14.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/daqiao.png"),
-		# 	self.get_resource_path("images/zhanhun/daqiao.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 14
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou14.png"),
-			self.get_resource_path("images/zhanhun/daqiao.png"),
-			self.get_resource_path("images/zhanhun/daqiao2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/14.bmp"),
+			'大乔',
+			'大乔',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/guanyu.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'关羽',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou14.png"),
-		# 	self.get_resource_path("images/zhanhun/go15.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/guanyu.png"),
-		# 	self.get_resource_path("images/zhanhun/guanyu.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 15
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou15.png"),
-			self.get_resource_path("images/zhanhun/guanyu.png"),
-			self.get_resource_path("images/zhanhun/guanyu2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/15.bmp"),
+			'关羽',
+			'关羽',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/lvbu.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'吕布',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou15.png"),
-		# 	self.get_resource_path("images/zhanhun/go16.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
-		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 16
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou16.png"),
-			self.get_resource_path("images/zhanhun/lvbu.png"),
-			self.get_resource_path("images/zhanhun/lvbu2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/16.bmp"),
+			'吕布',
+			'吕布',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'张飞',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou16.png"),
-		# 	self.get_resource_path("images/zhanhun/go17.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
-		# 	self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 17
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou17.png"),
-			self.get_resource_path("images/zhanhun/mohuazhangfei.png"),
-			self.get_resource_path("images/zhanhun/mohuazhangfei2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/17.bmp"),
+			'张飞',
+			'张飞',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'关羽',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou17.png"),
-		# 	self.get_resource_path("images/zhanhun/go18.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
-		# 	self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 18
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou18.png"),
-			self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
-			self.get_resource_path("images/zhanhun/mohuaguanyu2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/18.bmp"),
+			'关羽',
+			'关羽',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'吕布',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou18.png"),
-		# 	self.get_resource_path("images/zhanhun/go19.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
-		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 19
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou19.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/19.bmp"),
+			'吕布',
+			'吕布',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/mohuaguanyu.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'吕布',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou19.png"),
-		# 	self.get_resource_path("images/zhanhun/go20.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
-		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 20
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou20.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/20.bmp"),
+			'吕布',
+			'吕布',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
-		self.addBloud()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/liubei.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'刘备',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou20.png"),
-		# 	self.get_resource_path("images/zhanhun/go21.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/liubei.png"),
-		# 	self.get_resource_path("images/zhanhun/liubei.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 21
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
-			self.get_resource_path("images/zhanhun/liubei.png"),
-			self.get_resource_path("images/zhanhun/liubei2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/21.bmp"),
+			'刘备',
+			'刘备',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'获得铜币',
+			'洛阳',
+			self.gameBottomLocation,
+			self.dituLocation,
 		)
 		if waitForTwoRes == "second":
 			print("21层没打过")
 			return True
 		if self.zhanhunFloor == '21层':
 			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou21.png"))
+			self.outScript('战魂')
 			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'袁绍',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
-		# 	self.get_resource_path("images/zhanhun/go22.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
-		# 	self.get_resource_path("images/zhanhun/yuanshao.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 22
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
-			self.get_resource_path("images/zhanhun/yuanshao.png"),
-			self.get_resource_path("images/zhanhun/yuanshao2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/22.bmp"),
+			'袁绍',
+			'袁绍',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'获得铜币',
+			'洛阳',
+			self.gameBottomLocation,
+			self.dituLocation,
 		)
 		if waitForTwoRes == "second":
 			print("22层没打过")
 			return True
 		if self.zhanhunFloor == '22层':
 			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou22.png"))
+			self.outScript('战魂')
 			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/caocao.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'曹操',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
-		# 	self.get_resource_path("images/zhanhun/go23.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/caocao.png"),
-		# 	self.get_resource_path("images/zhanhun/caocao.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 23
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
-			self.get_resource_path("images/zhanhun/caocao.png"),
-			self.get_resource_path("images/zhanhun/caocao2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/23.bmp"),
+			'曹操',
+			'曹操',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'获得铜币',
+			'洛阳',
+			self.gameBottomLocation,
+			self.dituLocation,
 		)
 		if waitForTwoRes == "second":
 			print("23层没打过")
 			return True
 		if self.zhanhunFloor == '23层':
 			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou23.png"))
+			self.outScript('战魂')
 			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/lvbu.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'吕布',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
-		# 	self.get_resource_path("images/zhanhun/go24.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
-		# 	self.get_resource_path("images/zhanhun/lvbu.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 24
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
-			self.get_resource_path("images/zhanhun/lvbu.png"),
-			self.get_resource_path("images/zhanhun/lvbu2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/24.bmp"),
+			'吕布',
+			'吕布',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'获得铜币',
+			'洛阳',
+			self.gameBottomLocation,
+			self.dituLocation,
 		)
 		if waitForTwoRes == "second":
 			print("24层没打过")
 			return True
 		if self.zhanhunFloor == '24层':
 			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou24.png"))
+			self.outScript('战魂')
 			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'吕布',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
-		# 	self.get_resource_path("images/zhanhun/go25.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
-		# 	self.get_resource_path("images/zhanhun/mohualvbu.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 25
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu.png"),
-			self.get_resource_path("images/zhanhun/mohualvbu2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/25.bmp"),
+			'吕布',
+			'吕布',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'获得铜币',
+			'洛阳',
+			self.gameBottomLocation,
+			self.dituLocation,
 		)
 		if waitForTwoRes == "second":
 			print("25层没打过")
 			return True
 		if self.zhanhunFloor == '25层':
 			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou25.png"))
+			self.outScript('战魂')
 			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/zhanhun/renshengwa.png"),
-			self.get_resource_path("images/chuansongmen.png"),
+			'人参娃',
+			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
-		# self.findAndClickPic(
-		# 	self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
-		# 	self.get_resource_path("images/zhanhun/go26.png"),
-		# 	self.get_resource_path("images/zhanhun/zhanhungonext1.png"),
-		# 	self.get_resource_path("images/zhanhun/renshengwa.png"),
-		# 	self.get_resource_path("images/zhanhun/renshengwa.png"),
-		# 	"",
-		# 	"right",
-		# )
 		# 26
 		self.findAndClickPic(
-			self.get_resource_path("images/zhanhun/zhanhunlou26.png"),
-			self.get_resource_path("images/zhanhun/renshengwa.png"),
-			self.get_resource_path("images/zhanhun/renshengwa2.png"),
-			self.get_resource_path("images/zdzd.png"),
-			self.get_resource_path("images/zdzd1.png"),
-			"",
-			"",
+			self.get_resource_path("serveAssets/images/zhanhun/26.bmp"),
+			'人参娃',
+			'人参娃',
+			self.gameBottomLocation,
+			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.gameBottomLocation,
+			"0.098,0.113"
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou26.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			'获得铜币',
+			'洛阳',
+			self.gameBottomLocation,
+			self.dituLocation,
 		)
 		if waitForTwoRes == "second":
 			print("26层没打过")
 			return True
 		if self.zhanhunFloor == '26层':
 			# 退出副本
-			self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou26.png"))
+			self.outScript('战魂')
 			return True
 		# 退出副本
-		self.outScript(self.get_resource_path("images/zhanhun/zhanhunlou26.png"))
+		self.outScript('战魂')
 		return True
 
 	# 魔镜脚本
@@ -3753,10 +3474,8 @@ class MyThread(threading.Thread):
 
 	# 一直执行官渡
 	def guanduWhile(self):
-		dict_id = self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/guandu.txt"))  # 字库文件路径
-		# self.beginFun()
-		# while True:
-		self.guanduScript()
+		while True:
+			self.guanduScript()
 
 	# 一直执行红
 	def hongWhile(self):

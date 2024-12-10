@@ -32,7 +32,7 @@ condition = threading.Condition()
 class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
-		self.userInfoMac = ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"]
+		self.userInfoMac = ["50-9A-4C-C9-FE-BA", "BC-EC-A0-28-FA-5C", '00-FF-8A-69-61-03', "E4-60-17-15-B4-73", "08-8F-C3-75-B5-7A"]
 		# 烈烈残阳mac：00-E2-69-6A-22-81
 		# self.userInfoMac = ["00-E2-69-6A-22-81"]
 		# 黑北：E4-60-17-15-B4-73,BC-EC-A0-28-FA-5C
@@ -42,7 +42,8 @@ class MyThread(threading.Thread):
 		# 三千梨树：08-8F-C3-75-B5-7A
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A"]
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"]
-		# self.userInfoMac = ["50-9A-4C-C9-FE-BA", "B0-25-AA-26-64-03"]
+		# 执墨 00-E0-4C-57-BD-CF  鲟鱼 E8-9C-25-77-AC-2D
+		# self.userInfoMac = ["00-E0-4C-57-BD-CF", "E8-9C-25-77-AC-2D"]
 		self.frame = None
 		self.zhanhunFloor = ''
 		# 创建子线程
@@ -82,6 +83,7 @@ class MyThread(threading.Thread):
 		self.oneDay = 86400
 		self.heifengCount = 0
 		self.heifengWhileCount = 0
+		self.zhengDianFlag = False
 
 	def run(self):
 		# c = wmi.WMI()
@@ -89,7 +91,7 @@ class MyThread(threading.Thread):
 		#     hardware_serial = item.SerialNumber
 		self.zhanhunFloor = self.frame.zhanhunFloor
 		self.heifengWhileCount = int(self.frame.heifengCount)
-		startTime = 1732958685
+		startTime = 1733712902
 		# 一个月脚本
 		# if time.time() - startTime > self.monthDays:
 		# 	print('脚本已过期!')
@@ -106,6 +108,7 @@ class MyThread(threading.Thread):
 		# if time.time() - startTime > self.oneDay:
 		# 	print('脚本已过期!')
 		# 	return
+		self.zhengDianFlag = False
 		mac_address = self.get_mac_address()
 		if mac_address in self.userInfoMac:
 			print("已注册用户!")
@@ -116,10 +119,9 @@ class MyThread(threading.Thread):
 		isFindGame = self.findGame()
 		if not isFindGame:
 			return
-		# app = pywinauto.Application(backend="uia").connect(title="11")
-		# self.game = app.window(title="11")
 		self.child_thread.start()
 		if self.scriptName == "官渡":
+			self.beginFun()
 			self.guanduWhile()
 		elif self.scriptName == "嗜血战场(精英)":
 			self.hongWhile()
@@ -182,20 +184,7 @@ class MyThread(threading.Thread):
 
 	# self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
 	# self.click_nth_image(self.get_resource_path("images/addBloud1.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
-
 	def findGame(self):
-		# while True:
-		# 	if pyautogui.locateOnScreen(
-		# 			self.get_resource_path("images/2.png"),
-		# 			confidence=0.5,
-		# 			region=(0, 0, 1920, 1080),
-		# 	) and pyautogui.locateOnScreen(
-		# 		self.get_resource_path("images/3.png"),
-		# 		confidence=0.5,
-		# 		region=(0, 0, 1920, 1080),
-		# 	):
-		# 		time.sleep(0.5)
-		# 		break
 		self.righttop1 = pyautogui.locateOnScreen(
 			self.get_resource_path("images/2.png"), confidence=0.5, region=(0, 0, 1920, 1080)
 		)
@@ -256,50 +245,6 @@ class MyThread(threading.Thread):
 
 	def child_task(self):
 		while True:
-			# 去除获得铜币黑框
-			# self.click_image(
-			#     self.get_resource_path("images/huodetongbi.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
-			# 点击取消
-			# self.click_image(
-			#     self.get_resource_path("images/closeJJ.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
-			# 去掉副本奖励精英弹窗
-			# self.click_image(
-			#     self.get_resource_path("images/fubenjiangli.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
-			# 点击x
-			# self.click_image(
-			#     self.get_resource_path("images/close.png"),
-			#     self.confidenceNum,
-			#     (
-			#         self.locationX,
-			#         self.locationY,
-			#         self.locationWidth,
-			#         self.locationHeight,
-			#     ),
-			# )
 			# 关闭右边
 			self.click_image(
 				self.get_resource_path("images/closeright.png"),
@@ -334,7 +279,14 @@ class MyThread(threading.Thread):
 						self.locationHeight,
 					),
 				)
-			time.sleep(0.1)
+			# 竞技取消
+			if pyautogui.locateOnScreen(self.get_resource_path("images/jingji.png"), confidence=self.confidenceNum, region=self.gameBottomLocation):
+				self.click_image(
+					self.get_resource_path("images/jjquxiao.png"),
+					self.confidenceNum,
+					self.gameBottomLocation,
+				)
+			time.sleep(0.5)
 
 	def addBloud(self):
 		self.click_nth_image(self.get_resource_path("images/addBloud.png"), (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)), 1)
@@ -407,92 +359,6 @@ class MyThread(threading.Thread):
 		if yseXY:
 			pyautogui.click(yseXY.x, yseXY.y)
 
-	# if not check:
-	# 	yseXY = pyautogui.locateCenterOnScreen(
-	# 		self.get_resource_path("images/yes.png"),
-	# 		confidence=self.confidenceNum,
-	# 		region=(
-	# 			self.locationX,
-	# 			self.locationY,
-	# 			self.locationWidth,
-	# 			self.locationHeight,
-	# 		),
-	# 	)
-	# 	if yseXY:
-	# 		pyautogui.click(yseXY.x, yseXY.y)
-	# 	time.sleep(0.5)
-	# 	with condition:
-	# 		if self.stoped:
-	# 			condition.wait()
-	# 	yseXY = pyautogui.locateCenterOnScreen(
-	# 		self.get_resource_path("images/yes.png"),
-	# 		confidence=self.confidenceNum,
-	# 		region=(
-	# 			self.locationX,
-	# 			self.locationY,
-	# 			self.locationWidth,
-	# 			self.locationHeight,
-	# 		),
-	# 	)
-	# 	if yseXY:
-	# 		pyautogui.click(yseXY.x, yseXY.y)
-	# else:
-	# 	showBloudLocation = pyautogui.locateCenterOnScreen(
-	# 		self.get_resource_path("images/xianshixueliang.png"),
-	# 		confidence=self.confidenceNum,
-	# 		region=(
-	# 			self.locationX,
-	# 			self.locationY,
-	# 			self.locationWidth,
-	# 			self.locationHeight,
-	# 		),
-	# 	)
-	# 	if showBloudLocation:
-	# 		noXY = pyautogui.locateCenterOnScreen(
-	# 			self.get_resource_path("images/noCheck.png"),
-	# 			confidence=self.confidenceNum,
-	# 			region=(
-	# 				showBloudLocation.left,
-	# 				showBloudLocation.top - 20,
-	# 				120,
-	# 				40,
-	# 			),
-	# 		)
-	# 		if noXY:
-	# 			pyautogui.click(noXY.x, noXY.y)
-	# 	else:
-	# 		noXY = pyautogui.locateCenterOnScreen(
-	# 			self.get_resource_path("images/noCheck.png"),
-	# 			confidence=self.confidenceNum,
-	# 			region=(
-	# 				showBloudLocation.left,
-	# 				showBloudLocation.top - 20,
-	# 				120,
-	# 				40,
-	# 			),
-	# 		)
-	# 		if noXY:
-	# 			pyautogui.click(noXY.x, noXY.y)
-	# 		time.sleep(0.5)
-	# 		noXY = pyautogui.locateCenterOnScreen(
-	# 			self.get_resource_path("images/noCheck.png"),
-	# 			confidence=self.confidenceNum,
-	# 			region=(
-	# 				showBloudLocation.left,
-	# 				showBloudLocation.top - 20,
-	# 				120,
-	# 				40,
-	# 			),
-	# 		)
-	# 		if noXY:
-	# 			pyautogui.click(noXY.x, noXY.y)
-
-	# self.click_image(
-	# 	self.get_resource_path("images/yes.png"),
-	# 	self.confidenceNum,
-	# 	(self.locationX, self.locationY, self.locationWidth, self.locationHeight),
-	# )
-
 	def show_error_message(self, message):
 		app = wx.App()
 		dlg = wx.MessageDialog(None, message, "Error", style=wx.OK | wx.ICON_ERROR)
@@ -506,82 +372,22 @@ class MyThread(threading.Thread):
 			return os.path.join(sys._MEIPASS, relative_path)
 		return os.path.join(os.path.abspath("."), relative_path)
 
-	# 战斗结束去除黑色弹框
-	def clearBox(self, current):
-		while True:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if pyautogui.locateOnScreen(
-					current,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-				break
-
 	# 退出当前副本
 	def outScript(self, current):
-		while True:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if pyautogui.locateOnScreen(
-					current,
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-				break
-		while True:
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if pyautogui.locateOnScreen(
-					self.get_resource_path("images/xiulian.png"),
-					confidence=self.confidenceNum,
-					region=(
-							self.locationX,
-							self.locationY,
-							self.locationWidth,
-							self.locationHeight,
-					),
-			):
-				break
-		locationOut = pyautogui.locateCenterOnScreen(
-			self.get_resource_path("images/xiulian.png"),
-			confidence=self.confidenceNum,
-			region=(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
-		)
+		self.waitFor(current, self.dituLocation)
+		locationOut = self.waitFor(self.get_resource_path("images/xiulian.png"), self.gameLocation)
 		with condition:
 			if self.stoped:
 				condition.wait()
 		pyautogui.click(int(locationOut.x - 20), int(locationOut.y - 40))
 		locationQueding = self.waitFor(
 			self.get_resource_path("images/queding.png"),
-			(
-				self.locationX,
-				self.locationY,
-				self.locationWidth,
-				self.locationHeight,
-			),
+			self.gameLocation,
 			3,
 		)
 		if locationQueding:
 			pyautogui.click(locationQueding.x, locationQueding.y)
+			pyautogui.moveTo(int(locationQueding.x + 200), int(locationQueding.y + 200))
 			huodetongbiLocation = self.waitFor(self.get_resource_path("images/huodetongbi.png"), (
 				self.locationX,
 				self.locationY,
@@ -590,6 +396,7 @@ class MyThread(threading.Thread):
 			), 1)
 			if huodetongbiLocation:
 				pyautogui.click(huodetongbiLocation.x, huodetongbiLocation.y)
+				pyautogui.moveTo(int(huodetongbiLocation.x + 200), int(huodetongbiLocation.y + 200))
 			else:
 				return
 		else:
@@ -784,38 +591,6 @@ class MyThread(threading.Thread):
 			self.click_image(self.get_resource_path("images/closebeibao.png"), self.confidenceNum, self.gameLocation)
 			time.sleep(0.8)
 
-	# # 在屏幕找整点
-	# def findZd_and_click(self, image_path_1, image_path_2, image_path_3):
-	# 	# 找到屏幕上所有匹配第一张图片的位置
-	# 	matches_1 = list(pyautogui.locateAllOnScreen(image_path_1, confidence=self.confidenceNum, region=(self.locationRightTopX, self.locationRightTopY, self.locationRightTopWidth, self.locationRightTopHeight)))
-	# 	if not matches_1:
-	# 		print("没有找到第一张图片。")
-	# 		return
-	# 	for match_1 in matches_1:
-	# 		# 获取第一张图片位置的中心点坐标
-	# 		x_1, y_1 = pyautogui.center(match_1)
-	# 		# 移动鼠标到第一张图片位置
-	# 		pyautogui.moveTo(x_1, y_1)
-	# 		# 等待鼠标移动到该位置
-	# 		time.sleep(0.5)
-	# 		# 在该位置查找第二张图片
-	# 		match_2 = pyautogui.locateOnScreen(image_path_2)
-	#
-	# 		if match_2:
-	# 			x_2, y_2 = pyautogui.center(match_2)
-	# 			pyautogui.click(x_2, y_2)
-	# 			time.sleep(0.5)
-	#
-	# 		# 查找第三张图片
-	# 		match_3 = pyautogui.locateOnScreen(image_path_3)
-	#
-	# 		if match_3:
-	# 			x_3, y_3 = pyautogui.center(match_3)
-	# 			return x_3, y_3
-	#
-	# 	return None
-
-	# 整点
 	def zhengDian(
 			self,
 	):
@@ -958,10 +733,12 @@ class MyThread(threading.Thread):
 		if closeTalkXY:
 			pyautogui.click(closeTalkXY.x, closeTalkXY.y, clicks=4, interval=0.2)
 		if self.scriptName == "官渡":
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 			self.guanduWhile()
 
 		elif self.scriptName == "祭坛魔镜":
+			time.sleep(1)
 			findMojingshizhe = self.feiFb(
 				self.get_resource_path("images/mojing/fubenmojingshizhe.png"), False
 			)
@@ -969,6 +746,7 @@ class MyThread(threading.Thread):
 				self.mojingWhile()
 			else:
 				self.scriptName = "官渡"
+				time.sleep(1)
 				self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 				self.guanduWhile()
 		elif self.scriptName == "战魂+红+整点":
@@ -979,6 +757,7 @@ class MyThread(threading.Thread):
 			self.feiFb(self.get_resource_path("images/dituzhanhun.png"), True)
 			self.guanduAndHongAndZd()
 		elif self.scriptName == "黑风山寨":
+			time.sleep(1)
 			self.feiFb(
 				self.get_resource_path("images/ditubashanhu.png"), False
 			)
@@ -997,6 +776,7 @@ class MyThread(threading.Thread):
 			),
 		)
 		if tuLocation:
+			time.sleep(1)
 			pyautogui.click(int(tuLocation.x + 24), int(tuLocation.y - 34))
 		time.sleep(0.8)
 		if isJy:
@@ -1239,21 +1019,23 @@ class MyThread(threading.Thread):
 		return xy
 
 	# 等待两张图片出现
-	def waitForTwo(self, image1_path, image2_path, image_region, timeout=None):
+	def waitForTwo(self, image1_path, image2_path, image_region1, image_region2=None, timeout=None):
 		start_time = time.time()
 		res = ""
+		if image_region2 is None:
+			image_region2 = image_region1
 		while True:
 			with condition:
 				if self.stoped:
 					condition.wait()
 			xy = pyautogui.locateCenterOnScreen(
-				image1_path, confidence=self.confidenceNum, region=image_region
+				image1_path, confidence=self.confidenceNum, region=image_region1
 			)
 			if xy:
 				res = "first"
 				return res
 			xy2 = pyautogui.locateCenterOnScreen(
-				image2_path, confidence=self.confidenceNum, region=image_region
+				image2_path, confidence=self.confidenceNum, region=image_region2
 			)
 			if xy2:
 				res = "second"
@@ -1457,7 +1239,7 @@ class MyThread(threading.Thread):
 				self.show_error_message("未找到开始地点")
 				return
 			if time.localtime().tm_min == 58:
-				if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜" or self.scriptName == "黑风山寨" or self.scriptName == "战魂+红+整点":
+				if self.zhengDianFlag:
 					# 打整点
 					self.outScript(A)
 					self.zhengDian()
@@ -1611,6 +1393,7 @@ class MyThread(threading.Thread):
 			self.locationRightTopHeight,
 		), 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 		# 进入官渡
 		self.findAndClickPic(
@@ -1619,7 +1402,7 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/caoCao2.png"),
 			self.get_resource_path("images/inguanDu.png"),
 			self.get_resource_path("images/inguanDu.png"),
-			self.get_resource_path("images/guanduD.png"),
+			"",
 			"down",
 		)
 		with condition:
@@ -1949,6 +1732,10 @@ class MyThread(threading.Thread):
 		with condition:
 			if self.stoped:
 				condition.wait()
+		isInGuanDu = self.waitFor(self.get_resource_path("images/hong/hulaoguanwai.png"), self.dituLocation, 5)
+		if not isInGuanDu:
+			time.sleep(1)
+			self.feiFb(self.get_resource_path("images/ditudianwei.png"), True)
 		# 进入红
 		self.findAndClickPic(
 			self.get_resource_path("images/hong/hulaoguanwai.png"),
@@ -2245,8 +2032,8 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/zhanhun/zhanhun1.png"),
 			self.get_resource_path("images/zhanhun/inzhanhun.png"),
 			self.get_resource_path("images/zhanhun/inzhanhun.png"),
-			self.get_resource_path("images/zhanhun/inzhanhunD.png"),
-			"",
+			'',
+			"down",
 		)
 		# 点击进入战魂
 		self.waitForAAndClickB1(
@@ -2764,14 +2551,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
+			self.get_resource_path("images/huodetongbi.png"),
 			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("21层没打过")
@@ -2806,14 +2588,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
+			self.get_resource_path("images/huodetongbi.png"),
 			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("22层没打过")
@@ -2848,14 +2625,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
+			self.get_resource_path("images/huodetongbi.png"),
 			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("23层没打过")
@@ -2890,14 +2662,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
+			self.get_resource_path("images/huodetongbi.png"),
 			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("24层没打过")
@@ -2932,14 +2699,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
+			self.get_resource_path("images/huodetongbi.png"),
 			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("25层没打过")
@@ -2974,14 +2736,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou26.png"),
+			self.get_resource_path("images/huodetongbi.png"),
 			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("26层没打过")
@@ -3006,6 +2763,7 @@ class MyThread(threading.Thread):
 			self.locationRightTopHeight,
 		), 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/mojing/fubenmojingshizhe.png"), False)
 		# print("开始魔镜祭坛")
 		# 进入魔镜
@@ -3211,6 +2969,7 @@ class MyThread(threading.Thread):
 		print('开始炼丹房')
 		isInGuanDu = self.waitFor(self.get_resource_path("images/liandan/wuzhixiagu.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditunanhualaoren.png"), False)
 		# 进入炼丹
 		self.findAndClickPic(
@@ -3305,6 +3064,7 @@ class MyThread(threading.Thread):
 		print('开始五行')
 		isInGuanDu = self.waitFor(self.get_resource_path("images/liandan/luoyangchengyewaixi.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditubanbuduolaoban.png"), True)
 		# 进入五行
 		self.findAndClickPic(
@@ -3313,8 +3073,8 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/liandan/banbuduolaoban.png"),
 			self.get_resource_path("images/liandan/gowuxing.png"),
 			self.get_resource_path("images/liandan/gowuxing.png"),
-			self.get_resource_path("images/liandan/wuxingD.png"),
-			"",
+			'',
+			"down",
 		)
 		self.waitForAAndClickB1(
 			self.get_resource_path("images/liandan/wuxingshengdian.png"),
@@ -3357,7 +3117,7 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/liandan/wuxingzhangliao.png"),
 			self.get_resource_path("images/liandan/wuxingzhangliao1.png"),
 			self.get_resource_path("images/zdzd.png"),
-			"left",
+			"down",
 			"",
 		)
 		self.findAndClickPic(
@@ -3367,7 +3127,7 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/zdzd.png"),
 			self.get_resource_path("images/zdzd1.png"),
 			"",
-			"left",
+			"up",
 		)
 		self.outScript(self.get_resource_path("images/liandan/wuxingshengdian.png"))
 		return True
@@ -3377,6 +3137,7 @@ class MyThread(threading.Thread):
 		print('开始溶洞')
 		isInGuanDu = self.waitFor(self.get_resource_path("images/liandan/lvlinlu.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditulongxiaotian.png"), False)
 		# 进入溶洞
 		self.findAndClickPic(
@@ -3443,6 +3204,7 @@ class MyThread(threading.Thread):
 		print('开始80精英')
 		isInGuanDu = self.waitFor(self.get_resource_path("images/80jy/xuchangcheng.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/dituzuocifenshen.png"), True)
 		# 进入80精英
 		self.findAndClickPic(
@@ -3483,14 +3245,14 @@ class MyThread(threading.Thread):
 		)
 		# 进入地牢
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/80jy/modaodilao.png"),
+			self.get_resource_path("images/80jy/dilao.png"),
 			self.get_resource_path("images/chuansongmen.png"),
 			self.dituLocation,
 			self.dituRightLocation
 		)
 		# 打穷奇
 		self.findAndClickPic(
-			self.get_resource_path("images/80jy/modaodilao.png"),
+			self.get_resource_path("images/80jy/dilao.png"),
 			self.get_resource_path("images/80jy/qiongqi.png"),
 			self.get_resource_path("images/80jy/qiongqi.png"),
 			self.get_resource_path("images/zdzd.png"),
@@ -3500,14 +3262,14 @@ class MyThread(threading.Thread):
 		)
 		# 进入二层
 		self.waitForAAndClickB1(
-			self.get_resource_path("images/80jy/modaodilao2.png"),
+			self.get_resource_path("images/80jy/dilao2.png"),
 			self.get_resource_path("images/chuansongmen.png"),
 			self.dituLocation,
 			self.dituRightLocation
 		)
 		# 打吕布
 		self.findAndClickPic(
-			self.get_resource_path("images/80jy/modaodilao2.png"),
+			self.get_resource_path("images/80jy/dilao2.png"),
 			self.get_resource_path("images/80jy/yaohualvbu.png"),
 			self.get_resource_path("images/80jy/yaohualvbu.png"),
 			self.get_resource_path("images/zdzd.png"),
@@ -3544,6 +3306,7 @@ class MyThread(threading.Thread):
 				condition.wait()
 		isInGuanDu = self.waitFor(self.get_resource_path("images/guanDu1.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 		guaiwugongjiLocation = pyautogui.locateOnScreen(self.get_resource_path("images/guaiwugongji.png"), confidence=self.confidenceNum, region=self.gameLocation)
 		if guaiwugongjiLocation:
@@ -3736,6 +3499,7 @@ class MyThread(threading.Thread):
 				condition.wait()
 		isInGuanDu = self.waitFor(self.get_resource_path("images/yunyoujy/songshan.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/dituyunyouxianren.png"), True)
 		# 进入云游
 		self.findAndClickPic(
@@ -3887,6 +3651,7 @@ class MyThread(threading.Thread):
 				condition.wait()
 		isInGuanDu = self.waitFor(self.get_resource_path("images/laoshujy/bishuidixue.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditulieshuren.png"), True)
 		# 进入老鼠
 		self.findAndClickPic(
@@ -4006,8 +3771,8 @@ class MyThread(threading.Thread):
 			self.get_resource_path("images/zhanhun/zhanhun1.png"),
 			self.get_resource_path("images/zhanhun/inmingjiang.png"),
 			self.get_resource_path("images/zhanhun/inmingjiang.png"),
-			self.get_resource_path("images/zhanhun/inzhanhunD.png"),
 			"",
+			"down",
 		)
 		# 点击进入名将
 		self.waitForAAndClickB1(
@@ -4157,6 +3922,7 @@ class MyThread(threading.Thread):
 				condition.wait()
 		isInGuanDu = self.waitFor(self.get_resource_path("images/heifeng/qiankundong5.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditubashanhu.png"), False)
 		# 进入黑风
 		self.findAndClickPic(
@@ -4245,6 +4011,7 @@ class MyThread(threading.Thread):
 		return True
 
 	def heifengWhile(self):
+		self.zhengDianFlag = True
 		self.beginFun()
 		guaiwugongjiLocation = pyautogui.locateOnScreen(self.get_resource_path("images/heifeng/guaiwugongji.png"), confidence=self.confidenceNum, region=self.gameLocation)
 		if guaiwugongjiLocation:
@@ -4258,7 +4025,7 @@ class MyThread(threading.Thread):
 
 	# 一直执行官渡
 	def guanduWhile(self):
-		self.beginFun()
+		self.zhengDianFlag = True
 		while True:
 			self.guanduScript()
 
@@ -4285,6 +4052,7 @@ class MyThread(threading.Thread):
 	# 一直执行魔镜
 	def mojingWhile(self):
 		self.beginFun()
+		self.zhengDianFlag = True
 		while True:
 			overMojing = self.mojingScript()
 			if not overMojing:
@@ -4321,12 +4089,14 @@ class MyThread(threading.Thread):
 		# 飞炼丹
 		isInGuanDu = self.waitFor(self.get_resource_path("images/liandan/wuzhixiagu.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditunanhualaoren.png"), False)
 		for i in range(5):
 			liandanHas = self.liandanScript()
 			if not liandanHas:
 				break
 		# 飞五行
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditubanbuduolaoban.png"), True)
 		time.sleep(1)
 		for i in range(3):
@@ -4334,6 +4104,7 @@ class MyThread(threading.Thread):
 			if not hasWuxing:
 				break
 		# 飞溶洞
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditulongxiaotian.png"), False)
 		time.sleep(1)
 		for i in range(3):
@@ -4341,14 +4112,17 @@ class MyThread(threading.Thread):
 			if not hasRongdong:
 				break
 		# 飞80精英
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/dituzuocifenshen.png"), True)
 		time.sleep(1)
 		self.bamenScript()
 		# 飞云游精英
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/dituyunyouxianren.png"), True)
 		time.sleep(1)
 		self.yunyouJyScript()
 		# 飞名将挑战赛
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/dituzhanhun.png"), True)
 		time.sleep(1)
 		for i in range(8):
@@ -4358,10 +4132,12 @@ class MyThread(threading.Thread):
 				break
 		time.sleep(1)
 		# 飞100精英
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditulieshuren.png"), True)
 		time.sleep(1)
 		self.laoshuJyScript()
 		# 飞官渡精英
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 		time.sleep(1)
 		self.guanduJyScript()
@@ -4401,11 +4177,13 @@ class MyThread(threading.Thread):
 			hasHong = self.hongScript()
 			if not hasHong:
 				break
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/dituzhanhun.png"), True)
 		for i in range(6):
 			hasZhanhun = self.zhanhunScript()
 			if not hasZhanhun:
 				break
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditucaocao.png"), True)
 		while True:
 			self.guanduScript()
@@ -4429,12 +4207,14 @@ class MyThread(threading.Thread):
 		# 飞炼丹
 		isInGuanDu = self.waitFor(self.get_resource_path("images/liandan/wuzhixiagu.png"), self.dituLocation, 5)
 		if not isInGuanDu:
+			time.sleep(1)
 			self.feiFb(self.get_resource_path("images/ditunanhualaoren.png"), False)
 		for i in range(5):
 			liandanHas = self.liandanScript()
 			if not liandanHas:
 				break
 		# 飞五行
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditubanbuduolaoban.png"), True)
 		time.sleep(1)
 		for i in range(3):
@@ -4442,6 +4222,7 @@ class MyThread(threading.Thread):
 			if not hasWuxing:
 				break
 		# 飞溶洞
+		time.sleep(1)
 		self.feiFb(self.get_resource_path("images/ditulongxiaotian.png"), False)
 		time.sleep(1)
 		for i in range(3):
@@ -4981,14 +4762,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou21.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.get_resource_path("images/huodetongbi.png"),
+			self.get_resource_path("images/40/zhuojunyewaidong.png"),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("21层没打过")
@@ -5023,14 +4799,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou22.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.get_resource_path("images/huodetongbi.png"),
+			self.get_resource_path("images/40/zhuojunyewaidong.png"),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("22层没打过")
@@ -5065,14 +4836,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou23.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.get_resource_path("images/huodetongbi.png"),
+			self.get_resource_path("images/40/zhuojunyewaidong.png"),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("23层没打过")
@@ -5107,14 +4873,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou24.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.get_resource_path("images/huodetongbi.png"),
+			self.get_resource_path("images/40/zhuojunyewaidong.png"),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("24层没打过")
@@ -5149,14 +4910,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou25.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.get_resource_path("images/huodetongbi.png"),
+			self.get_resource_path("images/40/zhuojunyewaidong.png"),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("25层没打过")
@@ -5191,14 +4947,9 @@ class MyThread(threading.Thread):
 			"",
 		)
 		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("images/zhanhun/zhanhunlou26.png"),
-			self.get_resource_path("images/zhanhun/luoyangdadao.png"),
-			(
-				self.locationRightTopX,
-				self.locationRightTopY,
-				self.locationRightTopWidth,
-				self.locationRightTopHeight,
-			),
+			self.get_resource_path("images/huodetongbi.png"),
+			self.get_resource_path("images/40/zhuojunyewaidong.png"),
+			self.gameBottomLocation, self.dituLocation
 		)
 		if waitForTwoRes == "second":
 			print("26层没打过")
@@ -5327,8 +5078,7 @@ class MyFrame(wx.Frame):
 				"官渡精英",
 				"云游精英",
 				"80精英",
-				"100精英",
-				"整点",
+				"100精英"
 			],
 		)
 		self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
@@ -5374,7 +5124,7 @@ class MyFrame(wx.Frame):
 			"1.请将电脑的屏幕分辨率调到1920*1080；",
 			"2.请将电脑的缩放比放到100%；",
 			"3.请将游戏所在浏览器缩放比放到100%(缩小到左右没有白边即可)；",
-			"4.脚本没有停止脚本按钮，停止脚本先将鼠标放到右上角(多放几次)，等脚本不动之后按F8键重置脚本。",
+			"4.脚本没有停止脚本按钮，停止脚本先将鼠标放到左上角(多放几次)，等脚本不动之后按F8键重置脚本。",
 		]
 		images = [
 			self.get_resource_path("images/shiyongshuoming.png")
@@ -5455,6 +5205,8 @@ class MyFrame(wx.Frame):
 			return
 		if self.thread is not None:
 			self.text_ctrl.SetValue("")
+			self.choiceCeng.SetValue("")
+			self.number_input.SetValue("")
 			self.dropdown.SetSelection(-1)
 			condition = threading.Condition()
 			self.thread = None

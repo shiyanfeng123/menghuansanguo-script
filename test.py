@@ -4,23 +4,41 @@ from comtypes.client import CreateObject
 import comtypes.client
 import subprocess
 import time
+import inspect
 
 
-def register_dll(dll_path):
-	# 构建 regsvr32 命令，添加 /s 参数以静默运行
-	command = ['regsvr32', '/s', dll_path]
-	# 执行命令
-	subprocess.run(command, check=True, capture_output=True, text=True)
+def get_current_function_name():
+	return inspect.stack()[1].function
 
 
-# 调用注册函数
+def example_function():
+	count = 0
+	while True:
+		count += 1
+		print_11(count)
+		time.sleep(2)
+		print("Current function name:", get_current_function_name())
 
-dm_obj = ctypes.windll.LoadLibrary(r'E:\project\python\serveAssets\plugins\RegDll.dll')
-location_dmreg = r'E:\project\python\serveAssets\plugins\dm.dll'
-register_dll(location_dmreg)
-dm_obj.DllRegisterServer(location_dmreg, 0)
+
+def print_11(count):
+	print("Hello World!", count)
+
+
+# def register_dll(dll_path):
+# 	# 构建 regsvr32 命令，添加 /s 参数以静默运行
+# 	command = ['regsvr32', '/s', dll_path]
+# 	# 执行命令
+# 	subprocess.run(command, check=True, capture_output=True, text=True)
+#
+#
+# # 调用注册函数
+#
+# dm_obj = ctypes.windll.LoadLibrary(r'E:\project\python\serveAssets\plugins\RegDll.dll')
+# location_dmreg = r'E:\project\python\serveAssets\plugins\dm.dll'
+# register_dll(location_dmreg)
+# dm_obj.DllRegisterServer(location_dmreg, 0)
 dm = CreateObject('dm.dmsoft')
-
+print(dm.Ver())
 # 定义回调函数类型
 ENUMWINDOWSPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
 click_hwnd = 0
@@ -118,10 +136,13 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # dm.KeyUpChar('left')
 #
 # # 进行文字识别
-find_str_result = dm.FindStrFastE(0, 0, x, y, '张宝', color_format, sim)
-print(f'FindStrFast 返回结果: {find_str_result}')
-find_str_result = find_str_result.split(',')
-print(find_str_result)
+
+
+example_function()
+# find_str_result = dm.FindStrFastE(0, 0, x, y, '张宝', color_format, sim)
+# print(f'FindStrFast 返回结果: {find_str_result}')
+# find_str_result = find_str_result.split(',')
+# print(find_str_result)
 # print(find_str_result[0])
 # print(find_str_result[1])
 # print(find_str_result[2])
