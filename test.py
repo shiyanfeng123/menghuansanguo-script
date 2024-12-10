@@ -6,22 +6,21 @@ import subprocess
 import time
 import inspect
 
-
-def get_current_function_name():
-	return inspect.stack()[1].function
-
-
-def example_function():
-	count = 0
-	while True:
-		count += 1
-		print_11(count)
-		time.sleep(2)
-		print("Current function name:", get_current_function_name())
+# def get_current_function_name():
+# 	return inspect.stack()[1].function
 
 
-def print_11(count):
-	print("Hello World!", count)
+# def example_function():
+# 	count = 0
+# 	while True:
+# 		count += 1
+# 		print_11(count)
+# 		time.sleep(2)
+# 		print("Current function name:", get_current_function_name())
+#
+#
+# def print_11(count):
+# 	print("Hello World!", count)
 
 
 # def register_dll(dll_path):
@@ -106,12 +105,12 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\fubenfei.bmp", "", 0.9, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhanhun\212.bmp", "", 0.9, 0)
 
-# if not dm_ret:
-# 	print('未找到')
-# dm_ret = dm_ret.split('|')
-# print(dm_ret)
+if not dm_ret:
+	print('未找到')
+dm_ret = dm_ret.split('|')
+print(dm_ret)
 # x, y = dm_ret[1], dm_ret[2]
 # print(f'找到图像，坐标: ({x}, {y})')
 # resmove = dm.MoveTo(int(x), int(y))
@@ -138,7 +137,7 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # # 进行文字识别
 
 
-example_function()
+# example_function()
 # find_str_result = dm.FindStrFastE(0, 0, x, y, '张宝', color_format, sim)
 # print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
