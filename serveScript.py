@@ -14,8 +14,8 @@ import subprocess
 
 pyautogui.PAUSE = 0.005
 pyautogui.FAILSAFE = True  # 鼠标光标在屏幕左上角，会导致程序异常，用于终止程序运行。
-# 打包命令：pyinstaller -F -w --add-data "images;images" --icon=images\script.ico .\main.py
-# pyinstaller main.spec
+# 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\serveScript.py
+# pyinstaller serveScript.spec
 condition = threading.Condition()
 
 
@@ -28,13 +28,13 @@ class ResXy:
 class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
-		self.userInfoMac = ["50-9A-4C-C9-FE-BA"]
+		# self.userInfoMac = ["50-9A-4C-C9-FE-BA"]
 		# 烈烈残阳mac：00-E2-69-6A-22-81
-		# self.userInfoMac = ["00-E2-69-6A-22-81"]
+		# self.userInfoMac = ['80-B6-55-70-F7-2E']
 		# 黑北：E4-60-17-15-B4-73,BC-EC-A0-28-FA-5C
-		# self.userInfoMac = ["BC-EC-A0-28-FA-5C"]
+		# self.userInfoMac = ["BC-EC-A0-28-FA-5C", '00-FF-8A-69-61-03', "E4-60-17-15-B4-73"]
 		# 山竹:7C-21-4A-48-36-7D
-		# self.userInfoMac = ["7C-21-4A-48-36-7D"]
+		self.userInfoMac = ["7C-21-4A-48-36-7D"]
 		# 三千梨树：08-8F-C3-75-B5-7A
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A"]
 		# self.userInfoMac = ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"]
@@ -99,7 +99,7 @@ class MyThread(threading.Thread):
 		#     hardware_serial = item.SerialNumber
 		self.zhanhunFloor = self.frame.zhanhunFloor
 		self.heifengWhileCount = int(self.frame.heifengCount)
-		startTime = 1732958685
+		startTime = 1734076640
 		# 一个月脚本
 		# if time.time() - startTime > self.monthDays:
 		# 	print('脚本已过期!')
@@ -109,9 +109,9 @@ class MyThread(threading.Thread):
 		# 	print('脚本已过期!')
 		# 	return
 		# 七天脚本
-		# if time.time() - startTime > self.oneWeek:
-		# 	print('脚本已过期!')
-		# 	return
+		if time.time() - startTime > self.oneWeek:
+			print('脚本已过期!')
+			return
 		# 一天脚本
 		# if time.time() - startTime > self.oneDay:
 		# 	print('脚本已过期!')
@@ -414,11 +414,13 @@ class MyThread(threading.Thread):
 			self.click_image(self.get_resource_path("serveAssets/images/dialog3.bmp"), self.confidenceNum, self.gameBottomLocation)
 			self.click_image(self.get_resource_path("serveAssets/images/fubenzudui.bmp"), self.confidenceNum, self.gameBottomLocation)
 			# 关闭右边
-			self.click_image(
+			closeRight = self.click_image(
 				self.get_resource_path("serveAssets/images/closeRight.bmp"),
 				self.confidenceNum,
 				self.gameLocation,
 			)
+			if closeRight:
+				time.sleep(0.5)
 			# 点击拒绝
 			self.click_image(
 				self.get_resource_path("serveAssets/images/jujue.bmp"),
@@ -432,7 +434,7 @@ class MyThread(threading.Thread):
 					self.confidenceNum,
 					self.gameBottomLocation,
 				)
-			time.sleep(0.4)
+			time.sleep(0.5)
 
 	def addBloud(self):
 		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
@@ -455,7 +457,7 @@ class MyThread(threading.Thread):
 	def beginFun(self, check=False):
 		closeTalkXY = self.find_pic(
 			self.get_resource_path("serveAssets/images/closeTalk.bmp"),
-			self.gameBottomLocation,
+			self.talkLocation,
 			0
 		)
 		with condition:
@@ -464,8 +466,18 @@ class MyThread(threading.Thread):
 		if closeTalkXY:
 			self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
 			for i in range(4):
-				time.sleep(0.5)
+				time.sleep(0.2)
 				self.dm.LeftClick()
+		self.click_image(
+			self.get_resource_path("serveAssets/images/closeTalk.bmp"),
+			self.confidenceNum,
+			self.talkLocation,
+		)
+		self.click_image(
+			self.get_resource_path("serveAssets/images/closeTalk.bmp"),
+			self.confidenceNum,
+			self.talkLocation,
+		)
 		# 关闭右边
 		self.click_image(
 			self.get_resource_path("serveAssets/images/closeright.bmp"),
@@ -1024,7 +1036,7 @@ class MyThread(threading.Thread):
 	):
 		if not image_regionB:
 			image_regionB = self.gameLocation
-		while not self.find_str(find_text, find_region, 0):
+		while not self.find_pic_or_str(find_text, find_region, 0):
 			with condition:
 				if self.stoped:
 					condition.wait()
@@ -1321,7 +1333,7 @@ class MyThread(threading.Thread):
 				condition.wait()
 		self.waitForAAndClickB1(
 			'曹袁战场',
-			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
+			self.get_resource_path("serveAssets/images/guandu/hundianchuansongmen.bmp"),
 			self.dituLocation, self.dituLocation,
 		)
 
@@ -1438,7 +1450,7 @@ class MyThread(threading.Thread):
 		# 打袁绍
 		self.findAndClickPic(
 			'鸟巢粮仓',
-			'官渡袁绍',
+			self.get_resource_path('serveAssets/images/guandu/yuanshao.bmp'),
 			f"{self.get_resource_path('serveAssets/images/guandu/yuanshao1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yuanshao2.bmp')}",
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
@@ -1489,6 +1501,10 @@ class MyThread(threading.Thread):
 				self.gameBottomLocation,
 				gonbin_poss[i],
 			)
+		self.waitFor('军营', self.dituLocation)
+		self.dm.KeyDownChar('down')
+		time.sleep(0.8)
+		self.dm.KeyUpChar('down')
 		# 进入军粮营
 		self.waitForAAndClickB1(
 			'军粮营',
@@ -1884,15 +1900,15 @@ class MyThread(threading.Thread):
 			"0.098,0.113"
 		)
 		self.waitForAAndClickB1(
-			'吕布',
+			self.get_resource_path("serveAssets/images/zhanhun/20.bmp"),
 			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
-			self.gameBottomLocation, self.dituLocation,
+			self.dituLocation, self.dituLocation,
 		)
 		# 20
 		self.findAndClickPic(
 			self.get_resource_path("serveAssets/images/zhanhun/20.bmp"),
-			'吕布',
-			'吕布',
+			'魔化吕布',
+			'魔化吕布',
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
@@ -2015,15 +2031,15 @@ class MyThread(threading.Thread):
 			return True
 		self.addBloud()
 		self.waitForAAndClickB1(
-			'吕布',
+			'魔化吕布',
 			self.get_resource_path("serveAssets/images/zhanhun/chuansongmen.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
 		# 25
 		self.findAndClickPic(
 			self.get_resource_path("serveAssets/images/zhanhun/25.bmp"),
-			'吕布',
-			'吕布',
+			'魔化吕布',
+			'魔化吕布',
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
@@ -2336,6 +2352,10 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.082,0.117",
 		)
+		time.sleep(0.5)
+		self.click_image(self.get_resource_path("serveAssets/images/guaji.bmp"), self.confidenceNum, self.gameBottomLocation)
+		self.waitFor('野外西', self.dituLocation)
+		return True
 		# 打大乔  0.077,0.146
 		self.findAndClickPic(
 			'五行圣殿',
@@ -2621,7 +2641,7 @@ class MyThread(threading.Thread):
 		# 文丑  0.077,0.122
 		self.findAndClickPic(
 			'战场',
-			'官渡文丑',
+			self.get_resource_path('serveAssets/images/guandu/wenchou.bmp'),
 			f"{self.get_resource_path('serveAssets/images/guandu/wenchou1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/wenchou2.bmp')}",
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
@@ -2632,7 +2652,7 @@ class MyThread(threading.Thread):
 		# 去大帐
 		self.waitForAAndClickB1(
 			'大帐',
-			self.get_resource_path("serveAssets/images/guandu/guandu1chuansongmen.bmp"),
+			self.get_resource_path("serveAssets/images/guandu/jy1chuansongmen.bmp"),
 			self.dituLocation, self.dituLocation,
 		)
 		self.waitFor('大帐', self.dituLocation)
@@ -2746,7 +2766,7 @@ class MyThread(threading.Thread):
 		# 进鬼气林
 		self.waitForAAndClickB1(
 			'鬼气林',
-			self.get_resource_path("serveAssets/images/guandu/hundianchuansongmen.bmp"),
+			self.get_resource_path("serveAssets/images/richang/yunyou1chuansongmen.bmp"),
 			self.dituLocation, self.dituLocation,
 		)
 		# 打黑无常 0.141,0.112
@@ -2874,9 +2894,9 @@ class MyThread(threading.Thread):
 		# 打boss  0.1,0.115
 		self.findAndClickPic(
 			'云端',
-			'巨灵神1',
-			'巨灵神1',
-			self.gameBottomLocation,
+			'巨灵神',
+			'巨灵神',
+			self.gameLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
 			"0.1,0.115",
@@ -3231,9 +3251,6 @@ class MyThread(threading.Thread):
 
 	def heifengWhile(self):
 		self.beginFun()
-		guaiwugongjiLocation = pyautogui.locateOnScreen(self.get_resource_path("images/heifeng/guaiwugongji.png"), confidence=self.confidenceNum, region=self.gameLocation)
-		if guaiwugongjiLocation:
-			self.click_image(self.get_resource_path("images/heifeng/check.png"), self.confidenceNum, (guaiwugongjiLocation.left, guaiwugongjiLocation.top, guaiwugongjiLocation.width, guaiwugongjiLocation.height))
 		for i in range(self.heifengWhileCount):
 			self.heifengScript()
 			if self.heifengCount == self.heifengWhileCount:
@@ -4231,7 +4248,7 @@ class MyFrame(wx.Frame):
 	def __init__(self):
 		wx.Frame.__init__(self, None, title="梦幻三国脚本", size=(260, 300))
 		self.SetIcon(
-			wx.Icon(self.get_resource_path("images/script.ico"), wx.BITMAP_TYPE_ICO)
+			wx.Icon(self.get_resource_path("serveAssets/images/script.ico"), wx.BITMAP_TYPE_ICO)
 		)
 		self.SetPosition(wx.Point(10, 30))
 		self.panel = wx.Panel(self)
@@ -4316,7 +4333,7 @@ class MyFrame(wx.Frame):
 		self.text_ctrl = wx.TextCtrl(
 			self.panel, pos=(10, 100), size=(225, 130), style=wx.TE_MULTILINE
 		)
-		self.button = wx.Button(self.panel, label="设置队友信息", pos=(155, 5), size=(80, 25))
+		self.button = wx.Button(self.panel, label="设置游戏信息", pos=(155, 5), size=(80, 25))
 		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
 		# 创建第二个下拉框，初始状态下隐藏
 		self.choiceCeng = wx.ComboBox(self.panel, pos=(155, 5), size=(80, 30), choices=['21层', '22层', '23层', '24层', '25层', '26层'])
@@ -4363,7 +4380,7 @@ class MyFrame(wx.Frame):
 			"4.脚本没有停止脚本按钮，停止脚本先将鼠标放到右上角(多放几次)，等脚本不动之后按F8键重置脚本。",
 		]
 		images = [
-			self.get_resource_path("images/shiyongshuoming.png")
+			self.get_resource_path("serveAssets/images/shiyongshuoming.png")
 		]
 
 		# 打开弹窗
