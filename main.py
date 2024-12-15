@@ -32,11 +32,11 @@ condition = threading.Condition()
 class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
-		self.userInfoMac = ["50-9A-4C-C9-FE-BA", "B0-25-AA-26-64-03"]
+		# self.userInfoMac = ["50-9A-4C-C9-FE-BA", "B0-25-AA-26-64-03"]
 		# 烈烈残阳mac：00-E2-69-6A-22-81
 		# self.userInfoMac = ["00-E2-69-6A-22-81"]
 		# 黑北：E4-60-17-15-B4-73,BC-EC-A0-28-FA-5C
-		# self.userInfoMac = ["BC-EC-A0-28-FA-5C", '00-FF-8A-69-61-03', "E4-60-17-15-B4-73"]
+		self.userInfoMac = ["BC-EC-A0-28-FA-5C", '00-FF-8A-69-61-03', "E4-60-17-15-B4-73"]
 		# 山竹:7C-21-4A-48-36-7D
 		# self.userInfoMac = ["7C-21-4A-48-36-7D"]
 		# 三千梨树：08-8F-C3-75-B5-7A
