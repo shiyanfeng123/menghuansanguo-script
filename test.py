@@ -105,7 +105,7 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\guandu\guandujingyta.bmp", "", 0.9, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\fei.bmp", "", 0.9, 0)
 #
 if not dm_ret:
 	print('未找到')
@@ -121,7 +121,7 @@ print(dm_ret)
 
 # print(x, y)
 # # 加载字库
-dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\guandu.txt")  # 字库文件路径
+dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
 print(f'字库加载成功，{dict_id}')
 #
 # # 文字识别参数
