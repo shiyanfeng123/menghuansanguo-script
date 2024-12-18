@@ -105,12 +105,14 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\fei.bmp", "", 0.9, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\xiaolvren.bmp", "", 0.7, 0)
 #
-if not dm_ret:
-	print('未找到')
-dm_ret = dm_ret.split('|')
-print(dm_ret)
+# print(dm.CmpColor(820, 50, '091311', 1) == 0)
+print(dm_ret, 'dm_ret')
+# if not dm_ret:
+# 	print('未找到')
+# dm_ret = dm_ret.split('|')
+# print(dm_ret)
 # x, y = dm_ret[1], dm_ret[2]
 # print(f'找到图像，坐标: ({x}, {y})')
 # resmove = dm.MoveTo(int(x), int(y))
@@ -123,12 +125,12 @@ print(dm_ret)
 # # 加载字库
 dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
 print(f'字库加载成功，{dict_id}')
-#
-# # 文字识别参数
+
+# 文字识别参数
 color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
-# # color_format = "ffffff-000000"  # 右上角偏移色
-# # color_format = '00ff00'  #绿色字体
-# # color_format = 'ffff00-000000'
+# color_format = "ffffff-000000"  # 右上角偏移色
+# color_format = 'ffffff-00000|00ff00-000000'  # 绿色字体
+# color_format = 'ffff00-000000'
 sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # dm.KeyDownChar('left')
 # time.sleep(5)
@@ -138,7 +140,7 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 
 
 # example_function()
-# find_str_result = dm.FindStrFastE(0, 0, x, y, '鸟巢粮仓', color_format, sim)
+# find_str_result = dm.FindStrFastE(0, 0, x, y, '副本猎鼠人', color_format, sim)
 # print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
@@ -166,3 +168,148 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # 释放字库
 # dm.FreeDict(dict_id)
 # print(f'字库ID: {dict_id} 已释放')
+import wx
+
+
+class NumberValidator(wx.PyValidator):
+	def __init__(self):
+		super(NumberValidator, self).__init__()
+
+	def Clone(self):
+		return NumberValidator()
+
+	def Validate(self, win):
+		tc = self.GetWindow()
+		val = tc.GetValue()
+		if val == '':
+			return True
+		try:
+			float(val)
+			return True
+		except ValueError:
+			wx.MessageBox('请输入有效的数字', '错误', wx.OK | wx.ICON_ERROR)
+			return False
+
+	def TransferToWindow(self):
+		return True
+
+	def TransferFromWindow(self):
+		return True
+
+# class MyDialog(wx.Dialog):
+# 	def __init__(self, parent):
+# 		super().__init__(parent, title="输入信息", size=(300, 230))
+#
+# 		panel = wx.Panel(self)
+#
+# 		# 创建一个垂直的BoxSizer来管理所有控件
+# 		vbox = wx.BoxSizer(wx.VERTICAL)
+#
+# 		# 游戏名称输入框
+# 		self.team_leader_text = wx.TextCtrl(panel, size=(260, 24))
+# 		self.team_leader_text.SetHint("游戏名称")
+# 		self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
+# 		vbox.Add(self.team_leader_text, flag=wx.ALL, border=5)
+#
+# 		# 战魂层数 ComboBox
+# 		self.choiceCeng = wx.ComboBox(panel, size=(120, 30), choices=['20层', '21层', '22层', '23层', '24层', '25层', '26层'])
+# 		self.choiceCeng.SetHint("战魂层数")
+# 		vbox.Add(self.choiceCeng, flag=wx.ALL, border=5)
+#
+# 		# 黑风/矿产次数输入框
+# 		self.number_input = wx.TextCtrl(panel, size=(120, 24), validator=NumberValidator())
+# 		self.number_input.SetHint("黑风/矿产次数")
+# 		self.number_input.Bind(wx.EVT_TEXT, self.on_text_change)
+# 		vbox.Add(self.number_input, flag=wx.ALL, border=5)
+#
+# 		# 魔镜层数 ComboBox
+# 		self.choiceMojing = wx.ComboBox(panel, size=(120, 30), choices=['迷幻境（虚实）', '狱境（黑白无常）', '炎冰境'])
+# 		self.choiceMojing.SetHint("魔镜层数")
+# 		vbox.Add(self.choiceMojing, flag=wx.ALL, border=5)
+#
+# 		# 整点 ComboBox
+# 		self.choiceZhengdian = wx.ComboBox(panel, size=(120, 30), choices=['牛+虎+兔+猴+羊', '虎+猴+羊', '火焰+寒冰'])
+# 		self.choiceZhengdian.SetHint("整点")
+# 		vbox.Add(self.choiceZhengdian, flag=wx.ALL, border=5)
+#
+# 		# 多选框部分
+# 		checkbox_sizer = wx.WrapSizer(wx.HORIZONTAL, wx.VERTICAL)
+# 		self.check_boxes = []
+# 		options = ["炼丹", "溶洞", "五行", "名将", "80精英", "云游精英", "100精英", "官渡精英"]
+# 		for option in options:
+# 			cb = wx.CheckBox(panel, label=option)
+# 			cb.SetValue(True)  # 设置默认勾选状态
+# 			checkbox_sizer.Add(cb, 0, flag=wx.LEFT | wx.RIGHT, border=2)
+# 			self.check_boxes.append(cb)
+#
+# 		# 创建一个水平的BoxSizer来放置多选框
+# 		hbox = wx.BoxSizer(wx.HORIZONTAL)
+# 		hbox.Add(checkbox_sizer, flag=wx.ALL, border=5)
+# 		vbox.Add(hbox, flag=wx.EXPAND | wx.ALL, border=5)
+#
+# 		# 确定按钮
+# 		self.button = wx.Button(panel, label="确定")
+# 		self.button.Disable()  # 初始化时禁用确定按钮
+# 		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
+# 		vbox.Add(self.button, flag=wx.ALIGN_CENTER | wx.ALL, border=5)
+#
+# 		panel.SetSizer(vbox)
+#
+# 	def on_text_change(self, event):
+# 		if self.team_leader_text.GetValue():
+# 			self.button.Enable()
+# 		else:
+# 			self.button.Disable()
+#
+# 	def on_button_click(self, event):
+# 		# 获取文本框中的值并保存在父窗口(MyFrame)中
+# 		parent = self.GetParent()
+# 		selected_options = []
+# 		for cb in self.check_boxes:
+# 			if cb.GetValue():
+# 				selected_options.append(cb.GetLabel())
+#
+# 		parent.game_name = self.team_leader_text.GetValue()
+# 		parent.heifengCount = self.number_input.GetValue() if self.number_input.GetValue() else 0
+# 		parent.zhanhunFloor = self.choiceCeng.GetValue()
+# 		parent.mojingFloor = self.choiceMojing.GetValue()
+# 		parent.zhengdianFloor = self.choiceZhengdian.GetValue()
+# 		parent.richangSelection = selected_options
+#
+# 		# 关闭对话框
+# 		self.EndModal(wx.ID_OK)
+#
+#
+# # 示例主窗口类
+# class MyFrame(wx.Frame):
+# 	def __init__(self, parent, title):
+# 		super(MyFrame, self).__init__(parent, title=title, size=(300, 200))
+#
+# 		panel = wx.Panel(self)
+#
+# 		button = wx.Button(panel, label="打开对话框")
+# 		button.Bind(wx.EVT_BUTTON, self.on_button_click)
+#
+# 		vbox = wx.BoxSizer(wx.VERTICAL)
+# 		vbox.Add(button, flag=wx.ALIGN_CENTER | wx.ALL, border=5)
+# 		panel.SetSizer(vbox)
+#
+# 		self.Show()
+#
+# 	def on_button_click(self, event):
+# 		dialog = MyDialog(self)
+# 		result = dialog.ShowModal()
+# 		if result == wx.ID_OK:
+# 			print(f"游戏名称: {self.game_name}")
+# 			print(f"黑风/矿产次数: {self.heifengCount}")
+# 			print(f"战魂层数: {self.zhanhunFloor}")
+# 			print(f"魔镜层数: {self.mojingFloor}")
+# 			print(f"整点: {self.zhengdianFloor}")
+# 			print(f"日常选择: {self.richangSelection}")
+# 		dialog.Destroy()
+#
+#
+# if __name__ == '__main__':
+# 	app = wx.App(False)
+# 	frame = MyFrame(None, '示例窗口')
+# 	app.MainLoop()
