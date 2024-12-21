@@ -184,6 +184,8 @@ class MyThread(threading.Thread):
 		self.win2_thread.start()
 		if self.scriptName == "官渡":
 			self.beginFun()
+			self.clearBag()
+			time.sleep(1)
 			self.guanduWhile()
 		elif self.scriptName == "嗜血战场(精英)":
 			self.hongWhile()
@@ -193,14 +195,13 @@ class MyThread(threading.Thread):
 				print('未选择层数，自动打26层')
 			self.zhanhunWhile()
 		elif self.scriptName == "整点":
-			self.clearBag()
-		# time.sleep(1)
-		# if self.zhengdianFloor == '牛+虎+兔+猴+羊':
-		# 	self.zhengDian()
-		# elif self.zhengdianFloor == '虎+猴+羊':
-		# 	self.go_zhengdian()
-		# elif self.zhengdianFloor == '火焰+寒冰':
-		# 	self.go_zhengdian49()
+			time.sleep(1)
+			if self.zhengdianFloor == '牛+虎+兔+猴+羊':
+				self.zhengDian()
+			elif self.zhengdianFloor == '虎+猴+羊':
+				self.go_zhengdian()
+			elif self.zhengdianFloor == '火焰+寒冰':
+				self.go_zhengdian49()
 		elif self.scriptName == "祭坛魔镜":
 			self.mojingWhile()
 		elif self.scriptName == "战魂+红+整点":
@@ -812,6 +813,7 @@ class MyThread(threading.Thread):
 			self.confidenceNum,
 			self.gameLocation,
 		)
+		time.sleep(0.5)
 
 	def show_error_message(self, message):
 		app = wx.App()
@@ -984,7 +986,14 @@ class MyThread(threading.Thread):
 			self.win1_dm.MoveTo(quedingchushou.x, quedingchushou.y)
 			time.sleep(0.001)
 			self.win1_dm.LeftClick()
-		time.sleep(1.5)
+		time.sleep(2)
+		self.clickFlag = False
+		zhengli = self.waitFor_team1('整理', self.gameBottomLocation)
+		if zhengli:
+			self.win1_dm.MoveTo(zhengli.x, zhengli.y)
+			time.sleep(0.001)
+			self.win1_dm.LeftClick()
+		time.sleep(1)
 		self.win1_dm.KeyPressChar('e')
 
 	# 清包
@@ -1013,7 +1022,14 @@ class MyThread(threading.Thread):
 			self.win2_dm.MoveTo(quedingchushou.x, quedingchushou.y)
 			time.sleep(0.001)
 			self.win2_dm.LeftClick()
-		time.sleep(1.5)
+		time.sleep(2)
+		self.clickFlag = False
+		zhengli = self.waitFor_team2('整理', self.gameBottomLocation)
+		if zhengli:
+			self.win2_dm.MoveTo(zhengli.x, zhengli.y)
+			time.sleep(0.001)
+			self.win2_dm.LeftClick()
+		time.sleep(1)
 		self.win2_dm.KeyPressChar('e')
 
 	# 清包
@@ -1037,7 +1053,14 @@ class MyThread(threading.Thread):
 			self.dm.MoveTo(quedingchushou.x, quedingchushou.y)
 			time.sleep(0.001)
 			self.dm.LeftClick()
-		time.sleep(1.5)
+		time.sleep(2)
+		self.clickFlag = False
+		zhengli = self.waitFor('整理', self.gameBottomLocation)
+		if zhengli:
+			self.dm.MoveTo(zhengli.x, zhengli.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+		time.sleep(1)
 		self.dm.KeyPressChar('e')
 
 	# V3整点
@@ -1196,6 +1219,8 @@ class MyThread(threading.Thread):
 				True,
 			)
 			print(zhengdian_res)
+			if zhengdian_res in ['打完了羊', '飞过去没有羊', '点了没找到羊', '有人打羊']:
+				self.zhengdian_by_xiaolvren('魔谷西', 2, 857, [50, 46], 1)
 		closeTalkXY = self.waitFor(
 			self.get_resource_path("serveAssets/images/closetalk.bmp"),
 			self.talkLocation,
@@ -1262,8 +1287,10 @@ class MyThread(threading.Thread):
 		# 打老虎
 		time.sleep(1)
 		self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
-		time.sleep(0.5)
-		self.zhengdian_by_1xiaolvren('九黎族祭坛', 0, 0, [], 1)
+		is_in_bibotan = self.waitFor('九黎族祭坛', self.dituLocation, 5)
+		if is_in_bibotan:
+			time.sleep(0.5)
+			self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
 		time.sleep(0.5)
 		# 回城
 		self.dm.KeyPressChar('e')
@@ -1301,7 +1328,9 @@ class MyThread(threading.Thread):
 		# 763  50/54
 		self.zhengdian_by_xiaolvren('幽暗密林', 0, 763, [50, 54], 2)
 		time.sleep(0.5)
-		self.zhengdian_by_xiaolvren('幽暗密林', 0, 763, [50, 54], 2)
+		is_in_bibotan = self.waitFor('幽暗密林', self.dituLocation, 5)
+		if is_in_bibotan:
+			self.zhengdian_by_xiaolvren('幽暗密林', 0, 763, [50, 54], 2)
 		time.sleep(0.5)
 		# 去魔谷西
 		self.go_in_ditu('地图羊', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '魔谷西', '', '')
@@ -1310,7 +1339,9 @@ class MyThread(threading.Thread):
 		# 856 46/50
 		self.zhengdian_by_xiaolvren('魔谷西', 2, 857, [50, 46], 1)
 		time.sleep(0.5)
-		self.zhengdian_by_xiaolvren('魔谷西', 2, 857, [50, 46], 1)
+		is_in_bibotan = self.waitFor('魔谷西', self.dituLocation, 5)
+		if is_in_bibotan:
+			self.zhengdian_by_xiaolvren('魔谷西', 2, 857, [50, 46], 1)
 		time.sleep(0.5)
 		self.zhengdian_flag = False
 		if self.scriptName == '官渡' or self.scriptName == '整点':
@@ -1392,7 +1423,9 @@ class MyThread(threading.Thread):
 		# 735 58/62
 		self.zhengdian_by_xiaolvren('碧波潭', 2, 736, [58, 62], 2)
 		time.sleep(0.5)
-		self.zhengdian_by_xiaolvren('碧波潭', 2, 736, [58, 62], 2)
+		is_in_bibotan = self.waitFor('碧波潭', self.dituLocation, 5)
+		if is_in_bibotan:
+			self.zhengdian_by_xiaolvren('碧波潭', 2, 736, [58, 62], 2)
 		time.sleep(0.5)
 		# 飞寒冰
 		self.feiZhengDian(
@@ -5252,7 +5285,8 @@ class MyFrame(wx.Frame):
 			"8.整点'牛+虎+兔+猴+羊'在竞技/攻城的时候(活动被刷屏的时候)大概率会漏打，但是每个也会飞一次；选择了该整点一定保证传送鞋充足；",
 			"9.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
 			"10.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
-			"11.49整点内容为循环打整点'火焰+寒冰',在洛阳城西启动；49一键内容为49日常==>49战魂。",
+			"11.49整点内容为循环打整点'火焰+寒冰',在洛阳城西启动；49一键内容为49日常==>49战魂；",
+			"11.如需要给多开的号卖装备在队友名中填入队友名称，名称为小号列表里面的设置的名字。",
 			"使用说明：",
 			"1.第一次脚本需要使用管理员模式开启；",
 			"2.脚本启动之前填入游戏名称；",
@@ -5444,13 +5478,16 @@ class MyDialog(wx.Dialog):
 		zhanhun_floor = self.choiceCeng.GetValue()
 		mojing_floor = self.choiceMojing.GetValue()
 		zhengdian_floor = self.choiceZhengdian.GetValue()
+		teammate1_text = self.teammate1_text.GetValue()
+		teammate2_text = self.teammate2_text.GetValue()
 
 		# 保存数据到文件
-		self.save_to_file(game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor)
+		self.save_to_file(game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor, teammate1_text, teammate2_text)
 
-	def save_to_file(self, game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor):
+	def save_to_file(self, game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor, teammate1_text, teammate2_text):
 		# 获取脚本文件的同级目录
-		script_dir = os.path.dirname(os.path.abspath(__file__))
+		exe_path = sys.executable
+		script_dir = os.path.dirname(exe_path)
 		file_path = os.path.join(script_dir, "data.txt")
 
 		# 写入数据到文件
@@ -5460,11 +5497,14 @@ class MyDialog(wx.Dialog):
 			file.write(f"zhanhun_floor: {zhanhun_floor}\n")
 			file.write(f"mojing_floor: {mojing_floor}\n")
 			file.write(f"zhengdian_floor: {zhengdian_floor}\n")
+			file.write(f"teammate1_text: {teammate1_text}\n")
+			file.write(f"teammate2_text: {teammate2_text}\n")
 		wx.MessageBox("数据已保存", "成功", wx.OK | wx.ICON_INFORMATION)
 
 	def get_file_info(self, event):
 		# 获取脚本文件的同级目录
-		script_dir = os.path.dirname(os.path.abspath(__file__))
+		exe_path = sys.executable
+		script_dir = os.path.dirname(exe_path)
 		file_path = os.path.join(script_dir, "data.txt")
 
 		# 读取数据从文件
@@ -5483,11 +5523,15 @@ class MyDialog(wx.Dialog):
 		zhanhun_floor = data.get('zhanhun_floor', '')
 		mojing_floor = data.get('mojing_floor', '')
 		zhengdian_floor = data.get('zhengdian_floor', '')
+		teammate1_text = data.get('teammate1_text', '')
+		teammate2_text = data.get('teammate2_text', '')
 		self.team_leader_text.SetValue(game_name)
 		self.number_input.SetValue(heifeng_count)
 		self.choiceCeng.SetValue(zhanhun_floor)
 		self.choiceMojing.SetValue(mojing_floor)
 		self.choiceZhengdian.SetValue(zhengdian_floor)
+		self.teammate1_text.SetValue(teammate1_text)
+		self.teammate2_text.SetValue(teammate2_text)
 
 	def on_text_change(self, event):
 		if self.team_leader_text.GetValue():
