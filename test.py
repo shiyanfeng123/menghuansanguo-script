@@ -105,10 +105,10 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\addBloud.bmp", "", 0.9, 0)
+# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\addBloud.bmp", "", 0.9, 0)
 
 # print(dm.CmpColor(820, 50, '091311', 1) == 0)
-print(dm_ret, 'dm_ret')
+# print(dm_ret, 'dm_ret')
 # if not dm_ret:
 # 	print('未找到')
 # dm_ret = dm_ret.split('|')
@@ -123,7 +123,7 @@ print(dm_ret, 'dm_ret')
 
 # print(x, y)
 # # 加载字库
-dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\team2.txt")  # 字库文件路径
+dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
 print(f'字库加载成功，{dict_id}')
 
 # 文字识别参数
@@ -140,8 +140,8 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 
 
 # example_function()
-# find_str_result = dm.FindStrFastEx(0, 0, x, y, '一', color_format, sim)
-# print(f'FindStrFast 返回结果: {find_str_result}')
+find_str_result = dm.FindStrFastEx(0, 0, x, y, '进入', color_format, sim)
+print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])

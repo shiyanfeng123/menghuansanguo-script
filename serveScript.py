@@ -132,7 +132,7 @@ class MyThread(threading.Thread):
 		self.richangSelection = []
 		self.click_hwnd = 0
 		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
-		self.zhengdianFb = ["官渡", "祭坛魔镜", "黑风山寨", "战魂+红+整点"]
+		self.zhengdianFb = ["官渡", "祭坛魔镜", "黑风山寨", "战魂+红+整点", "战魂+红+魔镜+整点"]
 		self.hundianFlag = False
 		self.win1_hwnd = 0
 		self.win2_hwnd = 0
@@ -184,6 +184,7 @@ class MyThread(threading.Thread):
 			elif self.zhengdianFloor == '火焰+寒冰':
 				self.go_zhengdian49()
 		elif self.scriptName == "祭坛魔镜":
+			self.beginFun()
 			self.mojingWhile()
 		elif self.scriptName == "战魂+红+整点":
 			if not self.zhanhunFloor:
@@ -202,8 +203,11 @@ class MyThread(threading.Thread):
 			self.heifengWhile()
 		elif self.scriptName == "名将挑战赛":
 			self.mingjiangtiaozhanWhile()
-		elif self.scriptName == "战魂+红+官渡+整点":
-			self.zhanhunHongGdWhile()
+		elif self.scriptName == "战魂+红+魔镜+整点":
+			if not self.zhanhunFloor:
+				self.zhanhunFloor = '26层'
+				print('未选择层数，自动打26层')
+			self.mojingAndHongAndZd()
 		elif self.scriptName == "官渡精英":
 			self.beginFun()
 			self.guanduJyScript()
@@ -681,6 +685,20 @@ class MyThread(threading.Thread):
 			self.show_error_message('队友1绑定失败')
 			return False
 		self.win1_dm.SetDict(0, self.get_resource_path("serveAssets/fonts/team1.txt"))
+		time.sleep(0.5)
+		duiwu_pos = self.waitFor_team1('队伍', self.talkLocation, 3)
+		if duiwu_pos:
+			self.win1_dm.MoveTo(duiwu_pos.x, duiwu_pos.y)
+			time.sleep(0.01)
+			self.win1_dm.LeftClick()
+			time.sleep(0.5)
+			self.win1_dm.MoveTo(duiwu_pos.x, int(duiwu_pos.y + 28))
+			time.sleep(0.01)
+			self.win1_dm.LeftClick()
+			time.sleep(0.3)
+			self.win1_dm.KeyPressChar('1')
+			time.sleep(1)
+			self.win1_dm.KeyPressChar('enter')
 		while True:
 			time.sleep(1)
 			if self.clickFlag:
@@ -738,6 +756,20 @@ class MyThread(threading.Thread):
 			self.show_error_message('队友2绑定失败')
 			return False
 		self.win2_dm.SetDict(0, self.get_resource_path("serveAssets/fonts/team2.txt"))
+		time.sleep(0.5)
+		duiwu_pos = self.waitFor_team2('队伍', self.talkLocation, 3)
+		if duiwu_pos:
+			self.win2_dm.MoveTo(duiwu_pos.x, duiwu_pos.y)
+			time.sleep(0.01)
+			self.win2_dm.LeftClick()
+			time.sleep(0.5)
+			self.win2_dm.MoveTo(duiwu_pos.x, int(duiwu_pos.y + 28))
+			time.sleep(0.01)
+			self.win2_dm.LeftClick()
+			time.sleep(0.3)
+			self.win2_dm.KeyPressChar('1')
+			time.sleep(1)
+			self.win2_dm.KeyPressChar('enter')
 		while True:
 			time.sleep(1)
 			if self.clickFlag:
@@ -891,6 +923,7 @@ class MyThread(threading.Thread):
 		self.dm.MoveTo(int(outX), int(outY))
 		time.sleep(0.001)
 		self.dm.LeftClick()
+		time.sleep(0.3)
 		locationQueding = self.waitFor(
 			self.get_resource_path("serveAssets/images/outFb.bmp"),
 			self.gameLocation,
@@ -898,7 +931,7 @@ class MyThread(threading.Thread):
 		)
 		if locationQueding:
 			self.dm.MoveTo(locationQueding.x, locationQueding.y)
-			time.sleep(0.001)
+			time.sleep(0.1)
 			self.dm.LeftClick()
 			huodetongbiLocation = self.waitFor('获得铜币', self.gameLeftLocation, 1)
 			if huodetongbiLocation:
@@ -1469,6 +1502,13 @@ class MyThread(threading.Thread):
 			time.sleep(1)
 			self.feiFb('副本挑战赛', True)
 			self.guanduAndHongAndZd()
+		elif self.scriptName == "战魂+红+魔镜+整点":
+			time.sleep(1)
+			self.feiFb('副本曹操', True)
+			time.sleep(1)
+			self.feiFb('副本挑战赛', True)
+			time.sleep(10)
+			self.mojingAndHongAndZd()
 		elif self.scriptName == "黑风山寨":
 			time.sleep(1)
 			self.feiFb('副本霸山虎', False)
@@ -1480,7 +1520,7 @@ class MyThread(threading.Thread):
 		if self.scriptName == '官渡' or self.scriptName == '整点':
 			self.go_in_ditu('地图老虎遗迹', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族遗迹', '驿站城西', '驿站襄阳')
 		elif self.scriptName == '祭坛魔镜':
-			self.go_in_ditu('地图老虎遗迹', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族遗迹', '驿站襄阳', '')
+			self.go_in_ditu('地图老虎遗迹', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族遗迹', '驿站襄阳', '驿站城西')
 		while True:
 			with condition:
 				if self.stoped:
@@ -1571,7 +1611,7 @@ class MyThread(threading.Thread):
 			# 回洛阳城西
 			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
 			time.sleep(1)
-			self.guanduWhile()
+			self.mojingWhile()
 
 	# 跑整点49
 	def go_zhengdian49(self):
@@ -1693,7 +1733,6 @@ class MyThread(threading.Thread):
 				item_y = int(new_item[2]) + int(int(picH) * 0.5)
 				hasZhengDian = False
 				while self.dm.CmpColor(item_x, item_y, xiaolvren_pos_color, 0.7) == 0:
-					self.confidenceNum = 0.9
 					self.dm.MoveTo(item_x, item_y)
 					time.sleep(0.001)
 					self.dm.LeftClick()
@@ -1702,14 +1741,11 @@ class MyThread(threading.Thread):
 					time.sleep(0.8)
 					if self.find_str('进入|点击', self.gameBottomLocation, 0):
 						return '不是整点'
-					self.confidenceNum = 0.8
 					if self.find_str('打就打', self.gameBottomLocation, 0) and not self.find_pic(
 							f"{self.get_resource_path('serveAssets/images/zhengdian/long.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long4.bmp')}",
 							self.gameLocation, 0):
 						hasZhengDian = True
-						self.confidenceNum = 0.9
 						break
-				self.confidenceNum = 0.9
 				if hasZhengDian:
 					dajiuda_pos = self.waitFor('打就打', self.gameBottomLocation, 2)
 					if dajiuda_pos:
@@ -1858,8 +1894,9 @@ class MyThread(threading.Thread):
 				self.gameLocation,
 			)
 			time.sleep(0.5)
+			self.dm.MoveTo(100, 100)
 			downTalk = self.waitFor(
-				self.get_resource_path("serveAssets/images/downFb.bmp"),
+				f"{self.get_resource_path('serveAssets/images/downFb.bmp')}|{self.get_resource_path('serveAssets/images/downFb1.bmp')}",
 				(
 					self.locationX,
 					self.locationY,
@@ -2102,16 +2139,14 @@ class MyThread(threading.Thread):
 				self.confidenceNum,
 				image_regionB,
 			)
-			if clickB:
-				break
 			clickB = self.click_image(
 				image_pathB2,
 				self.confidenceNum,
 				image_regionB,
 			)
 			if clickB:
-				break
-			time.sleep(0.2)
+				time.sleep(0.5)
+			time.sleep(0.1)
 
 	# 使用道具
 	def press_keys_until_image_found(self, image_path, image_path2, region1, region2, find_text):
@@ -2142,6 +2177,7 @@ class MyThread(threading.Thread):
 			if self.find_pic_or_str(image_path2, region2, 0):
 				break
 			time.sleep(1.5)
+		return True
 
 	def get_random_number(self):
 		numbers = [-2, -1, 0, 1, 2]
@@ -2215,7 +2251,7 @@ class MyThread(threading.Thread):
 					self.zhengdian_flag = True
 					self.outScript(A)
 					time.sleep(2)
-					self.go_zhengdian()
+					self.go_zhengdian49()
 					return
 			# # 去除获得铜币黑框
 			# self.click_image(
@@ -2257,8 +2293,19 @@ class MyThread(threading.Thread):
 						time.sleep(1)
 						self.heifengWhile()
 						return
+				# 点击B
+				self.BisClick = self.click_image_with_min_x(
+					B,
+					B2,
+					C1,
+				)
+				self.BisClick = self.click_image_with_min_x(
+					B1,
+					B2,
+					C1,
+				)
 				#   D找图片D点击‘
-				if D and self.clickBTime == 0 and not self.find_pic_or_str(B, B2, find_dir) and not self.find_pic_or_str(B1, B2, find_dir):
+				if D and self.clickBTime == 0:
 					with condition:
 						if self.stoped:
 							condition.wait()
@@ -2648,6 +2695,8 @@ class MyThread(threading.Thread):
 			self.dituLocation,
 			"0.106,0.091",
 		)
+		self.addBloud()
+		time.sleep(0.5)
 		# 进入帐篷
 		self.waitForAAndClickB1(
 			'帐篷',
@@ -3205,10 +3254,10 @@ class MyThread(threading.Thread):
 			'镜像地层',
 			'吃人妖',
 			'吃人妖',
-			self.gameLocation,
+			self.gameLeftLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"0.146,0.108",
+			"0.155,0.121",
 		)
 		# 进入第二层
 		self.waitForAAndClickB1(
@@ -3249,15 +3298,17 @@ class MyThread(threading.Thread):
 			'知道了',
 		)
 		# 打虚实
+		self.color_format = 'ffffff-00000|00ff00-000000|ff0000-000000'
 		self.findAndClickPic(
 			'迷幻境',
 			'虚',
 			'虚',
-			self.gameBottomLocation,
+			self.gameRightLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
 			"0.056,0.143",
 		)
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
 		self.findAndClickPic(
 			'迷幻境',
 			'实',
@@ -4700,7 +4751,6 @@ class MyThread(threading.Thread):
 
 	# 一直执行魔镜
 	def mojingWhile(self):
-		self.beginFun()
 		while True:
 			overMojing = self.mojingScript()
 			if not overMojing:
@@ -4846,22 +4896,27 @@ class MyThread(threading.Thread):
 		self.scriptName = "官渡"
 		self.guanduWhile()
 
-	# 战魂红官渡
-	def zhanhunHongGdWhile(self):
+	# 战魂+红+魔镜+整点
+	def mojingAndHongAndZd(self):
 		self.beginFun()
-		for i in range(7):
-			hasHong = self.hongScript()
-			if not hasHong:
-				break
+		self.zhanhunScript()
+		time.sleep(1)
 		self.feiFb('副本典韦', True)
-		for i in range(6):
-			hasZhanhun = self.zhanhunScript()
-			if not hasZhanhun:
-				break
-		self.feiFb('副本曹操', True)
-		self.scriptName = "官渡"
-		while True:
-			self.guanduScript()
+		toZhengdianTime = 59 - time.localtime().tm_min
+		if 10 <= toZhengdianTime < 20:
+			hongOver = self.hongScript()
+			if not hongOver:
+				self.mojingWhile()
+		elif toZhengdianTime >= 20:
+			for i in range(2):
+				hongOver = self.hongScript()
+				if not hongOver:
+					self.mojingWhile()
+		elif toZhengdianTime < 10:
+			self.mojingWhile()
+		time.sleep(1)
+		self.mojingWhile()
+		self.zhengDian()
 
 	# 49日常
 	def richang49Script(self):
@@ -5534,7 +5589,7 @@ class MyFrame(wx.Frame):
 				"祭坛魔镜",
 				"日常",
 				"战魂+红+整点",
-				"战魂+红+官渡+整点",
+				"战魂+红+魔镜+整点",
 				"战魂楼(精英)",
 				"嗜血战场(精英)",
 				"黑风山寨",
@@ -5592,7 +5647,7 @@ class MyFrame(wx.Frame):
 			"2.整点'虎+猴+羊'在官渡、魔镜的时候可以选择，需要在背包当前页左上角放上回城卷，不需要传送鞋；；",
 			"3.整点'火焰+寒冰'在魔镜的时候可以选择，每次使用一个飞鞋，如果选择'49整点'脚本，在洛阳城西启动；",
 			"4.战魂+红+整点内容是一次战魂，(58-完成战魂分钟)/2次红，一次整点，战魂跟红都没次数之后会自动去官渡(一定每个小时开始启动，到整点会退出副本)；",
-			"5.战魂+红+官渡+整点内容为战魂*6==>红*7==>官渡；",
+			"5.战魂+红+魔镜+整点内容为战魂+红+整点的平替，官渡换成魔镜；",
 			"6.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
 			"7.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战，日常副本可以选卖图，红，战魂，卖图是卖藏宝图；",
 			"8.整点'牛+虎+兔+猴+羊'在竞技/攻城的时候(活动被刷屏的时候)大概率会漏打，但是每个也会飞一次；选择了该整点一定保证传送鞋充足；",
