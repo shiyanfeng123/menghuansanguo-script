@@ -58,10 +58,10 @@ class MyThread(threading.Thread):
 			{'user_name': '烈烈残阳', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-2-10 23:59:00'},
 			{'user_name': '黑北', 'user_mac': ["E4-60-17-15-B4-73"], 'end_time': '2029-12-30 23:59:00'},
 			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2029-12-30 23:59:00'},
-			{'user_name': '欧阳', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2024-12-26 23:59:00'},
-			{'user_name': '小小怪', 'user_mac': ["D0-65-78-10-5A-46"], 'end_time': '2024-12-26 23:59:00'},
+			{'user_name': '欧阳慕青', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2024-12-26 23:59:00'},
+			{'user_name': '天蓬元帅', 'user_mac': ["D0-65-78-10-5A-46"], 'end_time': '2024-12-26 23:59:00'},
 			{'user_name': '执墨', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2024-12-26 23:59:00'},
-			{'user_name': '11', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-1-10 23:59:00'},
+			{'user_name': '敢为天下先', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-1-10 23:59:00'},
 		]
 		try:
 			dm = CreateObject('dm.dmsoft')
@@ -139,6 +139,7 @@ class MyThread(threading.Thread):
 		self.zhengdian_flag = False
 		self.clearMapFlag = False
 		self.mac_address = ''
+		self.user_name = ''
 
 	def run(self):
 		self.mac_address = self.get_mac_address()
@@ -146,7 +147,7 @@ class MyThread(threading.Thread):
 		if not is_pass:
 			self.show_error_message('未注册用户，请联系管理员注册!')
 			return
-		print('已注册用户')
+		print(f'你好:{self.user_name}')
 		self.zhanhunFloor = self.frame.zhanhunFloor
 		self.mojingFloor = self.frame.mojingFloor
 		self.teammate1_name = self.frame.teammate1_name
@@ -258,6 +259,7 @@ class MyThread(threading.Thread):
 				if current_time > expiration_time:
 					return False
 				else:
+					self.user_name = user['user_name']
 					return True
 		return False
 
@@ -3186,7 +3188,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			'进入',
 			self.gameBottomLocation,
-			"",
+			"0.127,0.134",
 		)
 		self.waitForAAndClickB1(
 			'镜像地层',
@@ -3203,15 +3205,15 @@ class MyThread(threading.Thread):
 			'镜像地层',
 			'吃人妖',
 			'吃人妖',
-			self.gameBottomLocation,
+			self.gameLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.146,0.108",
 		)
 		# 进入第二层
 		self.waitForAAndClickB1(
 			'进入',
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.get_resource_path("serveAssets/images/mojing/xiaolvren.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
 		self.waitForAAndClickB(
@@ -3230,12 +3232,12 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.118,0.125",
 		)
 		# 进入第三层
 		self.waitForAAndClickB1(
 			'进入',
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.get_resource_path("serveAssets/images/mojing/xiaolvren.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
 		self.waitForAAndClickB(
@@ -3254,7 +3256,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.056,0.143",
 		)
 		self.findAndClickPic(
 			'迷幻境',
@@ -3263,7 +3265,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.152,0.132",
 		)
 		if self.mojingFloor == '迷幻境（虚实）':
 			# 退出副本
@@ -3272,7 +3274,7 @@ class MyThread(threading.Thread):
 		# 进入第四层
 		self.waitForAAndClickB1(
 			'进入',
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.get_resource_path("serveAssets/images/mojing/xiaolvren.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
 		self.waitForAAndClickB(
@@ -3286,21 +3288,21 @@ class MyThread(threading.Thread):
 		# 打黑白无常
 		self.findAndClickPic(
 			'狱境',
-			'白无常',
-			'白无常',
+			'黑无常之魂',
+			'黑无常之魂',
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.11,0.12",
 		)
 		self.findAndClickPic(
 			'狱境',
-			'黑无常魔镜',
-			'黑无常魔镜',
+			'白无常之魂',
+			'白无常之魂',
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.163,0.118",
 		)
 		if self.mojingFloor == '狱境（黑白无常）':
 			# 退出副本
@@ -3309,7 +3311,7 @@ class MyThread(threading.Thread):
 		# 进入第五层
 		self.waitForAAndClickB1(
 			'进入',
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.get_resource_path("serveAssets/images/mojing/xiaolvren.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
 		self.waitForAAndClickB(
@@ -3328,25 +3330,27 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.05,0.125",
 		)
+		self.color_format = 'ffffff-00000|00ff00-000000|ff0000-000000'
 		self.findAndClickPic(
 			'炎冰境',
 			'炎魔',
-			'炎魔',
+			f"{self.get_resource_path('serveAssets/images/zhengdian/huoyan1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/huoyan2.bmp')}",
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.172,0.127",
 		)
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
 		self.findAndClickPic(
 			'炎冰境',
 			'炎兄',
-			'炎兄',
+			f"{self.get_resource_path('serveAssets/images/zhengdian/huoyan1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/huoyan2.bmp')}",
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.156,0.127",
 		)
 		if self.mojingFloor == '炎冰境':
 			# 退出副本
@@ -3355,7 +3359,7 @@ class MyThread(threading.Thread):
 		# 进入第六层
 		self.waitForAAndClickB1(
 			'进入',
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.get_resource_path("serveAssets/images/mojing/xiaolvren.bmp"),
 			self.gameBottomLocation, self.dituLocation,
 		)
 		self.waitForAAndClickB(
@@ -3374,7 +3378,7 @@ class MyThread(threading.Thread):
 			self.dituLocation,
 			'北境',
 			self.dituLocation,
-			"",
+			"0.122,0.075",
 		)
 		self.findAndClickPic(
 			'北境',
@@ -3383,12 +3387,16 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.098,0.125",
 		)
-		self.waitForAAndClickB1(
+		self.findAndClickPic(
+			'北境',
 			'印魔殿',
-			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
-			self.dituLocation, self.dituLocation,
+			'印魔殿',
+			self.dituLocation,
+			'印魔殿',
+			self.dituLocation,
+			"0.101,0.172",
 		)
 		# 西境
 		self.findAndClickPic(
@@ -3398,7 +3406,7 @@ class MyThread(threading.Thread):
 			self.dituLocation,
 			'西境',
 			self.dituLocation,
-			"",
+			"0.182,0.115",
 		)
 		self.findAndClickPic(
 			'西境',
@@ -3407,7 +3415,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.104,0.137",
 		)
 		self.waitForAAndClickB1(
 			'印魔殿',
@@ -3422,7 +3430,7 @@ class MyThread(threading.Thread):
 			self.dituLocation,
 			'南境',
 			self.dituLocation,
-			"",
+			"0.123,0.153",
 		)
 		self.findAndClickPic(
 			'南境',
@@ -3431,12 +3439,16 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.1,0.139",
 		)
-		self.waitForAAndClickB1(
+		self.findAndClickPic(
+			'南境',
 			'印魔殿',
-			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
-			self.dituLocation, self.dituLocation,
+			'印魔殿',
+			self.dituLocation,
+			'印魔殿',
+			self.dituLocation,
+			"0.102,0.113",
 		)
 		# 东境
 		self.findAndClickPic(
@@ -3446,7 +3458,7 @@ class MyThread(threading.Thread):
 			self.dituLocation,
 			'东境',
 			self.dituLocation,
-			"",
+			"0.053,0.117",
 		)
 		self.findAndClickPic(
 			'东境',
@@ -3455,7 +3467,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.107,0.137",
 		)
 		self.waitForAAndClickB1(
 			'印魔殿',
@@ -3470,7 +3482,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			"",
+			"0.135,0.101",
 		)
 		# 退出副本
 		self.outScript('印魔殿')
@@ -5582,12 +5594,12 @@ class MyFrame(wx.Frame):
 			"4.战魂+红+整点内容是一次战魂，(58-完成战魂分钟)/2次红，一次整点，战魂跟红都没次数之后会自动去官渡(一定每个小时开始启动，到整点会退出副本)；",
 			"5.战魂+红+官渡+整点内容为战魂*6==>红*7==>官渡；",
 			"6.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
-			"7.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战；",
+			"7.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战，日常副本可以选卖图，红，战魂，卖图是卖藏宝图；",
 			"8.整点'牛+虎+兔+猴+羊'在竞技/攻城的时候(活动被刷屏的时候)大概率会漏打，但是每个也会飞一次；选择了该整点一定保证传送鞋充足；",
 			"9.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
 			"10.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
 			"11.49整点内容为循环打整点'火焰+寒冰',在洛阳城西启动；49一键内容为49日常==>49战魂；",
-			"12.如需要给多开的号卖装备在队友名中填入队友名称，名称为小号列表里面的设置的名字，并且将多开号拆分出单独窗口并且不被最小化。",
+			"12.如需要给多开的号卖装备、加血在队友名中填入队友名称，名称为小号列表里面的设置的名字，并且将多开号拆分出单独窗口并且不被最小化。",
 			"使用说明：",
 			"1.第一次脚本需要使用管理员模式开启；",
 			"2.脚本启动之前填入游戏名称；",
@@ -5639,7 +5651,7 @@ class MyFrame(wx.Frame):
 		if not self.scriptName:
 			self.thread.show_error_message("请先选择脚本！")
 			return
-		print("现在开始脚本！")
+		print("开始脚本！")
 		self.thread.start()
 
 	def pause_script(self):
@@ -5739,7 +5751,7 @@ class MyDialog(wx.Dialog):
 		self.number_input.Bind(wx.EVT_TEXT, self.on_text_change)
 		self.choiceCeng = wx.ComboBox(panel, pos=(10, 40), size=(120, 30), choices=['20层', '21层', '22层', '23层', '24层', '25层', '26层'])
 		self.choiceCeng.SetHint("战魂层数")
-		self.choiceMojing = wx.ComboBox(panel, pos=(10, 70), size=(120, 30), choices=['迷幻境（虚实）', '狱境（黑白无常）', '炎冰境'])
+		self.choiceMojing = wx.ComboBox(panel, pos=(10, 70), size=(120, 30), choices=['迷幻境（虚实）', '狱境（黑白无常）'])
 		self.choiceMojing.SetHint("魔镜层数")
 		self.choiceZhengdian = wx.ComboBox(panel, pos=(150, 70), size=(120, 30), choices=['牛+虎+兔+猴+羊', '虎+猴+羊', '火焰+寒冰'])
 		self.choiceZhengdian.SetHint("整点")
