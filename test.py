@@ -105,7 +105,7 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\addBloud.bmp", "", 0.9, 0)
+# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\huichengjuan.bmp", "", 0.9, 0)
 
 # print(dm.CmpColor(820, 50, '091311', 1) == 0)
 # print(dm_ret, 'dm_ret')
@@ -123,24 +123,58 @@ print(x, y)
 
 # print(x, y)
 # # 加载字库
-dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
-print(f'字库加载成功，{dict_id}')
+# 定义字库文件路径
+# import ctypes
+# from comtypes.client import CreateObject
+#
+# # 定义字库文件路径
+# font_file_path = r"E:\project\python\serveAssets\fonts\common.txt"
+#
+# # 读取字库文件内容
+# font_data = dm.ReadFile(font_file_path)
+#
+# # 将字库内容转换为字节数据
+# font_buffer = dm.StringToData(font_data, 1)
+# # 动态分配内存
+# memory_address = ctypes.windll.kernel32.VirtualAlloc(
+# 	ctypes.c_void_p(0),
+# 	ctypes.c_size_t(len(font_data)),
+# 	0x3000,  # MEM_COMMIT | MEM_RESERVE
+# 	0x40  # PAGE_READWRITE
+# )
+# dm.WriteData(hwnd, str(memory_address), font_data)
+# print(memory_address, str(hex(memory_address)), 'memory_address')
+# # 设置字典内存
+# dict_id = dm.SetDictMem(0, int(memory_address), len(font_data))
+#
+# if dict_id != 0:
+# 	print(f"字典加载成功，字典ID: {dict_id}")
+# else:
+# 	print("字典加载失败")
 
+# 释放内存
+# dm.FreeMem(memory_address)
+dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
+# dict_id1 = dm.SetDict(1, r"E:\project\python\serveAssets\fonts\team1.txt")  # 字库文件路径
+# dict_id2 = dm.SetDict(2, r"E:\project\python\serveAssets\fonts\team2.txt")  # 字库文件路径
+# dict_id2 = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\zhengdian.txt")  # 字库文件路径
+# print(f'字库加载成功，{dict_id},{dict_id1},{dict_id2}')
+# print(dm.GetDictCount(0), dm.GetDictCount(1), dm.GetDictCount(2))
 # 文字识别参数
 color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
 # color_format = "ffffff-000000"  # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000'  # 绿色字体
 # color_format = 'ffff00-000000'
-sim = 0.9  # 相似度阈值，可以根据实际情况调整
+sim = 0.8  # 相似度阈值，可以根据实际情况调整
 # dm.KeyDownChar('left')
 # time.sleep(5)
 # dm.KeyUpChar('left')
 #
 # # 进行文字识别
-
-
-# example_function()
-find_str_result = dm.FindStrFastEx(0, 0, x, y, '进入', color_format, sim)
+# example_function
+print(dm.GetNowDict())
+# dm.UseDict(1)
+find_str_result = dm.FindStrFastEx(0, 0, x, y, '密洞', color_format, sim)
 print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
