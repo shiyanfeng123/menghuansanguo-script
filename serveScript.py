@@ -266,6 +266,8 @@ class MyThread(threading.Thread):
 				self.yinmofuScript()
 
 	def is_user_valid(self):
+		if self.overed:
+			return
 		current_time = datetime.now()
 		for user in self.userData:
 			if self.mac_address in user['user_mac']:
@@ -297,6 +299,8 @@ class MyThread(threading.Thread):
 		hwnds = hwnds.split(",")
 		hwnd = 0
 		for item in hwnds:
+			if self.overed:
+				return
 			if item and self.dm.GetWindowTitle(int(item)) == target_window_title:
 				hwnd = int(item)
 				break
@@ -306,9 +310,14 @@ class MyThread(threading.Thread):
 
 			# 获取屏幕分辨率
 			# screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
+
 			# screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
+			if self.overed:
+				return
 
 			def enum_child_proc(hwnd, lParam):
+				if self.overed:
+					return
 				class_name = self.dm.GetWindowClass(hwnd)
 				child_rect = self.dm.GetWindowRect(hwnd)
 				if child_rect != 0:
@@ -317,6 +326,9 @@ class MyThread(threading.Thread):
 					# 	self.click_hwnd = hwnd
 					# 	return False
 					if class_name == 'Chrome_RenderWidgetHostHWND':
+						if left > 50:
+							print('请5s内关闭小号列表！')
+							time.sleep(5)
 						self.click_hwnd = hwnd
 						return False
 				return True
@@ -339,6 +351,8 @@ class MyThread(threading.Thread):
 		else:
 			self.show_error_message("未检测到游戏页面")
 			return False
+		if self.overed:
+			return
 		self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/common.txt"))  # 字库文件路径
 		self.dm.SetDict(1, self.get_resource_path("serveAssets/fonts/zhengdian.txt"))  # 字库文件路径
 		self.dm.SetDict(2, self.get_resource_path("serveAssets/fonts/mojing.txt"))  # 字库文件路径
@@ -1844,6 +1858,8 @@ class MyThread(threading.Thread):
 
 	# 在地图通过小绿人打整点
 	def zhengdian_by_xiaolvren(self, base_image, find_dir, npc_posx=0, npc_possy=[], order=1):
+		if npc_possy is None:
+			npc_possy = []
 		if self.overed:
 			return
 		base_image_res = self.waitFor(base_image, self.dituLocation, 5)
@@ -1878,12 +1894,11 @@ class MyThread(threading.Thread):
 					if self.find_str('进入|点击', self.gameBottomLocation, 0):
 						break
 					if self.find_str('打就打', self.gameBottomLocation, 0):
-						self.color_format = 'ffffff-6b7269|6b7269-000000|dc993f-6c736a|6c736a-4599b9|4599b9-000000|ba9a42-4599b9'
-						if self.find_str('龙生肖', self.gameBottomLocation, 0):
-							self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+						if self.find_pic(
+								f"{self.get_resource_path('serveAssets/images/zhengdian/long.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long4.bmp')}",
+								self.gameBottomLocation, 0):
 							break
 						else:
-							self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
 							hasZhengDian = True
 							break
 				if hasZhengDian:
@@ -6200,24 +6215,22 @@ class MyFrame(wx.Frame):
 		# 定义弹窗的内容和图片路径
 		content = [
 			"脚本说明：",
-			"1.整点'牛+虎+兔+猴+羊'在官渡、黑风、魔镜、战魂+红+整点、战魂+红+官渡+整点的时候可以选择，建议V3玩家使用；",
-			"2.整点'虎+猴+羊'在官渡、魔镜的时候可以选择，需要在背包当前页左上角放上回城卷，不需要传送鞋；；",
+			"1.整点'牛+虎+兔+猴+羊'在官渡、黑风、魔镜、战魂+红+整点、战魂+红+魔镜+整点的时候可以选择，建议V3玩家使用；",
+			"2.整点'虎+猴+羊'在官渡、魔镜、战魂+红+整点、战魂+红+魔镜+整点的时候可以选择，需要在背包当前页左上角放上回城卷，不需要传送鞋；",
 			"3.整点'火焰+寒冰'在魔镜的时候可以选择，每次使用一个飞鞋，如果选择'49整点'脚本，在洛阳城西启动；",
-			"4.战魂+红+整点内容是一次战魂，(58-完成战魂分钟)/2次红，一次整点，战魂跟红都没次数之后会自动去官渡(一定每个小时开始启动，到整点会退出副本)；",
-			"5.战魂+红+魔镜+整点内容为战魂+红+整点的平替，官渡换成魔镜；",
-			"6.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
-			"7.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战，日常副本可以选卖图，红，战魂，卖图是卖藏宝图；",
-			"8.整点'牛+虎+兔+猴+羊'在竞技/攻城的时候(活动被刷屏的时候)大概率会漏打，但是每个也会飞一次；选择了该整点一定保证传送鞋充足；",
-			"9.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
-			"10.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
-			"11.49整点内容为循环打整点'火焰+寒冰',在洛阳城西启动；49一键内容为49日常==>49战魂；",
-			"12.如需要给多开的号卖装备、加血在队友名中填入队友名称，名称为小号列表的名字，并且将多开号拆分出单独窗口并且不被最小化，绑定成功的小号会在队友对话框发送1。",
+			"4.战魂+红+整点内容是一次战魂，(58-完成战魂分钟)/2次红，一次整点，战魂跟红都没次数之后会自动去官渡(一定每个小时开始启动，到整点会退出副本)，战魂+红+魔镜+整点内容为战魂+红+整点的魔镜平替；",
+			"5.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
+			"6.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战，日常副本可以选卖图，红，战魂，卖图是卖藏宝图；",
+			"7.整点'牛+虎+兔+猴+羊'在竞技/攻城的时候(活动被刷屏的时候)大概率会漏打，但是每个也会飞一次；选择了该整点一定保证传送鞋充足；",
+			"8.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
+			"9.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
+			"10.如需要给多开的号卖装备、加血在队友名中填入队友名称，名称为小号列表的名字，并且将多开号拆分出单独窗口并且不被最小化，绑定成功的小号会在队友对话框发送1。",
 			"使用说明：",
 			"1.第一次脚本需要使用管理员模式开启；",
 			"2.脚本启动之前填入游戏名称；",
 			"3.请将电脑的屏幕分辨率调到1920*1080；",
 			"4.请将电脑的缩放比放到100%；",
-			"5.请将游戏所在浏览器缩放比放到100%(缩小到左右没有白边即可).",
+			"5.请将游戏画面缩放到900*580，并且关闭小号列表。",
 		]
 		images = [
 		]
