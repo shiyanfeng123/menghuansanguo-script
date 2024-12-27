@@ -159,8 +159,8 @@ class MyThread(threading.Thread):
 		self.child_thread.start()
 		self.win1_thread.start()
 		self.win2_thread.start()
+		self.beginFun()
 		if self.scriptName == "官渡":
-			self.beginFun()
 			self.guanduWhile()
 		elif self.scriptName == "测试":
 			# self.clear_hide_map()
@@ -181,7 +181,6 @@ class MyThread(threading.Thread):
 			elif self.zhengdianFloor == '火焰+寒冰':
 				self.go_zhengdian49()
 		elif self.scriptName == "祭坛魔镜":
-			self.beginFun()
 			self.mojingWhile()
 		elif self.scriptName == "战魂+红+整点":
 			if not self.zhanhunFloor:
@@ -216,22 +215,18 @@ class MyThread(threading.Thread):
 				print('未选择层数，自动打26层')
 			self.mojingAndHongAndZd()
 		elif self.scriptName == "官渡精英":
-			self.beginFun()
 			self.guanduJyScript()
 			self.scriptName = "官渡"
 			self.guanduWhile()
 		elif self.scriptName == "云游精英":
-			self.beginFun()
 			self.yunyouJyScript()
 			self.scriptName = "官渡"
 			self.guanduWhile()
 		elif self.scriptName == "80精英":
-			self.beginFun()
 			self.bamenScript()
 			self.scriptName = "官渡"
 			self.guanduWhile()
 		elif self.scriptName == "100精英":
-			self.beginFun()
 			self.laoshuJyScript()
 			self.scriptName = "官渡"
 			self.guanduWhile()
@@ -248,7 +243,6 @@ class MyThread(threading.Thread):
 			for i in range(6):
 				self.zhanhun49Script()
 		elif self.scriptName == "破旧矿产":
-			self.beginFun()
 			for i in range(self.heifengWhileCount):
 				if self.overed:
 					return
@@ -297,21 +291,30 @@ class MyThread(threading.Thread):
 		# 查找目标窗口句柄
 		target_window_title = self.frame.game_name
 		target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
-		hwnd = self.dm.FindWindowEx(0, target_window_class, target_window_title)
+		hwnds = self.dm.EnumWindow(0, target_window_title, target_window_class, 1 + 2)
+		hwnds = hwnds.split(",")
+		hwnd = 0
+		for item in hwnds:
+			if self.dm.GetWindowTitle(int(item)) == target_window_title:
+				hwnd = int(item)
+				break
 		if hwnd:
-			#
 			# 使用 Windows API 的 EnumChildWindows
 			user32 = ctypes.WinDLL('user32', use_last_error=True)
+
 			# 获取屏幕分辨率
-			screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
-			screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
+			# screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
+			# screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 
 			def enum_child_proc(hwnd, lParam):
 				class_name = self.dm.GetWindowClass(hwnd)
 				child_rect = self.dm.GetWindowRect(hwnd)
 				if child_rect != 0:
 					left, top, right, bottom, isFind = child_rect
-					if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+					# if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+					# 	self.click_hwnd = hwnd
+					# 	return False
+					if class_name == 'Chrome_RenderWidgetHostHWND':
 						self.click_hwnd = hwnd
 						return False
 				return True
@@ -338,14 +341,14 @@ class MyThread(threading.Thread):
 		self.dm.SetDict(1, self.get_resource_path("serveAssets/fonts/zhengdian.txt"))  # 字库文件路径
 		self.dm.SetDict(2, self.get_resource_path("serveAssets/fonts/mojing.txt"))  # 字库文件路径
 		self.dm.UseDict(0)
-		self.locationX = 0
-		self.locationY = 0
-		self.locationWidth = x
-		self.locationHeight = y
-		self.locationRightTopX = x * 0.8
-		self.locationRightTopY = 0
-		self.locationRightTopWidth = x
-		self.locationRightTopHeight = int(y * 0.2)
+		self.locationX = 510
+		self.locationY = 228
+		self.locationWidth = 900 + 510
+		self.locationHeight = 580 + 228
+		self.locationRightTopX = 510 + int((900 * 0.8))
+		self.locationRightTopY = 228
+		self.locationRightTopWidth = 900 + 510
+		self.locationRightTopHeight = 228 + int(580 * 0.2)
 		self.gameLocation = (
 			self.locationX,
 			self.locationY,
@@ -354,19 +357,19 @@ class MyThread(threading.Thread):
 		)
 		self.gameLeftLocation = (
 			self.locationX,
-			int(self.locationY + (self.locationHeight * 0.3)),
-			int(self.locationWidth * 0.7),
+			int(self.locationY + (580 * 0.3)),
+			int(510 + (900 * 0.7)),
 			self.locationHeight
 		)
 		self.gameRightLocation = (
-			int(self.locationX + int(self.locationWidth * 0.3)),
-			int(self.locationY + (self.locationHeight * 0.3)),
+			int(self.locationX + int(900 * 0.3)),
+			int(self.locationY + (580 * 0.3)),
 			self.locationWidth,
 			self.locationHeight
 		)
 		self.gameBottomLocation = (
 			self.locationX,
-			int(self.locationY + (self.locationHeight * 0.3)),
+			int(self.locationY + (580 * 0.3)),
 			self.locationWidth,
 			self.locationHeight
 		)
@@ -377,13 +380,13 @@ class MyThread(threading.Thread):
 			self.locationRightTopHeight,
 		)
 		self.dituCenterLocation = (
-			int(self.locationRightTopX + (self.locationWidth * 0.2 * 0.3)),
+			int(self.locationRightTopX + (900 * 0.2 * 0.3)),
 			self.locationRightTopY,
-			int(self.locationRightTopX + (self.locationWidth * 0.1) + (self.locationWidth * 0.2 * 0.3)),
+			int(self.locationRightTopX + (900 * 0.1) + (900 * 0.2 * 0.3)),
 			self.locationRightTopHeight,
 		)
 		self.dituRightLocation = (
-			int(self.locationRightTopX + (self.locationWidth * 0.1)),
+			int(self.locationRightTopX + (900 * 0.1)),
 			self.locationRightTopY,
 			self.locationRightTopWidth,
 			self.locationRightTopHeight,
@@ -391,7 +394,7 @@ class MyThread(threading.Thread):
 		self.talkLocation = (
 			self.locationX,
 			int(self.locationY + (self.locationHeight * 0.5)),
-			int(self.locationWidth * 0.5),
+			int(450 + 510),
 			self.locationHeight
 		)
 		self.dituLocation = (
@@ -677,7 +680,13 @@ class MyThread(threading.Thread):
 		# 查找目标窗口句柄
 		target_window_title = self.teammate1_name + ' | ' + self.frame.game_name
 		target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
-		hwnd = self.win1_dm.FindWindowEx(0, target_window_class, target_window_title)
+		hwnds = self.win1_dm.EnumWindow(0, target_window_title, target_window_class, 1 + 2)
+		hwnds = hwnds.split(",")
+		hwnd = 0
+		for item in hwnds:
+			if self.win1_dm.GetWindowTitle(int(item)) == target_window_title:
+				hwnd = int(item)
+				break
 		if hwnd:
 			# 使用 Windows API 的 EnumChildWindows
 			user32 = ctypes.WinDLL('user32', use_last_error=True)
@@ -690,7 +699,10 @@ class MyThread(threading.Thread):
 				child_rect = self.win1_dm.GetWindowRect(hwnd)
 				if child_rect != 0:
 					left, top, right, bottom, isFind = child_rect
-					if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+					# if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+					# 	self.win1_hwnd = hwnd
+					# 	return False
+					if class_name == 'Chrome_RenderWidgetHostHWND':
 						self.win1_hwnd = hwnd
 						return False
 				return True
@@ -724,7 +736,6 @@ class MyThread(threading.Thread):
 		while True:
 			if self.overed:
 				return
-			time.sleep(1)
 			if self.clickFlag:
 				self.clearBag_team1()
 			if self.addBloudFlag:
@@ -752,20 +763,29 @@ class MyThread(threading.Thread):
 		# 查找目标窗口句柄
 		target_window_title = self.teammate2_name + ' | ' + self.frame.game_name
 		target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
-		hwnd = self.win2_dm.FindWindowEx(0, target_window_class, target_window_title)
+		hwnds = self.win2_dm.EnumWindow(0, target_window_title, target_window_class, 1 + 2)
+		hwnds = hwnds.split(",")
+		hwnd = 0
+		for item in hwnds:
+			if self.win2_dm.GetWindowTitle(int(item)) == target_window_title:
+				hwnd = int(item)
+				break
 		if hwnd:
 			# 使用 Windows API 的 EnumChildWindows
 			user32 = ctypes.WinDLL('user32', use_last_error=True)
-			# 获取屏幕分辨率
-			screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
-			screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 
+			# 获取屏幕分辨率
+			# screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
+			# screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 			def enum_child_proc(hwnd, lParam):
 				class_name = self.win2_dm.GetWindowClass(hwnd)
 				child_rect = self.win2_dm.GetWindowRect(hwnd)
 				if child_rect != 0:
 					left, top, right, bottom, isFind = child_rect
-					if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+					# if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+					# 	self.win2_hwnd = hwnd
+					# 	return False
+					if class_name == 'Chrome_RenderWidgetHostHWND':
 						self.win2_hwnd = hwnd
 						return False
 				return True
@@ -949,8 +969,8 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		time.sleep(0.1)
-		outX = self.locationWidth * 0.615
-		outY = self.locationHeight * 0.077
+		outX = 900 * 0.615 + 510
+		outY = 580 * 0.077 + 228
 		self.dm.MoveTo(int(outX), int(outY))
 		time.sleep(0.001)
 		self.dm.LeftClick()
@@ -1096,14 +1116,18 @@ class MyThread(threading.Thread):
 
 	# 清包
 	def clearBag_team1(self):
-		self.win1_dm.KeyPressChar('e')
-		chushou = self.waitFor_team1('一键出售', self.gameBottomLocation)
+		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win1_dm.LeftClick()
+		chushou = self.waitFor_team1('一键出售', self.gameBottomLocation, 5)
 		if chushou:
 			self.win1_dm.MoveTo(chushou.x, chushou.y)
 			time.sleep(0.001)
 			self.win1_dm.LeftClick()
 		time.sleep(0.5)
-		zise = self.waitFor_team1('紫色', self.gameBottomLocation)
+		zise = self.waitFor_team1('紫色', self.gameBottomLocation, 5)
 		if zise:
 			self.win1_dm.MoveTo(zise.x, zise.y)
 			time.sleep(0.001)
@@ -1115,24 +1139,16 @@ class MyThread(threading.Thread):
 			time.sleep(0.001)
 			self.win1_dm.LeftClick()
 		time.sleep(2)
-		self.clickFlag = False
-		zhengli = self.waitFor_team1('整理', self.gameBottomLocation)
-		if zhengli:
-			self.win1_dm.MoveTo(zhengli.x, zhengli.y)
-			time.sleep(0.001)
-			self.win1_dm.LeftClick()
-		time.sleep(1)
 		self.win1_dm.KeyPressChar('e')
 
 	# 清包
 	def clearBag_team2(self):
-		self.win2_dm.KeyPressChar('e')
-		# bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation)
-		# if bagPos:
-		# 	self.dm.MoveTo(bagPos.x, bagPos.y)
-		# 	time.sleep(0.001)
-		# 	self.dm.LeftClick()
-		# self.get_resource_path("serveAssets/images/yijianchushou.bmp")
+		# self.win2_dm.KeyPressChar('e')
+		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win2_dm.LeftClick()
 		chushou = self.waitFor_team2('一键出售', self.gameBottomLocation)
 		if chushou:
 			self.win2_dm.MoveTo(chushou.x, chushou.y)
@@ -1163,7 +1179,11 @@ class MyThread(threading.Thread):
 	# 清包
 	def clearBag(self):
 		self.clickFlag = True
-		self.dm.KeyPressChar('e')
+		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		chushou = self.waitFor('一键出售', self.gameBottomLocation, 5)
 		if chushou:
 			self.dm.MoveTo(chushou.x, chushou.y)
@@ -1172,7 +1192,6 @@ class MyThread(threading.Thread):
 		else:
 			time.sleep(1)
 			self.dm.KeyPressChar('e')
-			time.sleep(1)
 			return
 		time.sleep(0.5)
 		zise = self.waitFor('紫色', self.gameBottomLocation, 5)
@@ -1197,26 +1216,18 @@ class MyThread(threading.Thread):
 			time.sleep(1)
 			return
 		time.sleep(2)
-		# self.clickFlag = False
-		# zhengli = self.waitFor('整理', self.gameBottomLocation, 5)
-		# if zhengli:
-		# 	self.dm.MoveTo(zhengli.x, zhengli.y)
-		# 	time.sleep(0.001)
-		# 	self.dm.LeftClick()
-		# else:
-		# 	time.sleep(1)
-		# 	self.dm.KeyPressChar('e')
-		# 	time.sleep(1)
-		# 	return
-		# time.sleep(1)
+		self.clickFlag = False
 		self.dm.KeyPressChar('e')
-		time.sleep(1)
 
 	# 清藏宝图
 	def clear_hide_map(self):
 		self.clearMapFlag = True
 		time.sleep(0.5)
-		self.dm.KeyPressChar('e')
+		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		time.sleep(0.5)
 		x, y, w, h = self.gameBottomLocation
 		yi_pos = self.dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
@@ -1258,9 +1269,12 @@ class MyThread(threading.Thread):
 
 	# 清藏宝图1
 	def clear_hide_map_team1(self):
-		self.clearMapFlag = True
 		time.sleep(0.5)
-		self.win1_dm.KeyPressChar('e')
+		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win1_dm.LeftClick()
 		time.sleep(0.5)
 		x, y, w, h = self.gameBottomLocation
 		yi_pos = self.win1_dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
@@ -1304,7 +1318,11 @@ class MyThread(threading.Thread):
 	def clear_hide_map_team2(self):
 		self.clearMapFlag = True
 		time.sleep(0.5)
-		self.win2_dm.KeyPressChar('e')
+		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win2_dm.LeftClick()
 		time.sleep(0.5)
 		x, y, w, h = self.gameBottomLocation
 		yi_pos = self.win2_dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
@@ -1997,10 +2015,11 @@ class MyThread(threading.Thread):
 				(
 					self.locationX,
 					self.locationY,
-					int(self.locationWidth * 0.75),
+					int(510 + 900 * 0.75),
 					self.locationHeight,
 				),
 			)
+
 			while not self.find_str(image_path, self.gameLocation, 0):
 				if self.overed:
 					return
@@ -2434,9 +2453,9 @@ class MyThread(threading.Thread):
 						if self.stoped:
 							condition.wait()
 					d_pos = D.split(',')
-					d_pos[0] = (1000 - int(float(d_pos[0]) * 1000)) / 1000 * self.locationWidth
-					d_pos[1] = (int(float(d_pos[1]) * 1000)) / 1000 * self.locationHeight
-					self.dm.MoveToEx(int(d_pos[0]), int(d_pos[1]), 3, 2)
+					d_pos[0] = (1000 - int(float(d_pos[0]) * 1000)) / 1000 * 900
+					d_pos[1] = (int(float(d_pos[1]) * 1000)) / 1000 * 580
+					self.dm.MoveToEx(int(int(d_pos[0]) + 510), int(int(d_pos[1]) + 228), 3, 2)
 					time.sleep(0.001)
 					self.dm.LeftClick()
 					time.sleep(0.5)
@@ -2529,7 +2548,7 @@ class MyThread(threading.Thread):
 		self.waitForAAndClickB1(
 			'曹操大帐',
 			'进入',
-			self.dituLocation, self.gameLeftLocation,
+			self.dituLocation, self.gameBottomLocation,
 		)
 		is_in_guandu = self.waitFor('曹操大帐', self.dituLocation, 5)
 		if not is_in_guandu:
@@ -2670,7 +2689,7 @@ class MyThread(threading.Thread):
 			'枯寂',
 			'文丑之魂',
 			'文丑之魂',
-			self.gameBottomLocation,
+			self.gameLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
 			"0.167,0.103",
@@ -3399,7 +3418,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			'进入',
 			self.gameBottomLocation,
-			"0.13,0.127",
+			"0.14,0.124",
 		)
 		self.waitForAAndClickB1(
 			'镜像地层',
@@ -3440,8 +3459,8 @@ class MyThread(threading.Thread):
 		# )
 		self.findAndClickPic(
 			'镜像地层',
-			'进入',
-			'知道了',
+			'进入|知道了',
+			f"{self.get_resource_path('serveAssets/images/mojing/jin.bmp')}|{self.get_resource_path('serveAssets/images/mojing/zhidao.bmp')}",
 			self.gameBottomLocation,
 			'遗迹镜像',
 			self.dituLocation,
@@ -3482,8 +3501,8 @@ class MyThread(threading.Thread):
 		# )
 		self.findAndClickPic(
 			'遗迹镜像',
-			'进入',
-			'知道了',
+			'进入|知道了',
+			f"{self.get_resource_path('serveAssets/images/mojing/jin.bmp')}|{self.get_resource_path('serveAssets/images/mojing/zhidao.bmp')}",
 			self.gameBottomLocation,
 			'迷幻境',
 			self.dituLocation,
@@ -3531,8 +3550,8 @@ class MyThread(threading.Thread):
 		# )
 		self.findAndClickPic(
 			'迷幻境',
-			'进入',
-			'知道了',
+			'进入|知道了',
+			f"{self.get_resource_path('serveAssets/images/mojing/jin.bmp')}|{self.get_resource_path('serveAssets/images/mojing/zhidao.bmp')}",
 			self.gameBottomLocation,
 			'狱境',
 			self.dituLocation,
@@ -3586,8 +3605,8 @@ class MyThread(threading.Thread):
 		# )
 		self.findAndClickPic(
 			'狱境',
-			'进入',
-			'知道了',
+			'进入|知道了',
+			f"{self.get_resource_path('serveAssets/images/mojing/jin.bmp')}|{self.get_resource_path('serveAssets/images/mojing/zhidao.bmp')}",
 			self.gameBottomLocation,
 			'炎冰境',
 			self.dituLocation,
@@ -3652,8 +3671,8 @@ class MyThread(threading.Thread):
 		# )
 		self.findAndClickPic(
 			'炎冰境',
-			'进入',
-			'知道了',
+			'进入|知道了',
+			f"{self.get_resource_path('serveAssets/images/mojing/jin.bmp')}|{self.get_resource_path('serveAssets/images/mojing/zhidao.bmp')}",
 			self.gameBottomLocation,
 			'印魔殿',
 			self.dituLocation,
@@ -4019,7 +4038,7 @@ class MyThread(threading.Thread):
 			'远古溶洞',
 			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
 			self.dituLocation,
-			self.dituLeftLocation,
+			self.dituLocation,
 		)
 		# 0.176,0.124
 		self.findAndClickPic(
@@ -4543,7 +4562,7 @@ class MyThread(threading.Thread):
 		self.waitForAAndClickB1(
 			'鼠穴',
 			self.get_resource_path("serveAssets/images/richang/laoshu1chuansongmen.bmp"),
-			self.dituLocation, self.dituLeftLocation,
+			self.dituLocation, self.dituLocation,
 		)
 		# 打猎杀鼠  0.097,0.124
 		self.findAndClickPic(
@@ -4560,7 +4579,7 @@ class MyThread(threading.Thread):
 			'鼠巢内',
 			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
 			self.dituLocation,
-			self.dituLeftLocation,
+			self.dituLocation,
 		)
 		# 打鼠长老  0.143,0.112
 		self.findAndClickPic(
@@ -4764,7 +4783,6 @@ class MyThread(threading.Thread):
 
 	# 一直执行天外天
 	def mingjiangtiaozhanWhile(self):
-		self.beginFun()
 		for i in range(8):
 			if self.overed:
 				return
@@ -4843,7 +4861,7 @@ class MyThread(threading.Thread):
 			'山寨本营',
 			self.get_resource_path("serveAssets/images/heifeng/heifeng1chuansongmen.bmp"),
 			self.dituLocation,
-			self.dituLeftLocation
+			self.dituLocation
 		)
 		self.waitFor('山寨本营', self.dituLocation)
 		#
@@ -4999,7 +5017,7 @@ class MyThread(threading.Thread):
 		print(f"开始{longdao_type}龙岛")
 		isInGuanDu = self.waitFor('城西', self.dituLocation, 5)
 		if not isInGuanDu:
-			self.show_error_message('请手动前往洛阳城西！')
+			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
 		# 进入龙岛
 		self.findAndClickPic(
 			'城西',
@@ -5012,7 +5030,7 @@ class MyThread(threading.Thread):
 		)
 		self.waitForAAndClickB1(
 			'龙岛',
-			'进入',
+			'进龙岛',
 			self.dituLocation,
 			self.gameBottomLocation,
 		)
@@ -5032,15 +5050,6 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.gameBottomLocation,
 		)
-		# self.findAndClickPic(
-		# 	'龙岛',
-		# 	'挑战龙族',
-		# 	'挑战龙族',
-		# 	self.gameBottomLocation,
-		# 	self.get_resource_path("serveAssets/images/zdzd.bmp"),
-		# 	self.gameBottomLocation,
-		# 	"",
-		# )
 		self.waitFor(self.get_resource_path("serveAssets/images/zdzd.bmp"), self.gameBottomLocation)
 		self.findAndClickPic(
 			'龙岛',
@@ -5081,12 +5090,12 @@ class MyThread(threading.Thread):
 				"0.18,0.158",
 			)
 		longchao_poss = ["0.02,0.113", '0.036,0.131', '0.048,0.117', '0.075,0.131', '0.091,0.122', '0.121,0.144', '0.142,0.143', '0.147,0.119']
-		for item in longchao_poss:
+		for index, item in enumerate(longchao_poss):
 			self.findAndClickPic(
 				'龙巢',
 				'龙孙|龙孙一',
 				'龙子|龙子一',
-				self.gameBottomLocation,
+				self.gameRightLocation if index < 5 else self.gameBottomLocation,
 				self.get_resource_path("serveAssets/images/zdzd.bmp"),
 				self.gameBottomLocation,
 				item,
@@ -5100,10 +5109,10 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			'0.183,0.134',
 		)
+		self.outScript('龙巢')
 
 	# 黑风循环
 	def heifengWhile(self):
-		self.beginFun()
 		for i in range(self.heifengWhileCount):
 			if self.overed:
 				return
@@ -5122,7 +5131,6 @@ class MyThread(threading.Thread):
 
 	# 一直执行红
 	def hongWhile(self):
-		self.beginFun()
 		for i in range(7):
 			if self.overed:
 				return
@@ -5135,7 +5143,6 @@ class MyThread(threading.Thread):
 
 	# 一直执行战魂
 	def zhanhunWhile(self):
-		self.beginFun()
 		for i in range(6):
 			if self.overed:
 				return
@@ -5161,7 +5168,6 @@ class MyThread(threading.Thread):
 
 	# 一次战魂一次红+整点
 	def guanduAndHongAndZd(self):
-		self.beginFun()
 		if self.overed:
 			return
 		self.zhanhunScript()
@@ -5194,7 +5200,6 @@ class MyThread(threading.Thread):
 	# 日常一条龙
 	def richangeScript(self):
 		print('日常')
-		self.beginFun()
 		# 飞溶洞
 		if self.overed:
 			return
@@ -5300,7 +5305,6 @@ class MyThread(threading.Thread):
 
 	# 五行
 	def wuxingWhile(self):
-		self.beginFun()
 		for i in range(3):
 			if self.overed:
 				return
@@ -5313,7 +5317,6 @@ class MyThread(threading.Thread):
 
 	# 溶洞
 	def rongdongWhile(self):
-		self.beginFun()
 		for i in range(3):
 			if self.overed:
 				return
@@ -5326,7 +5329,6 @@ class MyThread(threading.Thread):
 
 	# 炼丹
 	def liandanWhile(self):
-		self.beginFun()
 		for i in range(5):
 			if self.overed:
 				return
@@ -5340,7 +5342,6 @@ class MyThread(threading.Thread):
 
 	# 战魂+红+魔镜+整点
 	def mojingAndHongAndZd(self):
-		self.beginFun()
 		if self.overed:
 			return
 		self.zhanhunScript()
@@ -5379,7 +5380,6 @@ class MyThread(threading.Thread):
 	# 49日常
 	def richang49Script(self):
 		print('日常')
-		self.beginFun()
 		if self.overed:
 			return
 		# 飞溶洞
@@ -6083,6 +6083,7 @@ class MyFrame(wx.Frame):
 				"引魔符",
 				"49整点",
 				"整点",
+				"测试",
 			],
 		)
 		self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
@@ -6203,6 +6204,7 @@ class MyFrame(wx.Frame):
 			return
 		# 等待所有线程结束
 		if self.thread is not None and self.thread.is_alive():
+			print('等待任务结束')
 			self.thread.overed = True
 			self.thread.join()
 			if self.thread.child_thread is not None and self.thread.child_thread.is_alive():
@@ -6211,6 +6213,7 @@ class MyFrame(wx.Frame):
 				self.thread.win1_thread.join()
 			if self.thread.win2_thread is not None and self.thread.win2_thread.is_alive():
 				self.thread.win2_thread.join()
+		print('任务已全部结束')
 		self.text_ctrl.SetValue("")
 		self.dropdown.SetSelection(-1)
 		self.thread.dm.UnBindWindow()

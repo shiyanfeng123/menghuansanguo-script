@@ -54,11 +54,11 @@ class MyThread(threading.Thread):
 		self.userData = [
 			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"], 'end_time': '2029-12-30 23:59:00'},
 			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-2-10 23:59:00'},
-			{'user_name': '不知秋雨寒', 'user_mac': ["E4-60-17-15-B4-73"], 'end_time': '2099-12-30 23:59:00'},
-			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2099-12-30 23:59:00'},
-			{'user_name': '欧阳慕青', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2024-12-26 23:59:00'},
-			{'user_name': '天蓬元帅', 'user_mac': ["D0-65-78-10-5A-46"], 'end_time': '2024-12-26 23:59:00'},
-			{'user_name': '吃饱了吗', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2024-12-26 23:59:00'},
+			{'user_name': '不知秋雨寒', 'user_mac': ["E4-60-17-15-B4-73"], 'end_time': '2199-12-30 23:59:00'},
+			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2199-12-30 23:59:00'},
+			{'user_name': '欧阳慕青', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2024-12-29 23:59:00'},
+			{'user_name': '天蓬元帅', 'user_mac': ["D0-65-78-10-5A-46"], 'end_time': '2024-12-29 23:59:00'},
+			{'user_name': '吃饱了吗', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2024-12-29 23:59:00'},
 			{'user_name': '敢为天下先', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-1-10 23:59:00'},
 		]
 		try:
@@ -137,6 +137,7 @@ class MyThread(threading.Thread):
 		self.clearMapFlag = False
 		self.mac_address = ''
 		self.user_name = ''
+		self.end_time = ''
 		self.overed = False
 
 	def run(self):
@@ -145,7 +146,7 @@ class MyThread(threading.Thread):
 		if not is_pass:
 			self.show_error_message('未注册用户，请联系管理员注册!')
 			return
-		print(f'你好:{self.user_name}')
+		print(f'{self.user_name}，你好，你的脚本有效期为{self.end_time}!')
 		self.zhanhunFloor = self.frame.zhanhunFloor
 		self.mojingFloor = self.frame.mojingFloor
 		self.teammate1_name = self.frame.teammate1_name
@@ -273,6 +274,7 @@ class MyThread(threading.Thread):
 					return False
 				else:
 					self.user_name = user['user_name']
+					self.end_time = user['end_time']
 					return True
 		return False
 
@@ -291,14 +293,20 @@ class MyThread(threading.Thread):
 		# 查找目标窗口句柄
 		target_window_title = self.frame.game_name
 		target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
-		hwnd = self.dm.FindWindowEx(0, target_window_class, target_window_title)
+		hwnds = self.dm.EnumWindow(0, target_window_title, target_window_class, 1 + 2)
+		hwnds = hwnds.split(",")
+		hwnd = 0
+		for item in hwnds:
+			if item and self.dm.GetWindowTitle(int(item)) == target_window_title:
+				hwnd = int(item)
+				break
 		if hwnd:
-			#
 			# 使用 Windows API 的 EnumChildWindows
 			user32 = ctypes.WinDLL('user32', use_last_error=True)
+
 			# 获取屏幕分辨率
-			screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
-			screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
+			# screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
+			# screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 
 			def enum_child_proc(hwnd, lParam):
 				class_name = self.dm.GetWindowClass(hwnd)
@@ -400,6 +408,8 @@ class MyThread(threading.Thread):
 		return True
 
 	def find_pic_or_str(self, find, region, find_dir):
+		if self.overed:
+			return
 		types = 'serveAssets' in find
 		if not types:
 			res = self.find_str(find, region, find_dir)
@@ -408,6 +418,8 @@ class MyThread(threading.Thread):
 		return res
 
 	def find_pic_or_str_team1(self, find, region, find_dir):
+		if self.overed:
+			return
 		types = 'serveAssets' in find
 		if not types:
 			res = self.find_str_team1(find, region, find_dir)
@@ -416,6 +428,8 @@ class MyThread(threading.Thread):
 		return res
 
 	def find_pic_or_str_team2(self, find, region, find_dir):
+		if self.overed:
+			return
 		types = 'serveAssets' in find
 		if not types:
 			res = self.find_str_team2(find, region, find_dir)
@@ -425,6 +439,8 @@ class MyThread(threading.Thread):
 
 	# 找图方法z
 	def find_pic(self, image_path, image_region, find_dir):
+		if self.overed:
+			return
 		find_path = image_path
 		# picSize = self.dm.GetPicSize(image_path)
 		# picSize = picSize.split(',')
@@ -462,6 +478,8 @@ class MyThread(threading.Thread):
 
 	# 找字方法
 	def find_str(self, text, region, find_dir):
+		if self.overed:
+			return
 		x, y, w, h = region
 		find_str_result = self.dm.FindStrFastE(int(x), int(y), int(w), int(h), text, self.color_format, self.confidenceNum)
 		find_str_result = find_str_result.split('|')
@@ -483,6 +501,8 @@ class MyThread(threading.Thread):
 
 	# 找图方法z
 	def find_pic_team1(self, image_path, image_region, find_dir):
+		if self.overed:
+			return
 		find_path = image_path
 		# picSize = self.dm.GetPicSize(image_path)
 		# picSize = picSize.split(',')
@@ -520,6 +540,8 @@ class MyThread(threading.Thread):
 
 	# 找字方法
 	def find_str_team1(self, text, region, find_dir):
+		if self.overed:
+			return
 		x, y, w, h = region
 		find_str_result = self.win1_dm.FindStrFastE(int(x), int(y), int(w), int(h), text, self.color_format, self.confidenceNum)
 		find_str_result = find_str_result.split('|')
@@ -541,6 +563,8 @@ class MyThread(threading.Thread):
 
 	# 找图方法z
 	def find_pic_team2(self, image_path, image_region, find_dir):
+		if self.overed:
+			return
 		find_path = image_path
 		# picSize = self.dm.GetPicSize(image_path)
 		# picSize = picSize.split(',')
@@ -578,6 +602,8 @@ class MyThread(threading.Thread):
 
 	# 找字方法
 	def find_str_team2(self, text, region, find_dir):
+		if self.overed:
+			return
 		x, y, w, h = region
 		find_str_result = self.win2_dm.FindStrFastE(int(x), int(y), int(w), int(h), text, self.color_format, self.confidenceNum)
 		find_str_result = find_str_result.split('|')
@@ -599,6 +625,8 @@ class MyThread(threading.Thread):
 
 	# 图中找图
 	def fing_fei_in_image_or_str(self, base, base_region, fei_region, fei_image):
+		if self.overed:
+			return
 		base_pos = self.find_pic_or_str(base, base_region, 0)
 		if not base_pos:
 			return False
@@ -674,7 +702,13 @@ class MyThread(threading.Thread):
 		# 查找目标窗口句柄
 		target_window_title = self.teammate1_name + ' | ' + self.frame.game_name
 		target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
-		hwnd = self.win1_dm.FindWindowEx(0, target_window_class, target_window_title)
+		hwnds = self.win1_dm.EnumWindow(0, target_window_title, target_window_class, 1 + 2)
+		hwnds = hwnds.split(",")
+		hwnd = 0
+		for item in hwnds:
+			if item and self.win1_dm.GetWindowTitle(int(item)) == target_window_title:
+				hwnd = int(item)
+				break
 		if hwnd:
 			# 使用 Windows API 的 EnumChildWindows
 			user32 = ctypes.WinDLL('user32', use_last_error=True)
@@ -688,10 +722,10 @@ class MyThread(threading.Thread):
 				if child_rect != 0:
 					left, top, right, bottom, isFind = child_rect
 					# if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
-					# 	self.click_hwnd = hwnd
+					# 	self.win1_hwnd = hwnd
 					# 	return False
 					if class_name == 'Chrome_RenderWidgetHostHWND':
-						self.click_hwnd = hwnd
+						self.win1_hwnd = hwnd
 						return False
 				return True
 
@@ -724,7 +758,6 @@ class MyThread(threading.Thread):
 		while True:
 			if self.overed:
 				return
-			time.sleep(1)
 			if self.clickFlag:
 				self.clearBag_team1()
 			if self.addBloudFlag:
@@ -752,24 +785,30 @@ class MyThread(threading.Thread):
 		# 查找目标窗口句柄
 		target_window_title = self.teammate2_name + ' | ' + self.frame.game_name
 		target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
-		hwnd = self.win2_dm.FindWindowEx(0, target_window_class, target_window_title)
+		hwnds = self.win2_dm.EnumWindow(0, target_window_title, target_window_class, 1 + 2)
+		hwnds = hwnds.split(",")
+		hwnd = 0
+		for item in hwnds:
+			if item and self.win2_dm.GetWindowTitle(int(item)) == target_window_title:
+				hwnd = int(item)
+				break
 		if hwnd:
 			# 使用 Windows API 的 EnumChildWindows
 			user32 = ctypes.WinDLL('user32', use_last_error=True)
-			# 获取屏幕分辨率
-			screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
-			screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 
+			# 获取屏幕分辨率
+			# screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
+			# screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 			def enum_child_proc(hwnd, lParam):
 				class_name = self.win2_dm.GetWindowClass(hwnd)
 				child_rect = self.win2_dm.GetWindowRect(hwnd)
 				if child_rect != 0:
 					left, top, right, bottom, isFind = child_rect
 					# if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
-					# 	self.click_hwnd = hwnd
+					# 	self.win2_hwnd = hwnd
 					# 	return False
 					if class_name == 'Chrome_RenderWidgetHostHWND':
-						self.click_hwnd = hwnd
+						self.win2_hwnd = hwnd
 						return False
 				return True
 
@@ -811,6 +850,8 @@ class MyThread(threading.Thread):
 				self.clear_hide_map_team2()
 
 	def addBloud(self):
+		if self.overed:
+			return
 		self.confidenceNum = 0.8
 		self.addBloudFlag = True
 		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
@@ -832,6 +873,8 @@ class MyThread(threading.Thread):
 		self.confidenceNum = 0.9
 
 	def addBloud_team1(self):
+		if self.overed:
+			return
 		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
 		time.sleep(0.3)
 		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
@@ -946,6 +989,8 @@ class MyThread(threading.Thread):
 
 	# 退出当前副本
 	def outScript(self, current=None):
+		if self.overed:
+			return
 		if current is not None:
 			self.waitFor(current, self.dituLocation)
 		with condition:
@@ -1099,14 +1144,20 @@ class MyThread(threading.Thread):
 
 	# 清包
 	def clearBag_team1(self):
-		self.win1_dm.KeyPressChar('e')
-		chushou = self.waitFor_team1('一键出售', self.gameBottomLocation)
+		if self.overed:
+			return
+		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win1_dm.LeftClick()
+		chushou = self.waitFor_team1('一键出售', self.gameBottomLocation, 5)
 		if chushou:
 			self.win1_dm.MoveTo(chushou.x, chushou.y)
 			time.sleep(0.001)
 			self.win1_dm.LeftClick()
 		time.sleep(0.5)
-		zise = self.waitFor_team1('紫色', self.gameBottomLocation)
+		zise = self.waitFor_team1('紫色', self.gameBottomLocation, 5)
 		if zise:
 			self.win1_dm.MoveTo(zise.x, zise.y)
 			time.sleep(0.001)
@@ -1118,24 +1169,18 @@ class MyThread(threading.Thread):
 			time.sleep(0.001)
 			self.win1_dm.LeftClick()
 		time.sleep(2)
-		self.clickFlag = False
-		zhengli = self.waitFor_team1('整理', self.gameBottomLocation)
-		if zhengli:
-			self.win1_dm.MoveTo(zhengli.x, zhengli.y)
-			time.sleep(0.001)
-			self.win1_dm.LeftClick()
-		time.sleep(1)
 		self.win1_dm.KeyPressChar('e')
 
 	# 清包
 	def clearBag_team2(self):
-		self.win2_dm.KeyPressChar('e')
-		# bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation)
-		# if bagPos:
-		# 	self.dm.MoveTo(bagPos.x, bagPos.y)
-		# 	time.sleep(0.001)
-		# 	self.dm.LeftClick()
-		# self.get_resource_path("serveAssets/images/yijianchushou.bmp")
+		if self.overed:
+			return
+		# self.win2_dm.KeyPressChar('e')
+		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win2_dm.LeftClick()
 		chushou = self.waitFor_team2('一键出售', self.gameBottomLocation)
 		if chushou:
 			self.win2_dm.MoveTo(chushou.x, chushou.y)
@@ -1165,8 +1210,14 @@ class MyThread(threading.Thread):
 
 	# 清包
 	def clearBag(self):
+		if self.overed:
+			return
 		self.clickFlag = True
-		self.dm.KeyPressChar('e')
+		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		chushou = self.waitFor('一键出售', self.gameBottomLocation, 5)
 		if chushou:
 			self.dm.MoveTo(chushou.x, chushou.y)
@@ -1175,7 +1226,6 @@ class MyThread(threading.Thread):
 		else:
 			time.sleep(1)
 			self.dm.KeyPressChar('e')
-			time.sleep(1)
 			return
 		time.sleep(0.5)
 		zise = self.waitFor('紫色', self.gameBottomLocation, 5)
@@ -1200,26 +1250,20 @@ class MyThread(threading.Thread):
 			time.sleep(1)
 			return
 		time.sleep(2)
-		# self.clickFlag = False
-		# zhengli = self.waitFor('整理', self.gameBottomLocation, 5)
-		# if zhengli:
-		# 	self.dm.MoveTo(zhengli.x, zhengli.y)
-		# 	time.sleep(0.001)
-		# 	self.dm.LeftClick()
-		# else:
-		# 	time.sleep(1)
-		# 	self.dm.KeyPressChar('e')
-		# 	time.sleep(1)
-		# 	return
-		# time.sleep(1)
+		self.clickFlag = False
 		self.dm.KeyPressChar('e')
-		time.sleep(1)
 
 	# 清藏宝图
 	def clear_hide_map(self):
+		if self.overed:
+			return
 		self.clearMapFlag = True
 		time.sleep(0.5)
-		self.dm.KeyPressChar('e')
+		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 		time.sleep(0.5)
 		x, y, w, h = self.gameBottomLocation
 		yi_pos = self.dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
@@ -1234,6 +1278,8 @@ class MyThread(threading.Thread):
 			bag_poss.append(shi_pos)
 		bag_poss = self.sort_array_by_second_value(bag_poss, 2)
 		for bag_pos in bag_poss:
+			if self.overed:
+				return
 			if not bag_pos:
 				continue
 			new_bag_pos = bag_pos.split(',')
@@ -1261,9 +1307,14 @@ class MyThread(threading.Thread):
 
 	# 清藏宝图1
 	def clear_hide_map_team1(self):
-		self.clearMapFlag = True
+		if self.overed:
+			return
 		time.sleep(0.5)
-		self.win1_dm.KeyPressChar('e')
+		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win1_dm.LeftClick()
 		time.sleep(0.5)
 		x, y, w, h = self.gameBottomLocation
 		yi_pos = self.win1_dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
@@ -1305,9 +1356,15 @@ class MyThread(threading.Thread):
 
 	# 清藏宝图2
 	def clear_hide_map_team2(self):
+		if self.overed:
+			return
 		self.clearMapFlag = True
 		time.sleep(0.5)
-		self.win2_dm.KeyPressChar('e')
+		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.001)
+			self.win2_dm.LeftClick()
 		time.sleep(0.5)
 		x, y, w, h = self.gameBottomLocation
 		yi_pos = self.win2_dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
@@ -1349,6 +1406,8 @@ class MyThread(threading.Thread):
 
 	# V3整点
 	def zhengDian(self):
+		if self.overed:
+			return
 		print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
 		with condition:
 			if self.stoped:
@@ -1571,6 +1630,8 @@ class MyThread(threading.Thread):
 
 	# 跑整点120
 	def go_zhengdian(self):
+		if self.overed:
+			return
 		self.dm.UseDict(0)
 		print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
 		if self.scriptName == '官渡' or self.scriptName == "战魂+红+整点":
@@ -1679,6 +1740,8 @@ class MyThread(threading.Thread):
 
 	# 跑整点49
 	def go_zhengdian49(self):
+		if self.overed:
+			return
 		self.dm.UseDict(0)
 		print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
 		time.sleep(1)
@@ -1781,6 +1844,8 @@ class MyThread(threading.Thread):
 
 	# 在地图通过小绿人打整点
 	def zhengdian_by_xiaolvren(self, base_image, find_dir, npc_posx=0, npc_possy=[], order=1):
+		if self.overed:
+			return
 		base_image_res = self.waitFor(base_image, self.dituLocation, 5)
 		if not base_image_res:
 			return f'不在{base_image}'
@@ -1897,6 +1962,8 @@ class MyThread(threading.Thread):
 
 	# 跑图
 	def go_in_ditu(self, find_address, address_pos_city, break_address, yizhan_name1, yizhan_name2):
+		if self.overed:
+			return
 		time.sleep(1)
 		self.dm.KeyPressChar('m')
 		address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation)
@@ -1956,6 +2023,8 @@ class MyThread(threading.Thread):
 
 	# 飞副本
 	def feiFb(self, image_path, isJy):
+		if self.overed:
+			return
 		# 打开副本
 		time.sleep(1.5)
 		self.dm.KeyPressChar('z')
@@ -2030,6 +2099,8 @@ class MyThread(threading.Thread):
 
 	# 找图并且点击
 	def click_image(self, image_path, image_confidence, image_region, find_dir=0):
+		if self.overed:
+			return
 		image_locations = self.find_pic_or_str(image_path, image_region, find_dir)
 		if image_locations:
 			with condition:
@@ -2043,6 +2114,8 @@ class MyThread(threading.Thread):
 			return False
 
 	def click_image_team1(self, image_path, image_confidence, image_region, find_dir=0):
+		if self.overed:
+			return
 		image_locations = self.find_pic_or_str_team1(image_path, image_region, find_dir)
 		if image_locations:
 			with condition:
@@ -2056,6 +2129,8 @@ class MyThread(threading.Thread):
 			return False
 
 	def click_image_team2(self, image_path, image_confidence, image_region, find_dir=0):
+		if self.overed:
+			return
 		image_locations = self.find_pic_or_str_team2(image_path, image_region, find_dir)
 		if image_locations:
 			with condition:
@@ -2070,6 +2145,8 @@ class MyThread(threading.Thread):
 
 	# 找一样的字，点击最左边的图
 	def click_image_with_min_x(self, image_path, image_region, image_path2, find_dir=0):
+		if self.overed:
+			return
 		types = 'serveAssets' in image_path
 		target = None
 		if not types:
@@ -2100,6 +2177,8 @@ class MyThread(threading.Thread):
 		return True
 
 	def click_image_with_min_x1(self, image_path, image_region, image_path2, find_dir=0):
+		if self.overed:
+			return
 		types = 'serveAssets' in image_path
 		target = None
 		if not types:
@@ -2127,6 +2206,8 @@ class MyThread(threading.Thread):
 
 	# 等待图片出现
 	def waitFor(self, image_path, image_region, timeout=None):
+		if self.overed:
+			return
 		start_time = time.time()
 		while True:
 			if self.overed:
@@ -2145,6 +2226,8 @@ class MyThread(threading.Thread):
 
 	# 等待图片出现
 	def waitFor_team1(self, image_path, image_region, timeout=None):
+		if self.overed:
+			return
 		start_time = time.time()
 		while True:
 			if self.overed:
@@ -2163,6 +2246,8 @@ class MyThread(threading.Thread):
 
 	# 等待图片出现
 	def waitFor_team2(self, image_path, image_region, timeout=None):
+		if self.overed:
+			return
 		start_time = time.time()
 		while True:
 			if self.overed:
@@ -2181,6 +2266,8 @@ class MyThread(threading.Thread):
 
 	# 等待两张图片出现
 	def waitForTwo(self, image1_path, image2_path, image_region1, image_region2=None, timeout=None, find_dir=1):
+		if self.overed:
+			return
 		start_time = time.time()
 		res = ""
 		if image_region2 is None:
@@ -2216,6 +2303,8 @@ class MyThread(threading.Thread):
 			find_region,
 			image_regionB=None
 	):
+		if self.overed:
+			return
 		if image_regionB is None:
 			image_regionB = self.gameLocation
 		while not self.find_pic_or_str(find_text, find_region, 0):
@@ -2243,6 +2332,8 @@ class MyThread(threading.Thread):
 			image_pathA2=None,
 			image_pathB2=None,
 	):
+		if self.overed:
+			return
 		if not image_regionB:
 			image_regionB = self.gameLocation
 		while not self.find_str(image_pathA, image_regionA, 0) or not self.find_str(image_pathA2, image_regionA, 0):
@@ -2267,6 +2358,8 @@ class MyThread(threading.Thread):
 
 	# 使用道具
 	def press_keys_until_image_found(self, image_path, image_path2, region1, region2, find_text):
+		if self.overed:
+			return
 		self.confidenceNum = 0.8
 		image_path_pos = self.waitFor(image_path, region1, 5)
 		self.confidenceNum = 0.9
@@ -2504,6 +2597,8 @@ class MyThread(threading.Thread):
 
 	# 官渡脚本
 	def guanduScript(self):
+		if self.overed:
+			return
 		self.guanDuCount += 1
 		print(f"第{self.guanDuCount}次官渡.")
 		with condition:
@@ -2597,6 +2692,8 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			'0.044,0.22'
 		)
+		if self.overed:
+			return
 		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
 		# 颜良
 		# 0.091,0.118
@@ -5105,6 +5202,8 @@ class MyThread(threading.Thread):
 			if self.heifengCount == self.heifengWhileCount:
 				break
 		print(f"{self.heifengWhileCount}次黑风已完成,去官渡")
+		if self.overed:
+			return
 		self.guanduWhile()
 
 	# 一直执行官渡
@@ -6019,7 +6118,7 @@ class MyFrame(wx.Frame):
 			wx.Colour(255, 255, 255)
 		)  # 设置为白色文字
 		# Stop button
-		self.button_stop = wx.Button(self.panel, label="退出脚本(F8)", pos=(146, 35), style=wx.BORDER_NONE)
+		self.button_stop = wx.Button(self.panel, label="重置脚本(F8)", pos=(146, 35), style=wx.BORDER_NONE)
 		self.Bind(wx.EVT_BUTTON, self.button_stop_click, self.button_stop)
 		# 设置按钮背景颜色
 		self.button_stop.SetBackgroundColour(wx.Colour(144, 144, 153))
@@ -6068,6 +6167,7 @@ class MyFrame(wx.Frame):
 				"引魔符",
 				"49整点",
 				"整点",
+				# "测试",
 			],
 		)
 		self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
@@ -6188,7 +6288,7 @@ class MyFrame(wx.Frame):
 			return
 		# 等待所有线程结束
 		if self.thread is not None and self.thread.is_alive():
-			print('等待任务结束')
+			print('等待任务结束,请勿重复点击')
 			self.thread.overed = True
 			self.thread.join()
 			if self.thread.child_thread is not None and self.thread.child_thread.is_alive():
