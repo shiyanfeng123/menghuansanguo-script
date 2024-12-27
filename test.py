@@ -77,8 +77,11 @@ else:
 		child_rect = dm.GetWindowRect(hwnd)
 		if child_rect != 0:
 			left, top, right, bottom, isFind = child_rect
-			if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
-				print(left, top, right, bottom)
+			# if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+			# 	print(left, top, right, bottom)
+			# 	click_hwnd = hwnd
+			# 	return False
+			if class_name == 'Chrome_RenderWidgetHostHWND':
 				click_hwnd = hwnd
 				return False
 		return True
@@ -174,7 +177,7 @@ sim = 0.8  # 相似度阈值，可以根据实际情况调整
 # example_function
 print(dm.GetNowDict())
 # dm.UseDict(1)
-find_str_result = dm.FindStrFastEx(0, 0, x, y, '密洞', color_format, sim)
+find_str_result = dm.FindStrFastEx(0, 0, x, y, '进入', color_format, sim)
 print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
