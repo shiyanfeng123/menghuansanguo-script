@@ -5,7 +5,10 @@ import comtypes.client
 import subprocess
 import time
 import inspect
+import asyncio
 
+# from playwright.sync_api import sync_playwright
+# from pyppeteer import launch
 # def get_current_function_name():
 # 	return inspect.stack()[1].function
 
@@ -31,7 +34,23 @@ import inspect
 #
 #
 # # 调用注册函数
+# from pyppeteer import launch
 #
+#
+# async def main():
+# 	browser = await launch(headless=True)
+# 	page = await browser.newPage()
+# 	await page.goto("http://game.mhsg.online")  # 替换为您的游戏网址
+#
+# 	# 在这里添加您需要的逻辑
+# 	# 例如等待游戏加载完成，或执行其他操作
+#
+# 	# 关闭浏览器
+# 	await browser.close()
+#
+#
+# asyncio.get_event_loop().run_until_complete(main())
+# return
 # dm_obj = ctypes.windll.LoadLibrary(r'E:\project\python\serveAssets\plugins\RegDll.dll')
 # location_dmreg = r'E:\project\python\serveAssets\plugins\dm.dll'
 # register_dll(location_dmreg)
@@ -108,10 +127,10 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\huichengjuan.bmp", "", 0.9, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\dianwei1.bmp", "", 0.8, 0)
 
 # print(dm.CmpColor(820, 50, '091311', 1) == 0)
-# print(dm_ret, 'dm_ret')
+print(dm_ret, 'dm_ret')
 # if not dm_ret:
 # 	print('未找到')
 # dm_ret = dm_ret.split('|')
@@ -157,7 +176,7 @@ print(x, y)
 
 # 释放内存
 # dm.FreeMem(memory_address)
-dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
+# dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
 # dict_id1 = dm.SetDict(1, r"E:\project\python\serveAssets\fonts\team1.txt")  # 字库文件路径
 # dict_id2 = dm.SetDict(2, r"E:\project\python\serveAssets\fonts\team2.txt")  # 字库文件路径
 # dict_id2 = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\zhengdian.txt")  # 字库文件路径
@@ -168,7 +187,7 @@ color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-00
 # color_format = "ffffff-000000"  # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000'  # 绿色字体
 # color_format = 'ffff00-000000'
-sim = 0.8  # 相似度阈值，可以根据实际情况调整
+sim = 0.7  # 相似度阈值，可以根据实际情况调整
 # dm.KeyDownChar('left')
 # time.sleep(5)
 # dm.KeyUpChar('left')
@@ -177,8 +196,50 @@ sim = 0.8  # 相似度阈值，可以根据实际情况调整
 # example_function
 print(dm.GetNowDict())
 # dm.UseDict(1)
-find_str_result = dm.FindStrFastEx(0, 0, x, y, '洛阳', color_format, sim)
-print(f'FindStrFast 返回结果: {find_str_result}')
+import requests
+from bs4 import BeautifulSoup
+
+# 关闭浏览器
+# url = 'http://game.mhsg.online'
+# import asyncio
+# from pyppeteer import launch
+#
+#
+# # 获取网页源代码
+# import requests
+# from bs4 import BeautifulSoup
+#
+# # 目标网页的 URL
+# url = 'http://game.mhsg.online/'
+#
+# # 发送 HTTP 请求获取网页内容
+# response = requests.get(url)
+# # print(response)
+# soup = BeautifulSoup(response.content, 'html.parser')
+# print(soup)
+# # 找到所有的 iframe 元素
+# iframes = soup.find_all('iframe')
+#
+# # 打印每个 iframe 元素的属性信息
+# for i, iframe in enumerate(iframes):
+# 	print(f"iframe {i + 1} 属性:")
+# 	for attr, value in iframe.attrs.items():
+# 		print(f"  {attr}: {value}")
+# async def main():
+# 	browser = await launch()
+# 	page = await browser.newPage()
+# 	await page.goto("https://www.4399.com/flash/71450.htm")
+#
+# 	iframe = await page.waitForSelector("iframe")
+# 	iframe_box = await iframe.boundingBox()  # 获取iframe元素的边界框信息
+# 	print("iframe 元素的坐标信息：", iframe_box)
+#
+# 	await browser.close()
+#
+#
+# asyncio.get_event_loop().run_until_complete(main())
+# find_str_result = dm.FindStrFastEx(0, 0, x, y, '龙生', '73766d-000000|6b726a-000000|dcdeb8-4599b9|6b7269-000000|6f736b-000000', sim)
+# print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])

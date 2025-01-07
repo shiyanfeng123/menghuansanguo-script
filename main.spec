@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='4399梦幻三国脚本(前台)',
+    name='梦幻三国脚本(前台)',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

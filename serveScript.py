@@ -8,6 +8,7 @@ import wx
 import wx.lib.scrolledpanel as scrolled
 import psutil
 import ctypes
+import gc
 from comtypes.client import CreateObject
 import subprocess
 from comtypes import CoInitialize
@@ -40,6 +41,14 @@ def sort_array_by_second_value(arr, order):
 	def key_func(item):
 		return int(item.split(',')[1])
 
+	# 使用字典去除第二个值重复的项
+	seen = {}
+	unique_arr = []
+	for item in arr:
+		second_value = key_func(item)
+		if second_value not in seen:
+			seen[second_value] = True
+			unique_arr.append(item)
 	# 根据order参数决定排序顺序
 	reverse_order = (order == 1)
 
@@ -53,13 +62,19 @@ class MyThread(threading.Thread):
 		super().__init__()
 		self.userData = [
 			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"], 'end_time': '2029-12-30 23:59:00'},
-			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-2-10 23:59:00'},
-			{'user_name': '不知秋雨寒', 'user_mac': ["E4-60-17-15-B4-73"], 'end_time': '2199-12-30 23:59:00'},
+			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-3-10 23:59:00'},
+			{'user_name': '不知秋雨寒', 'user_mac': ["E4-60-17-15-B4-73", "BC-EC-A0-28-FA-5C"], 'end_time': '2199-12-30 23:59:00'},
 			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2199-12-30 23:59:00'},
-			{'user_name': '欧阳慕青', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2024-12-29 23:59:00'},
+			{'user_name': '欧阳慕青', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2025-2-5 23:59:00'},
 			{'user_name': '天蓬元帅', 'user_mac': ["D0-65-78-10-5A-46"], 'end_time': '2024-12-29 23:59:00'},
-			{'user_name': '吃饱了吗', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2024-12-29 23:59:00'},
-			{'user_name': '敢为天下先', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-1-10 23:59:00'},
+			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2025-2-5 23:59:00'},
+			{'user_name': '敢为天下先', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-1-20 23:59:00'},
+			{'user_name': '山竹', 'user_mac': ["7C-21-4A-48-36-7D"], 'end_time': '2025-1-10 23:59:00'},
+			{'user_name': 'ice', 'user_mac': ["90-6F-18-07-B5-30"], 'end_time': '2025-1-4 23:59:00'},
+			{'user_name': '尔康', 'user_mac': ["E8-9C-25-77-AC-2D"], 'end_time': '2025-1-12 23:59:00'},
+			{'user_name': '翩翩少年', 'user_mac': ["3C-97-0E-FE-4B-B6", "2C-D0-5A-E0-A9-B0"], 'end_time': '2025-1-4 23:59:00'},
+			{'user_name': '玄灯', 'user_mac': ["54-EE-75-C5-2C-25"], 'end_time': '2025-1-4 23:59:00'},
+			{'user_name': '赵公子', 'user_mac': ["DC-85-DE-F7-ED-30"], 'end_time': '2025-1-5 23:59:00'},
 		]
 		try:
 			self.dm = CreateObject('dm.dmsoft')
@@ -77,6 +92,7 @@ class MyThread(threading.Thread):
 		self.win2_dm = None
 		self.frame = None
 		self.zhanhunFloor = ''
+		self.heifengFloor = ''
 		# 创建子线程
 		self.child_thread = threading.Thread(target=self.child_task)
 		self.win1_thread = threading.Thread(target=self.find_and_bing_windows1)
@@ -128,8 +144,8 @@ class MyThread(threading.Thread):
 		self.heifengWhileCount = 0
 		self.richangSelection = []
 		self.click_hwnd = 0
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
-		self.zhengdianFb = ["官渡", "祭坛魔镜", "黑风山寨", "战魂+红+整点", "战魂+红+魔镜+整点"]
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
+		self.zhengdianFb = ["官渡", "魔镜", "黑风", "战魂+红+整点", "战魂+红+魔镜+整点"]
 		self.hundianFlag = False
 		self.win1_hwnd = 0
 		self.win2_hwnd = 0
@@ -152,8 +168,11 @@ class MyThread(threading.Thread):
 		self.teammate1_name = self.frame.teammate1_name
 		self.teammate2_name = self.frame.teammate2_name
 		self.zhengdianFloor = self.frame.zhengdianFloor
+		self.heifengFloor = self.frame.heifengFloor
 		self.richangSelection = self.frame.richangSelection
 		self.heifengWhileCount = int(self.frame.heifengCount)
+		# display = Display(visible=False, size=(1920, 1080))
+		# display.start()
 		isFindGame = self.findGame()
 		if not isFindGame:
 			return
@@ -164,8 +183,11 @@ class MyThread(threading.Thread):
 		if self.scriptName == "官渡":
 			self.guanduWhile()
 		elif self.scriptName == "测试":
-			# self.clear_hide_map()
-			self.clearBag()
+			self.clear_hide_map()
+			# self.clearBag()
+			self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌', '驿站城西')
+		# self.feiFb('副本曹操', True)
+		# self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷')
 		elif self.scriptName == "嗜血战场(精英)":
 			self.hongWhile()
 		elif self.scriptName == "战魂楼(精英)":
@@ -177,12 +199,25 @@ class MyThread(threading.Thread):
 			time.sleep(1)
 			if self.zhengdianFloor == '牛+虎+兔+猴+羊':
 				self.zhengDian()
+			elif self.zhengdianFloor == '虎+牛+兔+猴+羊':
+				self.new_zhengdian()
 			elif self.zhengdianFloor == '虎+猴+羊':
 				self.go_zhengdian()
 			elif self.zhengdianFloor == '火焰+寒冰':
 				self.go_zhengdian49()
-		elif self.scriptName == "祭坛魔镜":
+		elif self.scriptName == "魔镜":
 			self.mojingWhile()
+		elif self.scriptName == "名将闯关":
+			print('开始名将闯关')
+			while True:
+				has_mingjiang = self.mingjiangchuangguan()
+				if not has_mingjiang:
+					break
+			time.sleep(1)
+			self.scriptName = "官渡"
+			self.feiFb('副本曹操', True)
+			time.sleep(1)
+			self.guanduWhile()
 		elif self.scriptName == "战魂+红+整点":
 			if not self.zhanhunFloor:
 				self.zhanhunFloor = '26层'
@@ -196,17 +231,12 @@ class MyThread(threading.Thread):
 			self.rongdongWhile()
 		elif self.scriptName == "炼丹":
 			self.liandanWhile()
-		elif self.scriptName == "龙岛50":
+		elif self.scriptName == "龙岛":
 			while True:
 				if self.overed:
 					return
-				self.longdaoScript(50)
-		elif self.scriptName == "龙岛80":
-			while True:
-				if self.overed:
-					return
-				self.longdaoScript(80)
-		elif self.scriptName == "黑风山寨":
+				self.longdaoScript()
+		elif self.scriptName == "黑风":
 			self.heifengWhile()
 		elif self.scriptName == "名将挑战赛":
 			self.mingjiangtiaozhanWhile()
@@ -243,14 +273,14 @@ class MyThread(threading.Thread):
 		elif self.scriptName == "49战魂":
 			for i in range(6):
 				self.zhanhun49Script()
-		elif self.scriptName == "破旧矿产":
+		elif self.scriptName == "矿产":
 			for i in range(self.heifengWhileCount):
 				if self.overed:
 					return
 				self.kuangchanScript()
 				if self.heifengCount == self.heifengWhileCount:
 					break
-			print(f"{self.heifengWhileCount}次破旧矿产已完成,去官渡")
+			print(f"{self.heifengWhileCount}次矿产已完成,去官渡")
 			self.guanduWhile()
 		elif self.scriptName == "龙王令":
 			print('将龙王令放到背包当前页')
@@ -329,6 +359,7 @@ class MyThread(threading.Thread):
 						if left > 50:
 							print('请5s内关闭小号列表！')
 							time.sleep(5)
+
 						self.click_hwnd = hwnd
 						return False
 				return True
@@ -354,17 +385,21 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/common.txt"))  # 字库文件路径
-		self.dm.SetDict(1, self.get_resource_path("serveAssets/fonts/zhengdian.txt"))  # 字库文件路径
-		self.dm.SetDict(2, self.get_resource_path("serveAssets/fonts/mojing.txt"))  # 字库文件路径
-		self.dm.UseDict(0)
-		self.locationX = 510
-		self.locationY = 228
-		self.locationWidth = 900 + 510
-		self.locationHeight = 580 + 228
-		self.locationRightTopX = 510 + int((900 * 0.8))
-		self.locationRightTopY = 228
-		self.locationRightTopWidth = 900 + 510
-		self.locationRightTopHeight = 228 + int(580 * 0.2)
+		current_rect = self.dm.GetWindowRect(self.click_hwnd)
+		left, top, right, bottom, isFind = current_rect
+		self.locationX = int((right - 900) / 2)
+		xian_pos = self.dm.FindPicEx(left, top, right, bottom, self.get_resource_path("serveAssets/images/xian.bmp"), "", 0.8, 2)
+		if not xian_pos:
+			self.show_error_message('未找到游戏画面顶部，请重新启动脚本')
+			return
+		xian_pos = xian_pos.split(',')
+		self.locationY = int(int(xian_pos[2]) - 2)
+		self.locationWidth = 900 + self.locationX
+		self.locationHeight = 580 + self.locationY
+		self.locationRightTopX = self.locationX + int((900 * 0.8))
+		self.locationRightTopY = self.locationY
+		self.locationRightTopWidth = 900 + self.locationX
+		self.locationRightTopHeight = self.locationY + int(580 * 0.2)
 		self.gameLocation = (
 			self.locationX,
 			self.locationY,
@@ -374,7 +409,7 @@ class MyThread(threading.Thread):
 		self.gameLeftLocation = (
 			self.locationX,
 			int(self.locationY + (580 * 0.3)),
-			int(510 + (900 * 0.7)),
+			int(self.locationX + (900 * 0.7)),
 			self.locationHeight
 		)
 		self.gameRightLocation = (
@@ -409,8 +444,8 @@ class MyThread(threading.Thread):
 		)
 		self.talkLocation = (
 			self.locationX,
-			int(self.locationY + (self.locationHeight * 0.5)),
-			int(450 + 510),
+			int(self.locationY + (580 * 0.5)),
+			int(450 + self.locationX),
 			self.locationHeight
 		)
 		self.dituLocation = (
@@ -663,10 +698,10 @@ class MyThread(threading.Thread):
 		while True:
 			if self.overed:
 				return
-			self.click_image(self.get_resource_path("serveAssets/images/guandu/dialog.bmp"), self.confidenceNum, self.gameBottomLocation)
+			# self.click_image(self.get_resource_path("serveAssets/images/guandu/dialog.bmp"), self.confidenceNum, self.gameBottomLocation)
 			# self.click_image(self.get_resource_path("serveAssets/images/guandu/dialog1.bmp"), self.confidenceNum, self.gameBottomLocation)
 			# self.click_image(self.get_resource_path("serveAssets/images/dialog3.bmp"), self.confidenceNum, self.gameBottomLocation)
-			self.click_image(self.get_resource_path("serveAssets/images/fubenzudui.bmp"), self.confidenceNum, self.gameBottomLocation)
+			# self.click_image(self.get_resource_path("serveAssets/images/fubenzudui.bmp"), self.confidenceNum, self.gameBottomLocation)
 			# 关闭右边
 			closeRight = self.click_image(
 				self.get_resource_path("serveAssets/images/closeRight.bmp"),
@@ -689,7 +724,7 @@ class MyThread(threading.Thread):
 					self.gameBottomLocation,
 				)
 			# 点自动
-			if self.scriptName == "官渡" or self.scriptName == "祭坛魔镜" or self.scriptName == "黑风山寨" or self.scriptName == "破旧矿产":
+			if self.scriptName == "官渡" or self.scriptName == "魔镜" or self.scriptName == "黑风" or self.scriptName == "矿产":
 				self.click_image(
 					self.get_resource_path("serveAssets/images/zidong.bmp"),
 					self.confidenceNum,
@@ -778,6 +813,7 @@ class MyThread(threading.Thread):
 				self.addBloud_team1()
 			if self.clearMapFlag:
 				self.clear_hide_map_team1()
+			time.sleep(1)
 
 	# 绑定第二个窗口
 	def find_and_bing_windows2(self):
@@ -868,59 +904,59 @@ class MyThread(threading.Thread):
 			return
 		self.confidenceNum = 0.8
 		self.addBloudFlag = True
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		self.addBloudFlag = False
 		self.confidenceNum = 0.9
 
 	def addBloud_team1(self):
 		if self.overed:
 			return
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 
 	def addBloud_team2(self):
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, (self.locationX, self.locationY, int(self.locationWidth * 0.5), int(self.locationHeight * 0.5)))
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
 
 	def get_mac_address(self):
 		# 使用 psutil 获取所有网络接口信息
@@ -1011,17 +1047,22 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		time.sleep(0.1)
-		outX = 900 * 0.615 + 510
-		outY = 580 * 0.077 + 228
-		self.dm.MoveTo(int(outX), int(outY))
-		time.sleep(0.001)
-		self.dm.LeftClick()
-		time.sleep(0.2)
-		locationQueding = self.waitFor(
-			self.get_resource_path("serveAssets/images/outFb.bmp"),
-			self.gameLocation,
-			3,
-		)
+		locationQueding = None
+		while True:
+			if locationQueding:
+				break
+			outX = 900 * 0.615 + self.locationX
+			outY = 580 * 0.077 + self.locationY
+			self.dm.MoveTo(int(outX), int(outY))
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			time.sleep(0.2)
+			locationQueding = self.waitFor(
+				self.get_resource_path("serveAssets/images/outFb.bmp"),
+				self.gameLocation,
+				3,
+			)
+		time.sleep(0.5)
 		if locationQueding:
 			self.dm.MoveTo(locationQueding.x, locationQueding.y)
 			time.sleep(0.1)
@@ -1036,16 +1077,24 @@ class MyThread(threading.Thread):
 
 	# 飞整点等到打完
 	def feiZhengDian(self, fei_image, base_image, scroll_flag):
+		# print(100)
 		if self.overed:
 			return
 		time.sleep(0.001)
 		self.dm.MoveTo(100, 100)
 		time.sleep(0.001)
 		findSmallFeiTime = time.time()
+		# self.downTalkLocation = self.waitFor(
+		# 	f"{self.get_resource_path('serveAssets/images/downTalk.bmp')}|{self.get_resource_path('serveAssets/images/downTalk1.bmp')}",
+		# 	self.talkLocation,
+		# 	5
+		# )
+		# if not self.downTalkLocation:
+		# 	return f'没找到箭头'
 		self.downTalkLocation = self.waitFor(
-			f"{self.get_resource_path('serveAssets/images/downTalk.bmp')}|{self.get_resource_path('serveAssets/images/downTalk1.bmp')}",
+			f"{self.get_resource_path('serveAssets/images/upTalk.bmp')}|{self.get_resource_path('serveAssets/images/upTalk1.bmp')}",
 			self.talkLocation,
-			5
+			10
 		)
 		if not self.downTalkLocation:
 			return f'没找到箭头'
@@ -1062,15 +1111,18 @@ class MyThread(threading.Thread):
 			self.click_image(
 				'获得铜币',
 				self.confidenceNum,
-				self.gameBottomLocation,
+				self.gameLocation,
 			)
 			with condition:
 				if self.stoped:
 					condition.wait()
 			if self.downTalkLocation:
 				self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-				self.dm.WheelUp()
-				time.sleep(0.06)
+				# self.dm.WheelUp()
+				for i in range(8):
+					time.sleep(0.001)
+					self.dm.LeftClick()
+				time.sleep(0.08)
 		findShengXiaoTime = time.time()
 		while True:
 			if self.overed:
@@ -1160,67 +1212,108 @@ class MyThread(threading.Thread):
 	def clearBag_team1(self):
 		if self.overed:
 			return
+		time.sleep(15)
 		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
 		if bagPos:
 			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win1_dm.LeftClick()
 		chushou = self.waitFor_team1('一键出售', self.gameBottomLocation, 5)
 		if chushou:
 			self.win1_dm.MoveTo(chushou.x, chushou.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win1_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win1_dm.LeftClick()
 		time.sleep(0.5)
 		zise = self.waitFor_team1('紫色', self.gameBottomLocation, 5)
 		if zise:
 			self.win1_dm.MoveTo(zise.x, zise.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win1_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win1_dm.LeftClick()
 		time.sleep(0.5)
-		quedingchushou = self.waitFor_team1(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation)
+		quedingchushou = self.waitFor_team1(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation, 5)
 		if quedingchushou:
 			self.win1_dm.MoveTo(quedingchushou.x, quedingchushou.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win1_dm.LeftClick()
-		time.sleep(2)
-		self.win1_dm.KeyPressChar('e')
+		else:
+			bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win1_dm.LeftClick()
+		time.sleep(4)
+		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.5)
+			self.win1_dm.LeftClick()
 
 	# 清包
 	def clearBag_team2(self):
 		if self.overed:
 			return
+		time.sleep(30)
 		# self.win2_dm.KeyPressChar('e')
 		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
 		if bagPos:
 			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win2_dm.LeftClick()
-		chushou = self.waitFor_team2('一键出售', self.gameBottomLocation)
+		chushou = self.waitFor_team2('一键出售', self.gameBottomLocation, 5)
 		if chushou:
 			self.win2_dm.MoveTo(chushou.x, chushou.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win2_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win2_dm.LeftClick()
 		time.sleep(0.5)
-		zise = self.waitFor_team2('紫色', self.gameBottomLocation)
+		zise = self.waitFor_team2('紫色', self.gameBottomLocation, 5)
 		if zise:
 			self.win2_dm.MoveTo(zise.x, zise.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win2_dm.LeftClick()
-		time.sleep(0.5)
-		quedingchushou = self.waitFor_team2(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation)
+		else:
+			bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win2_dm.LeftClick()
+		time.sleep(1)
+		quedingchushou = self.waitFor_team2(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation, 5)
 		if quedingchushou:
 			self.win2_dm.MoveTo(quedingchushou.x, quedingchushou.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win2_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win2_dm.LeftClick()
 		time.sleep(2)
 		self.clickFlag = False
-		zhengli = self.waitFor_team2('整理', self.gameBottomLocation)
-		if zhengli:
-			self.win2_dm.MoveTo(zhengli.x, zhengli.y)
-			time.sleep(0.001)
+		time.sleep(4)
+		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.5)
 			self.win2_dm.LeftClick()
-		time.sleep(1)
-		self.win2_dm.KeyPressChar('e')
 
 	# 清包
 	def clearBag(self):
@@ -1230,42 +1323,53 @@ class MyThread(threading.Thread):
 		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
 		if bagPos:
 			self.dm.MoveTo(bagPos.x, bagPos.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.dm.LeftClick()
 		chushou = self.waitFor('一键出售', self.gameBottomLocation, 5)
 		if chushou:
 			self.dm.MoveTo(chushou.x, chushou.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.dm.LeftClick()
 		else:
-			time.sleep(1)
-			self.dm.KeyPressChar('e')
+			bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.dm.LeftClick()
 			return
-		time.sleep(0.5)
+		time.sleep(1)
 		zise = self.waitFor('紫色', self.gameBottomLocation, 5)
 		if zise:
 			self.dm.MoveTo(zise.x, zise.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.dm.LeftClick()
 		else:
-			time.sleep(1)
-			self.dm.KeyPressChar('e')
-			time.sleep(1)
+			bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.dm.LeftClick()
 			return
-		time.sleep(0.5)
+		time.sleep(1)
 		quedingchushou = self.waitFor(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation, 5)
 		if quedingchushou:
 			self.dm.MoveTo(quedingchushou.x, quedingchushou.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.dm.LeftClick()
 		else:
-			time.sleep(1)
-			self.dm.KeyPressChar('e')
-			time.sleep(1)
+			bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.dm.LeftClick()
 			return
-		time.sleep(2)
+		time.sleep(4)
 		self.clickFlag = False
-		self.dm.KeyPressChar('e')
+		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.5)
+			self.dm.LeftClick()
 
 	# 清藏宝图
 	def clear_hide_map(self):
@@ -1427,6 +1531,7 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		time.sleep(1.5)
+		time.sleep(0.1)
 		openTalkXY = self.waitFor(
 			self.get_resource_path("serveAssets/images/openTalk.bmp"),
 			self.talkLocation
@@ -1436,25 +1541,29 @@ class MyThread(threading.Thread):
 			for i in range(4):
 				time.sleep(0.2)
 				self.dm.LeftClick()
+		time.sleep(0.5)
 		bangpaiTalkXY = self.waitFor(
 			'帮派',
 			self.talkLocation,
+			5
 		)
 		if bangpaiTalkXY:
 			self.dm.MoveTo(bangpaiTalkXY.x, bangpaiTalkXY.y)
 			time.sleep(0.001)
 			self.dm.LeftClick()
+		time.sleep(1.5)
 		huodongTalkXY = self.waitFor(
 			'活动',
 			self.talkLocation,
+			5
 		)
 		if huodongTalkXY:
 			self.dm.MoveTo(huodongTalkXY.x, huodongTalkXY.y)
 			time.sleep(0.001)
 			self.dm.LeftClick()
-		time.sleep(0.1)
-		self.dm.UseDict(1)
-		time.sleep(0.1)
+		self.set_dict()
+		time.sleep(0.5)
+		gc.collect()
 		while True:
 			if self.overed:
 				return
@@ -1481,8 +1590,8 @@ class MyThread(threading.Thread):
 			True,
 		)
 		print(zhengdian_res)
-		if zhengdian_res in ['打完了虎生肖', '飞过去没有虎生肖', '点了没找到虎生肖', '有人打虎生肖']:
-			self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
+		# if zhengdian_res in ['打完了虎生肖', '飞过去没有虎生肖', '点了没找到虎生肖', '有人打虎生肖']:
+		# 	self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
 		# 飞兔子
 		zhengdian_res = self.feiZhengDian(
 			'兔生肖',
@@ -1497,14 +1606,24 @@ class MyThread(threading.Thread):
 			True,
 		)
 		print(zhengdian_res)
-		if self.downTalkLocation is not None:
+		if self.downTalkLocation:
 			self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-			self.dm.WheelUp()
-			time.sleep(0.04)
-			self.dm.WheelUp()
-			time.sleep(0.04)
-			self.dm.WheelUp()
-			time.sleep(0.04)
+			# self.dm.WheelUp()
+			for i in range(10):
+				time.sleep(0.001)
+				self.dm.LeftClick()
+			time.sleep(0.07)
+			for i in range(10):
+				time.sleep(0.001)
+				self.dm.LeftClick()
+			time.sleep(0.07)
+			# self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
+			# self.dm.WheelUp()
+			# time.sleep(0.04)
+			# self.dm.WheelUp()
+			# time.sleep(0.04)
+			# self.dm.WheelUp()
+			# time.sleep(0.04)
 			self.dm.MoveTo(int(self.downTalkLocation.x + 100), self.downTalkLocation.y)
 			time.sleep(0.01)
 		# 飞老虎
@@ -1528,8 +1647,8 @@ class MyThread(threading.Thread):
 			False,
 		)
 		print(zhengdian_res)
-		if zhengdian_res in ['打完了猴生肖', '飞过去没有猴生肖', '点了没找到猴生肖', '有人打猴生肖']:
-			self.zhengdian_by_xiaolvren('幽暗密林', 0, 763, [50, 54], 2)
+		# if zhengdian_res in ['打完了猴生肖', '飞过去没有猴生肖', '点了没找到猴生肖', '有人打猴生肖']:
+		# 	self.zhengdian_by_xiaolvren('幽暗密林', 0, int(845 + self.locationX), [int(43 + self.locationY)], 2)
 		# 将进度条拖动到最底下
 		dragBox = self.waitFor(
 			self.get_resource_path("serveAssets/images/dragBox.bmp"),
@@ -1544,14 +1663,14 @@ class MyThread(threading.Thread):
 			time.sleep(0.001)
 			self.dm.LeftUp()
 			time.sleep(0.001)
-			if self.downTalkLocation is not None:
-				self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-				for i in range(10):
-					time.sleep(0.001)
-					self.dm.LeftClick()
-				time.sleep(0.1)
-				self.dm.MoveTo(int(self.downTalkLocation.x + 100), self.downTalkLocation.y)
-				time.sleep(0.1)
+			# if self.downTalkLocation is not None:
+			# 	self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
+			# 	for i in range(10):
+			# 		time.sleep(0.001)
+			# 		self.dm.LeftClick()
+			# 	time.sleep(0.1)
+			# 	self.dm.MoveTo(int(self.downTalkLocation.x + 100), self.downTalkLocation.y)
+			# 	time.sleep(0.1)
 			# 飞羊
 			zhengdian_res = self.feiZhengDian(
 				'羊生肖',
@@ -1559,8 +1678,8 @@ class MyThread(threading.Thread):
 				True,
 			)
 			print(zhengdian_res)
-			if zhengdian_res in ['打完了羊生肖', '飞过去没有羊生肖', '点了没找到羊生肖', '有人打羊生肖']:
-				self.zhengdian_by_xiaolvren('魔谷西', 2, 857, [50, 46], 1)
+			# if zhengdian_res in ['打完了羊生肖', '飞过去没有羊生肖', '点了没找到羊生肖', '有人打羊生肖']:
+			# 	self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(40 + self.locationY)], 1)
 			# 飞猴子
 			zhengdian_res = self.feiZhengDian(
 				'猴生肖',
@@ -1568,16 +1687,27 @@ class MyThread(threading.Thread):
 				False,
 			)
 			print(zhengdian_res)
-			if self.downTalkLocation is not None:
+			if self.downTalkLocation:
 				self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-				self.dm.WheelUp()
-				time.sleep(0.04)
-				self.dm.WheelUp()
-				time.sleep(0.04)
-				self.dm.WheelUp()
-				time.sleep(0.04)
-				self.dm.MoveTo(int(self.downTalkLocation.x + 100), self.downTalkLocation.y)
-				time.sleep(0.01)
+				# self.dm.WheelUp()
+				for i in range(10):
+					time.sleep(0.001)
+					self.dm.LeftClick()
+				time.sleep(0.07)
+				for i in range(10):
+					time.sleep(0.001)
+					self.dm.LeftClick()
+				time.sleep(0.07)
+			# if self.downTalkLocation is not None:
+			# 	self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
+			# 	self.dm.WheelUp()
+			# 	time.sleep(0.04)
+			# 	self.dm.WheelUp()
+			# 	time.sleep(0.04)
+			# 	self.dm.WheelUp()
+			# 	time.sleep(0.04)
+			# 	self.dm.MoveTo(int(self.downTalkLocation.x + 100), self.downTalkLocation.y)
+			# 	time.sleep(0.01)
 			# 飞羊
 			zhengdian_res = self.feiZhengDian(
 				'羊生肖',
@@ -1597,9 +1727,8 @@ class MyThread(threading.Thread):
 				time.sleep(0.2)
 				self.dm.LeftClick()
 		time.sleep(0.5)
-		self.dm.UseDict(0)
-		time.sleep(0.5)
 		self.zhengdian_flag = False
+		gc.collect()
 		if self.scriptName == "官渡":
 			is_in_guandu = self.find_pic_or_str('官渡', self.dituLocation, 0)
 			if not is_in_guandu:
@@ -1609,7 +1738,7 @@ class MyThread(threading.Thread):
 				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌')
 			time.sleep(1)
 			self.guanduWhile()
-		elif self.scriptName == "祭坛魔镜" or self.scriptName == "整点":
+		elif self.scriptName == "魔镜" or self.scriptName == "整点":
 			findMojingshizhe = self.feiFb('副本魔镜使者', False)
 			if findMojingshizhe:
 				is_in_guandu = self.waitFor('城西', self.dituLocation, 5)
@@ -1637,7 +1766,242 @@ class MyThread(threading.Thread):
 			self.feiFb('副本挑战赛', True)
 			time.sleep(10)
 			self.mojingAndHongAndZd()
-		elif self.scriptName == "黑风山寨":
+		elif self.scriptName == "黑风":
+			time.sleep(1)
+			self.feiFb('副本霸山虎', False)
+			self.heifengWhile()
+
+	# 牛虎兔
+	def new_zhengdian1(self):
+		if self.overed:
+			return
+		print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
+		with condition:
+			if self.stoped:
+				condition.wait()
+		self.set_dict()
+		time.sleep(1.5)
+		gc.collect()
+		while True:
+			with condition:
+				if self.stoped:
+					condition.wait()
+			current_time = time.localtime()
+			if (current_time.tm_min == 59 and current_time.tm_sec == 59) or (
+					current_time.tm_min == 0 and current_time.tm_sec == 0
+			):
+				break
+			time.sleep(1)  # 每秒钟检查一次
+		is_fei = self.go_in_ditu('地图牛', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '魔魂山', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('魔魂山', 0, 0, [], 2)
+			is_in_bibotan = self.waitFor('魔魂山', self.dituLocation, 5)
+			if is_in_bibotan:
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('魔魂山', 0, 0, [], 2)
+			time.sleep(0.5)
+		is_fei = self.go_in_ditu('地图老虎', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族祭坛', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
+			is_in_bibotan = self.waitFor('九黎族祭坛', self.dituLocation, 5)
+			if is_in_bibotan:
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
+			time.sleep(0.5)
+		is_fei = self.go_in_ditu('地图徐州', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '徐州', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('徐州', 0, int(845 + self.locationX), [int(43 + self.locationY)], 2)
+			is_in_bibotan = self.waitFor('徐州', self.dituLocation, 5)
+			if is_in_bibotan:
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('徐州', 0, int(845 + self.locationX), [int(43 + self.locationY)], 2)
+			time.sleep(0.5)
+		# is_fei = self.go_in_ditu('地图幽暗密林', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '幽暗密林', '', '', True)
+		# if is_fei:
+		# 	self.zhengdian_by_xiaolvren('幽暗密林', 0, int(763 + self.locationX), [int(49 + self.locationY), int(53 + self.locationY)], 2)
+		# 	is_in_bibotan = self.waitFor('幽暗密林', self.dituLocation, 5)
+		# 	if is_in_bibotan:
+		# 		time.sleep(0.5)
+		# 		self.zhengdian_by_xiaolvren('幽暗密林', 0, int(763 + self.locationX), [int(49 + self.locationY), int(53 + self.locationY)], 2)
+		# 	time.sleep(0.5)
+		# is_fei = self.go_in_ditu('地图羊', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '魔谷西', '', '', True)
+		# if is_fei:
+		# 	self.zhengdian_by_xiaolvren('魔谷西', 2, int(857 + self.locationX), [int(45 + self.locationY), int(49 + self.locationY)], 1)
+		# 	time.sleep(0.5)
+		# 	is_in_bibotan = self.waitFor('魔谷西', self.dituLocation, 5)
+		# 	if is_in_bibotan:
+		# 		self.zhengdian_by_xiaolvren('魔谷西', 2, int(857 + self.locationX), [int(45 + self.locationY), int(49 + self.locationY)], 1)
+		# 	time.sleep(0.5)
+		time.sleep(0.5)
+		self.zhengdian_flag = False
+		gc.collect()
+		if self.scriptName == "官渡":
+			is_in_guandu = self.find_pic_or_str('官渡', self.dituLocation, 0)
+			if not is_in_guandu:
+				self.feiFb('副本曹操', True)
+			is_in_guandu = self.waitFor('官渡', self.dituLocation, 5)
+			if not is_in_guandu:
+				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌', True)
+			time.sleep(1)
+			self.guanduWhile()
+		elif self.scriptName == "魔镜" or self.scriptName == "整点":
+			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '', True)
+			time.sleep(1)
+			self.mojingWhile()
+		elif self.scriptName == "战魂+红+整点":
+			time.sleep(1)
+			self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西', True)
+			time.sleep(2)
+			self.guanduAndHongAndZd()
+		elif self.scriptName == "战魂+红+魔镜+整点":
+			time.sleep(1)
+			self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西', True)
+			time.sleep(2)
+			self.mojingAndHongAndZd()
+		elif self.scriptName == "黑风":
+			time.sleep(1)
+			self.feiFb('副本霸山虎', False)
+			self.heifengWhile()
+
+	# 虎牛兔猴羊
+	def new_zhengdian(self):
+		if self.overed:
+			return
+		print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
+		with condition:
+			if self.stoped:
+				condition.wait()
+		self.set_dict()
+		time.sleep(0.5)
+		gc.collect()
+		time.sleep(0.5)
+		while True:
+			with condition:
+				if self.stoped:
+					condition.wait()
+			current_time = time.localtime()
+			if (current_time.tm_min == 59 and current_time.tm_sec == 59) or (
+					current_time.tm_min == 0 and current_time.tm_sec == 0
+			):
+				break
+			time.sleep(1)  # 每秒钟检查一次
+		is_fei = self.go_in_ditu('地图老虎', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族祭坛', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
+			is_in_bibotan = self.waitFor('九黎族祭坛', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
+				is_in_bibotan1 = self.waitFor('九黎族祭坛', self.dituLocation, 5)
+				if is_in_bibotan1:
+					self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+					time.sleep(0.001)
+					self.dm.LeftClick()
+					time.sleep(0.5)
+					self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
+			time.sleep(0.5)
+		is_fei = self.go_in_ditu('地图牛', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '魔魂山', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('魔魂山', 0, 0, [], 2)
+			is_in_bibotan = self.waitFor('魔魂山', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('魔魂山', 0, 0, [], 2)
+				is_in_bibotan1 = self.waitFor('魔魂山', self.dituLocation, 5)
+				if is_in_bibotan1:
+					self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+					time.sleep(0.001)
+					self.dm.LeftClick()
+					time.sleep(0.5)
+					self.zhengdian_by_xiaolvren('魔魂山', 0, 0, [], 2)
+			time.sleep(0.5)
+		is_fei = self.go_in_ditu('地图徐州', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '徐州', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('徐州', 0, int(845 + self.locationX), [int(43 + self.locationY)], 2)
+			is_in_bibotan = self.waitFor('徐州', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('徐州', 0, int(845 + self.locationX), [int(43 + self.locationY)], 1)
+				is_in_bibotan = self.waitFor('徐州', self.dituLocation, 5)
+				if is_in_bibotan:
+					self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+					time.sleep(0.001)
+					self.dm.LeftClick()
+					time.sleep(0.5)
+					self.zhengdian_by_xiaolvren('徐州', 0, int(845 + self.locationX), [int(43 + self.locationY)], 1)
+			time.sleep(0.5)
+		is_fei = self.go_in_ditu('地图幽暗密林', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '幽暗密林', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('幽暗密林', 0, int(764 + self.locationX), [int(44 + self.locationY)], 1)
+			is_in_bibotan = self.waitFor('幽暗密林', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('幽暗密林', 0, int(764 + self.locationX), [int(44 + self.locationY)], 2)
+				is_in_bibotan1 = self.waitFor('幽暗密林', self.dituLocation, 5)
+				if is_in_bibotan1:
+					self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+					time.sleep(0.001)
+					self.dm.LeftClick()
+					time.sleep(0.5)
+					self.zhengdian_by_xiaolvren('幽暗密林', 0, int(764 + self.locationX), [int(44 + self.locationY)], 2)
+			time.sleep(0.5)
+		is_fei = self.go_in_ditu('地图羊', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '魔谷西', '', '', True)
+		if is_fei:
+			self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(40 + self.locationY)], 1)
+			time.sleep(0.5)
+			is_in_bibotan = self.waitFor('魔谷西', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(40 + self.locationY)], 1)
+				is_in_bibotan = self.waitFor('魔谷西', self.dituLocation, 5)
+				if is_in_bibotan:
+					self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+					time.sleep(0.001)
+					self.dm.LeftClick()
+					time.sleep(0.5)
+					self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(40 + self.locationY)], 1)
+			time.sleep(0.5)
+		time.sleep(0.5)
+		self.zhengdian_flag = False
+		if self.scriptName == "官渡":
+			is_in_guandu = self.find_pic_or_str('官渡', self.dituLocation, 0)
+			if not is_in_guandu:
+				is_fei = self.feiFb('副本曹操', True)
+			is_in_guandu = self.waitFor('官渡', self.dituLocation, 5)
+			if not is_in_guandu:
+				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌', True)
+			time.sleep(1)
+			self.guanduWhile()
+		elif self.scriptName == "魔镜" or self.scriptName == "整点":
+			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '', True)
+			time.sleep(1)
+			self.mojingWhile()
+		elif self.scriptName == "战魂+红+整点":
+			time.sleep(1)
+			self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西', True)
+			time.sleep(2)
+			self.guanduAndHongAndZd()
+		elif self.scriptName == "战魂+红+魔镜+整点":
+			time.sleep(1)
+			self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西', True)
+			time.sleep(2)
+			self.mojingAndHongAndZd()
+		elif self.scriptName == "黑风":
 			time.sleep(1)
 			self.feiFb('副本霸山虎', False)
 			self.heifengWhile()
@@ -1646,12 +2010,15 @@ class MyThread(threading.Thread):
 	def go_zhengdian(self):
 		if self.overed:
 			return
-		self.dm.UseDict(0)
 		print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
 		if self.scriptName == '官渡' or self.scriptName == "战魂+红+整点":
 			self.go_in_ditu('地图老虎遗迹', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族遗迹', '驿站城西', '驿站襄阳')
-		elif self.scriptName == '祭坛魔镜' or self.scriptName == "战魂+红+魔镜+整点" or self.scriptName == "整点":
+		elif self.scriptName == '魔镜' or self.scriptName == "战魂+红+魔镜+整点" or self.scriptName == "整点":
 			self.go_in_ditu('地图老虎遗迹', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族遗迹', '驿站襄阳', '驿站城西')
+		self.set_dict()
+		time.sleep(0.5)
+		gc.collect()
+		time.sleep(0.5)
 		while True:
 			with condition:
 				if self.stoped:
@@ -1677,12 +2044,22 @@ class MyThread(threading.Thread):
 		self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
 		is_in_bibotan = self.waitFor('九黎族祭坛', self.dituLocation, 5)
 		if is_in_bibotan:
+			self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+			time.sleep(0.001)
+			self.dm.LeftClick()
 			time.sleep(0.5)
 			self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
+			is_in_bibotan = self.waitFor('九黎族祭坛', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('九黎族祭坛', 0, 0, [], 1)
 		time.sleep(0.5)
 		# 回城
 		self.dm.KeyPressChar('e')
-		self.confidenceNum = 0.8
+		self.confidenceNum = 0.7
 		huichengjuan_pos = self.waitFor(f"{self.get_resource_path('serveAssets/images/zhengdian/huichengjuan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/huichengjuan1.bmp')}", self.gameLocation, 5)
 		self.confidenceNum = 0.9
 		if huichengjuan_pos:
@@ -1715,30 +2092,53 @@ class MyThread(threading.Thread):
 		# 打猴子
 		time.sleep(1)
 		# 763  50/54
-		self.zhengdian_by_xiaolvren('幽暗密林', 0, 763, [50, 54], 2)
+		self.zhengdian_by_xiaolvren('幽暗密林', 0, int(764 + self.locationX), [int(44 + self.locationY)], 2)
 		time.sleep(0.5)
 		is_in_bibotan = self.waitFor('幽暗密林', self.dituLocation, 5)
 		if is_in_bibotan:
-			self.zhengdian_by_xiaolvren('幽暗密林', 0, 763, [50, 54], 2)
+			self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			time.sleep(0.5)
+			self.zhengdian_by_xiaolvren('幽暗密林', 0, int(764 + self.locationX), [int(44 + self.locationY)], 2)
+			is_in_bibotan = self.waitFor('幽暗密林', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('幽暗密林', 0, int(764 + self.locationX), [int(44 + self.locationY)], 2)
 		time.sleep(0.5)
 		# 去魔谷西
 		self.go_in_ditu('地图羊', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '魔谷西', '', '')
 		# 打羊
 		time.sleep(1)
 		# 856 46/50
-		self.zhengdian_by_xiaolvren('魔谷西', 2, 857, [50, 46], 1)
+		self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(40 + self.locationY)], 1)
 		time.sleep(0.5)
 		is_in_bibotan = self.waitFor('魔谷西', self.dituLocation, 5)
 		if is_in_bibotan:
-			self.zhengdian_by_xiaolvren('魔谷西', 2, 857, [50, 46], 1)
+			self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			time.sleep(0.5)
+			self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(40 + self.locationY)], 1)
+			is_in_bibotan = self.waitFor('魔谷西', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(40 + self.locationY)], 1)
 		time.sleep(0.5)
 		self.zhengdian_flag = False
+		gc.collect()
 		if self.scriptName == '官渡':
 			# 回官渡
 			self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌')
 			time.sleep(1)
 			self.guanduWhile()
-		elif self.scriptName == '祭坛魔镜' or self.scriptName == '整点':
+		elif self.scriptName == '魔镜' or self.scriptName == '整点':
 			# 回洛阳城西
 			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
 			time.sleep(1)
@@ -1756,35 +2156,34 @@ class MyThread(threading.Thread):
 	def go_zhengdian49(self):
 		if self.overed:
 			return
-		self.dm.UseDict(0)
 		print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
 		time.sleep(1)
-		openTalkXY = self.waitFor(
-			self.get_resource_path("serveAssets/images/openTalk.bmp"),
-			self.talkLocation
-		)
-		if openTalkXY:
-			self.dm.MoveTo(openTalkXY.x, openTalkXY.y)
-			for i in range(4):
-				time.sleep(0.2)
-				self.dm.LeftClick()
-		bangpaiTalkXY = self.waitFor(
-			'帮派',
-			self.talkLocation,
-		)
-		if bangpaiTalkXY:
-			self.dm.MoveTo(bangpaiTalkXY.x, bangpaiTalkXY.y)
-			time.sleep(0.001)
-			self.dm.LeftClick()
-		huodongTalkXY = self.waitFor(
-			'活动',
-			self.talkLocation,
-		)
-		if huodongTalkXY:
-			self.dm.MoveTo(huodongTalkXY.x, huodongTalkXY.y)
-			time.sleep(0.001)
-			self.dm.LeftClick()
-		time.sleep(0.5)
+		# openTalkXY = self.waitFor(
+		# 	self.get_resource_path("serveAssets/images/openTalk.bmp"),
+		# 	self.talkLocation
+		# )
+		# if openTalkXY:
+		# 	self.dm.MoveTo(openTalkXY.x, openTalkXY.y)
+		# 	for i in range(4):
+		# 		time.sleep(0.2)
+		# 		self.dm.LeftClick()
+		# bangpaiTalkXY = self.waitFor(
+		# 	'帮派',
+		# 	self.talkLocation,
+		# )
+		# if bangpaiTalkXY:
+		# 	self.dm.MoveTo(bangpaiTalkXY.x, bangpaiTalkXY.y)
+		# 	time.sleep(0.001)
+		# 	self.dm.LeftClick()
+		# huodongTalkXY = self.waitFor(
+		# 	'活动',
+		# 	self.talkLocation,
+		# )
+		# if huodongTalkXY:
+		# 	self.dm.MoveTo(huodongTalkXY.x, huodongTalkXY.y)
+		# 	time.sleep(0.001)
+		# 	self.dm.LeftClick()
+		# time.sleep(0.5)
 		self.findAndClickPic(
 			'城西',
 			self.get_resource_path("serveAssets/images/zhengdian/luoyangyizhan.bmp"),
@@ -1799,13 +2198,16 @@ class MyThread(threading.Thread):
 			'驿站五指峡谷',
 			self.dituLocation, self.gameLeftLocation,
 		)
+		self.set_dict()
+		time.sleep(0.5)
+		gc.collect()
 		while True:
 			with condition:
 				if self.stoped:
 					condition.wait()
 			current_time = time.localtime()
-			if (current_time.tm_min == 59 and current_time.tm_sec == 56) or (
-					current_time.tm_min == 59 and current_time.tm_sec == 57
+			if (current_time.tm_min == 59 and current_time.tm_sec == 59) or (
+					current_time.tm_min == 0 and current_time.tm_sec == 0
 			):
 				break
 			time.sleep(1)  # 每秒钟检查一次
@@ -1821,39 +2223,52 @@ class MyThread(threading.Thread):
 		# 打火焰
 		time.sleep(0.8)
 		# 735 58/62
-		self.zhengdian_by_xiaolvren('碧波潭', 2, 736, [58, 62], 2)
+		self.zhengdian_by_xiaolvren('碧波潭', 2, int(737 + self.locationX), [int(52 + self.locationY)], 2)
 		time.sleep(0.5)
 		is_in_bibotan = self.waitFor('碧波潭', self.dituLocation, 5)
 		if is_in_bibotan:
-			self.dm.KeyDownChar('down')
-			time.sleep(1.5)
-			self.dm.KeyUpChar('down')
-			time.sleep(0.3)
-			self.zhengdian_by_xiaolvren('碧波潭', 2, 736, [58, 62], 2)
+			self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			time.sleep(0.5)
+			self.zhengdian_by_xiaolvren('碧波潭', 2, int(737 + self.locationX), [int(52 + self.locationY)], 2)
+			is_in_bibotan = self.waitFor('碧波潭', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+				self.zhengdian_by_xiaolvren('碧波潭', 2, int(737 + self.locationX), [int(52 + self.locationY)], 2)
 		time.sleep(0.5)
 		# 飞寒冰
-		self.feiZhengDian(
-			'寒冰',
-			'皇宫东院',
-			350,
-		)
-		time.sleep(0.5)
-		# 848  49/53
-		zhengdiann_res = self.zhengdian_by_xiaolvren('皇宫东院', 0, 848, [49, 53])
-		closeTalkXY = self.waitFor(
-			self.get_resource_path("serveAssets/images/closetalk.bmp"),
-			self.talkLocation,
-		)
-		if closeTalkXY:
-			self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
-			for i in range(4):
-				time.sleep(0.2)
-				self.dm.LeftClick()
+		is_fei = self.go_in_ditu('地图皇宫东院', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '皇宫东院', '', '', True)
+		# self.feiZhengDian(
+		# 	'寒冰',
+		# 	'皇宫东院',
+		# 	350,
+		# )
+		if is_fei:
+			time.sleep(0.5)
+			# 848  49/53
+			self.zhengdian_by_xiaolvren('皇宫东院', 0, int(849 + self.locationX), [int(43 + self.locationY)], 2)
+			is_in_bibotan = self.waitFor('皇宫东院', self.dituLocation, 5)
+			if is_in_bibotan:
+				self.dm.KeyDownChar('left')
+				time.sleep(1.5)
+				self.dm.KeyUpChar('left')
+				time.sleep(0.3)
+				self.zhengdian_by_xiaolvren('皇宫东院', 0, int(849 + self.locationX), [int(43 + self.locationY)], 2)
+		# if closeTalkXY:
+		# 	self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
+		# 	for i in range(4):
+		# 		time.sleep(0.2)
+		# 		self.dm.LeftClick()
 		time.sleep(0.5)
 		self.zhengdian_flag = False
+		gc.collect()
 		self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
 		time.sleep(1)
-		if self.scriptName == '祭坛魔镜':
+		if self.scriptName == '魔镜':
 			self.mojingWhile()
 
 	# 在地图通过小绿人打整点
@@ -1866,14 +2281,16 @@ class MyThread(threading.Thread):
 		if not base_image_res:
 			return f'不在{base_image}'
 		x, y, w, h = self.dituLocation
-		xiaolvren = self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp")
+		xiaolvren = self.get_resource_path("serveAssets/images/zhengdian/xiaolvren2.bmp")
 		picSize = self.dm.GetPicSize(xiaolvren)
 		picSize = picSize.split(',')
 		picW, picH = picSize[0], picSize[1]
-		xiaolvren_pos = self.dm.FindPicEx(int(x), int(y), int(w), int(h), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), '', 0.7, find_dir)
+		xiaolvren_pos = self.dm.FindPicEx(int(x), int(y), int(w), int(h), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren2.bmp"), '', 0.7, find_dir)
 		if xiaolvren_pos:
 			xiaolvren_pos = xiaolvren_pos.split('|')
+			# print(xiaolvren_pos, 'xiaolvren_pos')
 			xiaolvren_pos = self.sort_array_by_second_value(xiaolvren_pos, order)
+			# print(xiaolvren_pos, 'xiaolvren_pos111')
 			xiaolvren_pos_color = self.dm.GetColor(int(int(xiaolvren_pos[0].split(',')[1]) + int(int(picW) * 0.5)), int(int(xiaolvren_pos[0].split(',')[2]) + int(int(picH) * 0.5)))
 			for item in xiaolvren_pos:
 				if self.overed:
@@ -1884,27 +2301,90 @@ class MyThread(threading.Thread):
 				item_x = int(new_item[1]) + int(int(picW) * 0.5)
 				item_y = int(new_item[2]) + int(int(picH) * 0.5)
 				hasZhengDian = False
-				while self.dm.CmpColor(item_x, item_y, xiaolvren_pos_color, 0.7) == 0:
-					self.dm.MoveTo(item_x, item_y)
-					time.sleep(0.001)
-					self.dm.LeftClick()
-					time.sleep(0.001)
-					self.dm.MoveTo(int(item_x + 200), int(item_y + 200))
-					time.sleep(0.8)
-					if self.find_str('进入|点击', self.gameBottomLocation, 0):
+				change_color_time = 0
+				find_zhengdian_time = time.time()
+				self.dm.MoveTo(item_x, item_y)
+				time.sleep(0.001)
+				self.dm.LeftClick()
+				time.sleep(0.001)
+				self.dm.MoveTo(int(item_x - 200), item_y)
+				time.sleep(0.1)
+				while True:
+					if time.time() - find_zhengdian_time > 10:
+						print('超时10s')
 						break
-					if self.find_str('打就打', self.gameBottomLocation, 0):
+					# if not self.find_str(base_image, self.dituLocation, 0):
+					# 	break
+					if change_color_time == 0 and self.dm.CmpColor(item_x, item_y, xiaolvren_pos_color, 0.7) == 1:
+						change_color_time = time.time()
+					time.sleep(0.01)
+					self.confidenceNum = 0.8
+					time.sleep(0.001)
+					if self.find_pic(
+							f"{self.get_resource_path('serveAssets/images/zhengdian/dianwei.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/dianwei1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jixu.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jixu1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jixu2.bmp')}",
+							self.gameBottomLocation, 0):
+						print('npc')
+						self.confidenceNum = 0.9
+						break
+					self.confidenceNum = 0.9
+					time.sleep(0.01)
+					if change_color_time > 0 and time.time() - change_color_time > 5:
+						print('超时')
+						break
+					self.confidenceNum = 0.8
+					time.sleep(0.6)
+					if self.find_pic(
+							f"{self.get_resource_path('serveAssets/images/zhengdian/da.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da4.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da5.bmp')}",
+							self.gameBottomLocation, 0):
+						time.sleep(0.001)
 						if self.find_pic(
 								f"{self.get_resource_path('serveAssets/images/zhengdian/long.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long4.bmp')}",
 								self.gameBottomLocation, 0):
+							print('龙')
+							self.confidenceNum = 0.9
 							break
 						else:
+							self.confidenceNum = 0.9
 							hasZhengDian = True
 							break
+					self.confidenceNum = 0.9
+					is_zhengdian = self.waitFor('打就打', self.gameBottomLocation, 0.6)
+					if is_zhengdian:
+						self.confidenceNum = 0.8
+						time.sleep(0.001)
+						if self.find_pic(
+								f"{self.get_resource_path('serveAssets/images/zhengdian/long.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/long4.bmp')}",
+								self.gameBottomLocation, 0):
+							print('龙')
+							self.confidenceNum = 0.9
+							break
+						else:
+							self.confidenceNum = 0.9
+							hasZhengDian = True
+							break
+					del is_zhengdian
 				if hasZhengDian:
-					dajiuda_pos = self.waitFor('打就打', self.gameBottomLocation, 2)
+					print(f'{base_image}有整点')
+					find_time = time.time()
+					dajiuda_pos = None
+					while True:
+						dajiuda_pos = self.find_pic(
+							f"{self.get_resource_path('serveAssets/images/zhengdian/da.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da5.bmp')}",
+							self.gameBottomLocation, 0)
+						if dajiuda_pos:
+							break
+						dajiuda_pos = self.find_str('打就打', self.gameBottomLocation, 0)
+						if dajiuda_pos:
+							break
+						time.sleep(0.3)
+						if self.confidenceNum > 0.7:
+							self.confidenceNum = self.confidenceNum - 0.1
+						if time.time() - find_time > 4:
+							print('没找到打就打')
+							break
+					self.confidenceNum = 0.9
 					if dajiuda_pos:
-						self.dm.MoveTo(int(dajiuda_pos.x + 10), int(dajiuda_pos.y + 5))
+						self.dm.MoveTo(int(dajiuda_pos.x + 10), int(dajiuda_pos.y + 3))
 						time.sleep(0.001)
 						self.dm.LeftClick()
 						queryTime = time.time()
@@ -1931,9 +2411,10 @@ class MyThread(threading.Thread):
 								self.dm.LeftClick()
 								zhengdianHas = False
 								break
+						del dajiuda_pos
 						if zhengdianHas:
 							self.waitFor(base_image, self.dituLocation)
-							time.sleep(0.5)
+							time.sleep(0.1)
 							if base_image == '九黎族祭坛':
 								print('打完了一个虎')
 							elif base_image == '幽暗密林':
@@ -1944,97 +2425,135 @@ class MyThread(threading.Thread):
 								print('打完了一个火焰帝')
 							elif base_image == '皇宫东院':
 								print('打完了一个寒冰帝')
+							elif base_image == '魔魂山':
+								print('打完了一个牛')
+							elif base_image == '徐州':
+								print('打完了一个兔')
 				else:
 					print('没找到整点')
+			del xiaolvren_pos
+
 		else:
 			return
 
-	# 排序
+	# 重新设置大漠跟字库
+	def set_dict(self):
+		time.sleep(0.5)
+		self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/common.txt"))  # 字库文件路径
+		time.sleep(0.5)
+
 	def sort_array_by_second_value(self, arr, order):
 		"""
 		根据数组中每个元素的第二个值进行排序。
 
 		参数:
-			arr (list): 包含字符串元素的数组，每个元素格式为"0,123,654"
-			order (int): 排序方向，1表示降序，2表示升序
+		arr (list): 包含字符串元素的数组，每个元素格式为"0,123,654"
+		order (int): 排序方向，1表示降序，2表示升序
 
 		返回:
-			list: 排序后的数组
+		list: 排序后的数组
 		"""
 
 		# 定义排序键函数，提取每个元素的第二个值
 		def key_func(item):
-			if item:
-				return int(item.split(',')[1])
+			return int(item.split(',')[1])
 
 		# 根据order参数决定排序顺序
 		reverse_order = (order == 1)
 
 		# 使用sorted函数进行排序
 		sorted_arr = sorted(arr, key=key_func, reverse=reverse_order)
-
 		return sorted_arr
 
 	# 跑图
-	def go_in_ditu(self, find_address, address_pos_city, break_address, yizhan_name1, yizhan_name2):
+	def go_in_ditu(self, find_address, address_pos_city, break_address, yizhan_name1, yizhan_name2, is_fei=False):
 		if self.overed:
 			return
-		time.sleep(1)
-		self.dm.KeyPressChar('m')
-		address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation)
+		time.sleep(0.5)
+		# self.dm.KeyPressChar('m')
+		self.dm.MoveTo(int(self.locationX + 737), int(self.locationY + 115))
+		time.sleep(0.05)
+		self.dm.LeftClick()
+		address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation, 3)
+		if not address_pos_city_pos:
+			time.sleep(0.1)
+			self.dm.KeyPressChar('m')
+			address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation, 3)
+			if not address_pos_city_pos:
+				return
 		self.dm.MoveTo(address_pos_city_pos.x, address_pos_city_pos.y)
 		time.sleep(0.001)
 		self.dm.LeftClick()
 		self.waitFor(find_address, self.gameLocation)
-		go_pos = self.fing_fei_in_image_or_str(find_address, self.gameLocation, (0, 5, 130, 20), f"{self.get_resource_path('serveAssets/images/zhengdian/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang1.bmp')}", )
-		if go_pos:
-			self.dm.MoveTo(go_pos.x, go_pos.y)
-			time.sleep(0.001)
-			self.dm.LeftClick()
-			time.sleep(0.05)
-			self.dm.LeftClick()
-			time.sleep(0.5)
-		query_time = time.time()
-		yizhan_name1_flag = True
-		yizhan_name2_flag = True
-		while not self.find_pic_or_str(break_address, self.dituLocation, 0):
-			if self.overed:
-				return
-			if time.time() - query_time > 80:
-				time.sleep(0.3)
-				self.dm.KeyPressChar('down')
-				time.sleep(0.3)
-				self.dm.KeyPressChar('down')
-				time.sleep(0.3)
-				self.dm.KeyPressChar('m')
-				address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation)
-				self.dm.MoveTo(address_pos_city_pos.x, address_pos_city_pos.y)
+		if not is_fei:
+			go_pos = self.fing_fei_in_image_or_str(
+				find_address,
+				self.gameLocation,
+				(0, 5, 150, 20),
+				f"{self.get_resource_path('serveAssets/images/zhengdian/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang3.bmp')}", )
+			if go_pos:
+				self.dm.MoveTo(go_pos.x, go_pos.y)
 				time.sleep(0.001)
 				self.dm.LeftClick()
-				self.waitFor(find_address, self.gameLocation)
-				go_pos = self.fing_fei_in_image_or_str(find_address, self.gameLocation, (0, 5, 130, 20), f"{self.get_resource_path('serveAssets/images/zhengdian/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang1.bmp')}", )
-				if go_pos:
-					self.dm.MoveTo(go_pos.x, go_pos.y)
+				time.sleep(0.05)
+				self.dm.LeftClick()
+				time.sleep(0.5)
+			query_time = time.time()
+			yizhan_name1_flag = True
+			yizhan_name2_flag = True
+			while not self.find_pic_or_str(break_address, self.dituLocation, 0):
+				if self.overed:
+					return
+				if time.time() - query_time > 80:
+					time.sleep(0.3)
+					self.dm.KeyPressChar('down')
+					time.sleep(0.3)
+					self.dm.KeyPressChar('down')
+					time.sleep(0.3)
+					self.dm.MoveTo(int(self.locationX + 737), int(self.locationY + 115))
+					time.sleep(0.05)
+					self.dm.LeftClick()
+					address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation)
+					self.dm.MoveTo(address_pos_city_pos.x, address_pos_city_pos.y)
 					time.sleep(0.001)
 					self.dm.LeftClick()
+					self.waitFor(find_address, self.gameLocation)
+					go_pos = self.fing_fei_in_image_or_str(find_address, self.gameLocation, (0, 5, 130, 20), f"{self.get_resource_path('serveAssets/images/zhengdian/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang1.bmp')}", )
+					if go_pos:
+						self.dm.MoveTo(go_pos.x, go_pos.y)
+						time.sleep(0.001)
+						self.dm.LeftClick()
+						time.sleep(0.05)
+						self.dm.LeftClick()
+						time.sleep(0.5)
+					query_time = time.time()
+				if yizhan_name1 and yizhan_name1_flag:
+					self.confidenceNum = 0.8
+					yizhan_name1_click = self.click_image(yizhan_name1, self.confidenceNum, self.gameBottomLocation)
+					self.confidenceNum = 0.9
+					if yizhan_name1_click:
+						yizhan_name1_flag = False
+						time.sleep(1)
+				if yizhan_name2 and yizhan_name2_flag:
+					self.confidenceNum = 0.8
+					yizhan_name2_click = self.click_image(yizhan_name2, self.confidenceNum, self.gameBottomLocation)
+					self.confidenceNum = 0.9
+					if yizhan_name2_click:
+						yizhan_name2_flag = False
+						time.sleep(1)
+		else:
+			find_fei_time = time.time()
+			while True:
+				if time.time() - find_fei_time > 10:
+					return False
+				fei_pos = self.fing_fei_in_image_or_str(find_address, self.gameLocation, (0, 5, 180, 20),
+				                                        f"{self.get_resource_path('serveAssets/images/zhengdian/fei.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/fei1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/fei2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/fei3.bmp')}", )
+				if fei_pos:
+					self.dm.MoveTo(fei_pos.x, fei_pos.y)
 					time.sleep(0.05)
 					self.dm.LeftClick()
 					time.sleep(0.5)
-				query_time = time.time()
-			if yizhan_name1 and yizhan_name1_flag:
-				self.confidenceNum = 0.8
-				yizhan_name1_click = self.click_image(yizhan_name1, self.confidenceNum, self.gameBottomLocation)
-				self.confidenceNum = 0.9
-				if yizhan_name1_click:
-					yizhan_name1_flag = False
-					time.sleep(1)
-			if yizhan_name2 and yizhan_name2_flag:
-				self.confidenceNum = 0.8
-				yizhan_name2_click = self.click_image(yizhan_name2, self.confidenceNum, self.gameBottomLocation)
-				self.confidenceNum = 0.9
-				if yizhan_name2_click:
-					yizhan_name2_flag = False
-					time.sleep(1)
+					return True
 
 	# 飞副本
 	def feiFb(self, image_path, isJy):
@@ -2042,8 +2561,15 @@ class MyThread(threading.Thread):
 			return
 		# 打开副本
 		time.sleep(1.5)
-		self.dm.KeyPressChar('z')
-		self.waitForTwo('精英', '精英1', self.gameLocation)
+		# self.dm.KeyPressChar('z')
+		self.dm.MoveTo(int(self.locationX + 612), int(self.locationY + 48))
+		time.sleep(0.05)
+		self.dm.LeftClick()
+		is_find_jy = self.waitForTwo('精英', '精英1', self.gameLocation, self.gameLocation, 15)
+		if not is_find_jy:
+			print('没找到副本')
+			return
+		time.sleep(1)
 		if isJy:
 			self.click_image(
 				'精英',
@@ -2057,6 +2583,9 @@ class MyThread(threading.Thread):
 			)
 			findPerTime = time.time()
 			while True:
+				if time.time() - findPerTime > 10:
+					self.dm.KeyPressChar('z')
+					return False
 				if self.overed:
 					return
 				fei_pos = self.fing_fei_in_image_or_str(image_path, self.gameLocation, (0, 5, 120, 20), f"{self.get_resource_path('serveAssets/images/fubenfei.bmp')}|{self.get_resource_path('serveAssets/images/fubenfei1.bmp')}|{self.get_resource_path('serveAssets/images/fubenfei2.bmp')}")
@@ -2084,24 +2613,28 @@ class MyThread(threading.Thread):
 				(
 					self.locationX,
 					self.locationY,
-					int(510 + 900 * 0.75),
+					int(self.locationX + 900 * 0.75),
 					self.locationHeight,
 				),
+				10
 			)
-
+			if not downTalk:
+				return
 			while not self.find_str(image_path, self.gameLocation, 0):
 				if self.overed:
 					return
 				if downTalk:
 					self.dm.MoveTo(downTalk.x, downTalk.y)
-					for i in range(10):
+					for i in range(4):
 						time.sleep(0.001)
 						self.dm.LeftClick()
 					time.sleep(0.4)
-			findPerTime = time.time()
 			time.sleep(1)
+			findPerTime = time.time()
 			while True:
 				if self.overed:
+					return
+				if time.time() - findPerTime > 10:
 					return
 				fei_pos = self.fing_fei_in_image_or_str(image_path, self.gameLocation, (0, 5, 120, 20), f"{self.get_resource_path('serveAssets/images/fubenfei.bmp')}|{self.get_resource_path('serveAssets/images/fubenfei1.bmp')}|{self.get_resource_path('serveAssets/images/fubenfei2.bmp')}", )
 				if fei_pos:
@@ -2174,12 +2707,12 @@ class MyThread(threading.Thread):
 		if not target:
 			return False
 		yjian = 40 if not types else 20
-		if image_path2 == self.zdzdPath:
+		if self.zdzdPath == image_path2 or image_path2 == self.get_resource_path("serveAssets/images/zdzd111.bmp"):
 			self.dm.MoveTo(target.x, int(target.y - yjian))
 			time.sleep(0.001)
-			self.dm.LeftDoubleClick()
+			self.dm.LeftClick()
 			self.dm.MoveTo(target.x + 200, target.y + 200)
-			time.sleep(1)
+			time.sleep(0.5)
 		else:
 			self.dm.MoveTo(target.x, target.y)
 			time.sleep(0.001)
@@ -2204,7 +2737,7 @@ class MyThread(threading.Thread):
 			return False
 		target_x = target.x
 		target_y = target.y
-		if image_path2 == self.zdzdPath:
+		if 'zdzd' in image_path2:
 			self.dm.MoveTo(target.x, target.y)
 			time.sleep(0.001)
 			self.dm.LeftDoubleClick()
@@ -2458,7 +2991,7 @@ class MyThread(threading.Thread):
 				self.show_error_message("未找到开始地点")
 				return
 			if time.localtime().tm_min == 58 and self.scriptName != '49整点' and not self.zhengdian_flag:
-				if self.scriptName in ['官渡', '破旧矿产']:
+				if self.scriptName in ['官渡', '矿产']:
 					time.sleep(1)
 					self.clearBag()
 					time.sleep(1)
@@ -2469,14 +3002,24 @@ class MyThread(threading.Thread):
 					time.sleep(2)
 					self.zhengDian()
 					return
-				elif self.zhengdianFloor == '虎+猴+羊' and self.scriptName in ['官渡', '祭坛魔镜', "战魂+红+整点", "战魂+红+魔镜+整点"]:
+				if self.zhengdianFloor in ['虎+牛+兔+猴+羊', '牛+虎+兔'] and self.scriptName in self.zhengdianFb:
+					# 打整点
+					self.zhengdian_flag = True
+					self.outScript(A)
+					time.sleep(2)
+					if self.zhengdianFloor == '虎+牛+兔+猴+羊':
+						self.new_zhengdian()
+					else:
+						self.new_zhengdian1()
+					return
+				elif self.zhengdianFloor == '虎+猴+羊' and self.scriptName in ['官渡', '魔镜', "战魂+红+整点", "战魂+红+魔镜+整点"]:
 					# 打整点
 					self.zhengdian_flag = True
 					self.outScript(A)
 					time.sleep(2)
 					self.go_zhengdian()
 					return
-				elif self.zhengdianFloor == '火焰+寒冰' and self.scriptName == '祭坛魔镜':
+				elif self.zhengdianFloor == '火焰+寒冰' and self.scriptName == '魔镜':
 					# 打整点
 					self.zhengdian_flag = True
 					self.outScript(A)
@@ -2485,7 +3028,7 @@ class MyThread(threading.Thread):
 					return
 			if self.overed:
 				return
-			# # 去除获得铜币黑框
+			# 去除获得铜币黑框
 			# self.click_image(
 			# 	'获得铜币',
 			# 	self.confidenceNum,
@@ -2515,31 +3058,31 @@ class MyThread(threading.Thread):
 						time.sleep(1)
 						self.guanduWhile()
 						return
-					elif self.scriptName == "祭坛魔镜":
+					elif self.scriptName == "魔镜":
 						print("超过15s没找到目标,重新进入魔镜")
 						self.outScript()
 						time.sleep(1)
 						self.mojingWhile()
 						return
-					elif self.scriptName == "黑风山寨":
+					elif self.scriptName == "黑风":
 						print("超过15s没找到目标,重新进入黑风")
 						self.outScript()
 						time.sleep(1)
 						self.heifengWhile()
 						return
 				# 点击B
-				self.BisClick = self.click_image_with_min_x(
-					B,
-					B2,
-					C1,
-				)
-				self.BisClick = self.click_image_with_min_x(
-					B1,
-					B2,
-					C1,
-				)
+				# self.BisClick = self.click_image_with_min_x(
+				# 	B,
+				# 	B2,
+				# 	C1,
+				# )
+				# self.BisClick = self.click_image_with_min_x(
+				# 	B1,
+				# 	B2,
+				# 	C1,
+				# )
 				#   D找图片D点击‘
-				if D and self.clickBTime == 0:
+				if D and self.clickBTime == 0 and not self.find_pic_or_str(B, B2, 0) and not self.find_pic_or_str(B1, B2, 0):
 					if self.overed:
 						return
 					with condition:
@@ -2548,7 +3091,7 @@ class MyThread(threading.Thread):
 					d_pos = D.split(',')
 					d_pos[0] = (1000 - int(float(d_pos[0]) * 1000)) / 1000 * 900
 					d_pos[1] = (int(float(d_pos[1]) * 1000)) / 1000 * 580
-					self.dm.MoveToEx(int(int(d_pos[0]) + 510), int(int(d_pos[1]) + 228), 3, 2)
+					self.dm.MoveToEx(int(int(d_pos[0]) + self.locationX), int(int(d_pos[1]) + self.locationY), 3, 2)
 					time.sleep(0.001)
 					self.dm.LeftClick()
 					time.sleep(0.5)
@@ -2674,8 +3217,8 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		# 第一个河北军
-		hbjLocations = ['0.141,0.124', '0.116,0.127', '0.085,0.120', '0.066,0.122']
-		self.color_format = 'ffffff-00000|00ff00-000000'
+		hbjLocations = ['0.141,0.124', '0.112,0.125', '0.086,0.125', '0.065,0.121']
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		self.findAndClickPic(
 			'曹袁战场',
 			'河北军',
@@ -2685,19 +3228,22 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			'0.165,0.122'
 		)
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		for i in range(4):
+			self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
+			# f"{self.get_resource_path('serveAssets/images/guandu/hbj2.bmp')}|{self.get_resource_path('serveAssets/images/guandu/hbj1.bmp')}",
 			self.findAndClickPic(
 				'曹袁战场',
 				'河北军',
-				f"{self.get_resource_path('serveAssets/images/guandu/hbj2.bmp')}|{self.get_resource_path('serveAssets/images/guandu/hbj1.bmp')}",
-				self.gameBottomLocation,
+				'河北军',
+				self.gameLeftLocation,
 				self.get_resource_path("serveAssets/images/zdzd.bmp"),
 				self.gameBottomLocation,
 				hbjLocations[i],
 				"",
 			)
-		self.color_format = 'ffffff-00000|00ff00-000000'
+			self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		self.findAndClickPic(
 			'曹袁战场',
 			'河北军',
@@ -2705,70 +3251,95 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
-			'0.044,0.22'
+			'0.052,0.125'
 		)
 		if self.overed:
 			return
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		# 颜良
-		# 0.091,0.118
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
+		# 0.091,0.118  f"{self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp')}"
 		self.findAndClickPic(
 			'曹袁战场',
 			self.get_resource_path('serveAssets/images/guandu/yanliang.bmp'),
-			f"{self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp')}",
+			'官渡颜良',
 			self.gameBottomLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 			self.gameBottomLocation,
 			"0.097,0.124",
 			"",
 		)
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		with condition:
 			if self.overed:
 				return
 			if self.stoped:
 				condition.wait()
 		# 文丑
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
+		# f"{self.get_resource_path('serveAssets/images/guandu/wenchou1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/wenchou2.bmp')}"
 		self.findAndClickPic(
 			'曹袁战场',
-			self.get_resource_path('serveAssets/images/guandu/wenchou.bmp'),
+			'官渡文丑',
 			f"{self.get_resource_path('serveAssets/images/guandu/wenchou1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/wenchou2.bmp')}",
 			self.gameBottomLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 			self.gameBottomLocation,
 			"0.081,0.122",
 			"",
 		)
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		with condition:
 			if self.overed:
 				return
 			if self.stoped:
 				condition.wait()
 		# 去大帐
-		self.waitForAAndClickB1(
-			'曹操大帐',
-			self.get_resource_path("serveAssets/images/guandu/guandu1chuansongmen.bmp"),
-			self.dituLocation, self.dituLocation,
+		self.findAndClickPic(
+			'曹袁战场',
+			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.dituLocation,
+			'知道了',
+			self.gameLeftLocation,
+			"0.192,0.129",
+			"",
 		)
-		self.waitFor('曹操大帐', self.dituLocation)
+		self.findAndClickPic(
+			'曹操大帐',
+			'知道了',
+			'知道了',
+			self.gameLeftLocation,
+			'鸟巢粮仓',
+			self.dituLocation,
+			'',
+			"",
+		)
+		# self.waitForAAndClickB1(
+		# 	'曹操大帐',
+		# 	self.get_resource_path("serveAssets/images/guandu/guandu1chuansongmen.bmp"),
+		# 	self.dituLocation, self.dituLocation,
+		# )
+		# self.waitFor('曹操大帐', self.dituLocation)
 		if self.overed:
 			return
 		with condition:
 			if self.stoped:
 				condition.wait()
 		# 找到曹操进入乌巢
-		self.waitForAAndClickB1(
-			'知道了',
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
-			self.gameLeftLocation, self.dituLocation,
-		)
+		# self.waitForAAndClickB1(
+		# 	'知道了',
+		# 	self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+		# 	self.gameLeftLocation, self.dituLocation,
+		# )
 		with condition:
 			if self.stoped:
 				condition.wait()
-		self.waitForAAndClickB1(
-			'鸟巢粮仓',
-			'知道了',
-			self.dituLocation, self.gameLeftLocation,
-		)
+		# self.waitForAAndClickB1(
+		# 	'鸟巢粮仓',
+		# 	'知道了',
+		# 	self.dituLocation, self.gameLeftLocation,
+		# )
 		if self.overed:
 			return
 		with condition:
@@ -2807,12 +3378,12 @@ class MyThread(threading.Thread):
 			if self.stoped:
 				condition.wait()
 		# 打淳
-		self.color_format = 'ffffff-00000|00ff00-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		# f"{self.get_resource_path('serveAssets/images/guandu/cyq1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/cyq2.bmp')}",
 		self.findAndClickPic(
 			'鸟巢粮仓',
 			f"{self.get_resource_path('serveAssets/images/guandu/cyq.bmp')}|{self.get_resource_path('serveAssets/images/guandu/cyq3.bmp')}",
-			f"{self.get_resource_path('serveAssets/images/guandu/cyq1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/cyq2.bmp')}",
+			'淳于琼',
 			self.gameLeftLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameLeftLocation,
@@ -2820,16 +3391,17 @@ class MyThread(threading.Thread):
 			"",
 		)
 		self.hundianFlag = False
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		with condition:
 			if self.stoped:
 				condition.wait()
 		if self.overed:
 			return
 		# 打袁绍
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		self.findAndClickPic(
 			'鸟巢粮仓',
-			self.get_resource_path('serveAssets/images/guandu/yuanshao.bmp'),
+			'官渡袁绍',
 			f"{self.get_resource_path('serveAssets/images/guandu/yuanshao1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yuanshao2.bmp')}",
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
@@ -2837,6 +3409,7 @@ class MyThread(threading.Thread):
 			"0.152,0.124",
 			"",
 		)
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		if self.overed:
 			return
 		with condition:
@@ -2912,7 +3485,7 @@ class MyThread(threading.Thread):
 				'军粮营',
 				'护卫兵',
 				f"{self.get_resource_path('serveAssets/images/hong/huweibin1.bmp')}|{self.get_resource_path('serveAssets/images/hong/huweibin2.bmp')}",
-				self.gameBottomLocation,
+				self.gameLeftLocation,
 				self.get_resource_path("serveAssets/images/zdzd.bmp"),
 				self.gameBottomLocation,
 				huweibin_poss[i],
@@ -2922,31 +3495,40 @@ class MyThread(threading.Thread):
 			'护粮将领',
 			f"{self.get_resource_path('serveAssets/images/hong/huliangjianglin1.bmp')}|{self.get_resource_path('serveAssets/images/hong/huliangjianglin2.bmp')}",
 			self.gameBottomLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 			self.gameBottomLocation,
 			huweibin_poss[2],
 		)
 		# 进入训兵营
-		self.waitForAAndClickB1(
+		self.findAndClickPic(
+			'军粮营',
 			'训兵营',
-			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
-			self.dituLocation, self.dituRightLocation,
+			'训兵营',
+			self.dituLocation,
+			'训兵营',
+			self.dituLocation,
+			'0.015,0.127',
 		)
-		# 第二层
+		# self.waitForAAndClickB1(
+		# 	'训兵营',
+		# 	self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
+		# 	self.dituLocation, self.dituRightLocation,
+		# )
+		# 第3层
 		qibin_poss = ['0.136,0.112', '0.104,0.148', '0.06,0.124', '0.121,0.131']
 		for i in range(3):
 			self.findAndClickPic(
 				'训兵营',
 				'骑兵',
 				f"{self.get_resource_path('serveAssets/images/hong/qibin1.bmp')}|{self.get_resource_path('serveAssets/images/hong/qibin2.bmp')}",
-				self.gameBottomLocation,
+				self.gameLeftLocation,
 				self.get_resource_path("serveAssets/images/zdzd.bmp"),
 				self.gameBottomLocation,
 				qibin_poss[i],
 			)
 		if self.overed:
 			return
-		self.color_format = 'ffffff-00000|00ff00-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		self.findAndClickPic(
 			'训兵营',
 			'训兵将领',
@@ -2956,7 +3538,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			qibin_poss[3],
 		)
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		# 进入军营
 		self.findAndClickPic(
 			'训兵营',
@@ -3041,7 +3623,7 @@ class MyThread(threading.Thread):
 		self.findAndClickPic(
 			self.get_resource_path("serveAssets/images/zhanhun/2.bmp"),
 			'张梁',
-			'张梁',
+			f"{self.get_resource_path('serveAssets/images/zhanhun/zhangliang1.bmp')}|{self.get_resource_path('serveAssets/images/zhanhun/zhangliang2.bmp')}",
 			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
@@ -3506,7 +4088,7 @@ class MyThread(threading.Thread):
 		print(f"第{self.mojingCount}次魔镜.")
 		isInGuanDu = self.waitFor('城西', self.dituLocation, 5)
 		if not isInGuanDu:
-			self.feiFb('副本魔镜使者', False)
+			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
 		# 进入魔镜
 		self.findAndClickPic(
 			'城西',
@@ -3528,7 +4110,7 @@ class MyThread(threading.Thread):
 		# 	print('魔镜没了')
 		# 	return False
 		# 打一个第一层的怪
-		self.color_format = 'ffffff-00000|00ff00-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		self.findAndClickPic(
 			'镜像地层',
 			'吃人妖',
@@ -3538,7 +4120,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.155,0.121",
 		)
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		# 进入第二层
 		self.findAndClickPic(
 			'镜像地层',
@@ -3616,7 +4198,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.056,0.143",
 		)
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		self.findAndClickPic(
 			'迷幻境',
 			'实',
@@ -3737,7 +4319,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.172,0.127",
 		)
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		self.findAndClickPic(
 			'炎冰境',
 			'炎兄',
@@ -3973,8 +4555,8 @@ class MyThread(threading.Thread):
 				'炼丹房',
 				'炼丹童',
 				'炼丹童',
-				self.gameBottomLocation,
-				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.gameLeftLocation,
+				self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 				self.gameBottomLocation,
 				liandan1_poss[i],
 			)
@@ -3986,7 +4568,7 @@ class MyThread(threading.Thread):
 				'炼丹童',
 				'炼丹童',
 				self.gameBottomLocation,
-				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 				self.gameBottomLocation,
 				liandan2_poss[i],
 			)
@@ -4087,7 +4669,8 @@ class MyThread(threading.Thread):
 		print('开始溶洞')
 		isInGuanDu = self.waitFor('绿林路', self.dituLocation, 5)
 		if not isInGuanDu:
-			self.feiFb('副本龙天啸', False)
+			print('请前往副本门口！')
+		# self.feiFb('副本龙天啸', False)
 		# 进入溶洞  0.065,0.124
 		self.findAndClickPic(
 			'绿林路',
@@ -4890,6 +5473,36 @@ class MyThread(threading.Thread):
 		self.scriptName = '官渡'
 		self.guanduWhile()
 
+	# 名将闯关
+	def mingjiangchuangguan(self):
+		isInGuanDu = self.waitFor('城西', self.dituLocation, 5)
+		if not isInGuanDu:
+			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
+		# 进入魔镜
+		self.findAndClickPic(
+			'城西',
+			'名将使者',
+			f"{self.get_resource_path('serveAssets/images/mingjiangshizhe1.bmp')}|{self.get_resource_path('serveAssets/images/mingjiangshizhe2.bmp')}",
+			self.gameBottomLocation,
+			'进入',
+			self.gameBottomLocation,
+			"0.074,0.138",
+		)
+		self.waitForAAndClickB1(
+			'名战殿',
+			'进入',
+			self.dituLocation,
+			self.gameBottomLocation,
+		)
+		isInHong = self.waitFor('名战殿', self.dituLocation, 8)
+		if not isInHong:
+			print('名将时间到了')
+			return False
+		time.sleep(0.5)
+		self.dm.KeyPressChar('g')
+		self.waitFor('城西', self.dituLocation)
+		return True
+
 	# 黑风
 	def heifengScript(self):
 		if self.overed:
@@ -4938,7 +5551,7 @@ class MyThread(threading.Thread):
 			'黑风山寨',
 			'刀贼',
 			f"{self.get_resource_path('serveAssets/images/heifeng/daozei1.bmp')}|{self.get_resource_path('serveAssets/images/heifeng/daozei2.bmp')}",
-			self.gameRightLocation,
+			self.gameBottomLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
 			daozei_poss[3]
@@ -4946,8 +5559,8 @@ class MyThread(threading.Thread):
 		# 81  72
 		self.findAndClickPic(
 			'黑风山寨',
-			'刀贼头目',
-			'刀贼头目',
+			'头目',
+			'头目',
 			self.gameRightLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameBottomLocation,
@@ -4962,27 +5575,60 @@ class MyThread(threading.Thread):
 		)
 		self.waitFor('山寨本营', self.dituLocation)
 		#
-		self.waitForAAndClickB1(
-			'山寨内堂',
-			self.get_resource_path("serveAssets/images/heifeng/chuansongmen2.bmp"),
-			self.dituLocation,
-			self.dituCenterLocation
-		)
-		# 打二当家
-		self.findAndClickPic(
-			'山寨内堂',
-			'二当家',
-			'二当家',
-			self.gameBottomLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
-			self.gameBottomLocation,
-			"0.127,0.141",
-		)
-		# 退出副本
-		self.outScript('山寨内堂')
-		return True
+		if self.heifengFloor == '大/80':
+			self.findAndClickPic(
+				'山寨本营',
+				'头目',
+				'头目',
+				self.gameBottomLocation,
+				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.gameBottomLocation,
+				"0.177,0.141",
+			)
+			self.findAndClickPic(
+				'山寨本营',
+				self.get_resource_path("serveAssets/images/heifeng/midong.bmp"),
+				self.get_resource_path("serveAssets/images/heifeng/midong.bmp"),
+				self.dituLocation,
+				self.get_resource_path("serveAssets/images/heifeng/midong.bmp"),
+				self.dituLocation,
+				"0.177,0.103",
+			)
+			# 打二当家
+			self.findAndClickPic(
+				self.get_resource_path("serveAssets/images/heifeng/midong.bmp"),
+				'当家',
+				'当家',
+				self.gameBottomLocation,
+				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.gameBottomLocation,
+				"0.142,0.11",
+			)
+			# 退出副本
+			self.outScript(self.get_resource_path("serveAssets/images/heifeng/midong.bmp"), )
+			return True
+		else:
+			self.waitForAAndClickB1(
+				'山寨内堂',
+				self.get_resource_path("serveAssets/images/heifeng/chuansongmen2.bmp"),
+				self.dituLocation,
+				self.dituCenterLocation
+			)
+			# 打二当家
+			self.findAndClickPic(
+				'山寨内堂',
+				'当家',
+				'当家',
+				self.gameBottomLocation,
+				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.gameBottomLocation,
+				"0.127,0.141",
+			)
+			# 退出副本
+			self.outScript('山寨内堂')
+			return True
 
-	# 破旧矿产
+	# 矿产
 	def kuangchanScript(self):
 		if self.overed:
 			return
@@ -4994,20 +5640,20 @@ class MyThread(threading.Thread):
 		isInGuanDu = self.waitFor('五层', self.dituLocation, 5)
 		if not isInGuanDu:
 			self.feiFb('副本霸山虎', False)
-		# 进入破旧矿产
+		# 进入矿产
 		self.findAndClickPic(
 			'五层',
 			self.get_resource_path("serveAssets/images/heifeng/11.bmp"),
 			self.get_resource_path("serveAssets/images/heifeng/bashanhu.bmp"),
 			self.gameLeftLocation,
-			'破旧矿产',
+			'矿产',
 			self.gameLeftLocation,
 			"0.166,0.12",
 		)
 		# 进入第一层
 		self.waitForAAndClickB1(
 			'矿场洞窟',
-			'破旧矿产',
+			'矿产',
 			self.dituLocation, self.gameLeftLocation,
 		)
 		# 打矿工凶灵
@@ -5022,7 +5668,7 @@ class MyThread(threading.Thread):
 				self.gameBottomLocation,
 				chikuang_poss[i1]
 			)
-		self.color_format = 'ffffff-00000|00ff00-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		self.findAndClickPic(
 			'矿场洞窟',
 			'吃矿小鬼',
@@ -5032,7 +5678,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			'0.184,0.132'
 		)
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		# 进入第二层
 		self.waitForAAndClickB1(
 			'矿场内',
@@ -5061,7 +5707,7 @@ class MyThread(threading.Thread):
 				self.gameBottomLocation,
 				chikuang_poss1[i]
 			)
-		self.color_format = 'ffffff-00000|00ff00-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|00fe0d-000000'
 		self.findAndClickPic(
 			'矿场内',
 			'吃矿小鬼',
@@ -5071,7 +5717,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			chikuang_poss1[4]
 		)
-		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
+		self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
 		# 进入第三层  0.043,0.12
 		self.findAndClickPic(
 			'矿场内',
@@ -5108,10 +5754,10 @@ class MyThread(threading.Thread):
 		return True
 
 	# 龙岛
-	def longdaoScript(self, longdao_type):
+	def longdaoScript(self):
 		if self.overed:
 			return
-		print(f"开始{longdao_type}龙岛")
+		print(f"开始龙岛")
 		isInGuanDu = self.waitFor('城西', self.dituLocation, 5)
 		if not isInGuanDu:
 			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
@@ -5166,7 +5812,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.036,0.131",
 		)
-		if longdao_type == 80:
+		if self.heifengFloor == '大/80':
 			self.findAndClickPic(
 				'密洞',
 				'龙巢',
@@ -5176,7 +5822,7 @@ class MyThread(threading.Thread):
 				self.dituLocation,
 				"0.182,0.127",
 			)
-		elif longdao_type == 50:
+		else:
 			self.findAndClickPic(
 				'密洞',
 				'龙巢',
@@ -5190,10 +5836,10 @@ class MyThread(threading.Thread):
 		for index, item in enumerate(longchao_poss):
 			self.findAndClickPic(
 				'龙巢',
-				'龙孙|龙孙一',
-				'龙子|龙子一',
+				'龙孙|龙孙一|龙子|龙子一',
+				f"{self.get_resource_path('serveAssets/images/longdao/longsun.bmp')}|{self.get_resource_path('serveAssets/images/longdao/longsun1.bmp')}|{self.get_resource_path('serveAssets/images/longdao/longzi.bmp')}|{self.get_resource_path('serveAssets/images/longdao/longzi1.bmp')}",
 				self.gameRightLocation if index < 5 else self.gameBottomLocation,
-				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 				self.gameBottomLocation,
 				item,
 			)
@@ -5254,7 +5900,6 @@ class MyThread(threading.Thread):
 
 	# 一直执行魔镜
 	def mojingWhile(self):
-		self.dm.UseDict(2)
 		while True:
 			if self.overed:
 				return
@@ -5313,7 +5958,10 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		if '炼丹' in self.richangSelection:
-			self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '涿郡野外', '驿站五指峡谷')
+			if '飞' in self.richangSelection:
+				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷', True)
+			else:
+				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷')
 			for i in range(5):
 				liandanHas = self.liandanScript()
 				if not liandanHas:
@@ -5323,7 +5971,10 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		if '五行' in self.richangSelection:
-			self.go_in_ditu('地图野外西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '野外西', '', '驿站城西')
+			if '飞' in self.richangSelection:
+				self.feiFb('副本老板', True)
+			else:
+				self.go_in_ditu('地图野外西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '野外西', '', '驿站城西')
 			time.sleep(1)
 			for i in range(3):
 				hasWuxing = self.wuxingScript()
@@ -5334,13 +5985,19 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		if '云游' in self.richangSelection:
-			self.go_in_ditu('地图嵩山', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '嵩山', '', '驿站城西')
+			if '飞' in self.richangSelection:
+				self.feiFb('副本仙人', True)
+			else:
+				self.go_in_ditu('地图嵩山', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '嵩山', '', '驿站城西')
 			time.sleep(1)
 			self.yunyouJyScript()
 			time.sleep(1)
 		# 飞名将挑战赛
 		if '名将' in self.richangSelection:
-			self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西')
+			if '飞' in self.richangSelection:
+				self.feiFb('副本挑战赛', True)
+			else:
+				self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西')
 			time.sleep(1)
 			for i in range(8):
 				zhanhunRes = self.mingjiangtiaozhan()
@@ -5349,21 +6006,27 @@ class MyThread(threading.Thread):
 					break
 			time.sleep(1)
 		# 卖藏宝图
-		if '卖图' in self.richangSelection:
-			time.sleep(1)
-			self.clear_hide_map()
-			time.sleep(1)
+		# if '卖图' in self.richangSelection:
+		# 	time.sleep(1)
+		# 	self.clear_hide_map()
+		# 	time.sleep(1)
 		# 飞80精英
 		if self.overed:
 			return
 		if '80' in self.richangSelection:
-			self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌', '驿站城西')
+			if '飞' in self.richangSelection:
+				self.feiFb('副本分身', True)
+			else:
+				self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌', '驿站城西')
 			time.sleep(1)
 			self.bamenScript()
 			time.sleep(1)
 		# 飞100精英
 		if '老鼠' in self.richangSelection:
-			self.go_in_ditu('地图碧水地穴', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '碧水地穴', '驿站襄阳', '驿站城西')
+			if '飞' in self.richangSelection:
+				self.feiFb('副本猎鼠人', True)
+			else:
+				self.go_in_ditu('地图碧水地穴', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '碧水地穴', '驿站襄阳', '驿站城西')
 			time.sleep(1)
 			self.laoshuJyScript()
 			time.sleep(1)
@@ -5371,7 +6034,7 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		if '红' in self.richangSelection:
-			self.go_in_ditu('地图虎牢关外', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '虎牢关外', '驿站城西', '')
+			self.feiFb('副本典韦', True)
 			time.sleep(1)
 			for i in range(7):
 				hongRes = self.hongScript()
@@ -5381,7 +6044,10 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		if '战魂' in self.richangSelection:
-			self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '驿站城西', '')
+			if '飞' in self.richangSelection:
+				self.feiFb('副本挑战赛', True)
+			else:
+				self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '驿站城西', '')
 			time.sleep(1)
 			for i in range(6):
 				hongRes = self.zhanhunScript()
@@ -5391,7 +6057,10 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		if '官渡' in self.richangSelection:
-			self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站许昌', '驿站城西')
+			if '飞' in self.richangSelection:
+				self.feiFb('副本曹操', True)
+			else:
+				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站许昌', '驿站城西')
 			time.sleep(1)
 			self.guanduJyScript()
 		time.sleep(1)
@@ -5525,15 +6194,15 @@ class MyThread(threading.Thread):
 		# 卖藏宝图
 		if self.overed:
 			return
-		if '卖图' in self.richangSelection:
-			time.sleep(1)
-			self.clear_hide_map()
-			time.sleep(1)
+		# if '卖图' in self.richangSelection:
+		# 	time.sleep(1)
+		# 	self.clear_hide_map()
+		# 	time.sleep(1)
 		# 红
 		if self.overed:
 			return
 		if '红' in self.richangSelection:
-			self.go_in_ditu('地图虎牢关外', self.get_resource_path("serveAssets/images/zhengdian/luouang.bmp"), '虎牢关外', '驿站城西', '')
+			self.go_in_ditu('地图虎牢关外', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '虎牢关外', '驿站城西', '')
 			time.sleep(1)
 			for i in range(7):
 				hongRes = self.hongScript()
@@ -6064,14 +6733,17 @@ class MyThread(threading.Thread):
 		print('开始打龙王令')
 		time.sleep(0.3)
 		self.dm.KeyPressChar('e')
+		self.confidenceNum = 0.7
 		self.press_keys_until_image_found(
 			f"{self.get_resource_path('serveAssets/images/longwang.bmp')}|{self.get_resource_path('serveAssets/images/longwang1.bmp')}",
 			'摘星楼',
 			self.gameLocation, self.dituLocation, '使用')
+		self.confidenceNum = 0.9
 		self.findAndClickPic('摘星楼', self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.dituLocation, '挑战龙', self.gameBottomLocation, '0.167,0.144')
 		self.waitForAAndClickB1('修罗级', '挑战龙', self.gameBottomLocation, self.gameBottomLocation)
 		self.waitFor('修罗级', self.gameBottomLocation)
 		self.waitForAAndClickB1('挑战龙', '修罗级', self.gameBottomLocation, self.gameBottomLocation)
+		time.sleep(3)
 		self.findAndClickPic('摘星楼', self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.dituLocation, '离开', self.gameBottomLocation, '0.167,0.144')
 		self.waitForAAndClickB1('修罗级', '离开', self.gameBottomLocation, self.gameBottomLocation)
 
@@ -6096,11 +6768,13 @@ class MyThread(threading.Thread):
 		time.sleep(0.3)
 		self.dm.KeyPressChar('e')
 		time.sleep(0.1)
+		self.confidenceNum = 0.7
 		self.press_keys_until_image_found(
 			f"{self.get_resource_path('serveAssets/images/ymf.bmp')}|{self.get_resource_path('serveAssets/images/ymf1.bmp')}",
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameLocation,
 			self.gameBottomLocation, '使用')
+		self.confidenceNum = 0.9
 		huodetongbi_pos = self.waitFor('获得铜币', self.gameBottomLocation)
 		self.dm.MoveTo(huodetongbi_pos.x, huodetongbi_pos.y)
 		time.sleep(0.001)
@@ -6119,6 +6793,7 @@ class MyFrame(wx.Frame):
 		self.scriptName = ""
 		self.heifengCount = 0
 		self.zhanhunFloor = ""
+		self.heifengFloor = ""
 		# size=(226, 26),
 		self.button_start = wx.Button(
 			self.panel,
@@ -6166,22 +6841,22 @@ class MyFrame(wx.Frame):
 			size=(135, 30),
 			choices=[
 				"官渡",
-				"祭坛魔镜",
+				"魔镜",
 				"日常",
-				"战魂+红+整点",
-				"战魂+红+魔镜+整点",
-				"战魂楼(精英)",
-				"嗜血战场(精英)",
-				"黑风山寨",
-				"破旧矿产",
-				"龙岛80",
-				"龙岛50",
-				"49日常",
-				"49战魂",
+				"黑风",
+				"矿产",
+				"龙岛",
 				"龙王令",
 				"引魔符",
+				"49日常",
+				"49战魂",
 				"49整点",
-				"整点",
+				"名将闯关",
+				"战魂楼(精英)",
+				"嗜血战场(精英)",
+				"战魂+红+整点",
+				"战魂+红+魔镜+整点",
+				# "整点",
 				# "测试",
 			],
 		)
@@ -6199,7 +6874,7 @@ class MyFrame(wx.Frame):
 		self.help_link.SetForegroundColour(wx.BLUE)
 		self.help_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
 		self.help_link.Bind(wx.EVT_LEFT_DOWN, self.on_help_link_click)
-		self.contact = wx.StaticText(self.panel, label="联系作者QQ：1728349744", pos=(100, 236), style=wx.ST_NO_AUTORESIZE)
+		self.contact = wx.StaticText(self.panel, label="交流群（QQ）：955753707", pos=(100, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
@@ -6215,16 +6890,15 @@ class MyFrame(wx.Frame):
 		# 定义弹窗的内容和图片路径
 		content = [
 			"脚本说明：",
-			"1.整点'牛+虎+兔+猴+羊'在官渡、黑风、魔镜、战魂+红+整点、战魂+红+魔镜+整点的时候可以选择，建议V3玩家使用；",
+			"1.整点'虎+牛+兔+猴+羊'、'牛+虎+兔'在官渡、黑风、魔镜、战魂+红+整点、战魂+红+魔镜+整点的时候可以选择，建议V3玩家使用；",
 			"2.整点'虎+猴+羊'在官渡、魔镜、战魂+红+整点、战魂+红+魔镜+整点的时候可以选择，需要在背包当前页左上角放上回城卷，不需要传送鞋；",
 			"3.整点'火焰+寒冰'在魔镜的时候可以选择，每次使用一个飞鞋，如果选择'49整点'脚本，在洛阳城西启动；",
-			"4.战魂+红+整点内容是一次战魂，(58-完成战魂分钟)/2次红，一次整点，战魂跟红都没次数之后会自动去官渡(一定每个小时开始启动，到整点会退出副本)，战魂+红+魔镜+整点内容为战魂+红+整点的魔镜平替；",
+			"4.战魂+红+整点内容是一次战魂，((58-完成战魂分钟)/2)次红，一次整点，战魂跟红都没次数之后会自动去官渡(一定每个小时开始启动，到整点会退出副本)，战魂+红+魔镜+整点内容为战魂+红+整点的魔镜平替；",
 			"5.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
-			"6.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战，日常副本可以选卖图，红，战魂，卖图是卖藏宝图；",
-			"7.整点'牛+虎+兔+猴+羊'在竞技/攻城的时候(活动被刷屏的时候)大概率会漏打，但是每个也会飞一次；选择了该整点一定保证传送鞋充足；",
-			"8.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
-			"9.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
-			"10.如需要给多开的号卖装备、加血在队友名中填入队友名称，名称为小号列表的名字，并且将多开号拆分出单独窗口并且不被最小化，绑定成功的小号会在队友对话框发送1。",
+			"6.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>红=>战魂=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战=>红=>战魂，选择飞就是飞副本，去掉就是跑过去；",
+			"7.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
+			"8.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
+			"9.如需要给多开的号卖装备、加血在队友名中填入队友名称，名称为小号列表的名字，并且将多开号拆分出单独窗口并且不被最小化，绑定成功的小号会在队友对话框发送1。",
 			"使用说明：",
 			"1.第一次脚本需要使用管理员模式开启；",
 			"2.脚本启动之前填入游戏名称；",
@@ -6236,7 +6910,7 @@ class MyFrame(wx.Frame):
 		]
 
 		# 打开弹窗
-		dialog = HelpDialog(self, "使用说明", content, images)
+		dialog = HelpDialog(self, "说明", content, images)
 		dialog.ShowModal()
 		dialog.Destroy()
 
@@ -6319,6 +6993,7 @@ class MyFrame(wx.Frame):
 	def on_close(self, event):
 		self.stop_script()
 		self.Destroy()
+		wx.Exit()
 
 	def on_select_script(self, event):
 		self.scriptName = self.dropdown.GetValue()
@@ -6339,12 +7014,14 @@ class MyFrame(wx.Frame):
 
 class MyDialog(wx.Dialog):
 	def __init__(self, parent):
-		super().__init__(parent, title="输入信息", size=(300, 230), pos=(260, 30))
+		super().__init__(parent, title="设置游戏信息", size=(300, 230), pos=(260, 30))
 
 		panel = wx.Panel(self)
 
-		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 130), size=(260, 24))
+		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 130), size=(120, 24))
 		self.team_leader_text.SetHint("游戏名称")
+		self.choiceHeifeng = wx.ComboBox(panel, pos=(10, 40), size=(120, 30), choices=['大/80', '二/50'])
+		self.choiceHeifeng.SetHint("黑风/龙岛层数")
 		self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
 		self.teammate1_text = wx.TextCtrl(panel, pos=(10, 100), size=(120, 24), )
 		self.teammate1_text.SetHint("队友1名称")
@@ -6361,16 +7038,17 @@ class MyDialog(wx.Dialog):
 		self.number_input = wx.TextCtrl(panel, pos=(150, 40), size=(120, 24), validator=NumberValidator())
 		self.number_input.SetHint("黑风/矿产次数")
 		self.number_input.Bind(wx.EVT_TEXT, self.on_text_change)
-		self.choiceCeng = wx.ComboBox(panel, pos=(10, 40), size=(120, 30), choices=['20层', '21层', '22层', '23层', '24层', '25层', '26层'])
+		self.choiceCeng = wx.ComboBox(panel, pos=(150, 70), size=(120, 30), choices=['20层', '21层', '22层', '23层', '24层', '25层', '26层'])
 		self.choiceCeng.SetHint("战魂层数")
-		self.choiceMojing = wx.ComboBox(panel, pos=(10, 70), size=(120, 30), choices=['迷幻境（虚实）', '狱境（黑白无常）'])
+		self.choiceMojing = wx.ComboBox(panel, pos=(10, 70), size=(120, 30), choices=['迷幻境（虚实）', '狱境（黑白无常）', '炎冰境'])
 		self.choiceMojing.SetHint("魔镜层数")
-		self.choiceZhengdian = wx.ComboBox(panel, pos=(150, 70), size=(120, 30), choices=['牛+虎+兔+猴+羊', '虎+猴+羊', '火焰+寒冰'])
+		# '牛+虎+兔+猴+羊',
+		self.choiceZhengdian = wx.ComboBox(panel, pos=(150, 130), size=(120, 30), choices=['虎+牛+兔+猴+羊', '牛+虎+兔', '虎+猴+羊', '火焰+寒冰'])
 		self.choiceZhengdian.SetHint("整点")
 		# 创建多个CheckBox控件，并设置默认勾选状态
 		vbox = wx.WrapSizer(wx.HORIZONTAL, wx.VERTICAL)
 		self.check_boxes = []
-		options = ["溶", "炼丹", "五行", "云游", "名将", '卖图', "80", "老鼠", '红', '战魂', "官渡"]
+		options = ["溶", "炼丹", "五行", "云游", "名将", "80", "老鼠", '红', '战魂', "官渡", '飞']
 		for option in options:
 			self.cb = wx.CheckBox(panel, label=option)
 			# 设置默认勾选状态
@@ -6476,6 +7154,7 @@ class MyDialog(wx.Dialog):
 		parent.game_name = self.team_leader_text.GetValue()
 		parent.heifengCount = self.number_input.GetValue() if self.number_input.GetValue() else 0
 		parent.zhanhunFloor = self.choiceCeng.GetValue()
+		parent.heifengFloor = self.choiceHeifeng.GetValue()
 		parent.mojingFloor = self.choiceMojing.GetValue()
 		parent.zhengdianFloor = self.choiceZhengdian.GetValue()
 		parent.richangSelection = selected_options
@@ -6517,7 +7196,7 @@ class NumberValidator(wx.Validator):
 
 class HelpDialog(wx.Dialog):
 	def __init__(self, parent, title, content, images):
-		super(HelpDialog, self).__init__(parent, title=title, size=(600, 400))
+		super(HelpDialog, self).__init__(parent, title=title, size=(600, 400), pos=(260, 30))
 
 		panel = scrolled.ScrolledPanel(self, -1, style=wx.TAB_TRAVERSAL | wx.SUNKEN_BORDER)
 		panel.SetupScrolling()

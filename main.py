@@ -36,7 +36,7 @@ class MyThread(threading.Thread):
 		# 烈烈残阳mac：00-E2-69-6A-22-81
 		# self.userInfoMac = ["00-E2-69-6A-22-81"]
 		# 黑北：E4-60-17-15-B4-73,BC-EC-A0-28-FA-5C
-		# self.userInfoMac = ["BC-EC-A0-28-FA-5C", '00-FF-8A-69-61-03', "E4-60-17-15-B4-73"]
+		self.userInfoMac = ["BC-EC-A0-28-FA-5C", '00-FF-8A-69-61-03', "E4-60-17-15-B4-73"]
 		# 山竹:7C-21-4A-48-36-7D
 		# self.userInfoMac = ["7C-21-4A-48-36-7D"]
 		# 三千梨树：08-8F-C3-75-B5-7A
@@ -101,20 +101,20 @@ class MyThread(threading.Thread):
 		# 	print('脚本已过期!')
 		# 	return
 		# 七天脚本
-		if time.time() - startTime > self.oneWeek:
-			print('脚本已过期!')
-			return
+		# if time.time() - startTime > self.oneWeek:
+		# 	print('脚本已过期!')
+		# 	return
 		# 一天脚本
 		# if time.time() - startTime > self.oneDay:
 		# 	print('脚本已过期!')
 		# 	return
 		self.zhengDianFlag = False
 		mac_address = self.get_mac_address()
-		# if mac_address in self.userInfoMac:
-		# 	print("已注册用户!")
-		# else:
-		# 	self.show_error_message("未注册用户，请联系管理员")
-		# 	return
+		if mac_address in self.userInfoMac:
+			print("已注册用户!")
+		else:
+			self.show_error_message("未注册用户，请联系管理员")
+			return
 		print("鼠标放屏幕左上角退出当前脚本")
 		isFindGame = self.findGame()
 		if not isFindGame:
