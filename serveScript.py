@@ -68,8 +68,8 @@ class MyThread(threading.Thread):
 			{'user_name': '欣悦情生梦', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2025-2-5 23:59:00', 'has_script': 'all'},
 			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2025-2-5 23:59:00', 'has_script': 'all'},
 			{'user_name': '敢为天下先', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-1-20 23:59:00', 'has_script': 'all'},
-			{'user_name': '山竹', 'user_mac': ["7C-21-4A-48-36-7D"], 'end_time': '2025-1-10 23:59:00', 'has_script': 'all'},
-			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-EE"], 'end_time': '2025-1-17 23:59:00', 'has_script': 'all'},
+			{'user_name': '山竹', 'user_mac': ["7C-21-4A-48-36-7D"], 'end_time': '2025-3-15 23:59:00', 'has_script': 'all'},
+			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-EE"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 		]
 		try:
 			self.dm = CreateObject('dm.dmsoft')
@@ -179,9 +179,13 @@ class MyThread(threading.Thread):
 		if self.scriptName == "官渡":
 			self.guanduWhile()
 		elif self.scriptName == "测试":
-			self.clear_hide_map()
+			# self.clear_hide_map()
 			# self.clearBag()
-			self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌', '驿站城西')
+			while True:
+				self.go_in_ditu('地图老虎遗迹', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族遗迹', '驿站城西|驿站襄阳', '')
+				time.sleep(1)
+				self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
+		# self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌|驿站城西', '')
 		# self.feiFb('副本曹操', True)
 		# self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷')
 		elif self.scriptName == "嗜血战场(精英)":
@@ -1751,7 +1755,7 @@ class MyThread(threading.Thread):
 				self.feiFb('副本曹操', True)
 			is_in_guandu = self.waitFor('官渡', self.dituLocation, 5)
 			if not is_in_guandu:
-				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌')
+				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西|驿站许昌', '')
 			time.sleep(1)
 			self.guanduWhile()
 		elif self.scriptName == "魔镜" or self.scriptName == "整点":
@@ -1767,7 +1771,7 @@ class MyThread(threading.Thread):
 				self.feiFb('副本曹操', True)
 				is_in_guandu = self.waitFor('官渡', self.dituLocation, 5)
 				if not is_in_guandu:
-					self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌')
+					self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西|驿站许昌', '')
 				self.guanduWhile()
 		elif self.scriptName == "战魂+红+整点":
 			time.sleep(1)
@@ -2542,11 +2546,14 @@ class MyThread(threading.Thread):
 						self.dm.LeftClick()
 						time.sleep(0.5)
 					query_time = time.time()
-				if yizhan_name1 and yizhan_name1_flag:
+				if yizhan_name1:
 					self.confidenceNum = 0.8
-					yizhan_name1_click = self.click_image(yizhan_name1, self.confidenceNum, self.gameBottomLocation)
+					yizhan_name1_pos = self.waitFor(yizhan_name1, self.gameBottomLocation, 0.5)
 					self.confidenceNum = 0.9
-					if yizhan_name1_click:
+					if yizhan_name1_pos:
+						self.dm.MoveTo((int(yizhan_name1_pos.x + 20)), int(yizhan_name1_pos.y + 10))
+						time.sleep(0.001)
+						self.dm.LeftClick()
 						yizhan_name1_flag = False
 						time.sleep(1)
 				if yizhan_name2 and yizhan_name2_flag:
@@ -2624,7 +2631,7 @@ class MyThread(threading.Thread):
 			time.sleep(0.5)
 			self.dm.MoveTo(100, 100)
 			downTalk = self.waitFor(
-				f"{self.get_resource_path('serveAssets/images/downFb.bmp')}|{self.get_resource_path('serveAssets/images/downFb1.bmp')}",
+				'下箭头',
 				(
 					self.locationX,
 					self.locationY,
@@ -3239,7 +3246,7 @@ class MyThread(threading.Thread):
 			'河北军',
 			f"{self.get_resource_path('serveAssets/images/guandu/hbj2.bmp')}|{self.get_resource_path('serveAssets/images/guandu/hbj1.bmp')}",
 			self.gameLeftLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 			self.gameBottomLocation,
 			'0.165,0.122'
 		)
@@ -3252,7 +3259,7 @@ class MyThread(threading.Thread):
 				'河北军',
 				'河北军',
 				self.gameLeftLocation,
-				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 				self.gameBottomLocation,
 				hbjLocations[i],
 				"",
@@ -3264,7 +3271,7 @@ class MyThread(threading.Thread):
 			'河北军',
 			f"{self.get_resource_path('serveAssets/images/guandu/hbj2.bmp')}|{self.get_resource_path('serveAssets/images/guandu/hbj1.bmp')}",
 			self.gameBottomLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
+			self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 			self.gameBottomLocation,
 			'0.052,0.125'
 		)
@@ -5005,36 +5012,41 @@ class MyThread(threading.Thread):
 			self.get_resource_path("serveAssets/images/guandu/hundianchuansongmen.bmp"),
 			self.dituLocation, self.dituLocation,
 		)
-		# 打淳
-		self.findAndClickPic(
-			'粮仓',
-			'淳于琼',
-			f"{self.get_resource_path('serveAssets/images/guandu/cyq1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/cyq2.bmp')}",
-			self.gameLeftLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
-			self.gameLeftLocation,
-			"0.161,0.129",
-			"",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		# 打袁绍
-		self.findAndClickPic(
-			'粮仓',
-			self.get_resource_path('serveAssets/images/guandu/yuanshao.bmp'),
-			f"{self.get_resource_path('serveAssets/images/guandu/yuanshao1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yuanshao2.bmp')}",
-			self.gameBottomLocation,
-			self.get_resource_path("serveAssets/images/zdzd.bmp"),
-			self.gameLeftLocation,
-			"0.152,0.124",
-			"",
-		)
-		with condition:
-			if self.stoped:
-				condition.wait()
-		# 退出副本
-		self.outScript('粮仓')
+		time.sleep(0.5)
+		self.dm.KeyPressChar('g')
+		self.waitFor('官渡', self.dituLocation)
+		return True
+
+	# 打淳
+	# self.findAndClickPic(
+	# 	'粮仓',
+	# 	'淳于琼',
+	# 	f"{self.get_resource_path('serveAssets/images/guandu/cyq1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/cyq2.bmp')}",
+	# 	self.gameLeftLocation,
+	# 	self.get_resource_path("serveAssets/images/zdzd.bmp"),
+	# 	self.gameLeftLocation,
+	# 	"0.161,0.129",
+	# 	"",
+	# )
+	# with condition:
+	# 	if self.stoped:
+	# 		condition.wait()
+	# # 打袁绍
+	# self.findAndClickPic(
+	# 	'粮仓',
+	# 	self.get_resource_path('serveAssets/images/guandu/yuanshao.bmp'),
+	# 	f"{self.get_resource_path('serveAssets/images/guandu/yuanshao1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yuanshao2.bmp')}",
+	# 	self.gameBottomLocation,
+	# 	self.get_resource_path("serveAssets/images/zdzd.bmp"),
+	# 	self.gameLeftLocation,
+	# 	"0.152,0.124",
+	# 	"",
+	# )
+	# with condition:
+	# 	if self.stoped:
+	# 		condition.wait()
+	# # 退出副本
+	# self.outScript('粮仓')
 
 	# 云游精英
 	def yunyouJyScript(self):
@@ -5984,9 +5996,9 @@ class MyThread(threading.Thread):
 			return
 		if '炼丹' in self.richangSelection:
 			if '飞' in self.richangSelection:
-				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷', True)
+				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '', True)
 			else:
-				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷')
+				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '')
 			for i in range(5):
 				liandanHas = self.liandanScript()
 				if not liandanHas:
@@ -6042,7 +6054,7 @@ class MyThread(threading.Thread):
 			if '飞' in self.richangSelection:
 				self.feiFb('副本分身', True)
 			else:
-				self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌', '驿站城西')
+				self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌|驿站城西', '')
 			time.sleep(1)
 			self.bamenScript()
 			time.sleep(1)
@@ -6051,7 +6063,7 @@ class MyThread(threading.Thread):
 			if '飞' in self.richangSelection:
 				self.feiFb('副本猎鼠人', True)
 			else:
-				self.go_in_ditu('地图碧水地穴', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '碧水地穴', '驿站襄阳', '驿站城西')
+				self.go_in_ditu('地图碧水地穴', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '碧水地穴', '驿站襄阳|驿站城西', '')
 			time.sleep(1)
 			self.laoshuJyScript()
 			time.sleep(1)
@@ -6085,7 +6097,7 @@ class MyThread(threading.Thread):
 			if '飞' in self.richangSelection:
 				self.feiFb('副本曹操', True)
 			else:
-				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站许昌', '驿站城西')
+				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站许昌|驿站城西', '')
 			time.sleep(1)
 			self.guanduJyScript()
 		time.sleep(1)
@@ -6190,7 +6202,7 @@ class MyThread(threading.Thread):
 			if '飞' in self.richangSelection:
 				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷', True)
 			else:
-				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷')
+				self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷|驿站五指峡谷', '')
 			for i in range(5):
 				liandanHas = self.liandanScript()
 				if not liandanHas:
@@ -6787,7 +6799,7 @@ class MyThread(threading.Thread):
 			return
 		self.richang49Script()
 		time.sleep(1)
-		self.go_in_ditu('地图野外东', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '涿郡野外', '涿郡野外', '驿站城西')
+		self.go_in_ditu('地图野外东', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '涿郡野外', '涿郡野外|驿站城西', '')
 		time.sleep(1)
 		for i in range(6):
 			if self.overed:
