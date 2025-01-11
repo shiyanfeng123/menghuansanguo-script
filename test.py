@@ -127,10 +127,12 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\guandu\caocao1.bmp", "", 0.9, 0)
+# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\chengxiyizhan.bmp", "", 0.9, 0)
+# dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\chengxiyizhan1.bmp", "", 0.9, 0)
 
 # print(dm.CmpColor(820, 50, '091311', 1) == 0)
-print(dm_ret, 'dm_ret')
+# print(dm_ret, 'dm_ret')
+# print(dm_ret1, 'dm_ret1')
 # if not dm_ret:
 # 	print('未找到')
 # dm_ret = dm_ret.split('|')
@@ -176,7 +178,7 @@ print(dm_ret, 'dm_ret')
 
 # 释放内存
 # dm.FreeMem(memory_address)
-# dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
+dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
 # dict_id1 = dm.SetDict(1, r"E:\project\python\serveAssets\fonts\team1.txt")  # 字库文件路径
 # dict_id2 = dm.SetDict(2, r"E:\project\python\serveAssets\fonts\team2.txt")  # 字库文件路径
 # dict_id2 = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\zhengdian.txt")  # 字库文件路径
@@ -238,8 +240,8 @@ from bs4 import BeautifulSoup
 #
 #
 # asyncio.get_event_loop().run_until_complete(main())
-# find_str_result = dm.FindStrFastEx(0, 0, x, y, '龙生', '73766d-000000|6b726a-000000|dcdeb8-4599b9|6b7269-000000|6f736b-000000', sim)
-# print(f'FindStrFast 返回结果: {find_str_result}')
+find_str_result = dm.FindStrFastEx(0, 0, x, y, '驿站襄阳', color_format, sim)
+print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
