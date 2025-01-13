@@ -127,12 +127,11 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\chengxiyizhan.bmp", "", 0.9, 0)
-# dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\chengxiyizhan1.bmp", "", 0.9, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\putong.bmp", "", 0.9, 0)
+dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\putong1.bmp", "", 0.9, 0)
 
-# print(dm.CmpColor(820, 50, '091311', 1) == 0)
-# print(dm_ret, 'dm_ret')
-# print(dm_ret1, 'dm_ret1')
+print(dm_ret, 'dm_ret')
+print(dm_ret1, 'dm_ret1')
 # if not dm_ret:
 # 	print('未找到')
 # dm_ret = dm_ret.split('|')
@@ -187,7 +186,7 @@ dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # �
 # 文字识别参数
 color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000'
 # color_format = "ffffff-000000"  # 右上角偏移色
-# color_format = 'ffffff-00000|00ff00-000000'  # 绿色字体
+# color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 # color_format = 'ffff00-000000'
 sim = 0.7  # 相似度阈值，可以根据实际情况调整
 # dm.KeyDownChar('left')
@@ -240,8 +239,8 @@ from bs4 import BeautifulSoup
 #
 #
 # asyncio.get_event_loop().run_until_complete(main())
-find_str_result = dm.FindStrFastEx(0, 0, x, y, '驿站襄阳', color_format, sim)
-print(f'FindStrFast 返回结果: {find_str_result}')
+# find_str_result = dm.FindStrFastEx(0, 0, x, y, '下箭头', color_format, sim)
+# print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
