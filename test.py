@@ -127,8 +127,8 @@ print(x, y)
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
 # similarity = 0.7  # 相似度阈值
-dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\putong.bmp", "", 0.9, 0)
-dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\putong1.bmp", "", 0.9, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\longwang2.bmp", "", 0.7, 0)
+dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\longwang4.bmp", "", 0.7, 0)
 
 print(dm_ret, 'dm_ret')
 print(dm_ret1, 'dm_ret1')

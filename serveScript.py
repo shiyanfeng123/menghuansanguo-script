@@ -69,8 +69,9 @@ class MyThread(threading.Thread):
 			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2025-2-5 23:59:00', 'has_script': 'all'},
 			{'user_name': '敢为天下先', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-2-20 23:59:00', 'has_script': 'all'},
 			{'user_name': '山竹', 'user_mac': ["7C-21-4A-48-36-7D"], 'end_time': '2025-3-15 23:59:00', 'has_script': 'all'},
-			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-EE"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-ED"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '怒的匹夫', 'user_mac': ["D8-BB-C1-CD-68-3B"], 'end_time': '2025-1-20 23:59:00', 'has_script': 'all'},
+			{'user_name': '榅叙秋', 'user_mac': ["40-C2-BA-97-B1-EF"], 'end_time': '2025-2-2 23:59:00', 'has_script': 'all'},
 		]
 		try:
 			self.dm = CreateObject('dm.dmsoft')
@@ -96,6 +97,7 @@ class MyThread(threading.Thread):
 		self.guanDuCount = 0
 		self.mojingFloor = ''
 		self.zhengdianFloor = ''
+		self.after_zreo = ''
 		self.teammate1_name = ''
 		self.teammate2_name = ''
 		self.scriptName = scriptName
@@ -160,8 +162,9 @@ class MyThread(threading.Thread):
 		self.teammate2_name = self.frame.teammate2_name
 		self.zhengdianFloor = self.frame.zhengdianFloor
 		self.heifengFloor = self.frame.heifengFloor
+		self.after_zreo = self.frame.afterZreo
 		self.richangSelection = self.frame.richangSelection
-		self.heifengWhileCount = int(self.frame.heifengCount)
+		self.heifengWhileCount = self.frame.heifengCount
 		# display = Display(visible=False, size=(1920, 1080))
 		# display.start()
 		isFindGame = self.findGame()
@@ -2013,6 +2016,48 @@ class MyThread(threading.Thread):
 			time.sleep(0.5)
 		time.sleep(0.5)
 		self.zhengdian_flag = False
+		if int(time.localtime().tm_hour) == 0:
+			if self.after_zreo == "官渡":
+				self.scriptName = "官渡"
+				time.sleep(1)
+				self.feiFb('副本曹操', True)
+				is_in_guandu = self.waitFor('官渡', self.dituLocation, 5)
+				if not is_in_guandu:
+					time.sleep(1)
+					self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌', True)
+				time.sleep(1)
+				self.guanduWhile()
+				return
+			elif self.after_zreo == "魔镜":
+				self.scriptName = "魔镜"
+				self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '', True)
+				time.sleep(1)
+				self.mojingWhile()
+				return
+			elif self.after_zreo == "日常":
+				self.scriptName = "日常"
+				time.sleep(1)
+				self.richangeScript()
+				return
+			elif self.after_zreo == "49日常":
+				self.scriptName = "49日常"
+				time.sleep(1)
+				self.richang49Script()
+				return
+			elif self.after_zreo == "战魂+红+整点":
+				self.scriptName = "战魂+红+整点"
+				time.sleep(1)
+				self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西', True)
+				time.sleep(2)
+				self.guanduAndHongAndZd()
+				return
+			elif self.after_zreo == "战魂+红+魔镜+整点":
+				self.scriptName = "战魂+红+魔镜+整点"
+				time.sleep(1)
+				self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西', True)
+				time.sleep(2)
+				self.mojingAndHongAndZd()
+				return
 		if self.scriptName == "官渡":
 			time.sleep(1)
 			self.feiFb('副本曹操', True)
@@ -2193,6 +2238,50 @@ class MyThread(threading.Thread):
 		time.sleep(0.5)
 		self.zhengdian_flag = False
 		gc.collect()
+		if int(time.localtime().tm_hour) == 0:
+			if self.after_zreo == "官渡":
+				self.scriptName = "官渡"
+				time.sleep(1)
+				self.feiFb('副本曹操', True)
+				is_in_guandu = self.waitFor('官渡', self.dituLocation, 5)
+				if not is_in_guandu:
+					time.sleep(1)
+					self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌', True)
+				time.sleep(1)
+				self.guanduWhile()
+				return
+			elif self.after_zreo == "魔镜":
+				self.scriptName = "魔镜"
+				self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '', True)
+				time.sleep(1)
+				self.mojingWhile()
+				return
+			elif self.after_zreo == "日常":
+				self.scriptName = "日常"
+				self.feiFb('副本龙天啸', False)
+				time.sleep(1)
+				self.richangeScript()
+				return
+			elif self.after_zreo == "49日常":
+				self.scriptName = "49日常"
+				self.feiFb('副本龙天啸', False)
+				time.sleep(1)
+				self.richang49Script()
+				return
+			elif self.after_zreo == "战魂+红+整点":
+				self.scriptName = "战魂+红+整点"
+				time.sleep(1)
+				self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西')
+				time.sleep(2)
+				self.guanduAndHongAndZd()
+				return
+			elif self.after_zreo == "战魂+红+魔镜+整点":
+				self.scriptName = "战魂+红+魔镜+整点"
+				time.sleep(1)
+				self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '驿站城西')
+				time.sleep(2)
+				self.mojingAndHongAndZd()
+				return
 		if self.scriptName == '官渡' or self.scriptName == "整点":
 			# 回官渡
 			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', "驿站城西", '')
@@ -2332,6 +2421,19 @@ class MyThread(threading.Thread):
 		time.sleep(0.5)
 		self.zhengdian_flag = False
 		gc.collect()
+		if int(time.localtime().tm_hour) == 0:
+			if self.after_zreo == "魔镜":
+				self.scriptName = "魔镜"
+				self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '', True)
+				time.sleep(1)
+				self.mojingWhile()
+				return
+			elif self.after_zreo == "49日常":
+				self.scriptName = "49日常"
+				self.feiFb('副本龙天啸', False)
+				time.sleep(1)
+				self.richang49Script()
+				return
 		if self.scriptName in ['倭寇', '龙珠']:
 			self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', "", '')
 			if self.scriptName == "倭寇":
@@ -2656,7 +2758,7 @@ class MyThread(threading.Thread):
 			time.sleep(0.5)
 			self.dm.MoveTo(100, 100)
 			downTalk = self.waitFor(
-				f"{self.get_resource_path('serveAssets/images/downFb.bmp')}|{self.get_resource_path('serveAssets/images/downFb1.bmp')}",
+				f"{self.get_resource_path('serveAssets/images/downFb.bmp')}|{self.get_resource_path('serveAssets/images/downFb1.bmp')}|{self.get_resource_path('serveAssets/images/downFb2.bmp')}|{self.get_resource_path('serveAssets/images/downFb3.bmp')}|{self.get_resource_path('serveAssets/images/downFb4.bmp')}",
 				(
 					self.locationX,
 					self.locationY,
@@ -2676,6 +2778,11 @@ class MyThread(threading.Thread):
 						time.sleep(0.001)
 						self.dm.LeftClick()
 					time.sleep(0.4)
+			time.sleep(0.5)
+			self.dm.MoveTo(downTalk.x, downTalk.y)
+			for i in range(4):
+				time.sleep(0.001)
+				self.dm.LeftClick()
 			time.sleep(1)
 			findPerTime = time.time()
 			while True:
@@ -4469,6 +4576,7 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		print('开始炼丹房')
+		time.sleep(0.5)
 		isInGuanDu = self.waitFor('五指峡谷', self.dituLocation, 5)
 		if not isInGuanDu:
 			self.feiFb('副本南华老人', False)
@@ -5954,6 +6062,8 @@ class MyThread(threading.Thread):
 		if self.overed:
 			return
 		if '溶' in self.richangSelection:
+			if not self.find_str('绿林路', self.dituLocation, 0):
+				self.feiFb('副本龙天啸', False)
 			time.sleep(1)
 			for i in range(3):
 				hasRongdong = self.rongdongScript()
@@ -6166,6 +6276,8 @@ class MyThread(threading.Thread):
 			return
 		# 飞溶洞
 		if '溶' in self.richangSelection:
+			if not self.find_str('绿林路', self.dituLocation, 0):
+				self.feiFb('副本龙天啸', False)
 			time.sleep(1)
 			for i in range(3):
 				hasRongdong = self.rongdongScript()
@@ -6246,6 +6358,14 @@ class MyThread(threading.Thread):
 				hongRes = self.zhanhun49Script()
 				if not hongRes:
 					break
+		time.sleep(2)
+		self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
+		self.scriptName = "49整点"
+		time.sleep(2)
+		while True:
+			if self.overed:
+				return
+			self.go_zhengdian49()
 
 	# 49战魂
 	def zhanhun49Script(self):
@@ -6773,10 +6893,11 @@ class MyThread(threading.Thread):
 		self.confidenceNum = 0.9
 		self.findAndClickPic('摘星楼', self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.dituLocation, '挑战龙', self.gameBottomLocation, '0.167,0.144')
 		self.waitForAAndClickB1('修罗级', '挑战龙', self.gameBottomLocation, self.gameBottomLocation)
-		self.waitFor('修罗级', self.gameBottomLocation)
+		# self.waitFor('修罗级', self.gameBottomLocation)
 		self.waitForAAndClickB1('挑战龙', '修罗级', self.gameBottomLocation, self.gameBottomLocation)
-		time.sleep(3)
-		self.findAndClickPic('摘星楼', self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.dituLocation, '离开', self.gameBottomLocation, '0.167,0.144')
+		self.waitFor(self.get_resource_path("serveAssets/images/zdzd111.bmp"), self.gameBottomLocation)
+		self.waitForAAndClickB1('修罗级', self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.gameBottomLocation, self.dituLocation)
+		# self.findAndClickPic('摘星楼', self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.dituLocation, '离开', self.gameBottomLocation, '0.167,0.144')
 		self.waitForAAndClickB1('修罗级', '离开', self.gameBottomLocation, self.gameBottomLocation)
 
 	# 49一键
@@ -6934,7 +7055,7 @@ class MyFrame(wx.Frame):
 		self.panel = wx.Panel(self)
 		# self.SetWindowStyle(wx.STAY_ON_TOP)  # 按钮所在控件一直存在在桌面上
 		self.scriptName = ""
-		self.heifengCount = 0
+		self.heifengCount = ""
 		self.zhanhunFloor = ""
 		self.heifengFloor = ""
 		# size=(226, 26),
@@ -6992,8 +7113,8 @@ class MyFrame(wx.Frame):
 				"倭寇",
 				"龙珠",
 				"老鼠",
-				# "森罗殿",
-				"刷孙策",
+				"森罗殿",
+				# "刷孙策",
 				"龙王令",
 				"引魔符",
 				"49日常",
@@ -7025,16 +7146,17 @@ class MyFrame(wx.Frame):
 		self.contact = wx.StaticText(self.panel, label="交流群：955753707", pos=(70, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
-		self.contact = wx.StaticText(self.panel, label="v25.1.1", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
+		self.contact = wx.StaticText(self.panel, label="v25.1.3", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
-		self.Bind(wx.EVT_CLOSE, self.on_close)
+		# self.Bind(wx.EVT_CLOSE, self.on_close)
 		self.game_name = ""
 		self.teammate1_name = ""
 		self.teammate2_name = ""
 		self.selections = ""
 		self.mojingFloor = ''
 		self.zhengdianFloor = ''
+		self.afterZreo = ''
 		self.richangSelection = []
 
 	# 初始化 pyttsx3 引擎
@@ -7067,10 +7189,11 @@ class MyFrame(wx.Frame):
 			"3.整点'火焰+寒冰'在魔镜的时候可以选择，每次使用一个飞鞋，如果选择'49整点'脚本，在洛阳城西启动；",
 			"4.战魂+红+整点内容是一次战魂，((58-完成战魂分钟)/2)次红，一次整点，战魂跟红都没次数之后会自动去官渡(一定每个小时开始启动，到整点会退出副本)，战魂+红+魔镜+整点内容为战魂+红+整点的魔镜平替；",
 			"5.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
-			"6.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>红=>战魂=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战=>红=>战魂，选择飞就是飞副本，去掉就是跑过去；",
-			"7.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
-			"8.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
-			"9.如需要给多开的号卖装备、加血在队友名中填入队友名称，名称为小号列表的名字，并且将多开号拆分出单独窗口并且不被最小化，绑定成功的小号会在队友对话框发送1。",
+			"6.龙珠、倭寇、老鼠、森罗殿是使用系统挂机刷副本，必须选整点，而且要将查看副本的进度条拖到打开查看副本就能看到要刷的副本；",
+			"7.日常脚本:溶洞=>炼丹=>五行=>云游精英=>名将挑战=>80精英=>100精英=>红=>战魂=>官渡精英=>官渡；49日常脚本:溶洞=>炼丹=>五行=>名将挑战=>红=>战魂，选择飞就是飞副本，去掉就是跑过去；",
+			"8.引魔符、龙王令脚本把引魔符、龙王令放在背包当前页，关闭背包；",
+			"9.保存数据不保存日常选择的数据，其他数据都会保存，下次使用脚本直接点击读取即可自动填入；",
+			"10.如需要给多开的号卖装备、加血在队友名中填入队友名称，名称为小号列表的名字，并且将多开号拆分出单独窗口并且不被最小化，绑定成功的小号会在队友对话框发送1。",
 			"使用说明：",
 			"1.第一次脚本需要使用管理员模式开启；",
 			"2.脚本启动之前填入游戏名称(360大厅主页左侧边栏设置的游戏名称)；",
@@ -7093,6 +7216,15 @@ class MyFrame(wx.Frame):
 
 	def on_button_click(self, event):
 		dialog = MyDialog(self)
+		dialog.team_leader_text.SetValue(self.game_name)
+		dialog.number_input.SetValue(self.heifengCount)
+		dialog.choiceCeng.SetValue(self.zhanhunFloor)
+		dialog.choiceMojing.SetValue(self.mojingFloor)
+		dialog.choiceZhengdian.SetValue(self.zhengdianFloor)
+		dialog.choiceHeifeng.SetValue(self.heifengFloor)
+		dialog.choiceAfterZreo.SetValue(self.afterZreo)
+		dialog.teammate1_text.SetValue(self.teammate1_name)
+		dialog.teammate2_text.SetValue(self.teammate2_name)
 		if dialog.ShowModal() == wx.ID_OK:
 			# 在对话框结束后，获取对话框中输入的数据
 			print('当前游戏名称：' + self.game_name)
@@ -7148,6 +7280,7 @@ class MyFrame(wx.Frame):
 	def stop_script(self):
 		if not self.scriptName:
 			return
+
 		# 等待所有线程结束
 		if self.thread is not None and self.thread.is_alive():
 			print('等待任务结束,请勿重复点击')
@@ -7164,13 +7297,13 @@ class MyFrame(wx.Frame):
 		self.dropdown.SetSelection(-1)
 		self.thread.dm.UnBindWindow()
 		self.thread = None
-		self.button.Enable()
+		self.button_start.Enable()
 
-	def on_close(self, event):
-		self.stop_script()
-		self.Destroy()
-		wx.GetApp().ExitMainLoop()
-		sys.exit()
+	# def on_close(self, event):
+	# 	self.stop_script()
+	# 	self.Destroy()
+	# 	wx.GetApp().ExitMainLoop()
+	# 	sys.exit()
 
 	def on_select_script(self, event):
 		self.scriptName = self.dropdown.GetValue()
@@ -7191,25 +7324,25 @@ class MyFrame(wx.Frame):
 
 class MyDialog(wx.Dialog):
 	def __init__(self, parent):
-		super().__init__(parent, title="设置游戏信息", size=(300, 230), pos=(260, 30))
+		super().__init__(parent, title="设置游戏信息", size=(300, 265), pos=(260, 30))
 
 		panel = wx.Panel(self)
 
-		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 130), size=(120, 24))
+		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 160), size=(260, 24))
 		self.team_leader_text.SetHint("游戏名称")
 		self.choiceHeifeng = wx.ComboBox(panel, pos=(10, 40), size=(120, 30), choices=['大/80', '二/50'])
 		self.choiceHeifeng.SetHint("黑风/龙岛层数")
 		self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
-		self.teammate1_text = wx.TextCtrl(panel, pos=(10, 100), size=(120, 24), )
+		self.teammate1_text = wx.TextCtrl(panel, pos=(10, 130), size=(120, 24), )
 		self.teammate1_text.SetHint("队友1名称")
-		self.teammate2_text = wx.TextCtrl(panel, pos=(150, 100), size=(120, 24), )
+		self.teammate2_text = wx.TextCtrl(panel, pos=(150, 130), size=(120, 24), )
 		self.teammate2_text.SetHint("队友2名称")
-		self.button = wx.Button(panel, label="确定", pos=(10, 160))
+		self.button = wx.Button(panel, label="确定", pos=(10, 190))
 		self.button.Disable()  # 初始化时禁用确定按钮
 		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
-		self.saveButton = wx.Button(panel, label="保存信息", pos=(100, 160))
+		self.saveButton = wx.Button(panel, label="保存信息", pos=(100, 190))
 		self.saveButton.Bind(wx.EVT_BUTTON, self.on_save_data)
-		self.getButton = wx.Button(panel, label="读取信息", pos=(190, 160))
+		self.getButton = wx.Button(panel, label="读取信息", pos=(190, 190))
 		self.getButton.Bind(wx.EVT_BUTTON, self.get_file_info)
 		# 创建一个只能输入数字的文本输入框
 		self.number_input = wx.TextCtrl(panel, pos=(150, 40), size=(120, 24), validator=NumberValidator())
@@ -7219,8 +7352,10 @@ class MyDialog(wx.Dialog):
 		self.choiceCeng.SetHint("战魂层数")
 		self.choiceMojing = wx.ComboBox(panel, pos=(10, 70), size=(120, 30), choices=['迷幻境（虚实）', '狱境（黑白无常）', '炎冰境'])
 		self.choiceMojing.SetHint("魔镜层数")
+		self.choiceAfterZreo = wx.ComboBox(panel, pos=(150, 100), size=(120, 30), choices=['官渡', '魔镜', '日常', "49日常", "战魂+红+整点", "战魂+红+魔镜+整点"])
+		self.choiceAfterZreo.SetHint("0点执行的脚本")
 		# '牛+虎+兔+猴+羊',
-		self.choiceZhengdian = wx.ComboBox(panel, pos=(150, 130), size=(120, 30), choices=['虎+牛+兔+猴+羊', '虎+猴+羊', '火焰+寒冰'])
+		self.choiceZhengdian = wx.ComboBox(panel, pos=(10, 100), size=(120, 30), choices=['虎+牛+兔+猴+羊', '虎+猴+羊', '火焰+寒冰'])
 		self.choiceZhengdian.SetHint("整点")
 		# 创建多个CheckBox控件，并设置默认勾选状态
 		vbox = wx.WrapSizer(wx.HORIZONTAL, wx.VERTICAL)
@@ -7251,22 +7386,20 @@ class MyDialog(wx.Dialog):
 
 	def on_save_data(self, event):
 		# 获取用户输入的数据
-		selected_options = []
-		for cb in self.check_boxes:
-			if cb.GetValue():
-				selected_options.append(cb.GetLabel())
 		game_name = self.team_leader_text.GetValue()
 		heifeng_count = self.number_input.GetValue()
 		zhanhun_floor = self.choiceCeng.GetValue()
 		mojing_floor = self.choiceMojing.GetValue()
 		zhengdian_floor = self.choiceZhengdian.GetValue()
+		heifeng_floor = self.choiceHeifeng.GetValue()
+		after_zreo = self.choiceAfterZreo.GetValue()
 		teammate1_text = self.teammate1_text.GetValue()
 		teammate2_text = self.teammate2_text.GetValue()
 
 		# 保存数据到文件
-		self.save_to_file(game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor, teammate1_text, teammate2_text)
+		self.save_to_file(game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor, teammate1_text, teammate2_text, heifeng_floor, after_zreo)
 
-	def save_to_file(self, game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor, teammate1_text, teammate2_text):
+	def save_to_file(self, game_name, heifeng_count, zhanhun_floor, mojing_floor, zhengdian_floor, teammate1_text, teammate2_text, heifeng_floor, after_zreo):
 		# 获取脚本文件的同级目录
 		exe_path = sys.executable
 		script_dir = os.path.dirname(exe_path)
@@ -7281,6 +7414,8 @@ class MyDialog(wx.Dialog):
 			file.write(f"zhengdian_floor: {zhengdian_floor}\n")
 			file.write(f"teammate1_text: {teammate1_text}\n")
 			file.write(f"teammate2_text: {teammate2_text}\n")
+			file.write(f"heifeng_floor: {heifeng_floor}\n")
+			file.write(f"after_zreo: {after_zreo}\n")
 		wx.MessageBox("数据已保存", "成功", wx.OK | wx.ICON_INFORMATION)
 
 	def get_file_info(self, event):
@@ -7305,6 +7440,8 @@ class MyDialog(wx.Dialog):
 		zhanhun_floor = data.get('zhanhun_floor', '')
 		mojing_floor = data.get('mojing_floor', '')
 		zhengdian_floor = data.get('zhengdian_floor', '')
+		heifeng_floor = data.get('heifeng_floor', '')
+		after_zreo = data.get('after_zreo', '')
 		teammate1_text = data.get('teammate1_text', '')
 		teammate2_text = data.get('teammate2_text', '')
 		self.team_leader_text.SetValue(game_name)
@@ -7312,6 +7449,8 @@ class MyDialog(wx.Dialog):
 		self.choiceCeng.SetValue(zhanhun_floor)
 		self.choiceMojing.SetValue(mojing_floor)
 		self.choiceZhengdian.SetValue(zhengdian_floor)
+		self.choiceHeifeng.SetValue(heifeng_floor)
+		self.choiceAfterZreo.SetValue(after_zreo)
 		self.teammate1_text.SetValue(teammate1_text)
 		self.teammate2_text.SetValue(teammate2_text)
 
@@ -7330,9 +7469,10 @@ class MyDialog(wx.Dialog):
 				selected_options.append(cb.GetLabel())
 		# selections = [self.checklist.GetString(i) for i in range(self.checklist.GetCount()) if self.checklist.IsChecked(i)]
 		parent.game_name = self.team_leader_text.GetValue()
-		parent.heifengCount = self.number_input.GetValue() if self.number_input.GetValue() else 0
+		parent.heifengCount = self.number_input.GetValue() if self.number_input.GetValue() else ''
 		parent.zhanhunFloor = self.choiceCeng.GetValue()
 		parent.heifengFloor = self.choiceHeifeng.GetValue()
+		parent.afterZreo = self.choiceAfterZreo.GetValue()
 		parent.mojingFloor = self.choiceMojing.GetValue()
 		parent.zhengdianFloor = self.choiceZhengdian.GetValue()
 		parent.richangSelection = selected_options
