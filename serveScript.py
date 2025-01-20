@@ -63,7 +63,7 @@ class MyThread(threading.Thread):
 		self.userData = [
 			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"], 'end_time': '2029-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-3-10 23:59:00', 'has_script': 'all'},
-			{'user_name': '不知秋雨寒', 'user_mac': ["E4-60-17-15-B4-73", "BC-EC-A0-28-FA-5C"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '不知秋雨寒', 'user_mac': ["00-FF-8A-69-61-03"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '欣悦情生梦', 'user_mac': ["98-5F-41-8E-78-DB", '24-6A-0E-D2-83-BF'], 'end_time': '2025-2-5 23:59:00', 'has_script': 'all'},
 			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2025-2-5 23:59:00', 'has_script': 'all'},
@@ -72,6 +72,8 @@ class MyThread(threading.Thread):
 			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-ED"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '怒的匹夫', 'user_mac': ["D8-BB-C1-CD-68-3B"], 'end_time': '2025-1-20 23:59:00', 'has_script': 'all'},
 			{'user_name': '榅叙秋', 'user_mac': ["40-C2-BA-97-B1-EF"], 'end_time': '2025-2-2 23:59:00', 'has_script': 'all'},
+			{'user_name': '林暮雨', 'user_mac': ["54-EE-75-C5-2C-25"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '音书初雪', 'user_mac': ["14-16-9E-CD-36-4E"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜']},
 		]
 		try:
 			self.dm = CreateObject('dm.dmsoft')
@@ -164,7 +166,7 @@ class MyThread(threading.Thread):
 		self.heifengFloor = self.frame.heifengFloor
 		self.after_zreo = self.frame.afterZreo
 		self.richangSelection = self.frame.richangSelection
-		self.heifengWhileCount = self.frame.heifengCount
+		self.heifengWhileCount = int(self.frame.heifengCount) if self.frame.heifengCount else 0
 		# display = Display(visible=False, size=(1920, 1080))
 		# display.start()
 		isFindGame = self.findGame()
@@ -2661,7 +2663,9 @@ class MyThread(threading.Thread):
 		address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation, 3)
 		if not address_pos_city_pos:
 			time.sleep(0.1)
-			self.dm.KeyPressChar('m')
+			self.dm.MoveTo(int(self.locationX + 736), int(self.locationY + 120))
+			time.sleep(0.05)
+			self.dm.LeftClick()
 			address_pos_city_pos = self.waitFor(address_pos_city, self.gameLocation, 3)
 			if not address_pos_city_pos:
 				return
@@ -3628,7 +3632,7 @@ class MyThread(threading.Thread):
 				'护卫兵',
 				f"{self.get_resource_path('serveAssets/images/hong/huweibin1.bmp')}|{self.get_resource_path('serveAssets/images/hong/huweibin2.bmp')}",
 				self.gameLeftLocation,
-				self.get_resource_path("serveAssets/images/zdzd.bmp"),
+				self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 				self.gameBottomLocation,
 				huweibin_poss[i],
 			)
@@ -3706,10 +3710,10 @@ class MyThread(threading.Thread):
 			'帐篷',
 			'控魂巫师',
 			'控魂巫师',
-			self.gameRightLocation,
+			self.gameLeftLocation,
 			self.get_resource_path("serveAssets/images/zdzd.bmp"),
 			self.gameRightLocation,
-			"0.117,0.119",
+			"0.055,0.119",
 		)
 		# 退出副本
 		self.outScript('帐篷', )
@@ -5337,11 +5341,20 @@ class MyThread(threading.Thread):
 			"0.152,0.122",
 		)
 		# 进入下一层
-		self.waitForAAndClickB1(
+		self.findAndClickPic(
+			'鼠穴入口',
 			'鼠穴',
-			self.get_resource_path("serveAssets/images/richang/laoshu1chuansongmen.bmp"),
-			self.dituLocation, self.dituLocation,
+			'鼠穴',
+			self.dituLocation,
+			'鼠穴',
+			self.dituLocation,
+			"0.187,0.139",
 		)
+		# self.waitForAAndClickB1(
+		# 	'鼠穴',
+		# 	self.get_resource_path("serveAssets/images/richang/laoshu1chuansongmen.bmp"),
+		# 	self.dituLocation, self.dituLocation,
+		# )
 		# 打猎杀鼠  0.097,0.124
 		self.findAndClickPic(
 			'鼠穴',
@@ -5353,12 +5366,21 @@ class MyThread(threading.Thread):
 			"0.097,0.124",
 		)
 		# 进入下一层
-		self.waitForAAndClickB1(
+		self.findAndClickPic(
+			'鼠穴',
 			'鼠巢内',
-			self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
+			'鼠巢内',
 			self.dituLocation,
+			'鼠巢内',
 			self.dituLocation,
+			"0.187,0.127",
 		)
+		# self.waitForAAndClickB1(
+		# 	'鼠巢内',
+		# 	self.get_resource_path("serveAssets/images/chuansongmen.bmp"),
+		# 	self.dituLocation,
+		# 	self.dituLocation,
+		# )
 		# 打鼠长老  0.143,0.112
 		self.findAndClickPic(
 			'鼠巢内',
@@ -6014,6 +6036,15 @@ class MyThread(threading.Thread):
 				time.sleep(2)
 			else:
 				self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '', True)
+
+		isInGuanDu1 = self.waitFor('城西', self.dituLocation, 3)
+		if not isInGuanDu1:
+			if self.find_str('镜像地层|遗迹镜像|迷幻境|狱境|炎冰境|印魔殿|北境|西境|南境|东境', self.dituLocation, 0):
+				time.sleep(0.5)
+				self.outScript()
+				time.sleep(2)
+			else:
+				self.feiFb('副本魔镜使者', False)
 		while True:
 			if self.overed:
 				return
@@ -6190,10 +6221,16 @@ class MyThread(threading.Thread):
 		time.sleep(1)
 		if self.overed:
 			return
-		self.scriptName = "官渡"
-		if self.overed:
-			return
-		self.guanduWhile()
+		if '魔镜' in self.richangSelection:
+			self.scriptName = "魔镜"
+			if self.overed:
+				return
+			self.mojingWhile()
+		else:
+			self.scriptName = "官渡"
+			if self.overed:
+				return
+			self.guanduWhile()
 
 	# 五行
 	def wuxingWhile(self):
@@ -6360,12 +6397,18 @@ class MyThread(threading.Thread):
 					break
 		time.sleep(2)
 		self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '')
-		self.scriptName = "49整点"
-		time.sleep(2)
-		while True:
+		if '魔镜' in self.richangSelection:
+			self.scriptName = "魔镜"
 			if self.overed:
 				return
-			self.go_zhengdian49()
+			self.mojingWhile()
+		else:
+			self.scriptName = "49整点"
+			time.sleep(2)
+			while True:
+				if self.overed:
+					return
+				self.go_zhengdian49()
 
 	# 49战魂
 	def zhanhun49Script(self):
@@ -6429,6 +6472,11 @@ class MyThread(threading.Thread):
 			self.dituLocation, self.dituLocation,
 		)
 		# 3
+		if self.overed:
+			return
+		with condition:
+			if self.stoped:
+				condition.wait()
 		self.findAndClickPic(
 			self.get_resource_path("serveAssets/images/zhanhun/3.bmp"),
 			'张角',
@@ -6891,6 +6939,11 @@ class MyThread(threading.Thread):
 			'摘星楼',
 			self.gameLocation, self.dituLocation, '使用')
 		self.confidenceNum = 0.9
+		if self.overed:
+			return
+		with condition:
+			if self.stoped:
+				condition.wait()
 		self.findAndClickPic('摘星楼', self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.get_resource_path("serveAssets/images/zhengdian/xiaolvren.bmp"), self.dituLocation, '挑战龙', self.gameBottomLocation, '0.167,0.144')
 		self.waitForAAndClickB1('修罗级', '挑战龙', self.gameBottomLocation, self.gameBottomLocation)
 		# self.waitFor('修罗级', self.gameBottomLocation)
@@ -6937,6 +6990,11 @@ class MyThread(threading.Thread):
 			self.gameLocation,
 			self.gameBottomLocation, '使用')
 		self.confidenceNum = 0.9
+		if self.overed:
+			return
+		with condition:
+			if self.stoped:
+				condition.wait()
 		huodetongbi_pos = self.waitFor('获得铜币', self.gameBottomLocation)
 		self.dm.MoveTo(huodetongbi_pos.x, huodetongbi_pos.y)
 		time.sleep(0.001)
@@ -7146,7 +7204,7 @@ class MyFrame(wx.Frame):
 		self.contact = wx.StaticText(self.panel, label="交流群：955753707", pos=(70, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
-		self.contact = wx.StaticText(self.panel, label="v25.1.3", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
+		self.contact = wx.StaticText(self.panel, label="v25.1.4", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
 		# self.Bind(wx.EVT_CLOSE, self.on_close)
@@ -7360,11 +7418,15 @@ class MyDialog(wx.Dialog):
 		# 创建多个CheckBox控件，并设置默认勾选状态
 		vbox = wx.WrapSizer(wx.HORIZONTAL, wx.VERTICAL)
 		self.check_boxes = []
-		options = ["溶", "炼丹", "五行", "云游", "名将", "80", "老鼠", '红', '战魂', "官渡", '飞']
+		options = ["溶", "炼丹", "五行", "云游", "名将", "80", "老鼠", '红', '战魂', "官渡", '飞', '魔镜']
 		for option in options:
 			self.cb = wx.CheckBox(panel, label=option)
 			# 设置默认勾选状态
-			self.cb.SetValue(True)
+			# 设置默认勾选状态
+			if not option in ['魔镜', "名将", "老鼠"]:
+				self.cb.SetValue(True)
+			else:
+				self.cb.SetValue(False)
 			self.check_boxes.append(self.cb)
 			vbox.Add(self.cb, 0, flag=wx.LEFT | wx.RIGHT, border=1)
 		panel.SetSizer(vbox)
@@ -7479,7 +7541,6 @@ class MyDialog(wx.Dialog):
 		parent.teammate1_name = self.teammate1_text.GetValue()
 		parent.teammate2_name = self.teammate2_text.GetValue()
 		# parent.selections = selections
-
 		# 关闭对话框
 		self.EndModal(wx.ID_OK)
 
