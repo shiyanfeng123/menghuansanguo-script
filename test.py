@@ -76,8 +76,14 @@ enum_child_windows_callback_func = ENUMWINDOWSPROC(enum_child_windows_callback)
 # 查找目标窗口句柄
 target_window_title = "11"
 target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
+# target_window_title = "Path of Exile"
+# target_window_class = 'POEWindowClass'  # 如果不知道类名，可以设为 None
 hwnd = dm.FindWindowEx(0, target_window_class, target_window_title)
-
+# bind_result = dm.BindWindowEx(hwnd, "gdi", "windows3", "windows", '', 0)
+# if bind_result == 1:
+# 	print("窗口绑定成功")
+# else:
+# 	print("窗口绑定失败")
 if hwnd == 0:
 	print("目标窗口未找到")
 else:
@@ -96,13 +102,13 @@ else:
 		child_rect = dm.GetWindowRect(hwnd)
 		if child_rect != 0:
 			left, top, right, bottom, isFind = child_rect
-			# if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
-			# 	print(left, top, right, bottom)
-			# 	click_hwnd = hwnd
-			# 	return False
-			if class_name == 'Chrome_RenderWidgetHostHWND':
+			if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+				print(left, top, right, bottom)
 				click_hwnd = hwnd
 				return False
+		# if class_name == 'Chrome_RenderWidgetHostHWND':
+		# 	click_hwnd = hwnd
+		# 	return False
 		return True
 
 
@@ -118,7 +124,7 @@ else:
 
 # 进行后台找图
 # 定义查找区域
-location = dm.GetClientSize(click_hwnd)
+location = dm.GetClientSize(hwnd)
 print(location)
 x, y, res = location
 print(x, y)
@@ -126,19 +132,38 @@ print(x, y)
 # image_list = "images/addBloud.png"  # 图像文件路径，多个图像用 | 分隔
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
-# similarity = 0.7  # 相似度阈值
-dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\fei2.bmp", "", 0.7, 0)
-dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\fei3.bmp", "", 0.7, 0)
+similarity = 0.9  # 相似度阈值
+import subprocess
 
-print(dm_ret, 'dm_ret')
-print(dm_ret1, 'dm_ret1')
+# def is_virtual_machine():
+# 	try:
+# 		# 执行 systeminfo 命令
+# 		result = subprocess.check_output("systeminfo", shell=True, stderr=subprocess.DEVNULL)
+# 		result = result.decode().lower()
+#
+# 		# 检查是否存在虚拟机相关的关键词
+# 		virtual_machines = ['vmware', 'virtualbox', 'qemu', 'hyper-v']
+# 		return any(vm in result for vm in virtual_machines)
+# 	except Exception as e:
+# 		return False
+#
+#
+# if is_virtual_machine():
+# 	print("当前设备是虚拟机")
+# else:
+# 	print("当前设备不是虚拟机")
+# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\testImages\1.bmp", "", similarity, 0)
+# # dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\long3.bmp", "", similarity, 0)
+# #
+# print(dm_ret, 'dm_ret')
+# # print(dm_ret1, 'dm_ret1')
 # if not dm_ret:
 # 	print('未找到')
-# dm_ret = dm_ret.split('|')
+# dm_ret = dm_ret.split(',')
 # print(dm_ret)
 # x, y = dm_ret[1], dm_ret[2]
 # print(f'找到图像，坐标: ({x}, {y})')
-# resmove = dm.MoveTo(int(x), int(y))
+# resmove = dm.MoveTo(int(int(x) + 100), int(int(y) + 20))
 # time.sleep(0.01)
 # print(resmove)
 # resclick = dm.LeftClick()
@@ -188,59 +213,9 @@ color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-00
 # color_format = "ffffff-000000"  # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 # color_format = 'ffff00-000000'
-sim = 0.7  # 相似度阈值，可以根据实际情况调整
-# dm.KeyDownChar('left')
-# time.sleep(5)
-# dm.KeyUpChar('left')
-#
-# # 进行文字识别
-# example_function
-print(dm.GetNowDict())
-# dm.UseDict(1)
-import requests
-from bs4 import BeautifulSoup
-
-# 关闭浏览器
-# url = 'http://game.mhsg.online'
-# import asyncio
-# from pyppeteer import launch
-#
-#
-# # 获取网页源代码
-# import requests
-# from bs4 import BeautifulSoup
-#
-# # 目标网页的 URL
-# url = 'http://game.mhsg.online/'
-#
-# # 发送 HTTP 请求获取网页内容
-# response = requests.get(url)
-# # print(response)
-# soup = BeautifulSoup(response.content, 'html.parser')
-# print(soup)
-# # 找到所有的 iframe 元素
-# iframes = soup.find_all('iframe')
-#
-# # 打印每个 iframe 元素的属性信息
-# for i, iframe in enumerate(iframes):
-# 	print(f"iframe {i + 1} 属性:")
-# 	for attr, value in iframe.attrs.items():
-# 		print(f"  {attr}: {value}")
-# async def main():
-# 	browser = await launch()
-# 	page = await browser.newPage()
-# 	await page.goto("https://www.4399.com/flash/71450.htm")
-#
-# 	iframe = await page.waitForSelector("iframe")
-# 	iframe_box = await iframe.boundingBox()  # 获取iframe元素的边界框信息
-# 	print("iframe 元素的坐标信息：", iframe_box)
-#
-# 	await browser.close()
-#
-#
-# asyncio.get_event_loop().run_until_complete(main())
-# find_str_result = dm.FindStrFastEx(0, 0, x, y, '下箭头', color_format, sim)
-# print(f'FindStrFast 返回结果: {find_str_result}')
+sim = 0.9  # 相似度阈值，可以根据实际情况调整
+find_str_result = dm.FindStrFastEx(0, 0, x, y, '进天梯', color_format, sim)
+print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
