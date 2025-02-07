@@ -61,20 +61,19 @@ class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
 		self.userData = [
-			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"], 'end_time': '2029-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)"]},
+			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"], 'end_time': '2029-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-3-10 23:59:00', 'has_script': 'all'},
 			{'user_name': '不知秋雨寒', 'user_mac': ["00-FF-8A-69-61-03", 'E4-60-17-15-B4-73'], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '无人能敌', 'user_mac': ["02-50-F2-00-00-02"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2025-2-5 23:59:00', 'has_script': 'all'},
+			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2199-12-30 23:59:00', 'has_script': ["战魂楼(精英)"]},
 			{'user_name': '敢为天下先', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-2-20 23:59:00', 'has_script': 'all'},
 			{'user_name': '山竹', 'user_mac': ["7C-21-4A-48-36-7D"], 'end_time': '2025-3-15 23:59:00', 'has_script': 'all'},
 			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-EE"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '向阳', 'user_mac': ["4A-D5-7A-DF-02-CD"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '林暮雨', 'user_mac': ["54-EE-75-C5-2C-25"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '音书初雪', 'user_mac': ["14-16-9E-CD-36-4E"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点']},
 			{'user_name': '青衣诉塔前', 'user_mac': ["18-CC-18-7D-73-33"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)"]},
 			{'user_name': '国王', 'user_mac': ["D8-BB-C1-08-78-C1"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)"]},
-			{'user_name': '濮景辉', 'user_mac': ["0A-00-27-00-00-17"], 'end_time': '2025-2-4 23:59:00', 'has_script': 'all'},
 			{'user_name': '廾匸', 'user_mac': ["80-FA-5B-77-EF-CE"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点']},
 			{'user_name': '平安', 'user_mac': ["04-D4-C4-7C-B7-BF"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '整点']},
 		]
@@ -3616,7 +3615,7 @@ class MyThread(threading.Thread):
 		# 去大帐
 		self.findAndClickPic(
 			'曹袁战场',
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			f"{self.get_resource_path('serveAssets/images/xiaolvren.bmp')}|{self.get_resource_path('serveAssets/images/guandu/caochengxiang.bmp')}",
 			'知道了',
 			self.gameLocation,
 			'鸟巢粮仓',
@@ -5285,7 +5284,7 @@ class MyThread(threading.Thread):
 		self.findAndClickPic(
 			'野外西',
 			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
-			self.get_resource_path("serveAssets/images/xiaolvren.bmp"),
+			self.get_resource_path("serveAssets/images/richang/laoban.bmp"),
 			self.dituLocation,
 			'进五行',
 			self.gameBottomLocation,
@@ -8180,7 +8179,7 @@ class MyFrame(wx.Frame):
 		self.contact = wx.StaticText(self.panel, label="交流群：955753707", pos=(70, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
-		self.contact = wx.StaticText(self.panel, label="v25.2.0", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
+		self.contact = wx.StaticText(self.panel, label="v25.2.1", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
 		# self.Bind(wx.EVT_CLOSE, self.on_close)

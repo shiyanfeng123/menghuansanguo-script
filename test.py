@@ -153,10 +153,10 @@ import subprocess
 # else:
 # 	print("当前设备不是虚拟机")
 # dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\testImages\1.bmp", "", similarity, 0)
-# # dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\long3.bmp", "", similarity, 0)
+dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\richang\laoban.bmp", "", similarity, 0)
 # #
 # print(dm_ret, 'dm_ret')
-# # print(dm_ret1, 'dm_ret1')
+print(dm_ret1, 'dm_ret1')
 # if not dm_ret:
 # 	print('未找到')
 # dm_ret = dm_ret.split(',')
@@ -214,8 +214,8 @@ color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-00
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 # color_format = 'ffff00-000000'
 sim = 0.9  # 相似度阈值，可以根据实际情况调整
-find_str_result = dm.FindStrFastEx(0, 0, x, y, '进天梯', color_format, sim)
-print(f'FindStrFast 返回结果: {find_str_result}')
+# find_str_result = dm.FindStrFastEx(0, 0, x, y, '进天梯', color_format, sim)
+# print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
