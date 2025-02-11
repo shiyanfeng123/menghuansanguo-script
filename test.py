@@ -132,7 +132,7 @@ print(x, y)
 # image_list = "images/addBloud.png"  # 图像文件路径，多个图像用 | 分隔
 # delta_color = "000000-605f60"  # 颜色容差
 # # ab7b5c|ffffff右上角找图色偏差值
-similarity = 0.9  # 相似度阈值
+
 import subprocess
 
 # def is_virtual_machine():
@@ -152,13 +152,26 @@ import subprocess
 # 	print("当前设备是虚拟机")
 # else:
 # 	print("当前设备不是虚拟机")
-# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\testImages\1.bmp", "", similarity, 0)
-dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\richang\laoban.bmp", "", similarity, 0)
-# #
-# print(dm_ret, 'dm_ret')
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import urllib.parse
+
+# import uuid
+#
+#
+# def get_mac_address():
+# 	return ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
+#
+#
+# res121 = get_mac_address()
+# print(res121)
+similarity = 0.8  # 相似度阈值
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\fei2.bmp", "", similarity, 0)
+dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\fei3.bmp", "", similarity, 0)
+# # #
+print(dm_ret, 'dm_ret')
 print(dm_ret1, 'dm_ret1')
 # if not dm_ret:
-# 	print('未找到')
+# 	print('未找到'
 # dm_ret = dm_ret.split(',')
 # print(dm_ret)
 # x, y = dm_ret[1], dm_ret[2]
