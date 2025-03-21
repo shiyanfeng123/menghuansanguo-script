@@ -14,6 +14,7 @@ import subprocess
 from comtypes import CoInitialize
 from datetime import datetime
 import pyttsx3
+import uuid
 
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\serveScript.py
 # pyinstaller serveScript.spec
@@ -62,7 +63,7 @@ class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
 		self.userData = [
-			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80"], 'end_time': '2029-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80", "f8:34:41:52:91:07"], 'end_time': '2029-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-7-10 23:59:00', 'has_script': 'all'},
 			{'user_name': '不知秋雨寒', 'user_mac': ["00-FF-8A-69-61-03", 'E4-60-17-15-B4-73'], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
@@ -78,7 +79,7 @@ class MyThread(threading.Thread):
 			{'user_name': '关服就离开', 'user_mac': ["00-0C-29-00-DF-E5"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '尔康', 'user_mac': ["E8-9C-25-77-AC-2D"], 'end_time': '2025-2-28 23:59:00', 'has_script': 'all'},
 			{'user_name': '11111', 'user_mac': ["EA-FB-1C-40-20-37"], 'end_time': '2025-3-6 23:59:00', 'has_script': 'all'},
-			{'user_name': '向日葵', 'user_mac': ["64-6E-E0-AB-97-30"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '黑风', '龙岛', ]},
+			{'user_name': '向日葵', 'user_mac': ["38:f3:ab:f1:9a:fc"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '黑风', '龙岛', ]},
 			{'user_name': '老顽童', 'user_mac': ["D4-3D-7E-10-CB-4C"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '沐风', 'user_mac': ["2C-F0-5D-EE-BB-9F"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '如意', 'user_mac': ["B4-69-21-42-53-E8"], 'end_time': '2025-2-26 23:59:00', 'has_script': 'all'},
@@ -91,6 +92,7 @@ class MyThread(threading.Thread):
 			{'user_name': '平安', 'user_mac': ["04-D4-C4-7C-B7-BF"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '黑风', '龙岛']},
 			{'user_name': '宝宝不腻害', 'user_mac': ["44-A3-BB-E3-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '整点', '黑风', '龙岛']},
 			{'user_name': '天外天', 'user_mac': ["04-D4-C4-72-2F-D4"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '小美', 'user_mac': ["54:48:10:dc:55:21"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '49日常', '黑风', '龙岛', '矿产']},
 			{'user_name': '11', 'user_mac': ["24-1C-04-EC-42-35"], 'end_time': '2025-3-24 23:59:00', 'has_script': 'all'},
 			{'user_name': '111', 'user_mac': ["2C-F0-5D-B4-1D-B0"], 'end_time': '2025-3-24 23:59:00', 'has_script': 'all'},
 		]
@@ -167,6 +169,7 @@ class MyThread(threading.Thread):
 		self.zhengdian_flag = False
 		self.clearMapFlag = False
 		self.mac_address = ''
+		self.mac_address1 = ''
 		self.has_script = None
 		self.user_name = ''
 		self.end_time = ''
@@ -195,7 +198,7 @@ class MyThread(threading.Thread):
 		if self.is_virtual_machine():
 			print('虚拟机')
 			return False
-		self.mac_address = self.get_mac_address()
+		self.get_mac_address()
 		is_pass = self.is_user_valid()
 		if not is_pass:
 			self.show_error_message('未注册用户，请联系管理员注册!')
@@ -222,68 +225,7 @@ class MyThread(threading.Thread):
 		if self.scriptName == "官渡":
 			self.guanduWhile()
 		elif self.scriptName == "测试":
-			openTalkXY = self.waitFor(
-				self.get_resource_path("serveAssets/images/openTalk.bmp"),
-				self.talkLocation
-			)
-			if openTalkXY:
-				self.dm.MoveTo(openTalkXY.x, openTalkXY.y)
-				for i in range(4):
-					time.sleep(0.2)
-					self.dm.LeftClick()
-			time.sleep(0.5)
-			# bangpaiTalkXY = self.waitFor(
-			# 	'帮派',
-			# 	self.talkLocation,
-			# 	5
-			# )
-			# if bangpaiTalkXY:
-			# 	self.dm.MoveTo(bangpaiTalkXY.x, bangpaiTalkXY.y)
-			# 	time.sleep(0.001)
-			# 	self.dm.LeftClick()
-			# time.sleep(0.5)
-			# huodongTalkXY = self.waitFor(
-			# 	'活动',
-			# 	self.talkLocation,
-			# 	5
-			# )
-			# if huodongTalkXY:
-			# 	self.dm.MoveTo(huodongTalkXY.x, huodongTalkXY.y)
-			# 	time.sleep(0.001)
-			# 	self.dm.LeftClick()
-			# if not self.upTalkLocation:
-			# 	self.upTalkLocation = self.waitFor(
-			# 		'上箭头',
-			# 		self.talkLocation,
-			# 		10
-			# 	)
-			# 	if not self.upTalkLocation:
-			# 		self.upTalkLocation = ResXy(int(self.locationX + 329), int(self.locationY + 324))
-			if not self.downTalkLocation:
-				self.downTalkLocation = self.waitFor(
-					'下箭头',
-					self.talkLocation,
-					10
-				)
-				if not self.downTalkLocation:
-					self.downTalkLocation = ResXy(int(self.locationX + 329), int(self.locationY + 511))
-			time.sleep(0.5)
-			zhengdian_res = self.feiZhengDian(
-				f"{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao2.bmp')}",
-				'魔魂山|九黎族祭坛|徐州|幽暗密林|魔谷西|碧波潭|皇宫东院',
-				True,
-			)
-			print(zhengdian_res)
-			time.sleep(0.5)
-			closeTalkXY = self.waitFor(
-				self.get_resource_path("serveAssets/images/closetalk.bmp"),
-				self.talkLocation,
-			)
-			if closeTalkXY:
-				self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
-				for i in range(4):
-					time.sleep(0.2)
-					self.dm.LeftClick()
+			self.clear_hide_map()
 		# self.guajiAndzhengdianScript(f"{self.get_resource_path('serveAssets/images/guaji/bishuishuxue.bmp')}|{self.get_resource_path('serveAssets/images/guaji/bishuishuxue1.bmp')}")
 		elif self.scriptName == "老鼠":
 			if self.zhengdianFloor not in ['虎+牛+兔+猴+羊', '虎+猴+羊']:
@@ -433,7 +375,7 @@ class MyThread(threading.Thread):
 			return
 		current_time = datetime.now()
 		for user in self.userData:
-			if self.mac_address in user['user_mac']:
+			if self.mac_address in user['user_mac'] or self.mac_address1 in user['user_mac']:
 				if user['has_script'] != 'all' and not self.scriptName in user['has_script']:
 					return False
 				if user['has_script'] != 'all' and self.frame.zhengdianFloor and not '整点' in user['has_script']:
@@ -1163,9 +1105,8 @@ class MyThread(threading.Thread):
 		for interface_name, interface_addresses in interfaces.items():
 			for address in interface_addresses:
 				if str(address.family) == "AddressFamily.AF_LINK":
-					return address.address
-
-		return "MAC address not found"
+					self.mac_address = address.address
+					self.mac_address1 = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
 
 	def beginFun(self, check=False):
 		closeTalkXY = self.find_pic(
@@ -1291,45 +1232,47 @@ class MyThread(threading.Thread):
 		if not scroll_flag:
 			time.sleep(0.8)
 		self.confidenceNum = 0.7
-		while not self.find_pic_or_str(fei_image, self.talkLocation, 0):
-			if self.overed:
-				self.confidenceNum = 0.9
-				return
-			if time.time() - findSmallFeiTime > 5:
-				self.confidenceNum = 0.9
-				return f'没找到左边'
-			with condition:
-				if self.stoped:
-					condition.wait()
-			# if self.downTalkLocation:
-			# 	self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-			# 	self.dm.WheelUp()
-			# 	time.sleep(0.06)
-			time.sleep(0.1)
+		# while not self.find_pic_or_str(fei_image, self.talkLocation, 0):
+		# 	if self.overed:
+		# 		self.confidenceNum = 0.9
+		# 		return
+		# 	if time.time() - findSmallFeiTime > 5:
+		# 		self.confidenceNum = 0.9
+		# 		return f'没找到左边'
+		# 	with condition:
+		# 		if self.stoped:
+		# 			condition.wait()
+		# 	# if self.downTalkLocation:
+		# 	# 	self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
+		# 	# 	self.dm.WheelUp()
+		# 	# 	time.sleep(0.06)
+		# 	time.sleep(0.1)
 		# for i in range(8):
 		# 	time.sleep(0.001)
 		# 	self.dm.LeftClick()
 
-		findShengXiaoTime = time.time()
-		while True:
-			if self.overed:
-				return
-			with condition:
-				if self.stoped:
-					condition.wait()
-			if time.time() - findShengXiaoTime > 5:
-				self.confidenceNum = 0.9
-				return '没找到飞鞋'
-			shengxiaoLocation = self.fing_fei_in_image_or_str(
-				fei_image,
-				self.talkLocation,
-				(70, 0, 230, 45),
-				f"{self.get_resource_path('serveAssets/images/fei3.bmp')}|{self.get_resource_path('serveAssets/images/fei.bmp')}|{self.get_resource_path('serveAssets/images/fei2.bmp')}|{self.get_resource_path('serveAssets/images/fei1.bmp')}",
-			)
-			if shengxiaoLocation:
-				break
-		self.confidenceNum = 0.9
-		feiTime = time.time()
+		# findShengXiaoTime = time.time()
+		# while True:
+		# 	if self.overed:
+		# 		return
+		# 	with condition:
+		# 		if self.stoped:
+		# 			condition.wait()
+		# 	if time.time() - findShengXiaoTime > 5:
+		# 		self.confidenceNum = 0.9
+		# 		return '没找到飞鞋'
+		# 	shengxiaoLocation = self.fing_fei_in_image_or_str(
+		# 		fei_image,
+		# 		self.talkLocation,
+		# 		(70, 0, 230, 45),
+		# 		f"{self.get_resource_path('serveAssets/images/fei3.bmp')}|{self.get_resource_path('serveAssets/images/fei.bmp')}|{self.get_resource_path('serveAssets/images/fei2.bmp')}|{self.get_resource_path('serveAssets/images/fei1.bmp')}",
+		# 	)
+		# 	if shengxiaoLocation:
+		# 		break
+		# self.confidenceNum = 0.9
+		# feiTime = time.time()
+		longLocation = (0, 490, 320, 530)
+		shengxiaoLocation = self.waitFor(f"{self.get_resource_path('serveAssets/images/fei3.bmp')}|{self.get_resource_path('serveAssets/images/fei.bmp')}|{self.get_resource_path('serveAssets/images/fei2.bmp')}|{self.get_resource_path('serveAssets/images/fei1.bmp')}", longLocation, 5)
 		self.dm.MoveTo(shengxiaoLocation.x, shengxiaoLocation.y)
 		time.sleep(0.001)
 		self.dm.LeftClick()
@@ -1585,152 +1528,164 @@ class MyThread(threading.Thread):
 	def clear_hide_map(self):
 		if self.overed:
 			return
-		self.clearMapFlag = True
-		time.sleep(0.5)
+		self.clickFlag = True
 		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
 		if bagPos:
 			self.dm.MoveTo(bagPos.x, bagPos.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.dm.LeftClick()
-		time.sleep(0.5)
-		x, y, w, h = self.gameBottomLocation
-		yi_pos = self.dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
-		bag_poss = yi_pos.split('|')
-		self.confidenceNum = 0.8
-		wu_pos = self.dm.FindPicEx(x, y, w, h, self.get_resource_path('serveAssets/images/wu.bmp'), "", self.confidenceNum, 0)
-		shi_pos = self.dm.FindPicEx(x, y, w, h, self.get_resource_path('serveAssets/images/shi.bmp'), "", self.confidenceNum, 0)
-		self.confidenceNum = 0.9
-		if wu_pos:
-			bag_poss.append(wu_pos)
-		if shi_pos:
-			bag_poss.append(shi_pos)
-		bag_poss = self.sort_array_by_second_value(bag_poss, 2)
-		for bag_pos in bag_poss:
-			if self.overed:
-				return
-			if not bag_pos:
-				continue
-			new_bag_pos = bag_pos.split(',')
-			self.dm.MoveTo(int(int(new_bag_pos[1]) + 3), int(int(new_bag_pos[2]) + 4))
-			time.sleep(0.001)
+		chushou = self.waitFor('一键出售', self.gameBottomLocation, 5)
+		if chushou:
+			self.dm.MoveTo(chushou.x, chushou.y)
+			time.sleep(0.5)
 			self.dm.LeftClick()
-			time.sleep(1)
-			while True:
-				cangbaotu_pos = self.waitFor(f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu2.bmp')}", self.gameLocation, 2)
-				if not cangbaotu_pos:
-					break
-				self.dm.MoveTo(cangbaotu_pos.x, cangbaotu_pos.y)
-				time.sleep(0.001)
-				self.dm.LeftClick()
-				time.sleep(0.5)
-				chushou_pos = self.waitFor('出售', self.gameLocation, 3)
-				if not chushou_pos:
-					break
-				self.dm.MoveTo(chushou_pos.x, chushou_pos.y)
-				time.sleep(0.001)
-				self.dm.LeftClick()
+		else:
+			bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.dm.MoveTo(bagPos.x, bagPos.y)
 				time.sleep(0.5)
 				self.dm.LeftClick()
-				time.sleep(3.5)
+			return
+		time.sleep(1)
+		zise = self.waitFor('藏宝图', self.gameBottomLocation, 5)
+		if zise:
+			self.dm.MoveTo(zise.x, zise.y)
+			time.sleep(0.5)
+			self.dm.LeftClick()
+		else:
+			bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.dm.LeftClick()
+			return
+		time.sleep(1)
+		quedingchushou = self.waitFor(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation, 5)
+		if quedingchushou:
+			self.dm.MoveTo(quedingchushou.x, quedingchushou.y)
+			time.sleep(0.5)
+			self.dm.LeftClick()
+		else:
+			bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.dm.LeftClick()
+			return
+		time.sleep(4)
+		self.clickFlag = False
+		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.5)
+			self.dm.LeftClick()
 
 	# 清藏宝图1
 	def clear_hide_map_team1(self):
 		if self.overed:
 			return
-		time.sleep(0.5)
+		time.sleep(15)
 		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
 		if bagPos:
 			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win1_dm.LeftClick()
+		chushou = self.waitFor_team1('一键出售', self.gameBottomLocation, 5)
+		if chushou:
+			self.win1_dm.MoveTo(chushou.x, chushou.y)
+			time.sleep(0.5)
+			self.win1_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win1_dm.LeftClick()
 		time.sleep(0.5)
-		x, y, w, h = self.gameBottomLocation
-		yi_pos = self.win1_dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
-		bag_poss = yi_pos.split('|')
-		self.confidenceNum = 0.8
-		wu_pos = self.win1_dm.FindPicEx(x, y, w, h, self.get_resource_path('serveAssets/images/wu.bmp'), "", self.confidenceNum, 0)
-		shi_pos = self.win1_dm.FindPicEx(x, y, w, h, self.get_resource_path('serveAssets/images/shi.bmp'), "", self.confidenceNum, 0)
-		self.confidenceNum = 0.9
-		if wu_pos:
-			bag_poss.append(wu_pos)
-		if shi_pos:
-			bag_poss.append(shi_pos)
-		bag_poss = self.sort_array_by_second_value(bag_poss, 2)
-		for bag_pos in bag_poss:
-			if not bag_pos:
-				continue
-			new_bag_pos = bag_pos.split(',')
-			self.win1_dm.MoveTo(int(int(new_bag_pos[1]) + 3), int(int(new_bag_pos[2]) + 4))
-			time.sleep(0.001)
+		zise = self.waitFor_team1('藏宝图', self.gameBottomLocation, 5)
+		if zise:
+			self.win1_dm.MoveTo(zise.x, zise.y)
+			time.sleep(0.5)
 			self.win1_dm.LeftClick()
-			time.sleep(1)
-			while True:
-				cangbaotu_pos = self.waitFor_team1(f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu2.bmp')}", self.gameLocation, 2)
-				if not cangbaotu_pos:
-					break
-				self.win1_dm.MoveTo(cangbaotu_pos.x, cangbaotu_pos.y)
-				time.sleep(0.001)
-				self.win1_dm.LeftClick()
-				time.sleep(0.5)
-				chushou_pos = self.waitFor_team1('出售', self.gameLocation, 3)
-				if not chushou_pos:
-					break
-				self.win1_dm.MoveTo(chushou_pos.x, chushou_pos.y)
-				time.sleep(0.001)
-				self.win1_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win1_dm.MoveTo(bagPos.x, bagPos.y)
 				time.sleep(0.5)
 				self.win1_dm.LeftClick()
-				time.sleep(3.5)
+		time.sleep(0.5)
+		quedingchushou = self.waitFor_team1(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation, 5)
+		if quedingchushou:
+			self.win1_dm.MoveTo(quedingchushou.x, quedingchushou.y)
+			time.sleep(0.5)
+			self.win1_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win1_dm.LeftClick()
+		time.sleep(4)
+		bagPos = self.waitFor_team1(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.5)
+			self.win1_dm.LeftClick()
 
 	# 清藏宝图2
 	def clear_hide_map_team2(self):
 		if self.overed:
 			return
-		self.clearMapFlag = True
-		time.sleep(0.5)
+		time.sleep(30)
+		# self.win2_dm.KeyPressChar('e')
 		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
 		if bagPos:
 			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
-			time.sleep(0.001)
+			time.sleep(0.5)
 			self.win2_dm.LeftClick()
+		chushou = self.waitFor_team2('一键出售', self.gameBottomLocation, 5)
+		if chushou:
+			self.win2_dm.MoveTo(chushou.x, chushou.y)
+			time.sleep(0.5)
+			self.win2_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win2_dm.LeftClick()
 		time.sleep(0.5)
-		x, y, w, h = self.gameBottomLocation
-		yi_pos = self.win2_dm.FindStrFastEx(x, y, w, h, '一', self.color_format, self.confidenceNum)
-		bag_poss = yi_pos.split('|')
-		self.confidenceNum = 0.8
-		wu_pos = self.win2_dm.FindPicEx(x, y, w, h, self.get_resource_path('serveAssets/images/wu.bmp'), "", self.confidenceNum, 0)
-		shi_pos = self.win2_dm.FindPicEx(x, y, w, h, self.get_resource_path('serveAssets/images/shi.bmp'), "", self.confidenceNum, 0)
-		self.confidenceNum = 0.9
-		if wu_pos:
-			bag_poss.append(wu_pos)
-		if shi_pos:
-			bag_poss.append(shi_pos)
-		bag_poss = self.sort_array_by_second_value(bag_poss, 2)
-		for bag_pos in bag_poss:
-			if not bag_pos:
-				continue
-			new_bag_pos = bag_pos.split(',')
-			self.win2_dm.MoveTo(int(int(new_bag_pos[1]) + 3), int(int(new_bag_pos[2]) + 4))
-			time.sleep(0.001)
+		zise = self.waitFor_team2('藏宝图', self.gameBottomLocation, 5)
+		if zise:
+			self.win2_dm.MoveTo(zise.x, zise.y)
+			time.sleep(0.5)
 			self.win2_dm.LeftClick()
-			time.sleep(1)
-			while True:
-				cangbaotu_pos = self.waitFor_team2(f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu2.bmp')}", self.gameLocation, 2)
-				if not cangbaotu_pos:
-					break
-				self.win2_dm.MoveTo(cangbaotu_pos.x, cangbaotu_pos.y)
-				time.sleep(0.001)
-				self.win2_dm.LeftClick()
-				time.sleep(0.5)
-				chushou_pos = self.waitFor_team2('出售', self.gameLocation, 3)
-				if not chushou_pos:
-					break
-				self.win2_dm.MoveTo(chushou_pos.x, chushou_pos.y)
-				time.sleep(0.001)
-				self.win2_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win2_dm.MoveTo(bagPos.x, bagPos.y)
 				time.sleep(0.5)
 				self.win2_dm.LeftClick()
-				time.sleep(3.5)
+		time.sleep(1)
+		quedingchushou = self.waitFor_team2(self.get_resource_path("serveAssets/images/quedingchushou.bmp"), self.gameBottomLocation, 5)
+		if quedingchushou:
+			self.win2_dm.MoveTo(quedingchushou.x, quedingchushou.y)
+			time.sleep(0.5)
+			self.win2_dm.LeftClick()
+		else:
+			bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+			if bagPos:
+				self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+				time.sleep(0.5)
+				self.win2_dm.LeftClick()
+		time.sleep(2)
+		self.clickFlag = False
+		time.sleep(4)
+		bagPos = self.waitFor_team2(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		if bagPos:
+			self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+			time.sleep(0.5)
+			self.win2_dm.LeftClick()
 
 	# V3整点
 	def zhengDian(self):
@@ -7201,11 +7156,12 @@ class MyThread(threading.Thread):
 					print('名将没次数')
 					break
 			time.sleep(1)
+
 		# 卖藏宝图
-		# if '卖图' in self.richangSelection:
-		# 	time.sleep(1)
-		# 	self.clear_hide_map()
-		# 	time.sleep(1)
+		if '卖' in self.richangSelection:
+			time.sleep(1)
+			self.clear_hide_map()
+			time.sleep(1)
 		# 飞80精英
 		if self.overed:
 			return
@@ -7414,10 +7370,10 @@ class MyThread(threading.Thread):
 		# 卖藏宝图
 		if self.overed:
 			return
-		# if '卖图' in self.richangSelection:
-		# 	time.sleep(1)
-		# 	self.clear_hide_map()
-		# 	time.sleep(1)
+		if '卖' in self.richangSelection:
+			time.sleep(1)
+			self.clear_hide_map()
+			time.sleep(1)
 		# 红
 		if self.overed:
 			return
@@ -8564,7 +8520,7 @@ class MyFrame(wx.Frame):
 		self.contact = wx.StaticText(self.panel, label="交流群：955753707", pos=(70, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
-		self.contact = wx.StaticText(self.panel, label="v25.3.4", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
+		self.contact = wx.StaticText(self.panel, label="v25.3.5", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
 		# self.Bind(wx.EVT_CLOSE, self.on_close)
@@ -8721,7 +8677,7 @@ class MyFrame(wx.Frame):
 
 class MyDialog(wx.Dialog):
 	def __init__(self, parent):
-		super().__init__(parent, title="设置游戏信息", size=(300, 265), pos=(260, 30))
+		super().__init__(parent, title="设置游戏信息", size=(310, 265), pos=(260, 30))
 
 		panel = wx.Panel(self)
 
@@ -8757,7 +8713,7 @@ class MyDialog(wx.Dialog):
 		# 创建多个CheckBox控件，并设置默认勾选状态
 		vbox = wx.WrapSizer(wx.HORIZONTAL, wx.VERTICAL)
 		self.check_boxes = []
-		options = ['战', "溶", "丹", "五行", "云", "名", "80", "鼠", '英', '红', "官渡", '魔镜', '飞']
+		options = ['战', "溶", "丹", "五行", "云", "名", "80", "鼠", '英', '红', "官渡", '魔镜', '飞', '卖']
 		for option in options:
 			self.cb = wx.CheckBox(panel, label=option)
 			# 设置默认勾选状态

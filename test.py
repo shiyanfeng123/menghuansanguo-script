@@ -164,8 +164,9 @@ import urllib.parse
 #
 # res121 = get_mac_address()
 # print(res121)
+longLocation = (0, 490, 320, 530)
 similarity = 0.6  # 相似度阈值
-dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zhengdian\da.bmp", "", similarity, 0)
+dm_ret = dm.FindPicEx(0, 490, 320, 530, r"E:\project\python\serveAssets\images\fei3.bmp", "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\fei3.bmp", "", similarity, 0)
 # # #
 print(dm_ret, 'dm_ret')
