@@ -65,36 +65,36 @@ class MyThread(threading.Thread):
 		self.userData = [
 			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80", "f8:34:41:52:91:07"], 'end_time': '2029-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-7-10 23:59:00', 'has_script': 'all'},
-			{'user_name': '不知秋雨寒', 'user_mac': ["00-FF-8A-69-61-03", 'E4-60-17-15-B4-73'], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '不知秋雨寒', 'user_mac': ["e4:60:17:15:b4:76", 'E4-60-17-15-B4-73'], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '黑风', '龙岛', '魔镜', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)"]},
-			{'user_name': '运气就是好', 'user_mac': ["D8-BB-C1-E1-88-5E"], 'end_time': '2199-12-30 23:59:00', 'has_script': ["战魂楼(精英)", '官渡', '魔镜', '整点', '黑风', '龙岛', ]},
+			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF", "00:e0:4c:57:bd:cf"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '黑风', '龙岛', '魔镜', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", "名将闯关"]},
+			{'user_name': '运气就是好', 'user_mac': ["D8-BB-C1-E1-88-5E", "d8:bb:c1:e1:88:5e"], 'end_time': '2199-12-30 23:59:00', 'has_script': ["战魂楼(精英)", '官渡', '魔镜', '整点', '黑风', '龙岛', ]},
 			{'user_name': '山竹', 'user_mac': ["7C-21-4A-48-36-7D"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-EE", "84-1B-77-FE-28-AC"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '翟昊天', 'user_mac': ["02-50-3D-C0-6A-37"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '用户', 'user_mac': ["04-7C-16-EB-9A-0E"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-EE", "84-1B-77-FE-28-AC", "e4:0d:36:30:00:f1"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '翟昊天', 'user_mac': ["02-50-3D-C0-6A-37", "00:a5:54:79:3a:01"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '亦凝', 'user_mac': ["04-7C-16-EB-9A-0E", "04:7c:16:eb:9a:0e"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '向阳', 'user_mac': ["4A-D5-7A-DF-02-CD"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '败北', 'user_mac': ["94-08-53-65-4C-E5"], 'end_time': '2025-2-10 23:59:00', 'has_script': 'all'},
-			{'user_name': '林暮雨', 'user_mac': ["54-EE-75-C5-2C-25"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '林暮雨', 'user_mac': ["54-EE-75-C5-2C-25", "54:ee:75:c5:2c:25"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '关服就离开', 'user_mac': ["00-0C-29-00-DF-E5"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '尔康', 'user_mac': ["E8-9C-25-77-AC-2D"], 'end_time': '2025-2-28 23:59:00', 'has_script': 'all'},
-			{'user_name': '11111', 'user_mac': ["EA-FB-1C-40-20-37"], 'end_time': '2025-3-6 23:59:00', 'has_script': 'all'},
 			{'user_name': '向日葵', 'user_mac': ["38:f3:ab:f1:9a:fc"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '黑风', '龙岛', ]},
-			{'user_name': '老顽童', 'user_mac': ["D4-3D-7E-10-CB-4C"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '沐风', 'user_mac': ["2C-F0-5D-EE-BB-9F"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '老顽童', 'user_mac': ["D4-3D-7E-10-CB-4C", "d4:3d:7e:10:cb:4c"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '沐风', 'user_mac': ["2C-F0-5D-EE-BB-9F", "f4:4e:fc:fa:6e:74"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '如意', 'user_mac': ["B4-69-21-42-53-E8"], 'end_time': '2025-2-26 23:59:00', 'has_script': 'all'},
-			{'user_name': '东煌', 'user_mac': ["38-00-25-FD-12-32"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", "战魂+红+整点", "战魂+红+魔镜+整点", '黑风', '龙岛', ]},
+			{'user_name': '东煌', 'user_mac': ["38-00-25-FD-12-32", "aa:66:fc:f2:3a:dc"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", "战魂+红+整点", "战魂+红+魔镜+整点", '黑风', '龙岛', ]},
 			{'user_name': '冬未至', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-7-10 23:59:00', 'has_script': 'all'},
 			{'user_name': '音书初雪', 'user_mac': ["14-16-9E-CD-36-4E"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', "战魂楼(精英)", '黑风', '龙岛', ]},
 			{'user_name': '青衣诉塔前', 'user_mac': ["18-CC-18-7D-73-33", "00-E0-4C-68-01-72"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", '黑风', '龙岛', ]},
-			{'user_name': '国王', 'user_mac': ["D8-BB-C1-08-78-C1"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", '黑风', '龙岛', ]},
+			{'user_name': '国王', 'user_mac': ["D8-BB-C1-08-78-C1", "d8:bb:c1:08:78:c1"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", '黑风', '龙岛', ]},
 			{'user_name': '廾匸', 'user_mac': ["80-FA-5B-77-EF-CE"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '黑风', '龙岛']},
 			{'user_name': '平安', 'user_mac': ["04-D4-C4-7C-B7-BF"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '黑风', '龙岛']},
 			{'user_name': '宝宝不腻害', 'user_mac': ["44-A3-BB-E3-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '整点', '黑风', '龙岛']},
 			{'user_name': '天外天', 'user_mac': ["04-D4-C4-72-2F-D4"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '小美', 'user_mac': ["54:48:10:dc:55:21"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '49日常', '黑风', '龙岛', '矿产']},
-			{'user_name': '11', 'user_mac': ["24-1C-04-EC-42-35"], 'end_time': '2025-3-24 23:59:00', 'has_script': 'all'},
-			{'user_name': '111', 'user_mac': ["2C-F0-5D-B4-1D-B0"], 'end_time': '2025-3-24 23:59:00', 'has_script': 'all'},
+			{'user_name': '小美', 'user_mac': ["54:48:10:dc:55:21"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '49日常', '黑风', '龙岛', '矿产', "引魔符"]},
+			{'user_name': '欣意伴飞花', 'user_mac': ["44:38:e8:0f:13:96", "44-38-E8-0F-13-93"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '旧人', 'user_mac': ["90:e8:68:08:aa:8a"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '北极', 'user_mac': ["aa:5c:a1:26:9e:46", "10-FF-E0-2B-6F-F5"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 		]
 		try:
 			self.dm = CreateObject('dm.dmsoft')
@@ -225,7 +225,19 @@ class MyThread(threading.Thread):
 		if self.scriptName == "官渡":
 			self.guanduWhile()
 		elif self.scriptName == "测试":
-			self.clear_hide_map()
+			zhengdian_res = self.feiZhengDian(
+				f"{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao4.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/longshengxiao5.bmp')}",
+				'魔魂山|九黎族祭坛|徐州|幽暗密林|魔谷西|碧波潭|皇宫东院',
+				True,
+			)
+			if zhengdian_res == '没找到左边':
+				zhengdian_res = self.feiZhengDian(
+					'龙生肖',
+					'魔魂山|九黎族祭坛|徐州|幽暗密林|魔谷西|碧波潭|皇宫东院',
+					True,
+				)
+			print(zhengdian_res)
+		# self.clear_hide_map()
 		# self.guajiAndzhengdianScript(f"{self.get_resource_path('serveAssets/images/guaji/bishuishuxue.bmp')}|{self.get_resource_path('serveAssets/images/guaji/bishuishuxue1.bmp')}")
 		elif self.scriptName == "老鼠":
 			if self.zhengdianFloor not in ['虎+牛+兔+猴+羊', '虎+猴+羊']:
@@ -358,7 +370,7 @@ class MyThread(threading.Thread):
 			self.scriptName = "官渡"
 			self.guanduWhile()
 		elif self.scriptName == "龙王令":
-			print('将龙王令放到背包当前页')
+			print('请前往洛阳大道')
 			while True:
 				if self.overed:
 					return
@@ -1107,6 +1119,7 @@ class MyThread(threading.Thread):
 				if str(address.family) == "AddressFamily.AF_LINK":
 					self.mac_address = address.address
 					self.mac_address1 = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
+					return
 
 	def beginFun(self, check=False):
 		closeTalkXY = self.find_pic(
@@ -1273,6 +1286,8 @@ class MyThread(threading.Thread):
 		# feiTime = time.time()
 		longLocation = (0, 490, 320, 530)
 		shengxiaoLocation = self.waitFor(f"{self.get_resource_path('serveAssets/images/fei3.bmp')}|{self.get_resource_path('serveAssets/images/fei.bmp')}|{self.get_resource_path('serveAssets/images/fei2.bmp')}|{self.get_resource_path('serveAssets/images/fei1.bmp')}", longLocation, 5)
+		if not shengxiaoLocation:
+			return '没找到飞鞋'
 		self.dm.MoveTo(shengxiaoLocation.x, shengxiaoLocation.y)
 		time.sleep(0.001)
 		self.dm.LeftClick()
@@ -1319,7 +1334,7 @@ class MyThread(threading.Thread):
 			if hasZhengDian:
 				break
 			if self.find_pic(
-					self.get_resource_path("serveAssets/images/zdzd.bmp"),
+					self.get_resource_path("serveAssets/images/zdzd111.bmp"),
 					self.gameLocation, 0
 			):
 				hasZhengDian = True
@@ -4353,7 +4368,7 @@ class MyThread(threading.Thread):
 			'进精英',
 			self.dituLocation, self.gameBottomLocation,
 		)
-		isInZhanhun = self.waitFor('战魂', self.dituLocation, 8)
+		isInZhanhun = self.waitFor('战魂', self.dituLocation, 15)
 		if not isInZhanhun:
 			print('战魂没次数了')
 			return False
@@ -6712,14 +6727,14 @@ class MyThread(threading.Thread):
 			self.get_resource_path("serveAssets/images/heifeng/11.bmp"),
 			self.get_resource_path("serveAssets/images/heifeng/bashanhu.bmp"),
 			self.gameLeftLocation,
-			'矿产',
+			'破旧矿产',
 			self.gameLeftLocation,
 			"0.166,0.12",
 		)
 		# 进入第一层
 		self.waitForAAndClickB1(
 			'矿场洞窟',
-			'矿产',
+			'破旧矿产',
 			self.dituLocation, self.gameLeftLocation,
 		)
 		# 打矿工凶灵
@@ -8238,17 +8253,26 @@ class MyThread(threading.Thread):
 			return
 		print('开始打龙王令')
 		time.sleep(0.3)
-		bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
-		if bagPos:
-			self.dm.MoveTo(bagPos.x, bagPos.y)
-			time.sleep(0.5)
-			self.dm.LeftClick()
-		self.confidenceNum = 0.7
-		self.press_keys_until_image_found(
-			f"{self.get_resource_path('serveAssets/images/longwang.bmp')}|{self.get_resource_path('serveAssets/images/longwang1.bmp')}|{self.get_resource_path('serveAssets/images/longwang2.bmp')}|{self.get_resource_path('serveAssets/images/longwang3.bmp')}|{self.get_resource_path('serveAssets/images/longwang4.bmp')}",
+		self.findAndClickPic(
+			'洛阳',
+			f"{self.get_resource_path('serveAssets/images/longzhixintiao.bmp')}|{self.get_resource_path('serveAssets/images/longzhixintiao1.bmp')}|{self.get_resource_path('serveAssets/images/queding.bmp')}",
+			'进入',
+			self.gameBottomLocation,
 			'摘星楼',
-			self.gameLocation, self.dituLocation, '使用')
-		self.confidenceNum = 0.9
+			self.dituLocation,
+			'0.083,0.113'
+		)
+		# bagPos = self.waitFor(self.get_resource_path("serveAssets/images/beibao.bmp"), self.gameBottomLocation, 5)
+		# if bagPos:
+		# 	self.dm.MoveTo(bagPos.x, bagPos.y)
+		# 	time.sleep(0.5)
+		# 	self.dm.LeftClick()
+		# self.confidenceNum = 0.7
+		# self.press_keys_until_image_found(
+		# 	f"{self.get_resource_path('serveAssets/images/longwang.bmp')}|{self.get_resource_path('serveAssets/images/longwang1.bmp')}|{self.get_resource_path('serveAssets/images/longwang2.bmp')}|{self.get_resource_path('serveAssets/images/longwang3.bmp')}|{self.get_resource_path('serveAssets/images/longwang4.bmp')}",
+		# 	'摘星楼',
+		# 	self.gameLocation, self.dituLocation, '使用')
+		# self.confidenceNum = 0.9
 		if self.overed:
 			return
 		with condition:
