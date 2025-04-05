@@ -63,8 +63,8 @@ class MyThread(threading.Thread):
 	def __init__(self, scriptName):
 		super().__init__()
 		self.userData = [
-			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80", "f8:34:41:52:91:07"], 'end_time': '2029-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '无情', 'user_mac': ['EE-2E-98-CC-6B-CB', '80-B6-55-70-F7-2F', '00-E2-69-6A-22-81'], 'end_time': '2025-7-10 23:59:00', 'has_script': 'all'},
+			{'user_name': 'author', 'user_mac': ["50-9A-4C-C9-FE-BA", "00-E0-4C-68-11-80", "f8:34:41:52:91:07", "50:9a:4c:c9:fe:ba"], 'end_time': '2029-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '无情', 'user_mac': ["80:b6:55:70:f7:32", "80-B6-55-70-F7-2F", "95:fc:aa:48:dc:37", "EE-2E-98-CC-6B-CB"], 'end_time': '2025-7-10 23:59:00', 'has_script': 'all'},
 			{'user_name': '不知秋雨寒', 'user_mac': ["e4:60:17:15:b4:76", 'E4-60-17-15-B4-73'], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '三千梨树', 'user_mac': ["08-8F-C3-75-B5-7A", "14-75-5B-98-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '折纸寄相思', 'user_mac': ["00-E0-4C-57-BD-CF", "00:e0:4c:57:bd:cf"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '黑风', '龙岛', '魔镜', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", "名将闯关"]},
@@ -73,7 +73,7 @@ class MyThread(threading.Thread):
 			{'user_name': '羽然', 'user_mac': ["E4-0D-36-30-00-EE", "84-1B-77-FE-28-AC", "e4:0d:36:30:00:f1"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '翟昊天', 'user_mac': ["02-50-3D-C0-6A-37", "00:a5:54:79:3a:01"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '亦凝', 'user_mac': ["04-7C-16-EB-9A-0E", "04:7c:16:eb:9a:0e"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '向阳', 'user_mac': ["4A-D5-7A-DF-02-CD"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '向阳', 'user_mac': ["4A-D5-7A-DF-02-CD", "38:d5:7a:df:02:ce"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '败北', 'user_mac': ["94-08-53-65-4C-E5"], 'end_time': '2025-2-10 23:59:00', 'has_script': 'all'},
 			{'user_name': '林暮雨', 'user_mac': ["54-EE-75-C5-2C-25", "54:ee:75:c5:2c:25"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '关服就离开', 'user_mac': ["00-0C-29-00-DF-E5"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
@@ -81,20 +81,22 @@ class MyThread(threading.Thread):
 			{'user_name': '向日葵', 'user_mac': ["38:f3:ab:f1:9a:fc"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '黑风', '龙岛', ]},
 			{'user_name': '老顽童', 'user_mac': ["D4-3D-7E-10-CB-4C", "d4:3d:7e:10:cb:4c"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '沐风', 'user_mac': ["2C-F0-5D-EE-BB-9F", "f4:4e:fc:fa:6e:74"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '如意', 'user_mac': ["B4-69-21-42-53-E8"], 'end_time': '2025-2-26 23:59:00', 'has_script': 'all'},
-			{'user_name': '东煌', 'user_mac': ["38-00-25-FD-12-32", "aa:66:fc:f2:3a:dc"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", "战魂+红+整点", "战魂+红+魔镜+整点", '黑风', '龙岛', ]},
+			{'user_name': '东煌', 'user_mac': ["38-00-25-FD-12-32", "aa:66:fc:f2:3a:dc", "d8:9c:18:4f:d5:4b", "38-00-25-FD-12-32"], 'end_time': '2199-12-30 23:59:00',
+			 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", "战魂+红+整点", "战魂+红+魔镜+整点", '黑风', '龙岛', ]},
 			{'user_name': '冬未至', 'user_mac': ["B0-25-AA-26-64-03"], 'end_time': '2025-7-10 23:59:00', 'has_script': 'all'},
-			{'user_name': '音书初雪', 'user_mac': ["14-16-9E-CD-36-4E"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', "战魂楼(精英)", '黑风', '龙岛', ]},
+			{'user_name': '音书初雪', 'user_mac': ["14-16-9E-CD-36-4E", "14:16:9e:cd:36:4e"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', "战魂楼(精英)", '黑风', '龙岛', ]},
 			{'user_name': '青衣诉塔前', 'user_mac': ["18-CC-18-7D-73-33", "00-E0-4C-68-01-72"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", '黑风', '龙岛', ]},
 			{'user_name': '国王', 'user_mac': ["D8-BB-C1-08-78-C1", "d8:bb:c1:08:78:c1"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '日常', "战魂楼(精英)", "嗜血战场(精英)", "英魂秘境(精英)", '黑风', '龙岛', ]},
 			{'user_name': '廾匸', 'user_mac': ["80-FA-5B-77-EF-CE"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '黑风', '龙岛']},
 			{'user_name': '平安', 'user_mac': ["04-D4-C4-7C-B7-BF"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['官渡', '魔镜', '整点', '黑风', '龙岛']},
-			{'user_name': '宝宝不腻害', 'user_mac': ["44-A3-BB-E3-DE-89"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '整点', '黑风', '龙岛']},
+			{'user_name': '宝宝不腻害', 'user_mac': ["44-A3-BB-E3-DE-89", "44:a3:bb:e3:de:8c"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '整点', '黑风', '龙岛', "引魔符", "龙王令"]},
 			{'user_name': '天外天', 'user_mac': ["04-D4-C4-72-2F-D4"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '小美', 'user_mac': ["54:48:10:dc:55:21"], 'end_time': '2199-12-30 23:59:00', 'has_script': ['魔镜', '49日常', '黑风', '龙岛', '矿产', "引魔符"]},
+			{'user_name': '小美', 'user_mac': ["54:48:10:dc:55:21"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '欣意伴飞花', 'user_mac': ["44:38:e8:0f:13:96", "44-38-E8-0F-13-93"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
 			{'user_name': '旧人', 'user_mac': ["90:e8:68:08:aa:8a"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
-			{'user_name': '北极', 'user_mac': ["aa:5c:a1:26:9e:46", "10-FF-E0-2B-6F-F5"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '11', 'user_mac': ["2c:4d:54:3b:33:b6", "2C-4D-54-3B-33-B6"], 'end_time': '2025-4-5 23:59:00', 'has_script': 'all'},
+			{'user_name': '北极', 'user_mac': ["aa:5c:a1:26:9e:46", "10-FF-E0-2B-6F-F5", "ba:64:9c:6f:e4:bf", "f3:49:a9:39:1a:70"], 'end_time': '2199-12-30 23:59:00', 'has_script': 'all'},
+			{'user_name': '北极', 'user_mac': ["c8:5e:a9:13:60:5e", "C8-5E-A9-13-60-5B"], 'end_time': '2025-4-11 23:59:00', 'has_script': 'all'},
 		]
 		try:
 			self.dm = CreateObject('dm.dmsoft')
@@ -113,6 +115,7 @@ class MyThread(threading.Thread):
 		self.frame = None
 		self.zhanhunFloor = ''
 		self.heifengFloor = ''
+		self.addBloudFlag = False
 		# 创建子线程
 		self.child_thread = threading.Thread(target=self.child_task)
 		self.win1_thread = threading.Thread(target=self.find_and_bing_windows1)
@@ -195,10 +198,11 @@ class MyThread(threading.Thread):
 		self.engine.runAndWait()
 
 	def run(self):
-		if self.is_virtual_machine():
-			print('虚拟机')
-			return False
-		self.get_mac_address()
+		# if self.is_virtual_machine():
+		# 	print('虚拟机')
+		# 	return False
+		self.mac_address = self.get_mac_address()
+		self.mac_address1 = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
 		is_pass = self.is_user_valid()
 		if not is_pass:
 			self.show_error_message('未注册用户，请联系管理员注册!')
@@ -206,6 +210,7 @@ class MyThread(threading.Thread):
 		print(f'{self.user_name}，你的脚本有效期为{self.end_time},能使用的脚本有：{self.has_script}')
 		self.zhanhunFloor = self.frame.zhanhunFloor
 		self.mojingFloor = self.frame.mojingFloor
+		self.addBloudFlag = self.frame.addBloudFlag
 		self.teammate1_name = self.frame.teammate1_name
 		self.teammate2_name = self.frame.teammate2_name
 		self.zhengdianFloor = self.frame.zhengdianFloor
@@ -836,7 +841,13 @@ class MyThread(threading.Thread):
 				self.confidenceNum,
 				self.gameBottomLocation,
 			)
-
+			if self.addBloudFlag:
+				self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, (self.locationX, 120, self.locationWidth, self.locationHeight))
+				self.click_image(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, (self.locationX, 80, self.locationWidth, self.locationHeight))
+				self.click_image(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, (self.locationX, 120, self.locationWidth, self.locationHeight))
 			# 点击取消
 			if self.find_pic_or_str(f"{self.get_resource_path('serveAssets/images/jingji1.bmp')}|{self.get_resource_path('serveAssets/images/nohasfei.bmp')}", self.gameBottomLocation, 0):
 				self.click_image(
@@ -855,7 +866,7 @@ class MyThread(threading.Thread):
 					0.8,
 					self.gameLocation,
 				)
-			time.sleep(1)
+			time.sleep(2)
 
 	# 绑定第一个窗口
 	def find_and_bing_windows1(self):
@@ -929,7 +940,7 @@ class MyThread(threading.Thread):
 			time.sleep(1)
 			self.win1_dm.KeyPressChar('enter')
 		time.sleep(0.5)
-		self.win1_dm.KeyPressChar('d')
+		self.click_image_team1(self.get_resource_path("serveAssets/images/yincang.bmp"), self.confidenceNum, self.gameLocation)
 		while True:
 			if self.overed:
 				return
@@ -939,6 +950,13 @@ class MyThread(threading.Thread):
 				self.addBloud_team1()
 			if self.clearMapFlag:
 				self.clear_hide_map_team1()
+			if self.addBloudFlag:
+				self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, (self.locationX, 120, self.locationWidth, self.locationHeight))
+				self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, (self.locationX, 80, self.locationWidth, self.locationHeight))
+				self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, (self.locationX, 120, self.locationWidth, self.locationHeight))
 			time.sleep(1)
 
 	# 绑定第二个窗口
@@ -1014,7 +1032,11 @@ class MyThread(threading.Thread):
 			time.sleep(1)
 			self.win2_dm.KeyPressChar('enter')
 		time.sleep(0.5)
-		self.win2_dm.KeyPressChar('d')
+		self.click_image_team2(
+			self.get_resource_path("serveAssets/images/yincang.bmp"),
+			self.confidenceNum,
+			self.gameLocation,
+		)
 		while True:
 			if self.overed:
 				return
@@ -1025,6 +1047,13 @@ class MyThread(threading.Thread):
 				self.addBloud_team2()
 			if self.clearMapFlag:
 				self.clear_hide_map_team2()
+			if self.addBloudFlag:
+				self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, (self.locationX, 120, self.locationWidth, self.locationHeight))
+				self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
+				self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, (self.locationX, 80, self.locationWidth, self.locationHeight))
+				self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, (self.locationX, 120, self.locationWidth, self.locationHeight))
 
 	def addBloud(self):
 		if self.overed:
@@ -1043,17 +1072,17 @@ class MyThread(threading.Thread):
 		time.sleep(0.1)
 		self.click_image(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.1)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.1)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.1)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.1)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.1)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.1)
-		self.click_image(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 		self.addBloudFlag = False
 		self.confidenceNum = 0.9
 
@@ -1072,42 +1101,42 @@ class MyThread(threading.Thread):
 		time.sleep(0.3)
 		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 		time.sleep(0.3)
-		self.click_image_team1(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
+		self.click_image_team1(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 
 	def addBloud_team2(self):
 		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
+		time.sleep(0.1)
 		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
+		time.sleep(0.1)
 		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
+		time.sleep(0.1)
 		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
+		time.sleep(0.1)
 		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
+		time.sleep(0.1)
 		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud1.bmp"), self.confidenceNum, self.gameLocation)
-		time.sleep(0.3)
-		self.click_image_team2(self.get_resource_path("serveAssets/images/addBloud2.bmp"), self.confidenceNum, self.gameLocation)
+		time.sleep(0.1)
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
+		time.sleep(0.1)
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
+		time.sleep(0.1)
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
+		time.sleep(0.1)
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue.bmp"), self.confidenceNum, self.gameLocation)
+		time.sleep(0.1)
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
+		time.sleep(0.1)
+		self.click_image_team2(self.get_resource_path("serveAssets/images/addBlue1.bmp"), self.confidenceNum, self.gameLocation)
 
 	def get_mac_address(self):
 		# 使用 psutil 获取所有网络接口信息
@@ -1117,9 +1146,9 @@ class MyThread(threading.Thread):
 		for interface_name, interface_addresses in interfaces.items():
 			for address in interface_addresses:
 				if str(address.family) == "AddressFamily.AF_LINK":
-					self.mac_address = address.address
-					self.mac_address1 = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
-					return
+					return address.address
+
+		return "MAC address not found"
 
 	def beginFun(self, check=False):
 		closeTalkXY = self.find_pic(
@@ -1284,7 +1313,7 @@ class MyThread(threading.Thread):
 		# 		break
 		# self.confidenceNum = 0.9
 		# feiTime = time.time()
-		longLocation = (0, 490, 320, 530)
+		longLocation = (0, 495, 320, 530)
 		shengxiaoLocation = self.waitFor(f"{self.get_resource_path('serveAssets/images/fei3.bmp')}|{self.get_resource_path('serveAssets/images/fei.bmp')}|{self.get_resource_path('serveAssets/images/fei2.bmp')}|{self.get_resource_path('serveAssets/images/fei1.bmp')}", longLocation, 5)
 		if not shengxiaoLocation:
 			return '没找到飞鞋'
@@ -2416,7 +2445,7 @@ class MyThread(threading.Thread):
 			if self.after_zreo == "官渡":
 				self.scriptName = "官渡"
 				time.sleep(1)
-				self.feiFb('副本曹操', True)
+				self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '驿站城西', '驿站许昌', True)
 				is_in_guandu = self.waitFor('官渡', self.dituLocation, 5)
 				if not is_in_guandu:
 					time.sleep(1)
@@ -2454,6 +2483,21 @@ class MyThread(threading.Thread):
 				time.sleep(2)
 				self.mojingAndHongAndZd()
 				return
+		if int(time.localtime().tm_hour) in [15, 21] and self.after_zreo == "名将闯关":
+			self.scriptName = "名将闯关"
+			time.sleep(1)
+			self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', '驿站城西', '', True)
+			time.sleep(1)
+			print('开始名将闯关')
+			while True:
+				has_mingjiang = self.mingjiangchuangguan()
+				if not has_mingjiang:
+					break
+			time.sleep(1)
+			self.scriptName = "官渡"
+			self.feiFb('副本曹操', True)
+			time.sleep(1)
+			self.guanduWhile()
 		if self.scriptName == "官渡":
 			time.sleep(1)
 			# self.feiFb('副本曹操', True)
@@ -3816,11 +3860,11 @@ class MyThread(threading.Thread):
 		# 	'进入',
 		# 	self.dituLocation, self.gameBottomLocation,
 		# )
-		is_in_guandu = self.waitFor('曹操大帐', self.dituLocation, 5)
-		if not is_in_guandu:
-			self.outScript()
-			time.sleep(1)
-			return True
+		# is_in_guandu = self.waitFor('曹操大帐', self.dituLocation, 5)
+		# if not is_in_guandu:
+		# 	self.outScript()
+		# 	time.sleep(1)
+		# 	return True
 		# self.outScript()
 		# return True
 		with condition:
@@ -4838,6 +4882,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.098,0.113"
 		)
+		self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"), self.gameLocation)
 		if self.zhanhunFloor == '20层':
 			# 退出副本
 			self.outScript('战魂')
@@ -4866,6 +4911,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.098,0.113"
 		)
+		self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"), self.gameLocation)
 		if self.zhanhunFloor == '21层':
 			# 退出副本
 			self.outScript('战魂')
@@ -4904,6 +4950,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.098,0.113"
 		)
+		self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"), self.gameLocation)
 		if self.zhanhunFloor == '22层':
 			# 退出副本
 			self.outScript('战魂')
@@ -4945,6 +4992,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.098,0.113"
 		)
+		self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"), self.gameLocation)
 		if self.zhanhunFloor == '23层':
 			# 退出副本
 			self.outScript('战魂')
@@ -4983,12 +5031,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.098,0.113"
 		)
-		waitForTwoRes = self.waitForTwo(
-			self.get_resource_path("serveAssets/images/zhanhun/24.bmp"),
-			'洛阳',
-			self.dituLocation,
-			self.dituLocation,
-		)
+		self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"), self.gameLocation)
 		if self.zhanhunFloor == '24层':
 			# 退出副本
 			self.outScript('战魂')
@@ -5027,6 +5070,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.098,0.113"
 		)
+		self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"), self.gameLocation)
 		if self.zhanhunFloor == '25层':
 			# 退出副本
 			self.outScript('战魂')
@@ -5065,6 +5109,7 @@ class MyThread(threading.Thread):
 			self.gameBottomLocation,
 			"0.098,0.113"
 		)
+		self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"), self.gameLocation)
 		self.addBloud()
 		if self.zhanhunFloor == '26层':
 			# 退出副本
@@ -5582,7 +5627,7 @@ class MyThread(threading.Thread):
 				'炼丹童',
 				'炼丹童',
 				self.gameLeftLocation,
-				self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+				self.get_resource_path("serveAssets/images/zdzd.bmp"),
 				self.gameBottomLocation,
 				liandan1_poss[i],
 			)
@@ -6581,7 +6626,16 @@ class MyThread(threading.Thread):
 			return False
 		time.sleep(0.5)
 		self.dm.KeyPressChar('g')
-		self.waitFor('城西', self.dituLocation)
+		self.waitFor('退出挂机', self.gameBottomLocation)
+		self.findAndClickPic(
+			'名战殿',
+			'离开',
+			'名将使者',
+			self.gameLocation,
+			'城西',
+			self.dituLocation,
+			"0.112,0.112",
+		)
 		return True
 
 	# 黑风
@@ -6623,7 +6677,7 @@ class MyThread(threading.Thread):
 				'黑风山寨',
 				'刀贼',
 				f"{self.get_resource_path('serveAssets/images/heifeng/daozei1.bmp')}|{self.get_resource_path('serveAssets/images/heifeng/daozei2.bmp')}",
-				self.gameBottomLocation,
+				self.gameRightLocation,
 				self.get_resource_path("serveAssets/images/zdzd.bmp"),
 				self.gameBottomLocation,
 				daozei_poss[i]
@@ -7006,7 +7060,8 @@ class MyThread(threading.Thread):
 
 	# 一直执行战魂
 	def zhanhunWhile(self):
-		for i in range(6):
+		zhanhunCount = self.heifengWhileCount if self.heifengWhileCount else 6
+		for i in range(zhanhunCount):
 			if self.overed:
 				return
 			zhanhunRes = self.zhanhunScript()
@@ -7089,7 +7144,8 @@ class MyThread(threading.Thread):
 				else:
 					self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '')
 			time.sleep(1)
-			for i in range(6):
+			zhanhunCount = self.heifengWhileCount if self.heifengWhileCount else 6
+			for i in range(zhanhunCount):
 				if self.overed:
 					return
 				hongRes = self.zhanhunScript()
@@ -7159,7 +7215,7 @@ class MyThread(threading.Thread):
 		if '名' in self.richangSelection:
 			if not self.find_str('洛阳', self.dituLocation, 0):
 				if '飞' in self.richangSelection:
-					self.feiFb('副本挑战赛', True)
+					self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '', True)
 				else:
 					self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '')
 			time.sleep(1)
@@ -7372,7 +7428,7 @@ class MyThread(threading.Thread):
 		if '名' in self.richangSelection:
 			if not self.find_str('洛阳', self.dituLocation, 0):
 				if '飞' in self.richangSelection:
-					self.feiFb('副本挑战赛', True)
+					self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '', True)
 				else:
 					self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '')
 			time.sleep(1)
@@ -7407,7 +7463,8 @@ class MyThread(threading.Thread):
 			if not self.find_str('涿郡野外', self.dituLocation, 0):
 				self.go_in_ditu('地图野外东', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '涿郡野外', '涿郡野外', '', True)
 			time.sleep(1)
-			for i in range(6):
+			zhanhunCount = self.heifengWhileCount if self.heifengWhileCount else 6
+			for i in range(zhanhunCount):
 				hongRes = self.zhanhun49Script()
 				if not hongRes:
 					break
@@ -8347,14 +8404,18 @@ class MyThread(threading.Thread):
 		self.dm.MoveTo(int(self.locationX + 608), int(self.locationY + 45))
 		time.sleep(0.05)
 		self.dm.LeftClick()
-		is_find = self.waitFor(base_image, self.gameBottomLocation, 10)
+		is_find = self.waitFor(base_image, self.gameLocation, 10)
 		if not is_find:
 			print('未找到NPC')
 			return False
-		per_pos = self.fing_fei_in_image_or_str(base_image, self.gameBottomLocation, (0, 15, 600, 15), f"{self.get_resource_path('serveAssets/images/guaji/guaji.bmp')}|{self.get_resource_path('serveAssets/images/guaji/guaji1.bmp')}")
+		per_pos = self.fing_fei_in_image_or_str(base_image, self.gameLocation, (0, 15, 600, 30), f"{self.get_resource_path('serveAssets/images/guaji/guaji.bmp')}|{self.get_resource_path('serveAssets/images/guaji/guaji1.bmp')}")
 		if per_pos:
 			self.dm.MoveTo(per_pos.x, per_pos.y)
-			time.sleep(0.5)
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			time.sleep(0.001)
+			self.dm.LeftClick()
+			time.sleep(0.001)
 			self.dm.LeftClick()
 			time.sleep(5)
 			if self.overed:
@@ -8455,6 +8516,7 @@ class MyFrame(wx.Frame):
 		self.heifengCount = ""
 		self.zhanhunFloor = ""
 		self.heifengFloor = ""
+		self.addBloudFlag = False
 		# size=(226, 26),
 		self.button_start = wx.Button(
 			self.panel,
@@ -8544,7 +8606,7 @@ class MyFrame(wx.Frame):
 		self.contact = wx.StaticText(self.panel, label="交流群：955753707", pos=(70, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
-		self.contact = wx.StaticText(self.panel, label="v25.3.5", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
+		self.contact = wx.StaticText(self.panel, label="v25.4.3", pos=(190, 236), style=wx.ST_NO_AUTORESIZE)
 		font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 		self.contact.SetFont(font)
 		# self.Bind(wx.EVT_CLOSE, self.on_close)
@@ -8602,6 +8664,12 @@ class MyFrame(wx.Frame):
 		dialog.choiceAfterZreo.SetValue(self.afterZreo)
 		dialog.teammate1_text.SetValue(self.teammate1_name)
 		dialog.teammate2_text.SetValue(self.teammate2_name)
+		if self.addBloudFlag:
+			dialog.addBloudBtn.Hide()
+			dialog.closeBloudBtn.Show()
+		else:
+			dialog.addBloudBtn.Show()
+			dialog.closeBloudBtn.Hide()
 		if dialog.ShowModal() == wx.ID_OK:
 			# 在对话框结束后，获取对话框中输入的数据
 			print('当前游戏名称：' + self.game_name)
@@ -8704,32 +8772,55 @@ class MyDialog(wx.Dialog):
 		super().__init__(parent, title="设置游戏信息", size=(310, 265), pos=(260, 30))
 
 		panel = wx.Panel(self)
-
-		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 160), size=(260, 24))
+		self.team_leader_text = wx.TextCtrl(panel, pos=(10, 160), size=(270, 24))
 		self.team_leader_text.SetHint("游戏名称")
 		self.choiceHeifeng = wx.ComboBox(panel, pos=(10, 40), size=(120, 30), choices=['大/80', '二/50', '刷龙珠'])
 		self.choiceHeifeng.SetHint("黑风/龙岛层数")
 		self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
 		self.teammate1_text = wx.TextCtrl(panel, pos=(10, 130), size=(120, 24), )
 		self.teammate1_text.SetHint("队友1名称")
-		self.teammate2_text = wx.TextCtrl(panel, pos=(150, 130), size=(120, 24), )
+		self.teammate2_text = wx.TextCtrl(panel, pos=(160, 130), size=(120, 24), )
 		self.teammate2_text.SetHint("队友2名称")
-		self.button = wx.Button(panel, label="确定", pos=(10, 190))
+		self.button = wx.Button(panel, label="确定", style=wx.BORDER_NONE, pos=(10, 190), size=(60, 24))
 		self.button.Disable()  # 初始化时禁用确定按钮
+		# self.button.SetBackgroundColour(wx.Colour(20, 180, 168))  # 设置为红色背景
+		# self.button.SetForegroundColour(
+		# 	wx.Colour(255, 255, 255)
+		# )  # 设置为白色文字
 		self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
-		self.saveButton = wx.Button(panel, label="保存信息", pos=(100, 190))
+		self.saveButton = wx.Button(panel, label="保存信息", style=wx.BORDER_NONE, pos=(80, 190), size=(60, 24))
 		self.saveButton.Bind(wx.EVT_BUTTON, self.on_save_data)
-		self.getButton = wx.Button(panel, label="读取信息", pos=(190, 190))
+		self.saveButton.SetBackgroundColour(wx.Colour(20, 180, 168))  # 设置为红色背景
+		self.saveButton.SetForegroundColour(
+			wx.Colour(255, 255, 255)
+		)  # 设置为白色文字
+		self.getButton = wx.Button(panel, label="读取信息", style=wx.BORDER_NONE, pos=(150, 190), size=(60, 24))
 		self.getButton.Bind(wx.EVT_BUTTON, self.get_file_info)
+		self.getButton.SetBackgroundColour(wx.Colour(144, 144, 153))
+		self.getButton.SetForegroundColour(
+			wx.Colour(255, 255, 255)
+		)  # 设置为白色文字
+		self.addBloudBtn = wx.Button(panel, label="点击加血", style=wx.BORDER_NONE, pos=(220, 190), size=(60, 24))
+		self.addBloudBtn.Bind(wx.EVT_BUTTON, self.addBloudFun)
+		self.addBloudBtn.SetBackgroundColour(wx.Colour(103, 194, 58))
+		self.addBloudBtn.SetForegroundColour(
+			wx.Colour(255, 255, 255)
+		)  # 设置为白色文字
+		self.closeBloudBtn = wx.Button(panel, label="取消加血", style=wx.BORDER_NONE, pos=(220, 190), size=(60, 24))
+		self.closeBloudBtn.Bind(wx.EVT_BUTTON, self.closeBloudFun)
+		self.closeBloudBtn.SetBackgroundColour(wx.Colour(226, 96, 95))
+		self.closeBloudBtn.SetForegroundColour(
+			wx.Colour(255, 255, 255)
+		)  # 设置为白色文字
 		# 创建一个只能输入数字的文本输入框
-		self.number_input = wx.TextCtrl(panel, pos=(150, 40), size=(120, 24), validator=NumberValidator())
-		self.number_input.SetHint("黑风/矿产次数")
+		self.number_input = wx.TextCtrl(panel, pos=(160, 40), size=(120, 24), validator=NumberValidator())
+		self.number_input.SetHint("黑风/矿产/战魂次数")
 		self.number_input.Bind(wx.EVT_TEXT, self.on_text_change)
-		self.choiceCeng = wx.ComboBox(panel, pos=(150, 70), size=(120, 30), choices=['20层', '21层', '22层', '23层', '24层', '25层', '26层', '27层', '手动27层'])
+		self.choiceCeng = wx.ComboBox(panel, pos=(160, 70), size=(120, 30), choices=['20层', '21层', '22层', '23层', '24层', '25层', '26层', '27层', '手动27层'])
 		self.choiceCeng.SetHint("战魂层数")
 		self.choiceMojing = wx.ComboBox(panel, pos=(10, 70), size=(120, 30), choices=['迷幻境（虚实）', '狱境（黑白无常）', '炎冰境'])
 		self.choiceMojing.SetHint("魔镜层数")
-		self.choiceAfterZreo = wx.ComboBox(panel, pos=(150, 100), size=(120, 30), choices=['官渡', '魔镜', '日常', "49日常", "战魂+红+整点", "战魂+红+魔镜+整点"])
+		self.choiceAfterZreo = wx.ComboBox(panel, pos=(160, 100), size=(120, 30), choices=['官渡', '魔镜', '日常', "49日常", "名将闯关", "战魂+红+整点", "战魂+红+魔镜+整点"])
 		self.choiceAfterZreo.SetHint("0点执行的脚本")
 		# '牛+虎+兔+猴+羊','牛+虎+兔+猴+羊',
 		self.choiceZhengdian = wx.ComboBox(panel, pos=(10, 100), size=(120, 30), choices=['龙', '虎+牛+兔+猴+羊', '火焰+寒冰'])
@@ -8742,7 +8833,7 @@ class MyDialog(wx.Dialog):
 			self.cb = wx.CheckBox(panel, label=option)
 			# 设置默认勾选状态
 			# 设置默认勾选状态
-			if not option in ['魔镜', "名", '战']:
+			if not option in ['魔镜', "名", '战', '卖']:
 				self.cb.SetValue(True)
 			else:
 				self.cb.SetValue(False)
@@ -8835,6 +8926,14 @@ class MyDialog(wx.Dialog):
 		self.teammate1_text.SetValue(teammate1_text)
 		self.teammate2_text.SetValue(teammate2_text)
 
+	def addBloudFun(self, event):
+		self.addBloudBtn.Hide()
+		self.closeBloudBtn.Show()
+
+	def closeBloudFun(self, event):
+		self.addBloudBtn.Show()
+		self.closeBloudBtn.Hide()
+
 	def on_text_change(self, event):
 		if self.team_leader_text.GetValue():
 			self.button.Enable()
@@ -8859,6 +8958,10 @@ class MyDialog(wx.Dialog):
 		parent.richangSelection = selected_options
 		parent.teammate1_name = self.teammate1_text.GetValue()
 		parent.teammate2_name = self.teammate2_text.GetValue()
+		if self.addBloudBtn.IsShown():
+			parent.addBloudFlag = False
+		else:
+			parent.addBloudFlag = True
 		# parent.selections = selections
 		# 关闭对话框
 		self.EndModal(wx.ID_OK)

@@ -166,10 +166,10 @@ import urllib.parse
 # print(res121)
 longLocation = (0, 490, 320, 530)
 similarity = 0.9  # 相似度阈值
-# dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\zdzd.bmp", "", similarity, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\guaji\guaji.bmp", "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(0, 0, x, y, r"E:\project\python\serveAssets\images\fei3.bmp", "", similarity, 0)
 # # #
-# print(dm_ret, 'dm_ret')
+print(dm_ret, 'dm_ret')
 # print(dm_ret1, 'dm_ret1')
 # if not dm_ret:
 # 	print('未找到'
@@ -228,8 +228,8 @@ dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # �
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 color_format = 'ff0000-000000'
 sim = 0.6  # 相似度阈值，可以根据实际情况调整
-find_str_result = dm.FindStrFastE(0, 0, x, y, '矿产', color_format, sim)
-print(f'FindStrFast 返回结果: {find_str_result}')
+# find_str_result = dm.FindStrFastE(0, 0, x, y, '矿产', color_format, sim)
+# print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
