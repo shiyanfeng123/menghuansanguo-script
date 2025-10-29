@@ -23,8 +23,9 @@ import os
 import sys
 from collections import \
     OrderedDict
+
 # 导入战斗自动操作脚本
-from Kanloong_combat_script import CombatAutoScript
+# from Kanloong_combat_script import CombatAutoScript
 
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\serveScript.py
 # pyinstaller serveScript.spec
@@ -454,7 +455,7 @@ class MyThread(threading.Thread):
             # self.zhengdian_all()
             # print(111)
             # return
-            self.go_zhengdian()
+            self.bangpaiRW()
             # shuffled = self.zdList.copy()
             # random.shuffle(shuffled)
             # for i in range(10):
@@ -1490,15 +1491,15 @@ class MyThread(threading.Thread):
             # self.click_image(self.get_resource_path("serveAssets/images/dialog3.bmp"), self.confidenceNum, self.gameBottomLocation)
             # self.click_image(self.get_resource_path("serveAssets/images/fubenzudui.bmp"), self.confidenceNum, self.gameBottomLocation)
             # 关闭右边
-            closeRight = self.click_image(
-                self.get_resource_path(
-                    "serveAssets/images/closeRight.bmp"),
-                self.confidenceNum,
-                self.gameLocation,
-            )
-            if closeRight:
-                time.sleep(
-                    0.5)
+            # closeRight = self.click_image(
+            #     self.get_resource_path(
+            #         "serveAssets/images/closeRight.bmp"),
+            #     self.confidenceNum,
+            #     self.gameLocation,
+            # )
+            # if closeRight:
+            #     time.sleep(
+            #         0.5)
             # 点击拒绝
             self.click_image(
                 self.get_resource_path(
@@ -6154,11 +6155,26 @@ class MyThread(threading.Thread):
         while True:
             sx_pos = self.find_pic_or_str(find_sx, self.gameLocation, 0)
             # 添加找两次图片的逻辑
-            # if not sx_pos:
-            #     sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
-            #         if not sx_pos:
-            #             sx_pos = self.find_pic_or_str(find_sx, self.gameLocation, 0)
+            if not sx_pos:
+                sx_pos = self.find_pic_or_str(self.get_resource_path(
+                    'serveAssets/images/zhengdian/newlong.bmp'),
+                    self.gameBottomLocation, 0)
+                if not sx_pos:
+                    sx_pos = self.find_pic_or_str(self.get_resource_path(
+                        'serveAssets/images/zhengdian/newlong1.bmp'),
+                        self.gameLocation, 0)
             if sx_pos and last_y != sx_pos.y:
+                self.dm.KeyPressChar('left')
+                sx_pos = self.find_pic_or_str(find_sx, self.gameLocation, 0)
+                # 添加找两次图片的逻辑
+                if not sx_pos:
+                    sx_pos = self.find_pic_or_str(self.get_resource_path(
+                        'serveAssets/images/zhengdian/newlong.bmp'),
+                        self.gameBottomLocation, 0)
+                    if not sx_pos:
+                        sx_pos = self.find_pic_or_str(self.get_resource_path(
+                            'serveAssets/images/zhengdian/newlong1.bmp'),
+                            self.gameLocation, 0)
                 self.dm.MoveTo(int(sx_pos.x + 5), int(sx_pos.y + 5))
                 time.sleep(0.001)
                 self.dm.LeftClick()
@@ -10262,7 +10278,7 @@ class MyThread(threading.Thread):
                 return
             print("启动战斗自动操作")
             self.combat_auto_running = True
-            
+
             # 初始化战斗自动操作实例
             if not self.combat_auto_instance:
                 self.combat_auto_instance = CombatAutoScript(self)
@@ -10291,7 +10307,7 @@ class MyThread(threading.Thread):
                 ]
                 # 初始化战斗追踪
                 self.combat_auto_instance.init_combat_tracking()
-            
+
             # 在单独线程中运行战斗循环
             def combat_loop():
                 while self.combat_auto_running and not self.overed and not self.stoped:
@@ -10303,14 +10319,15 @@ class MyThread(threading.Thread):
                     except Exception as e:
                         print(f"战斗自动操作错误: {e}")
                         time.sleep(1)
-            
-            self.combat_auto_thread = threading.Thread(target=combat_loop, daemon=True)
+
+            self.combat_auto_thread = threading.Thread(target=combat_loop,
+                                                       daemon=True)
             self.combat_auto_thread.start()
             print("战斗自动操作线程已启动")
         except Exception as e:
             print(f"启动战斗自动操作失败: {e}")
             self.combat_auto_running = False
-    
+
     def _stop_combat_auto(self):
         """
         停止战斗自动操作
@@ -10408,10 +10425,10 @@ class MyThread(threading.Thread):
             self.gameLocation)
         self.addBloud()
         # 启动战斗自动操作（在10313行附近，进入战斗后）
-        try:
-            self._start_combat_auto()
-        except Exception as e:
-            print(f"启动战斗自动操作失败: {e}")
+        # try:
+        #     self._start_combat_auto()
+        # except Exception as e:
+        #     print(f"启动战斗自动操作失败: {e}")
         waitForTwoRes = self.waitForTwo(
             self.get_resource_path(
                 "serveAssets/images/zhanhun/lianyu1.bmp"),
@@ -10423,11 +10440,11 @@ class MyThread(threading.Thread):
             print(
                 "26层没打过")
             # 停止战斗自动操作
-            self._stop_combat_auto()
+            # self._stop_combat_auto()
             return True
         if self.zhanhunFloorNew == '26层':
             # 退出副本
-            self._stop_combat_auto()  # 停止战斗自动操作
+            # self._stop_combat_auto()  # 停止战斗自动操作
             self.outScript(
                 '战魂')
             return True
@@ -10461,7 +10478,7 @@ class MyThread(threading.Thread):
                     "serveAssets/images/xiulian.bmp"),
                 self.gameLocation)
             # 停止战斗自动操作
-            self._stop_combat_auto()
+            # self._stop_combat_auto()
             # 退出副本
             self.outScript(
                 self.get_resource_path(
@@ -10490,7 +10507,7 @@ class MyThread(threading.Thread):
                     "serveAssets/images/xiulian.bmp"),
                 self.gameLocation)
             # 停止战斗自动操作
-            self._stop_combat_auto()
+            # self._stop_combat_auto()
             # 退出副本
             self.outScript(
                 self.get_resource_path(
@@ -10498,7 +10515,7 @@ class MyThread(threading.Thread):
             return True
         else:
             # 停止战斗自动操作
-            self._stop_combat_auto()
+            # self._stop_combat_auto()
             # 退出副本
             self.outScript(
                 self.get_resource_path(
@@ -12520,6 +12537,199 @@ class MyThread(threading.Thread):
             "0.112,0.112",
         )
         return True
+
+    # 帮派任务
+    def bangpaiRW(self):
+        self.findAndClickPic(
+            self.get_resource_path(
+                "serveAssets/images/zhongxin.bmp"),
+            f"{self.get_resource_path('serveAssets/images/longdao/bangpai.bmp')}|{self.get_resource_path('serveAssets/images/longdao/bangpai1.bmp')}",
+            '帮派大本营',
+            self.gameBottomLocation,
+            self.get_resource_path(
+                "serveAssets/images/longdao/dabenying.bmp"),
+            self.dituLocation,
+            "0.107,0.156"
+        )
+        self.findAndClickPic(
+            self.get_resource_path(
+                "serveAssets/images/longdao/dabenying.bmp"),
+            self.get_resource_path('serveAssets/images/longdao/guanjia1.bmp'),
+            self.get_resource_path('serveAssets/images/longdao/guanjia.bmp'),
+            self.gameLocation,
+            '帮派大本营',
+            self.gameBottomLocation,
+            "0.107,0.156"
+        )
+        time.sleep(1)
+        dm_ret = self.dm.FindColor(249, 362, 291, 374, "ffff00-000000", 0.8, 0)
+        x, y, r = dm_ret
+        if r == 1:
+            self.dm.MoveTo(x, y)
+            time.sleep(0.001)
+            self.dm.leftClick()
+        self.color_format = 'b@ffff00-000000'
+        time.sleep(1)
+        has_jixu = self.find_str('点击继续背景', self.gameBottomLocation, 0)
+        self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
+        if has_jixu:
+            time.sleep(0.001)
+            self.dm.leftClick()
+            time.sleep(0.5)
+            self.dm.leftClick()
+        time.sleep(1)
+        dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.8,
+                                    0)
+        x, y, r = dm_ret1
+        if r == 1:
+            self.dm.MoveTo(x, y)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.dm.LeftClick()
+        time.sleep(1)
+        if self.find_str('帮派大本营', self.gameBottomLocation, 0):
+            find_mubiao = self.find_pic_or_str(
+                '偷盗小贼|挑战者|谣言传播者|西凉马贼|灵宝凶兽',
+                self.gameBottomLocation, 0)
+            if find_mubiao:
+                self.dm.MoveTo(int(find_mubiao.x + 5), int(find_mubiao.y + 5))
+                time.sleep(0.5)
+                self.dm.LeftClick()
+            else:
+                self.dm.KeyDownChar('left')
+                time.sleep(2)
+                self.dm.KeyUpChar('left')
+                find_mubiao = self.find_pic_or_str(
+                    '偷盗小贼|挑战者|谣言传播者|西凉马贼|灵宝凶兽')
+                if find_mubiao:
+                    self.dm.MoveTo(int(find_mubiao.x + 5),
+                                   int(find_mubiao.y + 5))
+                    time.sleep(0.5)
+                    self.dm.LeftClick()
+                else:
+                    self.dm.KeyDownChar('right')
+                    time.sleep(4.5)
+                    self.dm.KeyUpChar('right')
+                    find_mubiao = self.find_pic_or_str(
+                        '偷盗小贼|挑战者|谣言传播者|西凉马贼|灵宝凶兽')
+                    if find_mubiao:
+                        self.dm.MoveTo(int(find_mubiao.x + 5),
+                                       int(find_mubiao.y + 5))
+                        time.sleep(0.5)
+                        self.dm.LeftClick()
+                    else:
+                        return
+            time.sleep(1)
+            self.color_format = 'b@ffff00-000000'
+            has_jixu = self.find_str('点击继续背景', self.gameBottomLocation, 0)
+            self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
+            if has_jixu:
+                time.sleep(0.001)
+                self.dm.leftClick()
+                time.sleep(0.5)
+                self.dm.leftClick()
+            time.sleep(1)
+            dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000",
+                                        0.8,
+                                        0)
+            x, y, r = dm_ret1
+            if r == 1:
+                self.dm.MoveTo(x, y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+            self.findAndClickPic(
+                self.get_resource_path(
+                    "serveAssets/images/longdao/dabenying.bmp"),
+                self.get_resource_path(
+                    'serveAssets/images/longdao/guanjia1.bmp'),
+                self.get_resource_path(
+                    'serveAssets/images/longdao/guanjia.bmp'),
+                self.gameLocation,
+                '帮派大本营',
+                self.gameBottomLocation,
+                "0.107,0.156"
+            )
+            time.sleep(1)
+            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
+                                        0.8,
+                                        0)
+            x, y, r = dm_ret1
+            if r == 1:
+                self.dm.MoveTo(x, y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
+                                        0.8,
+                                        0)
+            x, y, r = dm_ret1
+            if r == 1:
+                self.dm.MoveTo(x, y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+        else:
+            feixie_pos = self.fing_fei_in_image_or_str('帮派任务',
+                                                       self.gameLocation,
+                                                       self.gameLocation,
+                                                       self.get_resource_path(
+                                                           'serveAssets/images/fei3.bmp'), )
+            if feixie_pos:
+                self.dm.MoveTo(feixie_pos.x, feixie_pos.y)
+                time.sleep(0.5)
+                self.dm.LeftClick()
+            time.sleep(1)
+            self.color_format = 'b@ffff00-000000'
+            has_jixu = self.find_str('点击继续背景', self.gameBottomLocation, 0)
+            self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
+            if has_jixu:
+                time.sleep(0.001)
+                self.dm.leftClick()
+                time.sleep(0.5)
+                self.dm.leftClick()
+            time.sleep(1)
+            dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000",
+                                        0.8,
+                                        0)
+            x, y, r = dm_ret1
+            if r == 1:
+                self.dm.MoveTo(x, y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+            self.confidenceNum = 0.6
+            self.waitFor(
+                self.get_resource_path('serveAssets/images/zdzd111.bmp'),
+                self.gameBottomLocation)
+            self.waitFor(self.get_resource_path('serveAssets/images/fei3.bmp'),
+                         self.gameBottomLocation)
+            self.confidenceNum = 0.9
+            time.sleep(1)
+            feixie_pos = self.fing_fei_in_image_or_str('帮派任务',
+                                                       self.gameLocation,
+                                                       self.gameLocation,
+                                                       self.get_resource_path(
+                                                           'serveAssets/images/fei3.bmp'))
+            if feixie_pos:
+                self.dm.MoveTo(feixie_pos.x, feixie_pos.y)
+                time.sleep(0.5)
+                self.dm.LeftClick()
+            self.waitFor('帮派大本营', self.dituLocation)
+            time.sleep(1)
+            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
+                                        0.8,
+                                        0)
+            x, y, r = dm_ret1
+            if r == 1:
+                self.dm.MoveTo(x, y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
+                                        0.8,
+                                        0)
+            x, y, r = dm_ret1
+            if r == 1:
+                self.dm.MoveTo(x, y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
 
     def auto_move_and_click1(
             self,
