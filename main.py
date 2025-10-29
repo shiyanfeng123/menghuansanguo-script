@@ -109,12 +109,12 @@ class MyThread(threading.Thread):
 		# 	print('脚本已过期!')
 		# 	return
 		self.zhengDianFlag = False
-		mac_address = self.get_mac_address()
-		if mac_address in self.userInfoMac:
-			print("已注册用户!")
-		else:
-			self.show_error_message("未注册用户，请联系管理员")
-			return
+		# mac_address = self.get_mac_address()
+		# if mac_address in self.userInfoMac:
+		# 	print("已注册用户!")
+		# else:
+		# 	self.show_error_message("未注册用户，请联系管理员")
+		# 	return
 		print("鼠标放屏幕左上角退出当前脚本")
 		isFindGame = self.findGame()
 		if not isFindGame:
