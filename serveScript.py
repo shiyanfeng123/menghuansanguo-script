@@ -23,6 +23,8 @@ import os
 import sys
 from collections import \
     OrderedDict
+# 导入战斗自动操作脚本
+from Kanloong_combat_script import CombatAutoScript
 
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\serveScript.py
 # pyinstaller serveScript.spec
@@ -272,6 +274,10 @@ class MyThread(threading.Thread):
         self.overed = False
         self.refreshFlag = False
         self.yaoqingFlag = False
+        # 战斗自动操作相关变量
+        self.combat_auto_instance = None
+        self.combat_auto_thread = None
+        self.combat_auto_running = False
         self.team_loc = (300,
                          310,
                          365,
@@ -6147,6 +6153,11 @@ class MyThread(threading.Thread):
         last_y = 0
         while True:
             sx_pos = self.find_pic_or_str(find_sx, self.gameLocation, 0)
+            # 添加找两次图片的逻辑
+            # if not sx_pos:
+            #     sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
+            #         if not sx_pos:
+            #             sx_pos = self.find_pic_or_str(find_sx, self.gameLocation, 0)
             if sx_pos and last_y != sx_pos.y:
                 self.dm.MoveTo(int(sx_pos.x + 5), int(sx_pos.y + 5))
                 time.sleep(0.001)
@@ -10242,6 +10253,81 @@ class MyThread(threading.Thread):
                 "serveAssets/images/zhanhun/25.bmp"), )
         return True
 
+    def _start_combat_auto(self):
+        """
+        启动战斗自动操作
+        """
+        try:
+            if self.combat_auto_running:
+                return
+            print("启动战斗自动操作")
+            self.combat_auto_running = True
+            
+            # 初始化战斗自动操作实例
+            if not self.combat_auto_instance:
+                self.combat_auto_instance = CombatAutoScript(self)
+                # 设置战斗区域（需要根据实际游戏界面调整）
+                # 这里使用默认区域，实际使用时需要根据游戏界面调整
+                # enemy_region: 敌军区域, ally_region: 己方区域, main_char_region: 主角区域
+                # general_region: 武将区域, turn_region: 回合指示器区域
+                # 示例区域，需要根据实际游戏调整
+                self.combat_auto_instance.set_combat_regions(
+                    enemy_region=(0, 0, 400, 300),  # 敌军区域（左侧）
+                    ally_region=(400, 0, 800, 300),  # 己方区域（右侧）
+                    main_char_region=(400, 200, 800, 400),  # 主角区域
+                    general_region=(400, 300, 800, 500),  # 武将区域
+                    turn_region=(700, 500, 850, 550),  # 回合指示器区域（备用，主要通过按钮区域判断）
+                    right_button_region=(1400, 400, 1920, 680)  # 右侧按钮区域
+                )
+                # 设置配置
+                self.combat_auto_instance.keep_support_general = False
+                self.combat_auto_instance.enable_main_heal = True
+                self.combat_auto_instance.enable_main_summon = True
+                # 初始化账号的大漠对象
+                self.combat_auto_instance.account_dm = [
+                    self.dm,
+                    self.win1_dm,
+                    self.win2_dm
+                ]
+                # 初始化战斗追踪
+                self.combat_auto_instance.init_combat_tracking()
+            
+            # 在单独线程中运行战斗循环
+            def combat_loop():
+                while self.combat_auto_running and not self.overed and not self.stoped:
+                    try:
+                        # 对主账号执行战斗操作
+                        if self.dm:
+                            self.combat_auto_instance.auto_combat(0)
+                        time.sleep(0.5)  # 短暂延时，避免过于频繁
+                    except Exception as e:
+                        print(f"战斗自动操作错误: {e}")
+                        time.sleep(1)
+            
+            self.combat_auto_thread = threading.Thread(target=combat_loop, daemon=True)
+            self.combat_auto_thread.start()
+            print("战斗自动操作线程已启动")
+        except Exception as e:
+            print(f"启动战斗自动操作失败: {e}")
+            self.combat_auto_running = False
+    
+    def _stop_combat_auto(self):
+        """
+        停止战斗自动操作
+        """
+        try:
+            if not self.combat_auto_running:
+                return
+            print("停止战斗自动操作")
+            self.combat_auto_running = False
+            # 等待线程结束（最多等待2秒）
+            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+                self.combat_auto_thread.join(timeout=2)
+            self.combat_auto_thread = None
+            print("战斗自动操作已停止")
+        except Exception as e:
+            print(f"停止战斗自动操作失败: {e}")
+
     def zhanhunNewScript(
             self):
         if not self.zhanhunFloorNew:
@@ -10321,6 +10407,11 @@ class MyThread(threading.Thread):
                 "serveAssets/images/xiulian.bmp"),
             self.gameLocation)
         self.addBloud()
+        # 启动战斗自动操作（在10313行附近，进入战斗后）
+        try:
+            self._start_combat_auto()
+        except Exception as e:
+            print(f"启动战斗自动操作失败: {e}")
         waitForTwoRes = self.waitForTwo(
             self.get_resource_path(
                 "serveAssets/images/zhanhun/lianyu1.bmp"),
@@ -10331,9 +10422,12 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print(
                 "26层没打过")
+            # 停止战斗自动操作
+            self._stop_combat_auto()
             return True
         if self.zhanhunFloorNew == '26层':
             # 退出副本
+            self._stop_combat_auto()  # 停止战斗自动操作
             self.outScript(
                 '战魂')
             return True
@@ -10366,6 +10460,8 @@ class MyThread(threading.Thread):
                 self.get_resource_path(
                     "serveAssets/images/xiulian.bmp"),
                 self.gameLocation)
+            # 停止战斗自动操作
+            self._stop_combat_auto()
             # 退出副本
             self.outScript(
                 self.get_resource_path(
@@ -10393,12 +10489,16 @@ class MyThread(threading.Thread):
                 self.get_resource_path(
                     "serveAssets/images/xiulian.bmp"),
                 self.gameLocation)
+            # 停止战斗自动操作
+            self._stop_combat_auto()
             # 退出副本
             self.outScript(
                 self.get_resource_path(
                     "serveAssets/images/zhanhun/lianyu2.bmp"))
             return True
         else:
+            # 停止战斗自动操作
+            self._stop_combat_auto()
             # 退出副本
             self.outScript(
                 self.get_resource_path(
@@ -16895,7 +16995,7 @@ class MyDialog(wx.Dialog):
         # '全打','全打',
         choices = ['龙+全打', '全打', '走路']
         if has_script != 'all' and '整点' not in has_script:
-            choices = ['龙+全打',
+            choices = ['全打',
                        '走路']
         self.choiceZhengdian = wx.ComboBox(
             panel,
@@ -16921,7 +17021,7 @@ class MyDialog(wx.Dialog):
                    '整', '全']
         for option in options:
             if option == '整' and has_script == 'free':
-                # self.cb.Disable()
+                self.cb.Disable()
                 continue
             self.cb = wx.CheckBox(
                 panel,
