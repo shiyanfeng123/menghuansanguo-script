@@ -6156,13 +6156,18 @@ class MyThread(threading.Thread):
             sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
             # 添加找两次图片的逻辑
             if not sx_pos:
-                sx_pos = self.find_pic_or_str(f"{self.get_resource_path('serveAssets/images/zhengdian/newlong.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/newlong2.bmp')}", self.gameBottomLocation, 0)
+                sx_pos = self.find_pic_or_str(
+                    f"{self.get_resource_path('serveAssets/images/zhengdian/newlong.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/newlong2.bmp')}",
+                    self.gameBottomLocation, 0)
             if sx_pos and last_y != sx_pos.y:
                 self.dm.KeyPressChar('left')
-                sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
+                sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation,
+                                              0)
                 # 添加找两次图片的逻辑
                 if not sx_pos:
-                    sx_pos = self.find_pic_or_str(f"{self.get_resource_path('serveAssets/images/zhengdian/newlong.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/newlong2.bmp')}", self.gameBottomLocation, 0)    
+                    sx_pos = self.find_pic_or_str(
+                        f"{self.get_resource_path('serveAssets/images/zhengdian/newlong.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/newlong2.bmp')}",
+                        self.gameBottomLocation, 0)
                 self.dm.MoveTo(int(sx_pos.x + 5), int(sx_pos.y + 5))
                 time.sleep(0.001)
                 self.dm.LeftClick()
@@ -6189,7 +6194,8 @@ class MyThread(threading.Thread):
                             break
                         self.confidenceNum = 0.6
                         if self.find_pic(
-                                self.get_resource_path('serveAssets/images/zdzd111.bmp'),
+                                self.get_resource_path(
+                                    'serveAssets/images/zdzd111.bmp'),
                                 self.gameLocation,
                                 0
                         ):
@@ -16552,8 +16558,15 @@ class MyFrame(wx.Frame):
             "矿产",
             "龙岛",
             "抢龙",
+            # "刷孙策",
             "龙王令",
+            "引魔符",
+            "49日常",
+            "49战魂",
+            "49整点",
             "名将闯关",
+            "怪物攻城",
+            "挂机+整点",
             "西瓜保卫战",
             "炼狱战魂楼",
             "战魂楼(精英)",
@@ -17219,7 +17232,7 @@ class MyDialog(wx.Dialog):
                    '整', '全']
         for option in options:
             if option == '整' and has_script == 'free':
-                self.cb.Disable()
+                # self.cb.Disable()
                 continue
             self.cb = wx.CheckBox(
                 panel,
