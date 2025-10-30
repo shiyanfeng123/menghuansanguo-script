@@ -6153,7 +6153,7 @@ class MyThread(threading.Thread):
         find_left_flag = False
         last_y = 0
         while True:
-            sx_pos = self.find_pic_or_str(find_sx, self.gameLocation, 0)
+            sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
             # 添加找两次图片的逻辑
             if not sx_pos:
                 sx_pos = self.find_pic_or_str(self.get_resource_path(
@@ -6162,10 +6162,10 @@ class MyThread(threading.Thread):
                 if not sx_pos:
                     sx_pos = self.find_pic_or_str(self.get_resource_path(
                         'serveAssets/images/zhengdian/newlong1.bmp'),
-                        self.gameLocation, 0)
+                        self.gameBottomLocation, 0)
             if sx_pos and last_y != sx_pos.y:
                 self.dm.KeyPressChar('left')
-                sx_pos = self.find_pic_or_str(find_sx, self.gameLocation, 0)
+                sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
                 # 添加找两次图片的逻辑
                 if not sx_pos:
                     sx_pos = self.find_pic_or_str(self.get_resource_path(
@@ -6174,7 +6174,7 @@ class MyThread(threading.Thread):
                     if not sx_pos:
                         sx_pos = self.find_pic_or_str(self.get_resource_path(
                             'serveAssets/images/zhengdian/newlong1.bmp'),
-                            self.gameLocation, 0)
+                            self.gameBottomLocation, 0)
                 self.dm.MoveTo(int(sx_pos.x + 5), int(sx_pos.y + 5))
                 time.sleep(0.001)
                 self.dm.LeftClick()

@@ -54,7 +54,8 @@ class CombatAutoScript:
 			'清除状态': 'serveAssets/images/skills/cleanse.bmp',
 			
 			# 输出武将技能
-			'武将群体攻击': 'serveAssets/images/skills/general_group.bmp',
+			'武将群体攻击1': 'serveAssets/images/skills/general_group1.bmp',
+			'武将群体攻击2': 'serveAssets/images/skills/general_group2.bmp',
 		}
 		
 		# 物品图片
@@ -87,7 +88,8 @@ class CombatAutoScript:
 			'主角群体攻击2': 3,   # 3回合CD
 			'主角群体攻击3': 2,   # 2回合CD
 			# 武将技能
-			'武将群体攻击': 0,     # 无CD
+			'武将群体攻击1': 0,     # 无CD
+			'武将群体攻击2': 0,     # 无CD
 		}
 		
 		# 药品CD配置
@@ -127,12 +129,20 @@ class CombatAutoScript:
 			# 可以添加更多敌人的图片路径
 		}
 		
-		# 主角图片路径（用于检测主角存活状态）
+		# 主角图片路径（用于检测主角位置，存活状态通过墓碑检测）
 		self.main_char_images = {
 			'主角1': 'serveAssets/images/chars/char1.bmp',
 			'主角2': 'serveAssets/images/chars/char2.bmp',
 			'主角3': 'serveAssets/images/chars/char3.bmp',
 		}
+		
+		# 墓碑图片路径（用于检测单位死亡状态）
+		# 单位死亡后会在原地显示墓碑，通过检测墓碑来判断死亡
+		self.tombstone_image = 'serveAssets/images/ui/tombstone.bmp'  # 墓碑图片
+		
+		# 墓碑检测区域大小（以单位位置为中心的区域）
+		# 用于在单位位置附近检测墓碑，避免位置偏移导致的检测失败
+		self.tombstone_detection_radius = 30  # 墓碑检测半径（像素）
 		
 		# 背包武将图片（用于检测背包中是否有可用武将）
 		self.bag_general_images = {
@@ -312,6 +322,35 @@ class CombatAutoScript:
 		except (ValueError, TypeError) as e:
 			print(f"判断回合状态时出错: {e}")
 		return False
+	
+	def check_tombstone_at_position(self, dm_object, pos_x, pos_y):
+		"""
+		检查指定位置是否有墓碑（判断单位是否死亡）
+		:param dm_object: 大漠对象
+		:param pos_x: 位置X坐标
+		:param pos_y: 位置Y坐标
+		:return: True if 检测到墓碑（死亡），False if 未检测到（存活）
+		"""
+		if not dm_object or not self.tombstone_image:
+			return False
+		
+		# 在单位位置附近检测墓碑（使用检测半径）
+		radius = self.tombstone_detection_radius
+		detection_region = (
+			max(0, int(pos_x - radius)),
+			max(0, int(pos_y - radius)),
+			int(radius * 2),
+			int(radius * 2)
+		)
+		
+		try:
+			x, y, w, h = detection_region
+			pos = dm_object.FindPic(x, y, w, h, self.tombstone_image, "000000", 0.9, 0)
+			# 如果找到墓碑，说明单位已死亡
+			return pos and len(pos) > 0
+		except Exception as e:
+			print(f"检测墓碑时出错: {e}")
+			return False
 		
 	def find_general(self, general_name, account_index):
 		"""
@@ -343,10 +382,30 @@ class CombatAutoScript:
 					# 修复：验证是否为有效数字
 					pos_x = int(pos_list[0])
 					pos_y = int(pos_list[1])
+					
+					# 检查该位置是否有墓碑
+					if self.check_tombstone_at_position(dm_object, pos_x, pos_y):
+						# 检测到墓碑，说明武将已死亡
+						print(f"账号{account_index} 武将 {general_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
+						return False
+					
+					# 未检测到墓碑，说明武将存活
 					return ResXy(pos_x, pos_y)
 			except (ValueError, IndexError) as e:
 				print(f"解析武将 {general_name} 位置失败: {pos}, 错误: {e}")
 				return False
+		
+		# 如果未找到武将图片，检查之前保存的位置是否有墓碑
+		if account_index in self.unit_positions:
+			for saved_general_name, saved_x, saved_y in self.unit_positions[account_index].get('generals', []):
+				if saved_general_name == general_name:
+					# 检查保存的位置是否有墓碑
+					if self.check_tombstone_at_position(dm_object, saved_x, saved_y):
+						print(f"账号{account_index} 武将 {general_name} 之前位置 ({saved_x}, {saved_y}) 检测到墓碑，已死亡")
+						return False
+					# 如果没有墓碑，可能还存活，但位置已改变，返回False让系统重新搜索
+					return False
+		
 		return False
 	
 	def find_main_char(self, char_name, account_index):
@@ -379,10 +438,31 @@ class CombatAutoScript:
 					# 修复：验证是否为有效数字
 					pos_x = int(pos_list[0])
 					pos_y = int(pos_list[1])
+					
+					# 检查该位置是否有墓碑
+					if self.check_tombstone_at_position(dm_object, pos_x, pos_y):
+						# 检测到墓碑，说明主角已死亡
+						print(f"账号{account_index} 主角 {char_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
+						return False
+					
+					# 未检测到墓碑，说明主角存活
 					return ResXy(pos_x, pos_y)
 			except (ValueError, IndexError) as e:
 				print(f"解析主角 {char_name} 位置失败: {pos}, 错误: {e}")
 				return False
+		
+		# 如果未找到主角图片，检查之前保存的位置是否有墓碑
+		# 这样可以检测到已死亡但位置已知的主角
+		if account_index in self.unit_positions:
+			for saved_char_name, saved_x, saved_y in self.unit_positions[account_index].get('main_chars', []):
+				if saved_char_name == char_name:
+					# 检查保存的位置是否有墓碑
+					if self.check_tombstone_at_position(dm_object, saved_x, saved_y):
+						print(f"账号{account_index} 主角 {char_name} 之前位置 ({saved_x}, {saved_y}) 检测到墓碑，已死亡")
+						return False
+					# 如果没有墓碑，可能还存活，但位置已改变，返回False让系统重新搜索
+					return False
+		
 		return False
 	
 	def detect_enemy_positions(self, account_index):
@@ -414,8 +494,16 @@ class CombatAutoScript:
 							# 修复：验证是否为有效数字
 							enemy_x = int(pos_list[0])
 							enemy_y = int(pos_list[1])
+							
+							# 检查该位置是否有墓碑
+							if self.check_tombstone_at_position(dm_object, enemy_x, enemy_y):
+								# 检测到墓碑，说明敌人已死亡，不添加到列表
+								print(f"账号{account_index} 敌人 {enemy_name} 位置 ({enemy_x}, {enemy_y}) 检测到墓碑，已死亡")
+								continue
+							
+							# 未检测到墓碑，说明敌人存活
 							enemy_positions.append((enemy_name, enemy_x, enemy_y))
-							print(f"账号{account_index} 检测到 {enemy_name} 位置: ({enemy_x}, {enemy_y})")
+							print(f"账号{account_index} 检测到存活 {enemy_name} 位置: ({enemy_x}, {enemy_y})")
 					except (ValueError, IndexError) as e:
 						print(f"解析敌人 {enemy_name} 位置失败: {pos}, 错误: {e}")
 						continue
@@ -1139,8 +1227,19 @@ class CombatAutoScript:
 			return
 			
 		if general_type == 'dps':
-			# 输出武将：使用群体攻击
-			self.use_skill_workflow('武将群体攻击', dm_object, target_type='enemy', account_index=account_index)
+			# 输出武将：使用群体攻击（尝试两个技能，都是无CD）
+			group_attack_skills = ['武将群体攻击1', '武将群体攻击2']
+			skill_used = False
+			
+			for skill_name in group_attack_skills:
+				# 尝试使用技能（由于都是无CD，会尝试使用<｜place▁holder▁no▁237｜>一个可用的）
+				if self.use_skill_workflow(skill_name, dm_object, target_type='enemy', account_index=account_index):
+					skill_used = True
+					break  # 成功使用一个技能后退出
+			
+			# 如果所有技能都不可用（理论上不应该发生，因为都是无CD），打印信息
+			if not skill_used:
+				print(f"账号{account_index} 输出武将的所有群体攻击技能都不可用")
 		elif general_type == 'support':
 			# 辅助武将（刘备）：按策略释放技能
 			has_status = self.has_enemy_status(account_index)
