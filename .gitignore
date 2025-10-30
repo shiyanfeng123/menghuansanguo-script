@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# PyInstaller
+build/
+dist/
+*.spec.bak
+*.pyz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.log
+*.tmp
+*.bak
+*.cache
+
+# 编译文件
+*.pyc
+*.pyo
+*.pyd
+
+# 打包产物
+*.exe
+*.dll
+*.pkg
+*.bmp
+*.png
+*.ico
+
+# 配置文件（如果需要忽略）
+# settings_config.json
+# data.txt
+
+# 文档（如果需要忽略）
+# *.md
+

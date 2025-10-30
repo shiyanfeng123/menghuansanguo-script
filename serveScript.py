@@ -1596,7 +1596,7 @@ class MyThread(threading.Thread):
                             jineng.y)
                         time.sleep(
                             0.001)
-                        self.dm.leftClick()
+                        self.dm.LeftClick()
                         time.sleep(
                             0.5)
                         # jineng = self.auto_move_and_click()
@@ -1613,7 +1613,7 @@ class MyThread(threading.Thread):
                                 383)
                         time.sleep(
                             0.001)
-                        self.dm.leftClick()
+                        self.dm.LeftClick()
                         time.sleep(
                             2)
                     jineng1 = self.find_pic(
@@ -1626,7 +1626,7 @@ class MyThread(threading.Thread):
                             jineng1.y)
                         time.sleep(
                             0.001)
-                        self.dm.leftClick()
+                        self.dm.LeftClick()
                         time.sleep(
                             1.5)
                         # jineng1 = self.auto_move_and_click()
@@ -1643,7 +1643,7 @@ class MyThread(threading.Thread):
                                 383)
                         time.sleep(
                             0.001)
-                        self.dm.leftClick()
+                        self.dm.LeftClick()
                     if jineng1 or jineng:
                         self.guajiFlag = True
                     # 193 294   190  383
@@ -1874,7 +1874,7 @@ class MyThread(threading.Thread):
                             jineng.y)
                         time.sleep(
                             0.001)
-                        self.win1_dm.leftClick()
+                        self.win1_dm.LeftClick()
                         time.sleep(
                             0.5)
                         # self.auto_move_and_click_team1()
@@ -1891,7 +1891,7 @@ class MyThread(threading.Thread):
                                 383)
                         time.sleep(
                             0.001)
-                        self.win1_dm.leftClick()
+                        self.win1_dm.LeftClick()
                         time.sleep(
                             2)
                     jineng1 = self.find_pic_team1(
@@ -1904,7 +1904,7 @@ class MyThread(threading.Thread):
                             jineng1.y)
                         time.sleep(
                             0.001)
-                        self.win1_dm.leftClick()
+                        self.win1_dm.LeftClick()
                         time.sleep(
                             0.5)
                         # self.auto_move_and_click_team1()
@@ -1921,7 +1921,7 @@ class MyThread(threading.Thread):
                                 383)
                         time.sleep(
                             0.001)
-                        self.win1_dm.leftClick()
+                        self.win1_dm.LeftClick()
                     if jineng1 or jineng:
                         self.guajiFlag1 = True
                 else:
@@ -1979,7 +1979,7 @@ class MyThread(threading.Thread):
             refresh_pos.x,
             refresh_pos.y)
         time.sleep(0.001)
-        self.win1_dm.leftClick()
+        self.win1_dm.LeftClick()
         time.sleep(0.001)
         self.win1_dm.KeyPressChar(
             'F5')
@@ -1998,7 +1998,7 @@ class MyThread(threading.Thread):
             in_game_pos.x,
             in_game_pos.y)
         time.sleep(2)
-        self.win1_dm.leftClick()
+        self.win1_dm.LeftClick()
         self.waitFor_team1(
             self.get_resource_path(
                 "serveAssets/images/mhlogo.bmp"),
@@ -2018,12 +2018,12 @@ class MyThread(threading.Thread):
                     checkCount):
                 time.sleep(
                     1.5)
-                self.win1_dm.leftClick()
+                self.win1_dm.LeftClick()
         time.sleep(1.5)
         self.win1_dm.MoveTo(
             440, 370)
         time.sleep(0.5)
-        self.win1_dm.leftClick()
+        self.win1_dm.LeftClick()
         self.waitFor_team1(
             self.get_resource_path(
                 "serveAssets/images/xiulian.bmp"),
@@ -2051,7 +2051,7 @@ class MyThread(threading.Thread):
                     in_team_pos.y)
                 time.sleep(
                     0.5)
-                self.win1_dm.leftClick()
+                self.win1_dm.LeftClick()
             jieshou = self.waitFor_team1(
                 self.get_resource_path(
                     "serveAssets/images/jieshou.bmp"),
@@ -2063,7 +2063,7 @@ class MyThread(threading.Thread):
                     jieshou.y)
                 time.sleep(
                     0.5)
-                self.win1_dm.leftClick()
+                self.win1_dm.LeftClick()
                 time.sleep(2)
                 self.win1_dm.KeyPressChar(
                     't')
@@ -2295,7 +2295,7 @@ class MyThread(threading.Thread):
                             jineng.y)
                         time.sleep(
                             0.001)
-                        self.win2_dm.leftClick()
+                        self.win2_dm.LeftClick()
                         time.sleep(
                             0.5)
                         # self.auto_move_and_click_team2()
@@ -2312,7 +2312,7 @@ class MyThread(threading.Thread):
                                 383)
                         time.sleep(
                             0.001)
-                        self.win2_dm.leftClick()
+                        self.win2_dm.LeftClick()
                         time.sleep(
                             2)
                     jineng1 = self.find_pic_team2(
@@ -2325,7 +2325,7 @@ class MyThread(threading.Thread):
                             jineng1.y)
                         time.sleep(
                             0.001)
-                        self.win2_dm.leftClick()
+                        self.win2_dm.LeftClick()
                         time.sleep(
                             0.5)
                         # self.auto_move_and_click_team2()
@@ -2342,7 +2342,7 @@ class MyThread(threading.Thread):
                                 383)
                         time.sleep(
                             0.001)
-                        self.win2_dm.leftClick()
+                        self.win2_dm.LeftClick()
                     if jineng1 or jineng:
                         self.guajiFlag2 = True
                 else:
@@ -2401,7 +2401,7 @@ class MyThread(threading.Thread):
             refresh_pos.x,
             refresh_pos.y)
         time.sleep(0.001)
-        self.win2_dm.leftClick()
+        self.win2_dm.LeftClick()
         time.sleep(0.001)
         self.win2_dm.KeyPressChar(
             'F5')
@@ -2420,7 +2420,7 @@ class MyThread(threading.Thread):
             in_game_pos.x,
             in_game_pos.y)
         time.sleep(2)
-        self.win2_dm.leftClick()
+        self.win2_dm.LeftClick()
         self.waitFor_team2(
             self.get_resource_path(
                 "serveAssets/images/mhlogo.bmp"),
@@ -2440,12 +2440,12 @@ class MyThread(threading.Thread):
                     checkCount):
                 time.sleep(
                     1.5)
-                self.win2_dm.leftClick()
+                self.win2_dm.LeftClick()
         time.sleep(1.5)
         self.win2_dm.MoveTo(
             440, 370)
         time.sleep(0.5)
-        self.win2_dm.leftClick()
+        self.win2_dm.LeftClick()
         self.waitFor_team2(
             self.get_resource_path(
                 "serveAssets/images/xiulian.bmp"),
@@ -2473,7 +2473,7 @@ class MyThread(threading.Thread):
                     in_team_pos.y)
                 time.sleep(
                     0.5)
-                self.win2_dm.leftClick()
+                self.win2_dm.LeftClick()
             jieshou = self.waitFor_team2(
                 self.get_resource_path(
                     "serveAssets/images/jieshou.bmp"),
@@ -2485,7 +2485,7 @@ class MyThread(threading.Thread):
                     jieshou.y)
                 time.sleep(
                     0.5)
-                self.win2_dm.leftClick()
+                self.win2_dm.LeftClick()
                 time.sleep(2)
                 self.win2_dm.KeyPressChar(
                     't')
@@ -6156,25 +6156,13 @@ class MyThread(threading.Thread):
             sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
             # 添加找两次图片的逻辑
             if not sx_pos:
-                sx_pos = self.find_pic_or_str(self.get_resource_path(
-                    'serveAssets/images/zhengdian/newlong.bmp'),
-                    self.gameBottomLocation, 0)
-                if not sx_pos:
-                    sx_pos = self.find_pic_or_str(self.get_resource_path(
-                        'serveAssets/images/zhengdian/newlong1.bmp'),
-                        self.gameBottomLocation, 0)
+                sx_pos = self.find_pic_or_str(f"{self.get_resource_path('serveAssets/images/zhengdian/newlong.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/newlong2.bmp')}", self.gameBottomLocation, 0)
             if sx_pos and last_y != sx_pos.y:
                 self.dm.KeyPressChar('left')
                 sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
                 # 添加找两次图片的逻辑
                 if not sx_pos:
-                    sx_pos = self.find_pic_or_str(self.get_resource_path(
-                        'serveAssets/images/zhengdian/newlong.bmp'),
-                        self.gameBottomLocation, 0)
-                    if not sx_pos:
-                        sx_pos = self.find_pic_or_str(self.get_resource_path(
-                            'serveAssets/images/zhengdian/newlong1.bmp'),
-                            self.gameBottomLocation, 0)
+                    sx_pos = self.find_pic_or_str(f"{self.get_resource_path('serveAssets/images/zhengdian/newlong.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/newlong2.bmp')}", self.gameBottomLocation, 0)    
                 self.dm.MoveTo(int(sx_pos.x + 5), int(sx_pos.y + 5))
                 time.sleep(0.001)
                 self.dm.LeftClick()
@@ -6190,7 +6178,7 @@ class MyThread(threading.Thread):
                         int(has_zhengdian.y + 5))
                     time.sleep(
                         0.001)
-                    self.dm.leftClick()
+                    self.dm.LeftClick()
                     queryTime = time.time()
                     while True:
                         with condition:
@@ -6199,14 +6187,14 @@ class MyThread(threading.Thread):
                         if time.time() - queryTime > 5:
                             zhengdianHas = False
                             break
+                        self.confidenceNum = 0.6
                         if self.find_pic(
-                                f"{self.get_resource_path('serveAssets/images/zdzd.bmp')}|{self.get_resource_path('serveAssets/images/zdzd111.bmp')}",
+                                self.get_resource_path('serveAssets/images/zdzd111.bmp'),
                                 self.gameLocation,
                                 0
                         ):
                             zhengdianHas = True
                             break
-                        self.confidenceNum = 0.6
                         yourendaLocation1 = self.find_pic(
                             f"{self.get_resource_path('serveAssets/images/zhengdian/beitiaozhan.bmp')}",
                             self.gameBottomLocation,
@@ -6436,7 +6424,7 @@ class MyThread(threading.Thread):
                             int(is_zhengdian.y + 5))
                         time.sleep(
                             0.001)
-                        self.dm.leftClick()
+                        self.dm.LeftClick()
                         hasZhengDian = True
                         break
                 # is_zhengdian = self.find_str('打就打2', self.gameBottomLocation, 1)
@@ -6446,7 +6434,7 @@ class MyThread(threading.Thread):
                 # 	self.hasZhengDianCount -= 1
                 # 	self.dm.MoveTo(int(is_zhengdian.x + 5), int(is_zhengdian.y + 5))
                 # 	time.sleep(0.001)
-                # 	self.dm.leftClick()
+                # 	self.dm.LeftClick()
                 # 	hasZhengDian = True
                 # 	break
                 if hasZhengDian:
@@ -7867,7 +7855,7 @@ class MyThread(threading.Thread):
                 refresh_pos.x,
                 refresh_pos.y)
             time.sleep(0.001)
-            self.dm.leftClick()
+            self.dm.LeftClick()
             # self.dm.SetWindowState(hwnd, 1)
             time.sleep(0.5)
             self.dm.KeyPressChar(
@@ -7887,7 +7875,7 @@ class MyThread(threading.Thread):
                 in_game_pos.x,
                 in_game_pos.y)
             time.sleep(2)
-            self.dm.leftClick()
+            self.dm.LeftClick()
             self.waitFor(
                 self.get_resource_path(
                     "serveAssets/images/mhlogo.bmp"),
@@ -7907,12 +7895,12 @@ class MyThread(threading.Thread):
                         checkCount):
                     time.sleep(
                         1.5)
-                    self.dm.leftClick()
+                    self.dm.LeftClick()
             time.sleep(1.5)
             self.dm.MoveTo(
                 440, 370)
             time.sleep(0.5)
-            self.dm.leftClick()
+            self.dm.LeftClick()
             self.waitFor(
                 self.get_resource_path(
                     "serveAssets/images/xiulian.bmp"),
@@ -7951,7 +7939,7 @@ class MyThread(threading.Thread):
             role_list_pos.x,
             role_list_pos.y)
         time.sleep(1)
-        self.dm.leftClick()
+        self.dm.LeftClick()
         lv_pos = self.waitFor(
             self.get_resource_path(
                 "serveAssets/images/lv.bmp"),
@@ -7960,7 +7948,7 @@ class MyThread(threading.Thread):
             lv_pos.x,
             lv_pos.y)
         time.sleep(1)
-        self.dm.leftClick()
+        self.dm.LeftClick()
         yaoqing_pos = self.waitFor(
             self.get_resource_path(
                 "serveAssets/images/yaoqing.bmp"),
@@ -7970,7 +7958,7 @@ class MyThread(threading.Thread):
             yaoqing_pos.y)
         for i in range(10):
             time.sleep(0.2)
-            self.dm.leftClick()
+            self.dm.LeftClick()
         time.sleep(5)
         self.yaoqingFlag = True
         myteam_pos = self.waitFor(
@@ -7981,7 +7969,7 @@ class MyThread(threading.Thread):
             myteam_pos.x,
             myteam_pos.y)
         time.sleep(1)
-        self.dm.leftClick()
+        self.dm.LeftClick()
         time.sleep(2)
         team1_loc = self.waitForTwo(
             self.get_resource_path(
@@ -7994,13 +7982,13 @@ class MyThread(threading.Thread):
             self.dm.MoveTo(
                 410, 310)
             time.sleep(1)
-            self.dm.leftClick()
+            self.dm.LeftClick()
             time.sleep(1)
             self.dm.MoveTo(
                 yaoqing_pos.x,
                 yaoqing_pos.y)
             time.sleep(0.2)
-            self.dm.leftClick()
+            self.dm.LeftClick()
         team2_loc = self.waitForTwo(
             self.get_resource_path(
                 'serveAssets/images/team_mate1.bmp'),
@@ -8012,13 +8000,13 @@ class MyThread(threading.Thread):
             self.dm.MoveTo(
                 410, 310)
             time.sleep(1)
-            self.dm.leftClick()
+            self.dm.LeftClick()
             time.sleep(1)
             self.dm.MoveTo(
                 yaoqing_pos.x,
                 yaoqing_pos.y)
             time.sleep(0.2)
-            self.dm.leftClick()
+            self.dm.LeftClick()
         if not team1_loc or not team2_loc:
             self.check_team()
 
@@ -12567,16 +12555,16 @@ class MyThread(threading.Thread):
         if r == 1:
             self.dm.MoveTo(x, y)
             time.sleep(0.001)
-            self.dm.leftClick()
+            self.dm.LeftClick()
         self.color_format = 'b@ffff00-000000'
         time.sleep(1)
         has_jixu = self.find_str('点击继续背景', self.gameBottomLocation, 0)
         self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
         if has_jixu:
             time.sleep(0.001)
-            self.dm.leftClick()
+            self.dm.LeftClick()
             time.sleep(0.5)
-            self.dm.leftClick()
+            self.dm.LeftClick()
         time.sleep(1)
         dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.8,
                                     0)
@@ -12626,9 +12614,9 @@ class MyThread(threading.Thread):
             self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
             if has_jixu:
                 time.sleep(0.001)
-                self.dm.leftClick()
+                self.dm.LeftClick()
                 time.sleep(0.5)
-                self.dm.leftClick()
+                self.dm.LeftClick()
             time.sleep(1)
             dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000",
                                         0.8,
@@ -12683,9 +12671,9 @@ class MyThread(threading.Thread):
             self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
             if has_jixu:
                 time.sleep(0.001)
-                self.dm.leftClick()
+                self.dm.LeftClick()
                 time.sleep(0.5)
-                self.dm.leftClick()
+                self.dm.LeftClick()
             time.sleep(1)
             dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000",
                                         0.8,
