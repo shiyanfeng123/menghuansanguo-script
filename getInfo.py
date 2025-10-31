@@ -1,3 +1,4 @@
+import time
 import wx
 import psutil
 import uuid
@@ -16,7 +17,7 @@ class DeviceInfoFrame(wx.Frame):
 		self.info_text = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY)
 		vbox.Add(self.info_text, proportion=1, flag=wx.EXPAND | wx.ALL, border=10)
 
-		btn = wx.Button(panel, label="获取MAC 地址")
+		btn = wx.Button(panel, label="获取MAC 地址并复制")
 		btn.Bind(wx.EVT_BUTTON, self.on_get_info)
 		vbox.Add(btn, flag=wx.ALIGN_CENTER | wx.TOP | wx.BOTTOM, border=10)
 
@@ -26,8 +27,20 @@ class DeviceInfoFrame(wx.Frame):
 		hardware_serial = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
 		mac_address = self.get_mac_address()
 
-		info_str = f"MAC 地址1：{hardware_serial}\nMAC 地址2：{mac_address}"
+		info_str = f"{hardware_serial}\n{mac_address}"
 		self.info_text.SetValue(info_str)
+		
+		# 复制到剪切板
+		self.copy_to_clipboard(info_str)
+		time.sleep(0.5)
+		# 提示用户
+		wx.MessageBox("MAC地址已复制到剪切板！", "提示", wx.OK | wx.ICON_INFORMATION)
+	
+	def copy_to_clipboard(self, text):
+		"""将文本复制到剪切板"""
+		if wx.TheClipboard.Open():
+			wx.TheClipboard.SetData(wx.TextDataObject(text))
+			wx.TheClipboard.Close()
 
 	def get_mac_address(self):
 		# 使用 psutil 获取所有网络接口信息
