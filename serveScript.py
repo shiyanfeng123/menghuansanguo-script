@@ -778,6 +778,19 @@ class MyThread(threading.Thread):
                 if self.overed:
                     return
                 self.chuansongfuScript()
+        elif self.scriptName == "帮派任务":
+            # 进入帮派大本营
+            self.findAndClickPic(
+                self.get_resource_path("serveAssets/images/zhongxin.bmp"),
+                f"{self.get_resource_path('serveAssets/images/longdao/bangpai.bmp')}|{self.get_resource_path('serveAssets/images/longdao/bangpai1.bmp')}",
+                '帮派大本营',
+                self.gameBottomLocation,
+                self.get_resource_path("serveAssets/images/longdao/dabenying.bmp"),
+                self.dituLocation,
+                "0.107,0.156"
+            )
+            for i in range(22):
+                self.bangpaiRW()
 
     def is_user_valid(self):
         if self.overed:
@@ -12521,8 +12534,13 @@ class MyThread(threading.Thread):
         self.waitFor(
             '退出挂机|城西',
             self.gameLocation)
+        is_in_chengxi = self.waitFor(
+            '城西',
+            self.dituLocation,2)
+        if is_in_chengxi:
+            return False
         self.findAndClickPic(
-            '名战殿|城西',
+            '名战殿',
             '离开',
             '名将使者',
             self.gameLocation,
@@ -12534,20 +12552,19 @@ class MyThread(threading.Thread):
 
     # 帮派任务
     def bangpaiRW(self):
+        """帮派任务自动化执行方法
+        
+        功能：
+        1. 导航到帮派大本营
+        2. 查找并点击任务目标（偷盗小贼、挑战者、谣言传播者、西凉马贼、灵宝凶兽）
+        3. 处理对话框和交互按钮
+        """
+        # 常量定义
+        TARGET_PATTERN = '偷盗小贼|挑战者|谣言传播者|西凉马贼|灵宝凶兽'
+        BUTTON_COLOR = "ffff00-000000"
+        COLOR_SIM = 0.8
         self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/zhongxin.bmp"),
-            f"{self.get_resource_path('serveAssets/images/longdao/bangpai.bmp')}|{self.get_resource_path('serveAssets/images/longdao/bangpai1.bmp')}",
-            '帮派大本营',
-            self.gameBottomLocation,
-            self.get_resource_path(
-                "serveAssets/images/longdao/dabenying.bmp"),
-            self.dituLocation,
-            "0.107,0.156"
-        )
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/longdao/dabenying.bmp"),
+            self.get_resource_path("serveAssets/images/longdao/dabenying.bmp"),
             self.get_resource_path('serveAssets/images/longdao/guanjia1.bmp'),
             self.get_resource_path('serveAssets/images/longdao/guanjia.bmp'),
             self.gameLocation,
@@ -12555,13 +12572,45 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
             "0.107,0.156"
         )
-        time.sleep(1)
-        dm_ret = self.dm.FindColor(249, 362, 291, 374, "ffff00-000000", 0.8, 0)
-        x, y, r = dm_ret
-        if r == 1:
-            self.dm.MoveTo(x, y)
-            time.sleep(0.001)
-            self.dm.LeftClick()
+        # 点击第一个按钮
+        self._click_color_button(249, 362, 291, 374, BUTTON_COLOR, COLOR_SIM)
+        # 处理"点击继续"对话框
+        self._handle_continue_dialog()
+        # 点击第二个按钮（可能需要双击）
+        self._click_color_button(249, 340, 291, 352, BUTTON_COLOR, COLOR_SIM, double_click=True)
+        # 判断是否在帮派大本营页面
+        if self.waitFor('帮派大本营', self.gameBottomLocation, 3):
+            self._handle_in_camp_scenario(TARGET_PATTERN, BUTTON_COLOR, COLOR_SIM)
+        else:
+            self._handle_outside_camp_scenario(TARGET_PATTERN, BUTTON_COLOR, COLOR_SIM)
+    
+    def _click_color_button(self, x1, y1, x2, y2, color, sim, double_click=False, timeout=3):
+        """点击指定区域内的颜色按钮
+        
+        Args:
+            x1, y1, x2, y2: 查找区域坐标
+            color: 颜色值
+            sim: 相似度
+            double_click: 是否双击
+            timeout: 等待颜色出现的超时时间（秒），默认3秒
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            dm_ret = self.dm.FindColor(x1, y1, x2, y2, color, sim, 0)
+            x, y, r = dm_ret
+            if r == 1:
+                self.dm.MoveTo(x, y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                if double_click:
+                    time.sleep(0.5)
+                    self.dm.LeftClick()
+                return True
+            time.sleep(0.1)  # 每次查找间隔0.1秒，避免CPU占用过高
+        return False
+    
+    def _handle_continue_dialog(self):
+        """处理"点击继续"对话框"""
         self.color_format = 'b@ffff00-000000'
         time.sleep(1)
         has_jixu = self.find_str('点击继续背景', self.gameBottomLocation, 0)
@@ -12571,159 +12620,146 @@ class MyThread(threading.Thread):
             self.dm.LeftClick()
             time.sleep(0.5)
             self.dm.LeftClick()
-        time.sleep(1)
-        dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.8,
-                                    0)
-        x, y, r = dm_ret1
-        if r == 1:
-            self.dm.MoveTo(x, y)
-            time.sleep(0.001)
-            self.dm.LeftClick()
+    
+    def _click_feixie_with_wait(self, task_name, timeout=3):
+        """在指定时间内等待并点击飞鞋
+        
+        Args:
+            task_name: 任务名称，用于查找飞鞋
+            timeout: 等待超时时间（秒），默认3秒
+            
+        Returns:
+            bool: 是否成功找到并点击了飞鞋
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            feixie_pos = self.fing_fei_in_image_or_str(
+                task_name,
+                self.gameLocation,
+                self.gameLocation,
+                self.get_resource_path('serveAssets/images/fei3.bmp')
+            )
+            if feixie_pos:
+                self.dm.MoveTo(feixie_pos.x, feixie_pos.y)
+                time.sleep(0.5)
+                self.dm.LeftClick()
+                return True
+            time.sleep(0.1)  # 每次查找间隔0.1秒，避免CPU占用过高
+        return False
+    
+    def _find_and_click_target(self, target_pattern, search_region=None):
+        """查找并点击任务目标
+        
+        Args:
+            target_pattern: 目标匹配模式
+            search_region: 搜索区域，默认为None时使用默认区域
+            
+        Returns:
+            bool: 是否找到并点击了目标
+        """
+        if search_region:
+            find_mubiao = self.find_pic_or_str(target_pattern, search_region, 0)
+        else:
+            find_mubiao = self.find_pic_or_str(target_pattern)
+        
+        if find_mubiao:
+            self.dm.MoveTo(int(find_mubiao.x + 5), int(find_mubiao.y + 5))
             time.sleep(0.5)
             self.dm.LeftClick()
+            return True
+        return False
+    
+    def _find_target_with_movement(self, target_pattern):
+        """通过移动来查找目标（左移->右移的顺序）
+        
+        Args:
+            target_pattern: 目标匹配模式
+            
+        Returns:
+            bool: 是否找到并点击了目标
+        """
+        # 首先尝试直接查找
+        if self._find_and_click_target(target_pattern, self.gameBottomLocation):
+            return True
+        
+        # 尝试左移后查找
+        self.dm.KeyDownChar('left')
+        time.sleep(2)
+        self.dm.KeyUpChar('left')
+        if self._find_and_click_target(target_pattern):
+            return True
+        
+        # 尝试右移后查找
+        self.dm.KeyDownChar('right')
+        time.sleep(4.5)
+        self.dm.KeyUpChar('right')
+        if self._find_and_click_target(target_pattern):
+            return True
+        
+        return False
+    
+    def _handle_in_camp_scenario(self, target_pattern, button_color, color_sim):
+        """处理在帮派大本营内的场景"""
+        # 查找并点击目标
+        if not self._find_target_with_movement(target_pattern):
+            return
+        
         time.sleep(1)
-        if self.find_str('帮派大本营', self.gameBottomLocation, 0):
-            find_mubiao = self.find_pic_or_str(
-                '偷盗小贼|挑战者|谣言传播者|西凉马贼|灵宝凶兽',
-                self.gameBottomLocation, 0)
-            if find_mubiao:
-                self.dm.MoveTo(int(find_mubiao.x + 5), int(find_mubiao.y + 5))
-                time.sleep(0.5)
-                self.dm.LeftClick()
-            else:
-                self.dm.KeyDownChar('left')
-                time.sleep(2)
-                self.dm.KeyUpChar('left')
-                find_mubiao = self.find_pic_or_str(
-                    '偷盗小贼|挑战者|谣言传播者|西凉马贼|灵宝凶兽')
-                if find_mubiao:
-                    self.dm.MoveTo(int(find_mubiao.x + 5),
-                                   int(find_mubiao.y + 5))
-                    time.sleep(0.5)
-                    self.dm.LeftClick()
-                else:
-                    self.dm.KeyDownChar('right')
-                    time.sleep(4.5)
-                    self.dm.KeyUpChar('right')
-                    find_mubiao = self.find_pic_or_str(
-                        '偷盗小贼|挑战者|谣言传播者|西凉马贼|灵宝凶兽')
-                    if find_mubiao:
-                        self.dm.MoveTo(int(find_mubiao.x + 5),
-                                       int(find_mubiao.y + 5))
-                        time.sleep(0.5)
-                        self.dm.LeftClick()
-                    else:
-                        return
-            time.sleep(1)
-            self.color_format = 'b@ffff00-000000'
-            has_jixu = self.find_str('点击继续背景', self.gameBottomLocation, 0)
-            self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
-            if has_jixu:
-                time.sleep(0.001)
-                self.dm.LeftClick()
-                time.sleep(0.5)
-                self.dm.LeftClick()
-            time.sleep(1)
-            dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000",
-                                        0.8,
-                                        0)
-            x, y, r = dm_ret1
-            if r == 1:
-                self.dm.MoveTo(x, y)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-            self.findAndClickPic(
-                self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),
-                self.get_resource_path(
-                    'serveAssets/images/longdao/guanjia1.bmp'),
-                self.get_resource_path(
-                    'serveAssets/images/longdao/guanjia.bmp'),
-                self.gameLocation,
-                '帮派大本营',
-                self.gameBottomLocation,
-                "0.107,0.156"
-            )
-            time.sleep(1)
-            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
-                                        0.8,
-                                        0)
-            x, y, r = dm_ret1
-            if r == 1:
-                self.dm.MoveTo(x, y)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
-                                        0.8,
-                                        0)
-            x, y, r = dm_ret1
-            if r == 1:
-                self.dm.MoveTo(x, y)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-        else:
-            feixie_pos = self.fing_fei_in_image_or_str('帮派任务',
-                                                       self.gameLocation,
-                                                       self.gameLocation,
-                                                       self.get_resource_path(
-                                                           'serveAssets/images/fei3.bmp'), )
-            if feixie_pos:
-                self.dm.MoveTo(feixie_pos.x, feixie_pos.y)
-                time.sleep(0.5)
-                self.dm.LeftClick()
-            time.sleep(1)
-            self.color_format = 'b@ffff00-000000'
-            has_jixu = self.find_str('点击继续背景', self.gameBottomLocation, 0)
-            self.color_format = 'ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000'
-            if has_jixu:
-                time.sleep(0.001)
-                self.dm.LeftClick()
-                time.sleep(0.5)
-                self.dm.LeftClick()
-            time.sleep(1)
-            dm_ret1 = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000",
-                                        0.8,
-                                        0)
-            x, y, r = dm_ret1
-            if r == 1:
-                self.dm.MoveTo(x, y)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-            self.confidenceNum = 0.6
-            self.waitFor(
-                self.get_resource_path('serveAssets/images/zdzd111.bmp'),
-                self.gameBottomLocation)
-            self.waitFor(self.get_resource_path('serveAssets/images/fei3.bmp'),
-                         self.gameBottomLocation)
-            self.confidenceNum = 0.9
-            time.sleep(1)
-            feixie_pos = self.fing_fei_in_image_or_str('帮派任务',
-                                                       self.gameLocation,
-                                                       self.gameLocation,
-                                                       self.get_resource_path(
-                                                           'serveAssets/images/fei3.bmp'))
-            if feixie_pos:
-                self.dm.MoveTo(feixie_pos.x, feixie_pos.y)
-                time.sleep(0.5)
-                self.dm.LeftClick()
-            self.waitFor('帮派大本营', self.dituLocation)
-            time.sleep(1)
-            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
-                                        0.8,
-                                        0)
-            x, y, r = dm_ret1
-            if r == 1:
-                self.dm.MoveTo(x, y)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-            dm_ret1 = self.dm.FindColor(249, 340, 291, 374, "ffff00-000000",
-                                        0.8,
-                                        0)
-            x, y, r = dm_ret1
-            if r == 1:
-                self.dm.MoveTo(x, y)
-                time.sleep(0.001)
-                self.dm.LeftClick()
+        # 处理继续对话框
+        self._handle_continue_dialog()
+        
+        # 点击按钮
+        time.sleep(1)
+        self._click_color_button(249, 340, 291, 352, button_color, color_sim)
+        
+        # 返回管家
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/longdao/dabenying.bmp"),
+            self.get_resource_path('serveAssets/images/longdao/guanjia1.bmp'),
+            self.get_resource_path('serveAssets/images/longdao/guanjia.bmp'),
+            self.gameLocation,
+            '帮派大本营',
+            self.gameBottomLocation,
+            "0.107,0.156"
+        )
+        
+        time.sleep(1)
+        # 双击确认按钮（可能需要进行两次）
+        self._click_color_button(249, 340, 291, 374, button_color, color_sim)
+        self._click_color_button(249, 340, 291, 374, button_color, color_sim)
+    
+    def _handle_outside_camp_scenario(self, target_pattern, button_color, color_sim):
+        """处理不在帮派大本营的场景（通过飞鞋传送）"""
+        # 点击飞鞋（3秒内等待）
+        self._click_feixie_with_wait('帮派任务', timeout=3)
+        
+        time.sleep(1)
+        # 处理继续对话框
+        self._handle_continue_dialog()
+        # 点击按钮
+        self._click_color_button(249, 340, 291, 352, button_color, color_sim)
+        
+        # 等待加载完成
+        self.confidenceNum = 0.6
+        self.waitFor(
+            self.get_resource_path('serveAssets/images/zdzd111.bmp'),
+            self.gameBottomLocation
+        )
+        self.waitFor(
+            self.get_resource_path('serveAssets/images/fei3.bmp'),
+            self.gameBottomLocation
+        )
+        self.confidenceNum = 0.9
+        
+        time.sleep(1)
+        # 再次点击飞鞋（3秒内等待）
+        self._click_feixie_with_wait('帮派任务', timeout=3)
+        
+        # 等待进入帮派大本营
+        self.waitFor('帮派大本营', self.dituLocation)
+        # 双击确认按钮（可能需要进行两次）
+        self._click_color_button(249, 340, 291, 374, button_color, color_sim)
+        self._click_color_button(249, 340, 291, 374, button_color, color_sim)
 
     def auto_move_and_click1(
             self,
@@ -16538,6 +16574,7 @@ class MyFrame(wx.Frame):
             "49日常",
             "49战魂",
             "49整点",
+            "帮派任务",
             "名将闯关",
             "怪物攻城",
             "挂机+整点",
@@ -16564,6 +16601,7 @@ class MyFrame(wx.Frame):
             "49日常",
             "49战魂",
             "49整点",
+            "帮派任务",
             "名将闯关",
             "怪物攻城",
             "挂机+整点",
