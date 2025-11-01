@@ -386,9 +386,9 @@ def get_resource_path(self, relative_path):
 # dm.KeyUpChar('left')
 # dm.KeyDownChar('right')
 # time.sleep(5)
-dm_ret = dm.FindPicEx(0, 0, x, y,
-                      r"E:\project\python\serveAssets\images/fei3.bmp",
-                      "", similarity, 0)
+# dm_ret = dm.FindPicEx(0, 0, x, y,
+#                       r"E:\project\python\serveAssets\images/fei3.bmp",
+#                       "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
 # dm_ret3 = dm.FindPicEx(530, 0, 589, 580, r"E:\project\python\name1.bmp", "", similarity, 0)
 # # # #
@@ -396,7 +396,7 @@ dm_ret = dm.FindPicEx(0, 0, x, y,
 # print('res111', res111)
 # 249  342 391  352
 # dm_ret = dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.9, 0)
-print(dm_ret, 'dm_ret')
+# print(dm_ret, 'dm_ret')
 # x, y, r = dm_ret
 # print(x, y, r)
 # if r == 1:
@@ -637,8 +637,8 @@ dict_id = dm.SetDict(0,
 # print(f'字库加载成功，{dict_id},{dict_id1},{dict_id2}')
 # print(dm.GetDictCount(0), dm.GetDictCount(1), dm.GetDictCount(2))
 # 文字识别参数
-color_format = 'b@0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
-# color_format = "ffffff-000000"  # 右上角偏移色
+color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
+# color_format = "00ffff-000000"  # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 # color_format = 'ff0000-000000'
 # 切换到目标窗口
@@ -665,8 +665,8 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png")
-# find_str_result = dm.FindStrFastE(0, 0, x, y, '点击继续背景', color_format, sim)
-# print(f'FindStrFast 返回结果: {find_str_result}')
+find_str_result = dm.FindStrFastE(0, 0, x, y, '云端', color_format, sim)
+print(f'FindStrFast 返回结果: {find_str_result}')
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
