@@ -829,24 +829,80 @@ class MyThread(threading.Thread):
 
     def is_virtual_machine(
             self):
+        """
+        检测当前系统是否为虚拟机
+        兼容 Windows 10 和 Windows 11
+        """
         try:
-            cmd = 'wmic computersystem get manufacturer, model'
-            output = subprocess.check_output(
-                cmd,
-                shell=True,
-                text=True)
+            # 方法1：使用 PowerShell Get-CimInstance（Windows 10/11 兼容）
+            try:
+                # 创建启动信息，隐藏窗口（Windows 专用）
+                if sys.platform == 'win32':
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    startupinfo.wShowWindow = subprocess.SW_HIDE
+                    creation_flags = subprocess.CREATE_NO_WINDOW
+                else:
+                    startupinfo = None
+                    creation_flags = 0
+                
+                cmd = [
+                    'powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command',
+                    'Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Manufacturer, Model | Out-String'
+                ]
+                output = subprocess.check_output(
+                    cmd,
+                    shell=False,
+                    text=True,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                    startupinfo=startupinfo,
+                    creationflags=creation_flags)
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                # 方法2：回退到 Get-WmiObject（更兼容，但较慢）
+                try:
+                    # 创建启动信息，隐藏窗口（Windows 专用）
+                    if sys.platform == 'win32':
+                        startupinfo = subprocess.STARTUPINFO()
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        startupinfo.wShowWindow = subprocess.SW_HIDE
+                        creation_flags = subprocess.CREATE_NO_WINDOW
+                    else:
+                        startupinfo = None
+                        creation_flags = 0
+                    
+                    cmd = [
+                        'powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command',
+                        'Get-WmiObject -Class Win32_ComputerSystem | Select-Object -ExpandProperty Manufacturer, Model | Out-String'
+                    ]
+                    output = subprocess.check_output(
+                        cmd,
+                        shell=False,
+                        text=True,
+                        stderr=subprocess.DEVNULL,
+                        timeout=5,
+                        startupinfo=startupinfo,
+                        creationflags=creation_flags)
+                except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                    # 方法3：使用 platform 模块（最简单，但信息较少）
+                    import platform
+                    output = f"{platform.system()} {platform.machine()}"
+            
             vm_keywords = [
                 "VMware",
                 "VirtualBox",
                 "KVM", "QEMU",
                 "Xen",
                 "Bochs",
-                'Hyper-V']
+                'Hyper-V',
+                "Microsoft Corporation"]  # Hyper-V 的制造商
+            output_upper = output.upper()
             return any(
-                keyword in output
+                keyword.upper() in output_upper
                 for keyword in
                 vm_keywords)
         except Exception as e:
+            # 如果所有方法都失败，返回 False（非虚拟机）
             return False
 
     def findGame(self):
@@ -16710,24 +16766,80 @@ class MyFrame(wx.Frame):
 
     def is_virtual_machine(
             self):
+        """
+        检测当前系统是否为虚拟机
+        兼容 Windows 10 和 Windows 11
+        """
         try:
-            cmd = 'wmic computersystem get manufacturer, model'
-            output = subprocess.check_output(
-                cmd,
-                shell=True,
-                text=True)
+            # 方法1：使用 PowerShell Get-CimInstance（Windows 10/11 兼容）
+            try:
+                # 创建启动信息，隐藏窗口（Windows 专用）
+                if sys.platform == 'win32':
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    startupinfo.wShowWindow = subprocess.SW_HIDE
+                    creation_flags = subprocess.CREATE_NO_WINDOW
+                else:
+                    startupinfo = None
+                    creation_flags = 0
+                
+                cmd = [
+                    'powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command',
+                    'Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Manufacturer, Model | Out-String'
+                ]
+                output = subprocess.check_output(
+                    cmd,
+                    shell=False,
+                    text=True,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                    startupinfo=startupinfo,
+                    creationflags=creation_flags)
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                # 方法2：回退到 Get-WmiObject（更兼容，但较慢）
+                try:
+                    # 创建启动信息，隐藏窗口（Windows 专用）
+                    if sys.platform == 'win32':
+                        startupinfo = subprocess.STARTUPINFO()
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        startupinfo.wShowWindow = subprocess.SW_HIDE
+                        creation_flags = subprocess.CREATE_NO_WINDOW
+                    else:
+                        startupinfo = None
+                        creation_flags = 0
+                    
+                    cmd = [
+                        'powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command',
+                        'Get-WmiObject -Class Win32_ComputerSystem | Select-Object -ExpandProperty Manufacturer, Model | Out-String'
+                    ]
+                    output = subprocess.check_output(
+                        cmd,
+                        shell=False,
+                        text=True,
+                        stderr=subprocess.DEVNULL,
+                        timeout=5,
+                        startupinfo=startupinfo,
+                        creationflags=creation_flags)
+                except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                    # 方法3：使用 platform 模块（最简单，但信息较少）
+                    import platform
+                    output = f"{platform.system()} {platform.machine()}"
+            
             vm_keywords = [
                 "VMware",
                 "VirtualBox",
                 "KVM", "QEMU",
                 "Xen",
                 "Bochs",
-                'Hyper-V']
+                'Hyper-V',
+                "Microsoft Corporation"]  # Hyper-V 的制造商
+            output_upper = output.upper()
             return any(
-                keyword in output
+                keyword.upper() in output_upper
                 for keyword in
                 vm_keywords)
         except Exception as e:
+            # 如果所有方法都失败，返回 False（非虚拟机）
             return False
 
     def is_user_valid(self):

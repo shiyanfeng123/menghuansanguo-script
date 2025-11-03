@@ -26,37 +26,18 @@ import asyncio
 # 	print("Hello World!", count)
 
 
-# def register_dll(dll_path):
-# 	# 构建 regsvr32 命令，添加 /s 参数以静默运行
-# 	command = ['regsvr32', '/s', dll_path]
-# 	# 执行命令
-# 	subprocess.run(command, check=True, capture_output=True, text=True)
-#
-#
-# # 调用注册函数
-# from pyppeteer import launch
-#
-#
-# async def main():
-# 	browser = await launch(headless=True)
-# 	page = await browser.newPage()
-# 	await page.goto("http://game.mhsg.online")  # 替换为您的游戏网址
-#
-# 	# 在这里添加您需要的逻辑
-# 	# 例如等待游戏加载完成，或执行其他操作
-#
-# 	# 关闭浏览器
-# 	await browser.close()
-#
-#
-# asyncio.get_event_loop().run_until_complete(main())
-# return
-# dm_obj = ctypes.windll.LoadLibrary(r'E:\project\python\serveAssets\plugins\RegDll.dll')
-# location_dmreg = r'E:\project\python\serveAssets\plugins\dm.dll'
-# register_dll(location_dmreg)
-# dm_obj.DllRegisterServer(location_dmreg, 0)
+def register_dll(dll_path):
+	# 构建 regsvr32 命令，添加 /s 参数以静默运行
+	command = ['regsvr32', '/s', dll_path]
+	# 执行命令
+	subprocess.run(command, check=True, capture_output=True, text=True)
+dm_obj = ctypes.windll.LoadLibrary(r'D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\plugins\RegDll.dll')
+location_dmreg = r'D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\plugins\dm.dll'
+register_dll(location_dmreg)
+dm_obj.DllRegisterServer(location_dmreg, 0)
 dm = CreateObject('dm.dmsoft')
 print(dm.Ver())
+time.sleep(10)
 # 定义回调函数类型
 ENUMWINDOWSPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
 click_hwnd = 0
@@ -141,14 +122,14 @@ import zipfile
 import sys
 import shutil
 from pathlib import Path
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+# from bs4 import BeautifulSoup
+# from selenium import webdriver
+# from selenium.webdriver.common.by import By
+# from webdriver_manager.chrome import ChromeDriverManager
+# from selenium import webdriver
+# from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.chrome.options import Options
+# from webdriver_manager.chrome import ChromeDriverManager
 
 
 class UpdateVer():
@@ -629,15 +610,15 @@ class VersionDisplayFrame(wx.Frame):
 # 	app.MainLoop()
 # 释放内存
 # dm.FreeMem(memory_address)
-dict_id = dm.SetDict(0,
-                     r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
+# dict_id = dm.SetDict(0,
+#                      r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
 # dict_id1 = dm.SetDict(1, r"E:\project\python\serveAssets\fonts\team1.txt")  # 字库文件路径
 # dict_id2 = dm.SetDict(2, r"E:\project\python\serveAssets\fonts\team2.txt")  # 字库文件路径
 # dict_id2 = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\zhengdian.txt")  # 字库文件路径
 # print(f'字库加载成功，{dict_id},{dict_id1},{dict_id2}')
 # print(dm.GetDictCount(0), dm.GetDictCount(1), dm.GetDictCount(2))
 # 文字识别参数
-color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
+# color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
 # color_format = "00ffff-000000"  # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 # color_format = 'ff0000-000000'

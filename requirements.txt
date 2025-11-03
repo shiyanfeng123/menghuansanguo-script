@@ -5,4 +5,11 @@ comtypes>=1.2.0
 pyttsx3>=2.90
 requests>=2.28.0
 pyinstaller>=5.13.0
+importlib-metadata>=4.6
+altgraph
+packaging>=22.0
+pefile!=2024.8.26,>=2022.5.30
+pyinstaller-hooks-contrib>=2025.8
+pywin32-ctypes>=0.2.1
+zipp
 
