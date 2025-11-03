@@ -1506,15 +1506,16 @@ class MyThread(threading.Thread):
             # self.click_image(self.get_resource_path("serveAssets/images/dialog3.bmp"), self.confidenceNum, self.gameBottomLocation)
             # self.click_image(self.get_resource_path("serveAssets/images/fubenzudui.bmp"), self.confidenceNum, self.gameBottomLocation)
             # 关闭右边
-            # closeRight = self.click_image(
-            #     self.get_resource_path(
-            #         "serveAssets/images/closeRight.bmp"),
-            #     self.confidenceNum,
-            #     self.gameLocation,
-            # )
-            # if closeRight:
-            #     time.sleep(
-            #         0.5)
+            if self.scriptName != '帮派任务':
+                closeRight = self.click_image(
+                    self.get_resource_path(
+                        "serveAssets/images/closeRight.bmp"),
+                    self.confidenceNum,
+                    self.gameLocation,
+                )
+                if closeRight:
+                    time.sleep(
+                        0.5)
             # 点击拒绝
             self.click_image(
                 self.get_resource_path(
@@ -6204,7 +6205,7 @@ class MyThread(threading.Thread):
                     self.dm.MoveTo(int(sx_pos.x + 5), int(sx_pos.y + 5))
                     time.sleep(0.001)
                     self.dm.LeftClick()
-                    self.color_format = 'b@ffff00-000000'
+                    self.color_format = 'b@ffff00-000000|fff200-000000'
                     has_zhengdian = self.waitFor(
                         '打就打1',
                         self.gameBottomLocation,
@@ -6384,7 +6385,7 @@ class MyThread(threading.Thread):
                     item_y)
                 time.sleep(
                     0.1)
-                self.color_format = 'b@ffff00-000000'
+                self.color_format = 'b@ffff00-000000|fff200-000000'
                 is_zhengdian = None
                 while True:
                     if time.time() - find_zhengdian_time > 10:
@@ -7337,7 +7338,7 @@ class MyThread(threading.Thread):
                 fei_pos.x,
                 fei_pos.y)
             find_fei_time = time.time()
-            while not self.find_str(
+            while not self.find_pic_or_str(
                     find_address,
                     self.gameBottomLocation,
                     0):
@@ -8661,7 +8662,7 @@ class MyThread(threading.Thread):
         if self.overed:
             return
         # 进入第一层
-        self.color_format = 'b@0ff000-000000|00ff00-000000|ffff00-000000|0ff000-000000'
+        self.color_format = 'b@0ff000-000000|00ff00-000000|ffff00-000000|0ff000-000000|fff200-000000'
         self.waitForAAndClickB1(
             '曹操大帐',
             '进官渡1',
@@ -12109,7 +12110,7 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
         )
         self.confidenceNum = 0.6
-        self.color_format = 'b@ffff00-000000|0ff000-000000|00ff00-000000'
+        self.color_format = 'b@ffff00-000000|0ff000-000000|00ff00-000000|fff200-000000'
         self.findAndClickPic(
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/xinye.bmp"),
@@ -12191,7 +12192,7 @@ class MyThread(threading.Thread):
             "0.076,0.115"
         )
         self.confidenceNum = 0.6
-        self.color_format = 'b@ffff00-000000|0ff000-000000|00ff00-000000'
+        self.color_format = 'b@ffff00-000000|0ff000-000000|00ff00-000000|fff200-000000'
         self.findAndClickPic(
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/xinye.bmp"),
@@ -12251,7 +12252,7 @@ class MyThread(threading.Thread):
             "0.101,0.122"
         )
         self.confidenceNum = 0.6
-        self.color_format = 'b@ffff00-000000|0ff000-000000|00ff00-000000'
+        self.color_format = 'b@ffff00-000000|0ff000-000000|00ff00-000000|fff200-000000'
         self.findAndClickPic(
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/xinye.bmp"),
