@@ -143,7 +143,8 @@ class BattleReportDialog(wx.Frame):
                         self.log_text.ShowPosition(
                             self.log_text.GetLastPosition())
                         self.log_text.Refresh()
-                    except:
+                    except (AttributeError, RuntimeError) as e:
+                        # 忽略窗口已关闭或对象已销毁的错误
                         pass
             except Exception as e:
                 # 打印错误以便调试
@@ -183,14 +184,30 @@ class CombatAutoScript:
         """
         self.thread = thread_instance
         self.battle_report_dialog = None  # 战斗播报窗口
-        # self.turn_timeout = 0
-        # self.account_error_count = None
+        
+        # 线程安全锁（保护共享状态变量）
+        self._state_lock = threading.Lock()
+        
+        # 定时器引用（用于清理）
+        self._timer_refs = []
+        
+        # 回合超时和错误追踪（在__init__中初始化，避免未定义错误）
+        self.turn_timeout = 25  # 每个回合最大操作时间（秒）
+        self.turn_start_time = None  # 回合开始时间
+        self.account_error_count = {}  # {account_index: error_count} 追踪每个账号的错误次数（字典类型）
+        self.max_errors_per_turn = 5  # 每个回合最多允许的错误次数，超过则跳过回合
+        
         # 创建并显示战斗播报窗口（延迟创建，确保wx应用已初始化）
         try:
             # 使用定时器延迟创建，确保wx应用程序已经运行
-            threading.Timer(0.3, self._create_battle_report_dialog).start()
+            timer = threading.Timer(0.3, self._create_battle_report_dialog)
+            self._timer_refs.append(timer)
+            timer.start()
         except Exception as e:
             print(f"创建战斗播报窗口失败: {e}")
+        
+        # 初始化战斗区域和配置
+        self._init_combat_regions()
 
     def _create_battle_report_dialog(self):
         """创建战斗播报窗口（在主线程中调用）"""
@@ -208,7 +225,9 @@ class CombatAutoScript:
             print(f"创建战斗播报窗口时出错: {e}")
             # 如果wx还未初始化，再次尝试延迟创建
             if "wx" in str(e).lower() or "app" in str(e).lower():
-                threading.Timer(0.5, self._create_battle_report_dialog).start()
+                timer = threading.Timer(0.5, self._create_battle_report_dialog)
+                self._timer_refs.append(timer)
+                timer.start()
 
     def report_battle_info(self, message, msg_type="info"):
         """
@@ -221,7 +240,8 @@ class CombatAutoScript:
             try:
                 if hasattr(wx, 'GetApp') and wx.GetApp():
                     wx.CallAfter(self._create_battle_report_dialog)
-            except:
+            except (AttributeError, RuntimeError) as e:
+                # 忽略wx未初始化或已销毁的错误
                 pass
 
         if self.battle_report_dialog:
@@ -243,6 +263,14 @@ class CombatAutoScript:
             # 如果窗口不存在，至少打印到控制台
             print(f"[战斗播报-{msg_type}] {message}")
 
+    def get_resource_path(self, relative_path):
+        """获取资源文件路径"""
+        if hasattr(sys, "_MEIPASS"):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
+
+    def _init_combat_regions(self):
+        """初始化战斗区域和配置（从__init__中分离出来，避免代码过长）"""
         # 战斗相关区域定义（已根据游戏截图固定配置，900x580窗口）
         # 战斗区域配置（基于900x580游戏界面）
         # 格式：(x, y, w, h) - 左上角坐标和宽高（w, h是结束坐标）
@@ -452,7 +480,7 @@ class CombatAutoScript:
 
         # 账号状态（延迟初始化，避免thread属性未设置时报错）
         # 注意：account_dm 会在首次使用时通过属性或方法来获取
-        self._account_dm = None  # 延迟初始化的账号列表
+        self._account_dm = None  # 延迟初始化的账号列表（在_get_account_dm中初始化）
 
         # 右侧按钮区域定义（根据实际游戏，操作按钮在右侧）
         # 按钮包括：攻击(A)、技能(S)、道具(E)、防御(D)、重复(R)、召唤(C)、自动(W)、逃跑(P)
@@ -627,15 +655,9 @@ class CombatAutoScript:
         # 初始化己方状态追踪
         self.ally_status_tracking = {}
 
-        # 回合超时设置（25秒操作时间）
-        self.turn_timeout = 25  # 每个回合最大操作时间（秒）
-        self.turn_start_time = None  # 回合开始时间
-
-        # 错误追踪
-        self.account_error_count = {
-            "account_index": 0
-        }  # {account_index: error_count} 追踪每个账号的错误次数
-        self.max_errors_per_turn = 5  # 每个回合最多允许的错误次数，超过则跳过回合
+        # 注意：回合超时和错误追踪已在__init__中初始化，这里只需重置
+        self.turn_start_time = None  # 重置回合开始时间
+        self.account_error_count = {}  # 重置错误计数（清空所有账号的错误计数）
 
         # 检测每个账号的武将和主角
         account_count = self.get_account_count()
@@ -682,11 +704,6 @@ class CombatAutoScript:
 
         # 检测敌人位置（需要在战斗开始后检测）
         # self.detect_enemy_positions(i)  # 注释掉，在auto_combat中实时检测
-
-    def get_resource_path(self, relative_path):
-        if hasattr(sys, "_MEIPASS"):
-            return os.path.join(sys._MEIPASS, relative_path)
-        return os.path.join(os.path.abspath("."), relative_path)
 
     def find_pic_with_timeout(self, dm_object, x, y, w, h, image_path,
                               timeout=3):
@@ -776,8 +793,9 @@ class CombatAutoScript:
         return time.time() - self.turn_start_time > self.turn_timeout
 
     def reset_turn_timer(self):
-        """重置回合计时器"""
-        self.turn_start_time = time.time()
+        """重置回合计时器（线程安全）"""
+        with self._state_lock:
+            self.turn_start_time = time.time()
 
     def get_panel_region(self, panel_type='skill'):
         """
@@ -832,11 +850,13 @@ class CombatAutoScript:
     def get_account_count(self):
         """
         获取账号数量（动态获取，替代硬编码的3）
-        :return: 账号数量
+        :return: 账号数量（只计算非None的账号）
         """
-        if not self.account_dm:
+        account_dm_list = self.account_dm
+        if not account_dm_list:
             return 0
-        return len(self.account_dm)
+        # 只计算非None的账号数量
+        return sum(1 for dm in account_dm_list if dm is not None)
 
     def validate_account_index(self, account_index):
         """
@@ -868,18 +888,20 @@ class CombatAutoScript:
 
     def increment_error_count(self, account_index):
         """
-        增加账号的错误计数
+        增加账号的错误计数（线程安全）
         :param account_index: 账号索引
         :return: 当前错误计数
         """
-        if account_index not in self.account_error_count:
-            self.account_error_count[account_index] = 0
-        self.account_error_count[account_index] += 1
-        return self.account_error_count[account_index]
+        with self._state_lock:
+            if account_index not in self.account_error_count:
+                self.account_error_count[account_index] = 0
+            self.account_error_count[account_index] += 1
+            return self.account_error_count[account_index]
 
     def reset_error_count(self, account_index):
-        """重置账号的错误计数"""
-        self.account_error_count[account_index] = 0
+        """重置账号的错误计数（线程安全）"""
+        with self._state_lock:
+            self.account_error_count[account_index] = 0
 
     def should_skip_turn(self, account_index):
         """
@@ -1338,7 +1360,8 @@ class CombatAutoScript:
         for general in current_generals:
             general_name = general['name']
             general_pos = self.find_general(general_name, account_index)
-            pos = (general_pos.x, general_pos.y) if general_pos else None
+            # 防御性检查：确保general_pos不是None且是ResXy对象
+            pos = (general_pos.x, general_pos.y) if general_pos and hasattr(general_pos, 'x') and hasattr(general_pos, 'y') else None
 
             if general_name not in self.general_tracking[account_index]:
                 # 新武将上场
@@ -3173,12 +3196,18 @@ class CombatAutoScript:
         if not is_current_turn:
             return
 
-        # 0. 更新回合数（修复BUG：防止重复更新）
+        # 0. 更新回合数（修复BUG：防止重复更新，线程安全）
         # 如果当前回合还未处理，则更新回合数并标记为已处理
         # 注意：只有第一个进入回合的账号会执行这里的代码（因为turn_processed是全局的）
-        if not self.turn_processed:
-            self.current_turn += 1
-            self.turn_processed = True
+        with self._state_lock:
+            if not self.turn_processed:
+                self.current_turn += 1
+                self.turn_processed = True
+                turn_updated = True
+            else:
+                turn_updated = False
+        
+        if turn_updated:
             # 重置回合计时器和错误计数
             self.reset_turn_timer()
             account_count = self.get_account_count()
@@ -3338,6 +3367,25 @@ class CombatAutoScript:
             print(
                 f"账号{account_index} 武将操作出错: {e} (错误计数: {error_count})")
 
+    def cleanup(self):
+        """
+        清理资源（停止定时器等）
+        """
+        # 取消所有定时器
+        for timer in self._timer_refs:
+            try:
+                timer.cancel()
+            except Exception:
+                pass
+        self._timer_refs.clear()
+        
+        # 安全关闭窗口
+        if self.battle_report_dialog:
+            try:
+                self.battle_report_dialog.close_safely()
+            except Exception:
+                pass
+
     def run_combat_loop(self):
         """
         战斗循环（在多开场景下，对每个账号执行）
@@ -3345,30 +3393,34 @@ class CombatAutoScript:
         max_attempts = 100  # 最大执行次数
         attempt = 0
 
-        while attempt < max_attempts:
-            # 检查是否应该停止（修复：兼容多种状态管理方式）
-            if self.thread:
-                # 优先检查 overed（停止标志）
-                if hasattr(self.thread, 'overed') and self.thread.overed:
-                    break
-                # 检查 stoped（暂停标志），暂停时跳过当前循环但继续等待
-                if hasattr(self.thread, 'stoped') and self.thread.stoped:
-                    time.sleep(0.5)
-                    continue
+        try:
+            while attempt < max_attempts:
+                # 检查是否应该停止（修复：兼容多种状态管理方式）
+                if self.thread:
+                    # 优先检查 overed（停止标志）
+                    if hasattr(self.thread, 'overed') and self.thread.overed:
+                        break
+                    # 检查 stoped（暂停标志），暂停时跳过当前循环但继续等待
+                    if hasattr(self.thread, 'stoped') and self.thread.stoped:
+                        time.sleep(0.5)
+                        continue
 
-            # 修复：不再在循环开始时重置标志，而是基于回合变化来重置（在auto_combat中处理）
+                # 修复：不再在循环开始时重置标志，而是基于回合变化来重置（在auto_combat中处理）
 
-            # 对每个有效的账号执行战斗操作
-            account_count = self.get_account_count()
-            for i in range(account_count):
-                # 安全检查：确保account_dm已初始化且索引有效
-                if self.validate_account_index(i):
-                    self.auto_combat(i)
+                # 对每个有效的账号执行战斗操作
+                account_count = self.get_account_count()
+                for i in range(account_count):
+                    # 安全检查：确保account_dm已初始化且索引有效
+                    if self.validate_account_index(i):
+                        self.auto_combat(i)
 
-            # 如果当前回合已被处理，等待下一次循环
-            # 这样确保每次循环只处理一次回合数更新
-            time.sleep(0.5)  # 短暂延时
-            attempt += 1
+                # 如果当前回合已被处理，等待下一次循环
+                # 这样确保每次循环只处理一次回合数更新
+                time.sleep(0.5)  # 短暂延时
+                attempt += 1
+        finally:
+            # 清理资源
+            self.cleanup()
 
 
 # 示例使用

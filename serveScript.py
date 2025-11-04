@@ -8841,7 +8841,7 @@ class MyThread(threading.Thread):
 
     def _start_combat_auto(self):
         """
-        启动战斗自动操作
+        启动战斗自动操作（优化版）
         """
         try:
             if self.combat_auto_running:
@@ -8849,76 +8849,62 @@ class MyThread(threading.Thread):
             print("启动战斗自动操作")
             self.combat_auto_running = True
 
-            # 初始化战斗自动操作实例
+            # 初始化战斗自动操作实例（如果还没有创建）
             if not self.combat_auto_instance:
                 self.combat_auto_instance = CombatAutoScript(self)
-                # 设置战斗区域（需要根据实际游戏界面调整）
-                # 这里使用默认区域，实际使用时需要根据游戏界面调整
-                # enemy_region: 敌军区域, ally_region: 己方区域, main_char_region: 主角区域
-                # general_region: 武将区域, turn_region: 回合指示器区域
-                # 示例区域，需要根据实际游戏调整
-                # self.combat_auto_instance.set_combat_regions(
-                #     enemy_region=(0, 0, 400, 300),  # 敌军区域（左侧）
-                #     ally_region=(400, 0, 800, 300),  # 己方区域（右侧）
-                #     main_char_region=(400, 200, 800, 400),  # 主角区域
-                #     general_region=(400, 300, 800, 500),  # 武将区域
-                #     turn_region=(
-                #         700,
-                #         500,
-                #         850,
-                #         550,
-                #     ),  # 回合指示器区域（备用，主要通过按钮区域判断）
-                #     right_button_region=(1400, 400, 1920, 680),  # 右侧按钮区域
-                # )
-                # 设置配置
-                self.combat_auto_instance.keep_support_general = False
-                self.combat_auto_instance.enable_main_heal = True
-                self.combat_auto_instance.enable_main_summon = True
-                # 初始化账号的大漠对象
-                self.combat_auto_instance.account_dm = [
-                    self.dm,
-                    # self.win1_dm,
-                    # self.win2_dm,
-                ]
-                # 初始化战斗追踪
+                
+                # 设置配置（根据你的需求调整）
+                self.combat_auto_instance.keep_support_general = False  # 是否保证辅助武将在场
+                self.combat_auto_instance.enable_main_heal = True      # 主角自动加血
+                self.combat_auto_instance.enable_main_summon = True    # 主角自动召唤
+                
+                # 注意：account_dm会自动从self.dm, self.win1_dm, self.win2_dm获取，无需手动设置
+                # 初始化战斗追踪（第一回合时会自动调用，这里提前初始化也可以）
                 self.combat_auto_instance.init_combat_tracking()
+                print("战斗自动操作实例已初始化")
 
-            # 在单独线程中运行战斗循环
-            def combat_loop():
-                while self.combat_auto_running and not self.overed and not self.stoped:
-                    try:
-                        # 对主账号执行战斗操作
-                        if self.dm:
-                            self.combat_auto_instance.auto_combat(0)
-                        time.sleep(0.5)  # 短暂延时，避免过于频繁
-                    except Exception as e:
-                        print(f"战斗自动操作错误: {e}")
-                        time.sleep(1)
-
-            self.combat_auto_thread = threading.Thread(target=combat_loop,
-                                                       daemon=True)
+            # 使用内置的run_combat_loop方法（推荐方式）
+            # 这个方法会自动处理所有账号的战斗操作
+            self.combat_auto_thread = threading.Thread(
+                target=self.combat_auto_instance.run_combat_loop,
+                daemon=True
+            )
             self.combat_auto_thread.start()
-            print("战斗自动操作线程已启动")
+            print("战斗自动操作线程已启动（使用内置战斗循环）")
+            
         except Exception as e:
             print(f"启动战斗自动操作失败: {e}")
+            import traceback
+            traceback.print_exc()
             self.combat_auto_running = False
 
     def _stop_combat_auto(self):
         """
-        停止战斗自动操作
+        停止战斗自动操作（优化版）
         """
         try:
             if not self.combat_auto_running:
                 return
             print("停止战斗自动操作")
             self.combat_auto_running = False
-            # 等待线程结束（最多等待2秒）
+            
+            # 清理战斗脚本资源（如果使用了内置的run_combat_loop）
+            if self.combat_auto_instance:
+                try:
+                    self.combat_auto_instance.cleanup()
+                except Exception as e:
+                    print(f"清理战斗脚本资源时出错: {e}")
+            
+            # 等待线程结束（最多等待3秒）
             if self.combat_auto_thread and self.combat_auto_thread.is_alive():
-                self.combat_auto_thread.join(timeout=2)
+                self.combat_auto_thread.join(timeout=3)
             self.combat_auto_thread = None
+            
             print("战斗自动操作已停止")
         except Exception as e:
             print(f"停止战斗自动操作失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     def zhanhunNewScript(self):
         if not self.zhanhunFloorNew:
