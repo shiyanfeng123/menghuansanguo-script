@@ -1101,22 +1101,32 @@ class CombatAutoScript:
                                 image_path, "000000", 0.9999, 0)
         if pos and len(pos) > 0:
             try:
-                pos_list = pos.split(',')
-                if len(pos_list) >= 2:
-                    # 修复：验证是否为有效数字
-                    pos_x = int(pos_list[0])
-                    pos_y = int(pos_list[1])
-
-                    # 检查该位置是否有墓碑
-                    if self.check_tombstone_at_position(dm_object, pos_x,
-                                                        pos_y):
-                        # 检测到墓碑，说明武将已死亡
-                        print(
-                            f"账号{account_index} 武将 {general_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
+                # 修复：检查pos的类型，如果是tuple则直接解包，如果是字符串则split
+                if isinstance(pos, tuple):
+                    if len(pos) >= 2:
+                        pos_x, pos_y = pos[0], pos[1]
+                    else:
                         return False
+                elif isinstance(pos, str):
+                    pos_list = pos.split(',')
+                    if len(pos_list) >= 2:
+                        # 修复：验证是否为有效数字
+                        pos_x = int(pos_list[0])
+                        pos_y = int(pos_list[1])
+                    else:
+                        return False
+                else:
+                    return False
+                # 检查该位置是否有墓碑
+                if self.check_tombstone_at_position(dm_object, pos_x,
+                                                    pos_y):
+                    # 检测到墓碑，说明武将已死亡
+                    print(
+                        f"账号{account_index} 武将 {general_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
+                    return False
 
-                    # 未检测到墓碑，说明武将存活
-                    return ResXy(pos_x, pos_y)
+                # 未检测到墓碑，说明武将存活
+                return ResXy(pos_x, pos_y)
             except (ValueError, IndexError) as e:
                 print(f"解析武将 {general_name} 位置失败: {pos}, 错误: {e}")
                 return False
@@ -1146,7 +1156,83 @@ class CombatAutoScript:
         """
         if account_index < 0 or account_index >= len(self.account_dm):
             return False
+    def find_main_char(self, char_name, account_index):
+        """
+        在指定账号中查找主角
+        :param char_name: 主角名称（'主角1', '主角2', '主角3'）
+        :param account_index: 账号索引（0=主账号, 1=账号1, 2=账号2）
+        :return: ResXy 对象 or False
+        """
+        if account_index < 0 or account_index >= len(self.account_dm):
+            return False
 
+        dm_object = self.account_dm[account_index]
+        if not dm_object:
+            return False
+
+        if not self.main_char_region:
+            return False
+
+        x, y, w, h = self.main_char_region
+        # 转换坐标格式
+        width = w - x if w > 900 or h > 580 else w  # 判断是结束坐标还是宽度
+        height = h - y if w > 900 or h > 580 else h
+
+        image_path = self.main_char_images.get(char_name, '')
+        if not image_path:
+            return False
+
+        # 使用带超时的图片查找（2秒超时）
+        pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
+                                         image_path, timeout=2)
+        if pos and len(pos) > 0:
+            try:
+                # 修复：检查pos的类型，如果是tuple则直接解包，如果是字符串则split
+                if isinstance(pos, tuple):
+                    if len(pos) >= 2:
+                        pos_x, pos_y = pos[0], pos[1]
+                    else:
+                        return False
+                elif isinstance(pos, str):
+                    pos_list = pos.split(',')
+                    if len(pos_list) >= 2:
+                        # 修复：验证是否为有效数字
+                        pos_x = int(pos_list[0])
+                        pos_y = int(pos_list[1])
+                    else:
+                        return False
+                else:
+                    return False
+
+                # 检查该位置是否有墓碑
+                if self.check_tombstone_at_position(dm_object, pos_x,
+                                                    pos_y):
+                    # 检测到墓碑，说明主角已死亡
+                    print(
+                        f"账号{account_index} 主角 {char_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
+                    return False
+
+                # 未检测到墓碑，说明主角存活
+                return ResXy(pos_x, pos_y)
+            except (ValueError, IndexError) as e:
+                print(f"解析主角 {char_name} 位置失败: {pos}, 错误: {e}")
+                return False
+
+        # 如果未找到主角图片，检查之前保存的位置是否有墓碑
+        if account_index in self.unit_positions:
+            for saved_char_name, saved_x, saved_y in self.unit_positions[
+                account_index].get('main_chars', []):
+                if saved_char_name == char_name:
+                    # 检查保存的位置是否有墓碑
+                    if self.check_tombstone_at_position(dm_object, saved_x,
+                                                        saved_y):
+                        print(
+                            f"账号{account_index} 主角 {char_name} 之前位置 ({saved_x}, {saved_y}) 检测到墓碑，已死亡")
+                        return False
+                    # 如果没有墓碑，可能还存活，但位置已改变，返回False让系统重新搜索
+                    return False
+
+        return False
         dm_object = self.account_dm[account_index]
         if not dm_object:
             return False

@@ -1330,6 +1330,7 @@ class MyThread(threading.Thread):
         return res
 
     def child_task(self):
+        self._start_combat_auto()
         # 怪物位置 205  389
         while True:
             if self.overed:
@@ -1406,7 +1407,7 @@ class MyThread(threading.Thread):
             # 点自动
             if self.scriptName in ["官渡", "魔镜", "黑风", "矿产"]:
                 if not self.guajiFlag:
-                    self._start_combat_auto()
+                    print(111)
                     # return
                     # if self.find_pic(
                     #     self.get_resource_path("serveAssets/images/zhaohuan.bmp"),
