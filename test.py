@@ -26,15 +26,15 @@ import asyncio
 # 	print("Hello World!", count)
 
 
-def register_dll(dll_path):
-	# 构建 regsvr32 命令，添加 /s 参数以静默运行
-	command = ['regsvr32', '/s', dll_path]
-	# 执行命令
-	subprocess.run(command, check=True, capture_output=True, text=True)
-dm_obj = ctypes.windll.LoadLibrary(r'D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\plugins\RegDll.dll')
-location_dmreg = r'D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\plugins\dm.dll'
-register_dll(location_dmreg)
-dm_obj.DllRegisterServer(location_dmreg, 0)
+# def register_dll(dll_path):
+# 	# 构建 regsvr32 命令，添加 /s 参数以静默运行
+# 	command = ['regsvr32', '/s', dll_path]
+# 	# 执行命令
+# 	subprocess.run(command, check=True, capture_output=True, text=True)
+# dm_obj = ctypes.windll.LoadLibrary(r'D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\plugins\RegDll.dll')
+# location_dmreg = r'D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\plugins\dm.dll'
+# register_dll(location_dmreg)
+# dm_obj.DllRegisterServer(location_dmreg, 0)
 dm = CreateObject('dm.dmsoft')
 print(dm.Ver())
 time.sleep(10)
