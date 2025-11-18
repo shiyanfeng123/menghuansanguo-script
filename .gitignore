@@ -51,7 +51,7 @@ desktop.ini
 # data.txt
 
 # 文档（如果需要忽略）
-# *.md
+*.md
 
 /node_modules/.bin/tldts
 /node_modules/.bin/tldts.cmd

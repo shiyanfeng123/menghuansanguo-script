@@ -35,7 +35,7 @@ import asyncio
 # location_dmreg = r'D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\plugins\dm.dll'
 # register_dll(location_dmreg)
 # dm_obj.DllRegisterServer(location_dmreg, 0)
-dm = CreateObject('dm.dmsoft')
+dm = CreateObject("dm.dmsoft")
 print(dm.Ver())
 time.sleep(10)
 # 定义回调函数类型
@@ -47,7 +47,7 @@ click_hwnd = 0
 def enum_child_windows_callback(hwnd, lParam):
     window_text = dm.GetWindowText(hwnd)
     class_name = dm.GetClassName(hwnd)
-    print(f'子窗口句柄: {hwnd}, 标题: {window_text}, 类名: {class_name}')
+    print(f"子窗口句柄: {hwnd}, 标题: {window_text}, 类名: {class_name}")
     return True  # 返回 True 继续枚举
 
 
@@ -56,7 +56,7 @@ enum_child_windows_callback_func = ENUMWINDOWSPROC(enum_child_windows_callback)
 
 # 查找目标窗口句柄
 target_window_title = "1"
-target_window_class = 'DUIWindow'  # 如果不知道类名，可以设为 None
+target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
 # target_window_title = "Path of Exile"
 # target_window_class = 'POEWindowClass'  # 如果不知道类名，可以设为 None
 hwnd = dm.FindWindowEx(0, target_window_class, target_window_title)
@@ -68,14 +68,13 @@ hwnd = dm.FindWindowEx(0, target_window_class, target_window_title)
 if hwnd == 0:
     print("目标窗口未找到")
 else:
-    print('找到目标窗口')
+    print("找到目标窗口")
     #
     # 使用 Windows API 的 EnumChildWindows
-    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
     # 获取屏幕分辨率
     screen_width = user32.GetSystemMetrics(0)  # 0 表示屏幕宽度
     screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
-
 
     def enum_child_proc(hwnd, lParam):
         global click_hwnd
@@ -83,7 +82,7 @@ else:
         child_rect = dm.GetWindowRect(hwnd)
         if child_rect != 0:
             left, top, right, bottom, isFind = child_rect
-            if class_name == 'NativeWindowClass' and left > 0 and right < screen_width and bottom < screen_height:
+            if class_name == "NativeWindowClass" and left > 0 and right < screen_width and bottom < screen_height:
                 print(left, top, right, bottom)
                 click_hwnd = hwnd
                 return False
@@ -92,12 +91,11 @@ else:
         # 	return False
         return True
 
-
     enum_child_proc_type = ENUMWINDOWSPROC(enum_child_proc)
     user32.EnumChildWindows(hwnd, enum_child_proc_type, 0)
 print(click_hwnd)
 # 绑定窗口到后台模式
-bind_result = dm.BindWindowEx(click_hwnd, "gdi", "windows3", "windows", '', 0)
+bind_result = dm.BindWindowEx(click_hwnd, "gdi", "windows3", "windows", "", 0)
 if bind_result == 1:
     print("窗口绑定成功")
 else:
@@ -134,12 +132,12 @@ from pathlib import Path
 # from webdriver_manager.chrome import ChromeDriverManager
 
 
-class UpdateVer():
+class UpdateVer:
     def get_current_version(self):
         """从本地文件读取当前版本"""
         try:
-            with open('version.json') as f:
-                return json.load(f)['version']
+            with open("version.json") as f:
+                return json.load(f)["version"]
         except:
             return "1.0.0"  # 默认版本
 
@@ -186,28 +184,28 @@ class UpdateVer():
         # cookie = self.selenium_login('18175312372', 's1728349744')
         # print(cookie, 'cookie')
         headers = {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'DNT': '1',
-            'Pragma': 'no-cache',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-User': '?1',
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "DNT": "1",
+            "Pragma": "no-cache",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         }
         # ?access_token=91670e5d97cb3ae58aa652296bcf5c8b
         session.headers.update(headers)
         # session.cookies.update(cookie)
         try:
             response = session.get(f"{url}", stream=True)
-            print(response.status_code, 'response.status_code')
-            print(response.raise_for_status(), 'response.raise_for_status')
-            with open(save_path, 'wb') as f:
+            print(response.status_code, "response.status_code")
+            print(response.raise_for_status(), "response.raise_for_status")
+            with open(save_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
@@ -218,7 +216,7 @@ class UpdateVer():
 
     def verify_file(self, file_path, expected_hash):
         """校验文件完整性"""
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()
 
     def apply_update(self, update_zip):
@@ -228,7 +226,7 @@ class UpdateVer():
         backup_dir.mkdir(exist_ok=True)
 
         # 备份当前文件（排除更新包和备份目录）
-        for item in Path('.').iterdir():
+        for item in Path(".").iterdir():
             if item.name not in [update_zip, "backup"]:
                 dest = backup_dir / item.name
                 if item.is_dir():
@@ -237,8 +235,8 @@ class UpdateVer():
                     shutil.copy2(item, dest)
 
         # 解压更新包
-        with zipfile.ZipFile(update_zip, 'r') as zip_ref:
-            zip_ref.extractall('.')
+        with zipfile.ZipFile(update_zip, "r") as zip_ref:
+            zip_ref.extractall(".")
 
         # 删除临时文件
         os.remove(update_zip)
@@ -246,7 +244,7 @@ class UpdateVer():
 
     def restart_application(self):
         """重启应用（需根据打包工具调整）"""
-        if getattr(sys, 'frozen', False):  # 如果是PyInstaller打包的EXE
+        if getattr(sys, "frozen", False):  # 如果是PyInstaller打包的EXE
             os.execl(sys.executable, sys.executable, *sys.argv)
         else:
             print("请手动重启应用")
@@ -273,7 +271,7 @@ class UpdateVer():
             return
         # 校验文件
         file_hash = self.verify_file(update_file, remote_info["hash"])
-        print(file_hash, 'file_hash')
+        print(file_hash, "file_hash")
         print(remote_info["hash"], 'remote_info["hash"]')
         # if file_hash != remote_info["hash"]:
         # 	print("[错误] 文件校验失败！可能被篡改")
@@ -369,9 +367,9 @@ def get_resource_path(self, relative_path):
 # dm.KeyUpChar('left')
 # dm.KeyDownChar('right')
 # time.sleep(5)
-# dm_ret = dm.FindPicEx(0, 0, x, y,
-#                       r"E:\project\python\serveAssets\images/fei3.bmp",
-#                       "", similarity, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y,
+                      r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\images\auto/lantiao.bmp",
+                      "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
 # dm_ret3 = dm.FindPicEx(530, 0, 589, 580, r"E:\project\python\name1.bmp", "", similarity, 0)
 # # # #
@@ -379,7 +377,7 @@ def get_resource_path(self, relative_path):
 # print('res111', res111)
 # 249  342 391  352
 # dm_ret = dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.9, 0)
-# print(dm_ret, 'dm_ret')
+print(dm_ret, 'dm_ret')
 # x, y, r = dm_ret
 # print(x, y, r)
 # if r == 1:
@@ -439,11 +437,10 @@ def get_network_hour():
     try:
         # 访问国家授时中心（返回文本时间）
         with urlopen("http://www.ntsc.ac.cn") as response:
-            html = response.read().decode('utf-8')
+            html = response.read().decode("utf-8")
 
         # 使用正则提取时间（格式：2023-05-15 12:34:56）
-        time_str = re.search(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',
-                             html).group()
+        time_str = re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", html).group()
 
         # 转换为小时数
         return datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").hour
@@ -463,12 +460,11 @@ from datetime import datetime
 def get_network_hour():
     try:
         # 使用公共时间API（返回JSON格式数据）
-        response = requests.get(
-            "http://worldtimeapi.org/api/timezone/Asia/Shanghai")
+        response = requests.get("http://worldtimeapi.org/api/timezone/Asia/Shanghai")
         data = response.json()
 
         # 解析时间字符串（格式：2023-05-15T12:34:56.789+08:00）
-        datetime_str = data['datetime']
+        datetime_str = data["datetime"]
         current_time = datetime.fromisoformat(datetime_str)
 
         return current_time.hour
@@ -492,32 +488,41 @@ class VersionInfo:
 
 class VersionDisplayFrame(wx.Frame):
     def __init__(self, parent, title):
-        super(VersionDisplayFrame, self).__init__(parent, title=title,
-                                                  size=(600, 400))
+        super(VersionDisplayFrame, self).__init__(parent, title=title, size=(600, 400))
 
         # 创建示例数据
         self.version_list = [
-            VersionInfo("v2.3.0",
-                        "1. 新增暗黑模式支持\n2. 优化性能提升30%\n3. 修复文件保存问题",
-                        "https://example.com/download/v2.3.0"),
-            VersionInfo("v2.2.1",
-                        "1. 修复登录验证漏洞\n2. 改进用户界面体验\n3. 增加多语言支持",
-                        "https://example.com/download/v2.2.1"),
-            VersionInfo("v2.1.5",
-                        "1. 首次公开版本发布\n2. 包含基本功能模块\n3. 已知问题修复列表",
-                        "https://example.com/download/v2.1.5"),
-            VersionInfo("v2.0.0",
-                        "1. 完全重构代码库\n2. 新增插件系统\n3. 支持云同步功能",
-                        "https://example.com/download/v2.0.0"),
-            VersionInfo("v1.5.2",
-                        "1. 修复内存泄漏问题\n2. 增加快捷键设置\n3. 优化启动速度",
-                        "https://example.com/download/v1.5.2"),
-            VersionInfo("v1.4.0",
-                        "1. 添加自动更新功能\n2. 改进文档编辑器\n3. 新增主题切换",
-                        "https://example.com/download/v1.4.0"),
-            VersionInfo("v1.3.1",
-                        "1. 修复数据导出问题\n2. 增强安全防护\n3. 优化资源占用",
-                        "https://example.com/download/v1.3.1")
+            VersionInfo(
+                "v2.3.0",
+                "1. 新增暗黑模式支持\n2. 优化性能提升30%\n3. 修复文件保存问题",
+                "https://example.com/download/v2.3.0",
+            ),
+            VersionInfo(
+                "v2.2.1",
+                "1. 修复登录验证漏洞\n2. 改进用户界面体验\n3. 增加多语言支持",
+                "https://example.com/download/v2.2.1",
+            ),
+            VersionInfo(
+                "v2.1.5",
+                "1. 首次公开版本发布\n2. 包含基本功能模块\n3. 已知问题修复列表",
+                "https://example.com/download/v2.1.5",
+            ),
+            VersionInfo(
+                "v2.0.0", "1. 完全重构代码库\n2. 新增插件系统\n3. 支持云同步功能", "https://example.com/download/v2.0.0"
+            ),
+            VersionInfo(
+                "v1.5.2",
+                "1. 修复内存泄漏问题\n2. 增加快捷键设置\n3. 优化启动速度",
+                "https://example.com/download/v1.5.2",
+            ),
+            VersionInfo(
+                "v1.4.0",
+                "1. 添加自动更新功能\n2. 改进文档编辑器\n3. 新增主题切换",
+                "https://example.com/download/v1.4.0",
+            ),
+            VersionInfo(
+                "v1.3.1", "1. 修复数据导出问题\n2. 增强安全防护\n3. 优化资源占用", "https://example.com/download/v1.3.1"
+            ),
         ]
 
         self.init_ui()
@@ -533,12 +538,10 @@ class VersionDisplayFrame(wx.Frame):
 
         # 添加标题
         title = wx.StaticText(scrolled_win, label="软件版本历史")
-        title_font = wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                             wx.FONTWEIGHT_BOLD)
+        title_font = wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
         title.SetFont(title_font)
         main_sizer.Add(title, 0, wx.ALL | wx.ALIGN_CENTER, 15)
-        main_sizer.Add(wx.StaticLine(scrolled_win), 0,
-                       wx.EXPAND | wx.LEFT | wx.RIGHT, 20)
+        main_sizer.Add(wx.StaticLine(scrolled_win), 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 20)
 
         # 遍历版本列表并创建显示项
         for idx, version_info in enumerate(self.version_list):
@@ -547,8 +550,7 @@ class VersionDisplayFrame(wx.Frame):
 
             # 在版本之间添加分隔线（最后一个版本不添加）
             if idx < len(self.version_list) - 1:
-                main_sizer.Add(wx.StaticLine(scrolled_win), 0,
-                               wx.EXPAND | wx.LEFT | wx.RIGHT, 30)
+                main_sizer.Add(wx.StaticLine(scrolled_win), 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 30)
 
         scrolled_win.SetSizer(main_sizer)
 
@@ -577,8 +579,7 @@ class VersionDisplayFrame(wx.Frame):
 
         # 版本号（大字体加粗）
         version_text = wx.StaticText(parent, label=version_info.version)
-        version_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                               wx.FONTWEIGHT_BOLD)
+        version_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
         version_text.SetFont(version_font)
         header_sizer.Add(version_text, 1, wx.ALIGN_CENTER_VERTICAL)
 
@@ -587,17 +588,15 @@ class VersionDisplayFrame(wx.Frame):
 
         # 下载链接按钮
         download_btn = wx.Button(parent, label="下载", size=(80, 30))
-        download_btn.Bind(wx.EVT_BUTTON, lambda e,
-                                                url=version_info.download_url: webbrowser.open(
-            url))
+        download_btn.Bind(wx.EVT_BUTTON, lambda e, url=version_info.download_url: webbrowser.open(url))
         header_sizer.Add(download_btn, 0, wx.LEFT, 10)
 
         container.Add(header_sizer, 0, wx.EXPAND | wx.BOTTOM, 5)
 
         # 版本说明（禁用文本框）
-        desc_text = wx.TextCtrl(parent,
-                                value=version_info.description,
-                                style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_SUNKEN)
+        desc_text = wx.TextCtrl(
+            parent, value=version_info.description, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_SUNKEN
+        )
         desc_text.SetBackgroundColour(wx.Colour(240, 240, 240))  # 设置禁用状态背景色
         desc_text.SetMinSize((-1, 80))  # 设置最小高度
 
@@ -612,18 +611,15 @@ class VersionDisplayFrame(wx.Frame):
 # 	app.MainLoop()
 # 释放内存
 # dm.FreeMem(memory_address)
-dict_id = dm.SetDict(0,
-                     r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
-dict_id1 = dm.SetDict(1,
-                      r"E:\project\python\serveAssets\fonts\team1.txt")  # 字库文件路径
-dict_id2 = dm.SetDict(2,
-                      r"E:\project\python\serveAssets\fonts\team2.txt")  # 字库文件路径
-# dict_id2 = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\zhengdian.txt")  # 字库文件路径
-print(f'字库加载成功，{dict_id},{dict_id1},{dict_id2}')
+dict_id = dm.SetDict(0, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\common.txt")  # 字库文件路径
+dict_id1 = dm.SetDict(1, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\team1.txt")  # 字库文件路径
+dict_id2 = dm.SetDict(2, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\team2.txt")  # 字库文件路径
+# dict_id2 = dm.SetDict(0, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\zhengdian.txt")  # 字库文件路径
+print(f"字库加载成功，{dict_id},{dict_id1},{dict_id2}")
 # print(dm.GetDictCount(0), dm.GetDictCount(1), dm.GetDictCount(2))
 # 文字识别参数
-# color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
-color_format = "ffff00-000000|fff200-000000"  # 右上角偏移色
+color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
+# color_format = "ffff00-000000|fff200-000000|fdfd06-000000"  # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 # color_format = 'ff0000-000000'
 # 切换到目标窗口
@@ -650,8 +646,8 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png")
-find_str_result = dm.FindStrFastE(0, 0, x, y, '挑战者', color_format, sim)
-print(f'FindStrFast 返回结果: {find_str_result}')
+# find_str_result = dm.FindStrFastE(0, 0, x, y, "人参娃", color_format, sim)
+# print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])

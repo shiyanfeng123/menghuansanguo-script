@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['serveScript.py'],
+    ['newMain.py'],
     pathex=[],
     binaries=[],
     datas=[('serveAssets', 'serveAssets'),('version_info.txt', 'version_info.txt')],
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='脚本v25.11.4',
+    name='脚本v25.11.1',
     version='version_info.txt',  # 元组格式
     debug=False,
     bootloader_ignore_signals=False,

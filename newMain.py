@@ -21,17 +21,47 @@ import sys
 from collections import OrderedDict
 
 # 导入战斗自动操作脚本
-# from Kanloong_combat_script import CombatAutoScript
+from Kanloong_combat_script import CombatAutoScript
 
-# 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\serveScript.py
-# pyinstaller serveScript.spec
+# 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\newMain.py
+# pyinstaller newMain.spec
 condition = threading.Condition()
-
-
 class ResXy:
     def __init__(resInit, x, y):
         resInit.x = x
         resInit.y = y
+
+
+def sort_array_by_second_value(arr, order):
+    """
+    根据数组中每个元素的第二个值进行排序。
+
+    参数:
+            arr (list): 包含字符串元素的数组，每个元素格式为"0,123,654"
+            order (int): 排序方向，1表示降序，2表示升序
+
+    返回:
+            list: 排序后的数组
+    """
+
+    # 定义排序键函数，提取每个元素的第二个值
+    def key_func(item):
+        return int(item.split(",")[1])
+
+    # 使用字典去除第二个值重复的项
+    seen = {}
+    unique_arr = []
+    for item in arr:
+        second_value = key_func(item)
+        if second_value not in seen:
+            seen[second_value] = True
+            unique_arr.append(item)
+    # 根据order参数决定排序顺序
+    reverse_order = order == 1
+
+    # 使用sorted函数进行排序
+    sorted_arr = sorted(arr, key=key_func, reverse=reverse_order)
+    return sorted_arr
 
 
 def sort_array_by_second_value(arr, order):
@@ -236,6 +266,74 @@ class MyThread(threading.Thread):
                     return True
         return self.overed
 
+    
+
+    def _start_combat_auto(self):
+        """
+        启动战斗自动操作（优化版）
+        """
+        try:
+            if self.combat_auto_running:
+                return
+            print("启动战斗自动操作")
+            self.combat_auto_running = True
+
+            # 初始化战斗自动操作实例（如果还没有创建）
+            if not self.combat_auto_instance:
+                self.combat_auto_instance = CombatAutoScript(self)
+                
+                # 设置配置（根据你的需求调整）
+                self.combat_auto_instance.keep_support_general = False  # 是否保证辅助武将在场
+                self.combat_auto_instance.enable_main_heal = True      # 主角自动加血
+                self.combat_auto_instance.enable_main_summon = True    # 主角自动召唤
+                
+                # 注意：account_dm会自动从self.dm, self.win1_dm, self.win2_dm获取，无需手动设置
+                # 【关键修复】不要在这里提前调用 init_combat_tracking()
+                # run_combat_loop() 会在检测到战斗页面时自动调用 init_combat_tracking()
+                print("战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
+
+            # 使用内置的run_combat_loop方法（推荐方式）
+            # 这个方法会自动处理所有账号的战斗操作
+            self.combat_auto_thread = threading.Thread(
+                target=self.combat_auto_instance.run_combat_loop,
+                daemon=True
+            )
+            self.combat_auto_thread.start()
+            print("战斗自动操作线程已启动（使用内置战斗循环）")
+            
+        except Exception as e:
+            print(f"启动战斗自动操作失败: {e}")
+            import traceback
+            traceback.print_exc()
+            self.combat_auto_running = False
+
+    def _stop_combat_auto(self):
+        """
+        停止战斗自动操作（优化版）
+        """
+        try:
+            if not self.combat_auto_running:
+                return
+            print("停止战斗自动操作")
+            self.combat_auto_running = False
+            
+            # 清理战斗脚本资源（如果使用了内置的run_combat_loop）
+            if self.combat_auto_instance:
+                try:
+                    self.combat_auto_instance.cleanup()
+                except Exception as e:
+                    print(f"清理战斗脚本资源时出错: {e}")
+            
+            # 等待线程结束（最多等待3秒）
+            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+                self.combat_auto_thread.join(timeout=3)
+            self.combat_auto_thread = None
+            
+        except Exception as e:
+            print(f"停止战斗自动操作失败: {e}")
+            import traceback
+            traceback.print_exc()
+
     def run(self):
         # self.mac_address = self.get_mac_address()
         # self.mac_address1 = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
@@ -396,6 +494,7 @@ class MyThread(threading.Thread):
             },
         ]
         self.beginFun()
+        self._start_combat_auto()
         if self.scriptName == "官渡":
             # self.go_in_ditu('地图徐州', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '徐州', '', '', True)
             self.guanduWhile()
@@ -403,51 +502,24 @@ class MyThread(threading.Thread):
             self.zhengdianFloor = "龙+全打"
             self.new_zhengdian()
         elif self.scriptName == "测试":
-            self.new_zhengdian()
-            # self.go_zhengdian()
-            # self.check_line('三线')
-            # self.zhengDian()
-            # self.zhengdian_all()
-            # print(111)
-            # return
-            # self.bangpaiRW()
-            # shuffled = self.zdList.copy()
-            # random.shuffle(shuffled)
-            # for i in range(10):
-            #     last_item = shuffled[-1]
-            #     shuffled = shuffled[:-1]
-            #     print(f"飞{last_item['ditu']}")
-            #     is_fei = self.go_in_ditu(
-            #         last_item['ditu'],
-            #         last_item['city'],
-            #         last_item['findAddress'],
-            #         '', '', True)
-            #     if is_fei:
-            #         self.find_zd_in_view(
-            #             last_item['findAddress'],
-            #             '龙生肖红')
-            # is_in_bibotan = self.waitFor(
-            #     last_item['findAddress'],
-            #     self.dituLocation,
-            #     5)
-        # for i in range(5):
-        # 	startTime = time.time()
-        # 	self.waitFor(
-        # 		f"{self.get_resource_path('serveAssets/images/zhengdian/bibotan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/huanggongdongyuan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xuzhou.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/mohunshan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jitan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/moguxi.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/milin.bmp')}",
-        # 		self.dituLocation
-        # 	)
-        # 	print(f"耗时{time.time() - startTime}")
-        # for i in range(5):
-        # 	startTime = time.time()
-        # 	self.waitFor(
-        # 		'魔魂山|九黎族祭坛|徐州|幽暗密林|魔谷西|碧波潭|皇宫东院', self.dituLocation
-        # 	)
-        # 	print(f"耗时{time.time() - startTime}")
-        # while True:
-        # 	self.go_zhengdian()
-        # self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '', '')
-        # openTalkXY = self.waitFor(
-        # 	f"{self.get_resource_path('serveAssets/images/openTalk.bmp')}|{self.get_resource_path('serveAssets/images/openTalk1.bmp')}",
+            # 测试自动战斗功能：只启动自动战斗，不需要其他操作
+            print("启动测试模式：自动战斗")
+            print("自动战斗已启动，等待进入战斗页面后自动开始操作")
+            
+            # 进入循环，等待停止信号
+            while not self.overed:
+                with condition:
+                    if self.stoped:
+                        condition.wait()
+                
+                # 检查是否停止
+                if self.overed:
+                    break
+                
+                # 每5秒检查一次状态
+                time.sleep(5)
+            
+            print("测试模式已停止")
         # 	self.talkLocation, 5
         # )
         # if openTalkXY:
@@ -14706,7 +14778,7 @@ class MyFrame(wx.Frame):
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                # "测试",
+                "测试",
             ],
         )
         self.free_choices = (
@@ -15348,6 +15420,7 @@ class MyFrame(wx.Frame):
         dlg.ShowModal()
         dlg.Destroy()
         app.MainLoop()
+
 
 class MyDialog(wx.Dialog):
     def __init__(self, parent, has_script):
