@@ -345,7 +345,7 @@ import time
 # res121 = get_mac_address()
 # print(res121)
 # longLocation = (0, 0, 900, 580)
-similarity = 0.6  # 相似度阈值
+similarity = 0.9  # 相似度阈值
 
 
 # # dm.EnableDisplayDebug(1)
@@ -367,9 +367,9 @@ def get_resource_path(self, relative_path):
 # dm.KeyUpChar('left')
 # dm.KeyDownChar('right')
 # time.sleep(5)
-dm_ret = dm.FindPicEx(0, 0, x, y,
-                      r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\images\auto/lantiao.bmp",
-                      "", similarity, 0)
+# dm_ret = dm.FindPicEx(0, 0, x, y,
+#                       r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\images\zhanhun/1.bmp",
+#                       "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
 # dm_ret3 = dm.FindPicEx(530, 0, 589, 580, r"E:\project\python\name1.bmp", "", similarity, 0)
 # # # #
@@ -377,7 +377,7 @@ dm_ret = dm.FindPicEx(0, 0, x, y,
 # print('res111', res111)
 # 249  342 391  352
 # dm_ret = dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.9, 0)
-print(dm_ret, 'dm_ret')
+# print(dm_ret, 'dm_ret')
 # x, y, r = dm_ret
 # print(x, y, r)
 # if r == 1:
@@ -646,7 +646,7 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png")
-# find_str_result = dm.FindStrFastE(0, 0, x, y, "人参娃", color_format, sim)
+# find_str_result = dm.FindStrFastE(0, 0, x, y, "吕布", color_format, sim)
 # print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)

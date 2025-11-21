@@ -26,6 +26,71 @@ from Kanloong_combat_script import CombatAutoScript
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\newMain.py
 # pyinstaller newMain.spec
 condition = threading.Condition()
+
+# Windows API 常量
+FILE_ATTRIBUTE_HIDDEN = 0x2
+FILE_ATTRIBUTE_SYSTEM = 0x4
+FILE_ATTRIBUTE_READONLY = 0x1
+
+def hide_temp_directory():
+    """隐藏临时解压目录（PyInstaller打包后的_MEIPASS目录）"""
+    try:
+        if hasattr(sys, "_MEIPASS"):
+            temp_dir = sys._MEIPASS
+            # 使用 Windows API 设置目录为隐藏和系统属性
+            kernel32 = ctypes.windll.kernel32
+            # 将路径转换为宽字符串（Unicode）
+            if isinstance(temp_dir, str):
+                temp_dir_unicode = temp_dir
+            else:
+                temp_dir_unicode = str(temp_dir)
+            
+            # 设置文件属性：隐藏 + 系统
+            # 注意：需要管理员权限才能设置系统属性
+            try:
+                # 尝试设置隐藏属性（不需要管理员权限）
+                kernel32.SetFileAttributesW(
+                    temp_dir_unicode,
+                    FILE_ATTRIBUTE_HIDDEN
+                )
+            except:
+                pass  # 如果失败，静默处理
+            
+            # 也隐藏父目录（如果存在）
+            try:
+                parent_dir = os.path.dirname(temp_dir)
+                if parent_dir and os.path.exists(parent_dir):
+                    # 只设置隐藏属性，不设置系统属性（避免权限问题）
+                    kernel32.SetFileAttributesW(
+                        parent_dir,
+                        FILE_ATTRIBUTE_HIDDEN
+                    )
+            except:
+                pass
+    except Exception:
+        pass  # 静默处理所有错误，避免影响程序启动
+
+# 程序启动时自动隐藏临时目录
+hide_temp_directory()
+
+# 可选：密码保护配置（如果需要密码访问，取消下面的注释并设置密码）
+# TEMP_DIR_PASSWORD = "your_password_here"  # 设置访问密码
+TEMP_DIR_PASSWORD = "s1728349744" # 设置为 None 表示不需要密码
+
+def check_temp_access_password():
+    """检查临时目录访问密码（如果需要）"""
+    if TEMP_DIR_PASSWORD is None:
+        return True  # 不需要密码
+    
+    try:
+        import getpass
+        # 在控制台模式下提示输入密码（打包后可能没有控制台）
+        # 如果需要GUI密码输入，可以在这里添加wx对话框
+        password = getpass.getpass("请输入访问密码: ")
+        return password == TEMP_DIR_PASSWORD
+    except:
+        # 如果没有控制台，默认允许访问（避免程序无法启动）
+        return True
 class ResXy:
     def __init__(resInit, x, y):
         resInit.x = x
@@ -1091,39 +1156,39 @@ class MyThread(threading.Thread):
             self.locationRightTopWidth,
             self.locationRightTopHeight,
         )
-        if (
-                self.scriptName in ["官渡", "黑风", "魔镜", "矿产", "测试"]
-                and not self.refreshFlag
-                and not self.hasRefresh
-                and (self.teammate1_name or self.teammate2_name)
-        ):
-            self.dm.KeyPressChar("t")
-            time.sleep(2)
-            self.dm.Capture(
-                304,
-                315,
-                353,
-                337,
-                self.get_resource_path("serveAssets/images/team_mate.bmp"),
-            )
-            time.sleep(2)
-            self.dm.Capture(
-                426,
-                315,
-                461,
-                337,
-                self.get_resource_path("serveAssets/images/team_mate1.bmp"),
-            )
-            time.sleep(2)
-            self.dm.Capture(
-                538,
-                315,
-                587,
-                337,
-                self.get_resource_path("serveAssets/images/team_mate2.bmp"),
-            )
-            time.sleep(2)
-            self.dm.KeyPressChar("t")
+        # if (
+        #         self.scriptName in ["官渡", "黑风", "魔镜", "矿产", "测试"]
+        #         and not self.refreshFlag
+        #         and not self.hasRefresh
+        #         and (self.teammate1_name or self.teammate2_name)
+        # ):
+        #     self.dm.KeyPressChar("t")
+        #     time.sleep(2)
+        #     self.dm.Capture(
+        #         304,
+        #         315,
+        #         353,
+        #         337,
+        #         self.get_resource_path("serveAssets/images/team_mate.bmp"),
+        #     )
+        #     time.sleep(2)
+        #     self.dm.Capture(
+        #         426,
+        #         315,
+        #         461,
+        #         337,
+        #         self.get_resource_path("serveAssets/images/team_mate1.bmp"),
+        #     )
+        #     time.sleep(2)
+        #     self.dm.Capture(
+        #         538,
+        #         315,
+        #         587,
+        #         337,
+        #         self.get_resource_path("serveAssets/images/team_mate2.bmp"),
+        #     )
+        #     time.sleep(2)
+        #     self.dm.KeyPressChar("t")
         return True
 
     def find_pic_or_str(self, find, region, find_dir):
@@ -1700,7 +1765,7 @@ class MyThread(threading.Thread):
                 )
             if self.refreshFlag:
                 self.refresh_view_team1()
-            if self.scriptName in ["官渡", "魔镜", "黑风", "矿产"]:
+            # if self.scriptName in ["官渡", "魔镜", "黑风", "矿产"]:
                 if not self.guajiFlag1:
                     if self.find_pic_team1(
                             self.get_resource_path(
@@ -2024,12 +2089,12 @@ class MyThread(threading.Thread):
                     (self.locationX, 120, self.locationWidth,
                      self.locationHeight),
                 )
-            if (
-                    self.scriptName == "官渡"
-                    or self.scriptName == "魔镜"
-                    or self.scriptName == "黑风"
-                    or self.scriptName == "矿产"
-            ):
+            # if (
+            #         self.scriptName == "官渡"
+            #         or self.scriptName == "魔镜"
+            #         or self.scriptName == "黑风"
+            #         or self.scriptName == "矿产"
+            # ):
                 if not self.guajiFlag2:
                     if self.find_pic_team2(
                             self.get_resource_path(
@@ -8848,8 +8913,8 @@ class MyThread(threading.Thread):
         # 20
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/zhanhun/20.bmp"),
-            "魔化吕布",
-            "魔化吕布",
+            "吕布",
+            "吕布",
             self.gameBottomLocation,
             f"{self.get_resource_path('serveAssets/images/zdzd111.bmp')}|{self.get_resource_path('serveAssets/images/zdzd.bmp')}",
             self.gameBottomLocation,
@@ -9064,8 +9129,8 @@ class MyThread(threading.Thread):
         # 25
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/zhanhun/25.bmp"),
-            "魔化吕布",
-            "魔化吕布",
+            "吕布",
+            "吕布",
             self.gameBottomLocation,
             f"{self.get_resource_path('serveAssets/images/zdzd111.bmp')}|{self.get_resource_path('serveAssets/images/zdzd.bmp')}",
             self.gameBottomLocation,

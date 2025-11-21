@@ -11,15 +11,71 @@ import threading
 import wx
 import wx.lib.scrolledpanel as scrolled
 from datetime import datetime
+from typing import Optional, Tuple, List, Dict, Any, Union
+
+
+# ==================== 常量定义 ====================
+class CombatConstants:
+    """战斗脚本常量定义"""
+
+    # 屏幕尺寸限制
+    MAX_SCREEN_WIDTH = 2000
+    MAX_SCREEN_HEIGHT = 2000
+
+    # 图片识别相似度
+    DEFAULT_SIMILARITY = 0.7
+
+    # 超时时间（秒）
+    DEFAULT_TIMEOUT = 3
+    QUICK_TIMEOUT = 1
+    PANEL_WAIT_TIMEOUT = 3
+
+    # 检测间隔（秒）
+    DEFAULT_CHECK_INTERVAL = 0.1
+
+    # 回合超时时间（秒）
+    TURN_TIMEOUT = 25
+
+    # 错误处理
+    MAX_ERRORS_PER_TURN = 5
+    MAX_RETRIES = 3
+    RETRY_DELAY = 0.5
+
+    # 窗口绑定重试
+    MAX_BATTLE_DIALOG_RETRIES = 10
+    BATTLE_DIALOG_RETRY_DELAY = 1.0
+
+    # 坐标检测半径（像素）
+    TOMBSTONE_DETECTION_RADIUS = 30
+    STATUS_DETECTION_RADIUS = 40
+
+    # 操作延迟（秒）
+    CLICK_DELAY = 0.2
+    MOVE_DELAY = 0.2
+    ACTION_DELAY = 0.3
+    SKILL_CLICK_VERIFY_DELAY = 0.8  # 技能点击后验证等待时间
+
+    # 战斗循环配置
+    MAX_COMBAT_ATTEMPTS = 1000000
+    COMBAT_PAGE_CHECK_INTERVAL = 20
+    STATUS_CHECK_INTERVAL = 4
+    WAIT_MSG_INTERVAL = 100
+    INIT_WAIT_TIME = 2.0
+    MAX_BIND_WAIT_ATTEMPTS = 10
+    BIND_WAIT_DELAY = 1.5
 
 
 # 修复：避免循环引用，移除直接导入
 # from serveScript import MyThread  # 不再需要直接导入
 
+
 # 定义 ResXy 类（避免循环引用）
 class ResXy:
     """坐标结果类"""
 
+    # 初始化坐标对象
+    # :param x: X坐标
+    # :param y: Y坐标
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -28,13 +84,11 @@ class ResXy:
 class BattleReportDialog(wx.Frame):
     """战斗实时播报窗口"""
 
+    # 初始化战斗播报窗口
+    # :param parent: 父窗口，默认为None
     def __init__(self, parent=None):
         super().__init__(
-            parent,
-            title="战斗实时播报",
-            size=(800, 600),
-            pos=(450, 50),
-            style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+            parent, title="战斗实时播报", size=(800, 600), pos=(450, 50), style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
         )
         self.SetBackgroundColour(wx.Colour(245, 245, 250))
 
@@ -50,10 +104,8 @@ class BattleReportDialog(wx.Frame):
         title_panel.SetBackgroundColour(wx.Colour(20, 180, 168))
         title_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        title_text = wx.StaticText(title_panel, label="战斗实时播报",
-                                   style=wx.ALIGN_CENTER)
-        title_font = wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                             wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
+        title_text = wx.StaticText(title_panel, label="战斗实时播报", style=wx.ALIGN_CENTER)
+        title_font = wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
         title_text.SetFont(title_font)
         title_text.SetForegroundColour(wx.Colour(255, 255, 255))
 
@@ -67,13 +119,10 @@ class BattleReportDialog(wx.Frame):
 
         # 在滚动面板中创建文本区域（父窗口必须是scroll_panel）
         self.log_text = wx.TextCtrl(
-            scroll_panel,  # 父窗口改为scroll_panel
-            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
-            size=(-1, -1)
+            scroll_panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2, size=(-1, -1)  # 父窗口改为scroll_panel
         )
         # 设置字体
-        log_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                           wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+        log_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
         self.log_text.SetFont(log_font)
         self.log_text.SetBackgroundColour(wx.Colour(250, 250, 255))
 
@@ -89,8 +138,7 @@ class BattleReportDialog(wx.Frame):
         button_panel.SetBackgroundColour(wx.Colour(245, 245, 250))
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.clear_button = wx.Button(button_panel, label="清空日志",
-                                      size=(100, 35))
+        self.clear_button = wx.Button(button_panel, label="清空日志", size=(100, 35))
         self.clear_button.SetFont(log_font)
         self.clear_button.SetBackgroundColour(wx.Colour(144, 144, 153))
         self.clear_button.SetForegroundColour(wx.Colour(255, 255, 255))
@@ -110,28 +158,26 @@ class BattleReportDialog(wx.Frame):
         # 初始化消息
         self.add_log("=" * 60, wx.Colour(100, 100, 100))
         self.add_log("战斗播报系统已启动", wx.Colour(20, 180, 168))
-        self.add_log(
-            f"启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            wx.Colour(100, 100, 100))
+        self.add_log(f"启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", wx.Colour(100, 100, 100))
         self.add_log("=" * 60, wx.Colour(100, 100, 100))
         self.add_log("")
 
+    # 添加日志消息（线程安全）
     def add_log(self, message, color=None):
-        """添加日志消息（线程安全）"""
         # 确保color有默认值
         if color is None:
             color = wx.Colour(0, 0, 0)  # 默认黑色
 
+        # 内部函数：在主线程中添加日志消息
         def _add_log():
             try:
-                if not self or not hasattr(self,
-                                           'log_text') or not self.log_text:
+                if not self or not hasattr(self, "log_text") or not self.log_text:
                     print(f"警告：无法添加日志，log_text不存在 - {message[:50]}")
                     return
 
                 with self.log_lock:
                     # 添加时间戳
-                    timestamp = datetime.now().strftime('%H:%M:%S')
+                    timestamp = datetime.now().strftime("%H:%M:%S")
                     full_message = f"[{timestamp}] {message}\n"
 
                     # 设置文本颜色并追加
@@ -140,8 +186,7 @@ class BattleReportDialog(wx.Frame):
 
                     # 自动滚动到底部
                     try:
-                        self.log_text.ShowPosition(
-                            self.log_text.GetLastPosition())
+                        self.log_text.ShowPosition(self.log_text.GetLastPosition())
                         self.log_text.Refresh()
                     except (AttributeError, RuntimeError) as e:
                         # 忽略窗口已关闭或对象已销毁的错误
@@ -156,7 +201,7 @@ class BattleReportDialog(wx.Frame):
                 _add_log()
             else:
                 # 如果在其他线程，使用CallAfter确保在主线程执行
-                if hasattr(wx, 'CallAfter'):
+                if hasattr(wx, "CallAfter"):
                     wx.CallAfter(_add_log)
                 else:
                     # 如果wx未初始化，直接尝试在主线程执行
@@ -165,53 +210,108 @@ class BattleReportDialog(wx.Frame):
             # 打印错误以便调试
             print(f"CallAfter调用时出错: {e}")
 
+    # 清空日志
     def on_clear(self, event):
-        """清空日志"""
         self.log_text.Clear()
         self.add_log("日志已清空", wx.Colour(100, 100, 100))
 
+    # 安全关闭窗口
     def close_safely(self):
-        """安全关闭窗口"""
         if self:
             wx.CallAfter(self.Close)
 
 
 class CombatAutoScript:
+    # 初始化战斗自动操作
+    # :param thread_instance: MyThread 实例，用于访问大漠对象和区域定义
     def __init__(self, thread_instance):
-        """
-        初始化战斗自动操作
-        :param thread_instance: MyThread 实例，用于访问大漠对象和区域定义
-        """
         self.thread = thread_instance
         self.battle_report_dialog = None  # 战斗播报窗口
-        
+
         # 线程安全锁（保护共享状态变量）
         self._state_lock = threading.Lock()
-        
+
         # 定时器引用（用于清理）
         self._timer_refs = []
-        
+
         # 回合超时和错误追踪（在__init__中初始化，避免未定义错误）
-        self.turn_timeout = 25  # 每个回合最大操作时间（秒）
+        self.turn_timeout = CombatConstants.TURN_TIMEOUT
         self.turn_start_time = None  # 回合开始时间
         self.account_error_count = {}  # {account_index: error_count} 追踪每个账号的错误次数（字典类型）
-        self.max_errors_per_turn = 5  # 每个回合最多允许的错误次数，超过则跳过回合
-        
+        self.max_errors_per_turn = CombatConstants.MAX_ERRORS_PER_TURN
+
         # 创建并显示战斗播报窗口（延迟创建，确保wx应用已初始化）
+        # 【关键修复】添加重试计数，避免无限重试
+        self._battle_dialog_retry_count = 0
+        self._max_battle_dialog_retries = CombatConstants.MAX_BATTLE_DIALOG_RETRIES
+
         try:
             # 使用定时器延迟创建，确保wx应用程序已经运行
             timer = threading.Timer(0.3, self._create_battle_report_dialog)
             self._timer_refs.append(timer)
             timer.start()
         except Exception as e:
-            print(f"创建战斗播报窗口失败: {e}")
-        
+            # 静默处理，不打印错误（避免在没有wx环境时打印大量错误）
+            pass
+
         # 初始化战斗区域和配置
         self._init_combat_regions()
 
+        # 初始化新的数据结构
+        self.unit_info = {}  # 单位信息字典
+        self.dead_units = {}  # 阵亡单位记录（按账号分开存储，但统一管理）
+        self.global_dead_units = {"main_chars": [], "generals": []}  # 全局阵亡单位记录（所有账号共享）
+        self.enemies_need_clear = {}  # 需要清除状态的敌军列表
+        self.current_turn = 0  # 当前回合数
+        self.skill_cd = {}  # 技能CD追踪：{account_index: {skill_name: last_used_turn}}
+        self.pending_liubei_summon = {}  # 待召唤刘备记录：{target_account_index: {'target_char_index': int, 'target_char_info': dict}}
+        self.has_liubei_on_field = {}  # 场上是否有刘备：{account_index: bool}，在非战斗回合检测
+        self.low_hp_units = {}  # 血量低的单位记录：{account_index: [{'unit_type': 'main_char'/'general', 'unit_name': str, 'position': (x, y), 'region_index': int}, ...]}
+        self.zhugeliang_found = {}  # 诸葛亮单位标记：{account_index: bool}，记录是否已找到状态1和状态2同时存在的诸葛亮单位
+
+        # 刘备技能释放顺序和冷却记录
+        self.liubei_skill_sequence = ["加攻击", "加血", "控制", "加血"]  # 刘备技能释放顺序（循环）
+        self.liubei_skill_index = {}  # {account_index: current_index} 记录每个账号当前技能索引
+        self.liubei_skill_cd = {}  # {account_index: {skill_name: last_used_turn}} 记录每个账号的技能冷却时间
+
+        # 防止重复复活标记：记录正在被复活的主角
+        # 格式：{(account_index, char_name): True} 或 {(account_index, char_name): timestamp}
+        self.reviving_chars = {}  # 正在复活的主角标记
+        self.revive_lock = threading.Lock()  # 复活操作的锁
+
+        # 轮询监听控制
+        self.polling_running = False  # 轮询监听运行标志
+        self.polling_thread = None  # 轮询监听线程
+
+    # 创建战斗播报窗口（在主线程中调用）
     def _create_battle_report_dialog(self):
-        """创建战斗播报窗口（在主线程中调用）"""
+        # 【关键修复】检查重试次数，避免无限重试
+        if self._battle_dialog_retry_count >= self._max_battle_dialog_retries:
+            # 超过最大重试次数，停止尝试
+            return
+
         try:
+            # 【关键修复】首先检查 wx.App 是否存在
+            try:
+                app = wx.GetApp()
+                if app is None:
+                    # wx.App 不存在，增加重试计数并延迟重试
+                    self._battle_dialog_retry_count += 1
+                    if self._battle_dialog_retry_count < self._max_battle_dialog_retries:
+                        timer = threading.Timer(1.0, self._create_battle_report_dialog)
+                        self._timer_refs.append(timer)
+                        timer.start()
+                    return
+            except (AttributeError, RuntimeError):
+                # wx 未初始化，增加重试计数并延迟重试
+                self._battle_dialog_retry_count += 1
+                if self._battle_dialog_retry_count < self._max_battle_dialog_retries:
+                    timer = threading.Timer(1.0, self._create_battle_report_dialog)
+                    self._timer_refs.append(timer)
+                    timer.start()
+                return
+
+            # wx.App 存在，尝试创建窗口
             if self.battle_report_dialog is None:
                 # 确保在主线程中创建
                 if threading.current_thread() == threading.main_thread():
@@ -220,25 +320,36 @@ class CombatAutoScript:
                     self.report_battle_info("战斗播报系统已初始化", "system")
                 else:
                     # 如果不在主线程，使用wx.CallAfter
-                    wx.CallAfter(self._create_battle_report_dialog)
+                    try:
+                        wx.CallAfter(self._create_battle_report_dialog)
+                    except Exception:
+                        # 如果 CallAfter 失败，增加重试计数并延迟重试
+                        self._battle_dialog_retry_count += 1
+                        if self._battle_dialog_retry_count < self._max_battle_dialog_retries:
+                            timer = threading.Timer(1.0, self._create_battle_report_dialog)
+                            self._timer_refs.append(timer)
+                            timer.start()
         except Exception as e:
-            print(f"创建战斗播报窗口时出错: {e}")
-            # 如果wx还未初始化，再次尝试延迟创建
-            if "wx" in str(e).lower() or "app" in str(e).lower():
-                timer = threading.Timer(0.5, self._create_battle_report_dialog)
+            # 【关键修复】静默处理错误，避免重复打印错误信息
+            # 只有在重试次数较少时才打印错误（避免刷屏）
+            if self._battle_dialog_retry_count < 3:
+                pass  # 前3次重试时静默处理
+            # 增加重试计数
+            self._battle_dialog_retry_count += 1
+            # 如果还有重试机会，延迟重试
+            if self._battle_dialog_retry_count < self._max_battle_dialog_retries:
+                timer = threading.Timer(1.0, self._create_battle_report_dialog)
                 self._timer_refs.append(timer)
                 timer.start()
 
+    # 播报战斗信息
+    # :param message: 消息内容
+    # :param msg_type: 消息类型 ("info", "success", "warning", "error", "system", "turn", "action")
     def report_battle_info(self, message, msg_type="info"):
-        """
-        播报战斗信息
-        :param message: 消息内容
-        :param msg_type: 消息类型 ("info", "success", "warning", "error", "system", "turn", "action")
-        """
         # 如果窗口还未创建，尝试创建
         if self.battle_report_dialog is None:
             try:
-                if hasattr(wx, 'GetApp') and wx.GetApp():
+                if hasattr(wx, "GetApp") and wx.GetApp():
                     wx.CallAfter(self._create_battle_report_dialog)
             except (AttributeError, RuntimeError) as e:
                 # 忽略wx未初始化或已销毁的错误
@@ -263,110 +374,99 @@ class CombatAutoScript:
             # 如果窗口不存在，至少打印到控制台
             print(f"[战斗播报-{msg_type}] {message}")
 
+    # 获取资源文件路径
     def get_resource_path(self, relative_path):
-        """获取资源文件路径"""
         if hasattr(sys, "_MEIPASS"):
             return os.path.join(sys._MEIPASS, relative_path)
         return os.path.join(os.path.abspath("."), relative_path)
 
+    # 初始化战斗区域和配置（从__init__中分离出来，避免代码过长）
     def _init_combat_regions(self):
-        """初始化战斗区域和配置（从__init__中分离出来，避免代码过长）"""
         # 战斗相关区域定义（已根据游戏截图固定配置，900x580窗口）
         # 战斗区域配置（基于900x580游戏界面）
         # 格式：(x, y, w, h) - 左上角坐标和宽高（w, h是结束坐标）
-        self.enemy_region = (0, 200, 500, 580)  # 敌军区域（左侧，覆盖整个左侧区域）
-        self.ally_region = (500, 200, 900, 580)  # 己方区域（右侧，覆盖整个右侧区域）
-        self.main_char_region = (680, 250, 900, 550)  # 主角区域（最右侧，三个主角位置）
-        self.general_region = (480, 250, 700, 550)  # 武将区域（主角前方，武将位置）
+        self.enemy_region = (54, 168, 370, 541)  # 敌军区域（左侧，覆盖整个左侧区域）
+        self.ally_region = (450, 162, 900, 580)  # 己方区域（右侧，覆盖整个右侧区域）
+        self.main_char_region = (706, 167, 900, 580)  # 主角区域（最右侧，三个主角位置）
+        self.general_region = (491, 164, 772, 522)  # 武将区域（主角前方，武将位置）
 
         # 回合数识别区域（"23"显示的区域，屏幕上方中间）
-        self.turn_indicator_region = (400, 0, 500,
-                                      50)  # 回合数显示区域（上方中间，显示"23"等数字）
+        self.turn_indicator_region = (378, 88, 502, 155)  # 回合数显示区域（上方中间，显示"23"等数字）
 
         # 右侧按钮区域（操作按钮区域）
-        self.right_button_region = (400, 450, 600, 580)  # 右侧按钮区域（中间偏右，包含操作按钮）
+        self.right_button_region = self.ally_region  # 右侧按钮区域（中间偏右，包含操作按钮）
 
         # 面板区域（点击按钮后弹出的面板）
-        self.skill_panel_region = (200, 300, 500, 550)  # 技能面板区域（点击技能按钮后弹出的面板）
-        self.summon_panel_region = (200, 300, 500, 550)  # 召唤面板区域（点击召唤按钮后弹出的面板）
-        self.item_panel_region = (200, 300, 500, 550)  # 道具面板区域（点击道具按钮后弹出的面板）
+        self.skill_panel_region = self.ally_region  # 技能面板区域（点击技能按钮后弹出的面板）
+        self.summon_panel_region = self.ally_region  # 召唤面板区域（点击召唤按钮后弹出的面板）
+        self.item_panel_region = self.ally_region  # 道具面板区域（点击道具按钮后弹出的面板）
 
         # 武将图片路径
         self.general_images = {
-            '刘备': self.get_resource_path(
-                'serveAssets/images/auto/miankong1.bmp'),
-            '魔化关羽': f"{self.get_resource_path('serveAssets/images/auto/gangqi1.bmp')}|{self.get_resource_path('serveAssets/images/auto/shenyou1.bmp')}",
-            '曹操': f"{self.get_resource_path('serveAssets/images/auto/bawang1.bmp')}|{self.get_resource_path('serveAssets/images/auto/luanshi1.bmp')}"
+            "刘备": self.get_resource_path("serveAssets/images/auto/miankong1.bmp"),
+            "魔化关羽": f"{self.get_resource_path('serveAssets/images/auto/gangqi1.bmp')}|{self.get_resource_path('serveAssets/images/auto/shenyou1.bmp')}",
+            "曹操": f"{self.get_resource_path('serveAssets/images/auto/bawang1.bmp')}|{self.get_resource_path('serveAssets/images/auto/luanshi1.bmp')}",
         }
 
         # 技能图片路径（需要根据实际技能图标添加）
         self.skill_images = {
             # 主角技能
-            '主角群体攻击1': self.get_resource_path(
-                'serveAssets/images/auto/lei1.bmp'),
-            '主角群体攻击2': self.get_resource_path(
-                'serveAssets/images/auto/jimie1.bmp'),
-            '主角群体攻击3': self.get_resource_path(
-                'serveAssets/images/auto/suohun1.bmp'),
-            '主角群体攻击4': self.get_resource_path(
-                'serveAssets/images/auto/tianzai2.bmp'),
-            '主角群体攻击5': self.get_resource_path(
-                'serveAssets/images/auto/tianzai1.bmp'),
-
+            "寂灭神劫": self.get_resource_path("serveAssets/images/auto/cehsi.bmp"),
+            "锁魂": self.get_resource_path("serveAssets/images/auto/zhanshiqun.bmp"),
+            "天灾": f"{self.get_resource_path('serveAssets/images/auto/tianzai1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tianzai2.bmp')}",
             # 辅助武将技能
-            '加血': self.get_resource_path(
-                'serveAssets/images/auto/tuanjiezhiquan1.bmp'),
-            '加攻击': self.get_resource_path(
-                'serveAssets/images/auto/liubeizengshang1.bmp'),
-            '控制': self.get_resource_path(
-                'serveAssets/images/auto/liubeikong1.bmp'),
-            '清除状态': self.get_resource_path(
-                'serveAssets/images/auto/liubeijie1.bmp'),
-
+            "加血": f"{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan2.bmp')}",
+            "加攻击": self.get_resource_path("serveAssets/images/auto/liubeizengshang1.bmp"),
+            "控制": self.get_resource_path("serveAssets/images/auto/liubeikong1.bmp"),
+            "清除状态": self.get_resource_path("serveAssets/images/auto/liubeijie1.bmp"),
             # 输出武将技能
-            '武将群体攻击1': f"{self.get_resource_path('serveAssets/images/auto/caocaoqun3.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocaoqun2.bmp')}",
-            '武将群体攻击2': f"{self.get_resource_path('serveAssets/images/auto/moguqun1.bmp')}|{self.get_resource_path('serveAssets/images/auto/moguqun2.bmp')}"
+            "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun3.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocaoqun2.bmp')}",
+            "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguqun1.bmp')}|{self.get_resource_path('serveAssets/images/auto/moguqun2.bmp')}",
         }
 
         # 物品图片
         self.item_images = {
-            '恢复药': f"{self.get_resource_path('serveAssets/images/auto/yao.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao1.bmp')}",
+            "恢复药": f"{self.get_resource_path('serveAssets/images/auto/yao.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao1.bmp')}",
             # 恢复药（加血又加蓝，2回合CD）
-            '复活药': f"{self.get_resource_path('serveAssets/images/auto/fuhuo.bmp')}|{self.get_resource_path('serveAssets/images/auto/fuhuo1.bmp')}",
+            "复活药": f"{self.get_resource_path('serveAssets/images/auto/fuhuo.bmp')}|{self.get_resource_path('serveAssets/images/auto/fuhuo1.bmp')}",
             # 复活药（复活阵亡单位）
         }
-
+        
+        # 刘备辅助技能目标图片（用于选择目标）
+        self.liubei_target_image = f"{self.get_resource_path('serveAssets/images/auto/jifangliubei.bmp')}|{self.get_resource_path('serveAssets/images/auto/jifangmoguan.bmp')}"
+        
+        # 技能目标选择图片（蓝色条）
+        self.target_lantiao_image = self.get_resource_path("serveAssets/images/auto/lantiao.bmp")
+        self.has_liubei_on_field = self.get_resource_path("serveAssets/images/auto/miankong1.bmp")
         # 控制开关
         self.keep_support_general = False  # 是否保证辅助武将在场
         self.enable_main_heal = True  # 主角加血开关
         self.enable_main_summon = True  # 主角召唤开关
 
-        # 刘备辅助技能释放顺序（移除加速技能）
-        self.support_skill_sequence = ['加攻击', '加血', '控制', '清除状态']
+        # 刘备辅助技能释放顺序（"控制"是攻击技能，不在辅助技能序列中）
+        self.support_skill_sequence = ["加攻击", "加血", "清除状态"]
         self.current_skill_index = 0  # 当前技能索引
 
         # 技能CD配置（回合数）
         self.skill_cd_config = {
             # 刘备技能
-            '加血': 2,  # 2回合CD
-            '清除状态': 4,  # 4回合CD
-            '加攻击': 0,  # 无CD
-            '控制': 0,  # 无CD
+            "加血": 2,  # 2回合CD
+            "清除状态": 4,  # 4回合CD
+            "加攻击": 0,  # 无CD
+            "控制": 0,  # 无CD
             # 主角技能
-            '主角群体攻击1': 2,  # 2回合CD
-            '主角群体攻击2': 3,  # 3回合CD
-            '主角群体攻击3': 2,  # 2回合CD
-            '主角群体攻击4': 2,  # 2回合CD
-            '主角群体攻击5': 2,  # 2回合CD
+            "寂灭神劫": 3,  # 3回合CD
+            "锁魂": 2,  # 2回合CD
+            "天灾": 2,  # 2回合CD
             # 武将技能
-            '武将群体攻击1': 0,  # 无CD
-            '武将群体攻击2': 0,  # 无CD
+            "剑阵灭杀": 0,  # 无CD
+            "武神一怒": 0,  # 无CD
         }
 
         # 药品CD配置
         self.item_cd_config = {
-            '恢复药': 2,  # 2回合CD（红药，加血又加蓝）
-            '复活药': 0,  # 无CD（复活药通常无CD限制）
+            "恢复药": 3,  # 3回合CD（红药，加血又加蓝）
+            "复活药": 0,  # 无CD（复活药通常无CD限制）
         }
 
         # 技能CD追踪 {account_index: {skill_name: last_used_turn}}
@@ -376,99 +476,95 @@ class CombatAutoScript:
         self.item_cd_tracking = {}
 
         # 武将追踪信息（存储每个账号的武将信息）
-        self.general_tracking = {}  # {account_index: {general_name: {'type': 'support/dps', 'deployed_turn': turn_number, 'position': (x, y)}}}
-        self.current_turn = 0  # 当前回合数
+        self.general_tracking = (
+            {}
+        )  # {account_index: {general_name: {'type': 'support/dps', 'deployed_turn': turn_number, 'position': (x, y)}}}
+        # 注意：current_turn 已在 __init__ 中初始化，这里不再重复初始化
         self.support_general_account = None  # 哪个账号有辅助武将（场上）
         self.turn_processed = False  # 当前回合是否已处理（防止重复更新回合数）
+        self.account_turn_processed = {}  # 每个账号在当前回合是否已处理（防止重复执行操作）
         self._last_turn_state = {}  # 每个账号的上一回合状态 {account_index: bool}（用于检测回合变化）
+        self._last_alive_units_check = True  # 上次检测是否有存活单位的结果（默认True，避免初始误判）
+
+        # 当前战斗需要检测的敌军武将列表（可为每个账号单独设置）
+        # 格式：{account_index: [武将名称列表]} 或 None（自动检测所有敌军武将）
+        # 例如：{0: ['刘备', '诸葛亮'], 1: ['赵云29']} 或 None
+        self.current_enemy_generals_to_detect = None  # None表示自动检测所有配置的敌军武将
 
         # 敌军状态图片路径（需要检测的四种状态）
         self.enemy_status_images = {
-            '状态1': f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
-            '状态2': self.get_resource_path(
-                'serveAssets/images/auto/tiandihudun1.bmp'),
-            '状态3': self.get_resource_path(
-                'serveAssets/images/auto/bumiexiongxin1.bmp'),
-            '状态4': self.get_resource_path(
-                'serveAssets/images/auto/gangqi1.bmp'),
+            "状态1": f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
+            "状态2": self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp"),
+            "状态3": self.get_resource_path("serveAssets/images/auto/bumiexiongxin1.bmp"),
+            "状态4": self.get_resource_path("serveAssets/images/auto/gangqi1.bmp"),
         }
 
         # 敌人图片路径（用于识别敌人的位置）
         self.enemy_images = {
-            '敌人1': self.get_resource_path(
-                'serveAssets/images/auto/enemy1.bmp'),
-            '敌人2': self.get_resource_path(
-                'serveAssets/images/auto/enemy2.bmp'),
-            '敌人3': self.get_resource_path(
-                'serveAssets/images/auto/enemy3.bmp'),
+            "敌人1": self.get_resource_path("serveAssets/images/auto/lantiao1.bmp"),
+            "敌人2": self.get_resource_path("serveAssets/images/auto/lantiao1.bmp"),
+            "敌人3": self.get_resource_path("serveAssets/images/auto/lantiao1.bmp"),
             # 可以添加更多敌人的图片路径
         }
 
         # 主角图片路径（用于检测主角位置，存活状态通过墓碑检测）
         self.main_char_images = {
-            '主角1': self.get_resource_path(
-                'serveAssets/images/auto/zengjiagongjili1.bmp'),
-            '主角2': self.get_resource_path(
-                'serveAssets/images/auto/zengjiagongjili1.bmp'),
-            '主角3': self.get_resource_path(
-                'serveAssets/images/auto/zengjiagongjili1.bmp'),
+            "主角1": self.get_resource_path("serveAssets/images/auto/zengjiagongjili1.bmp"),
+            "主角2": self.get_resource_path("serveAssets/images/auto/zengjiagongjili1.bmp"),
+            "主角3": self.get_resource_path("serveAssets/images/auto/zengjiagongjili1.bmp"),
         }
 
         # 墓碑图片路径（用于检测单位死亡状态）
         # 单位死亡后会在原地显示墓碑，通过检测墓碑来判断死亡
-        self.tombstone_image = self.get_resource_path(
-            'serveAssets/images/auto/duiyou2mubei1.bmp')  # 墓碑图片
+        self.tombstone_image = self.get_resource_path("serveAssets/images/auto/duiyou2mubei1.bmp")  # 墓碑图片
 
         # 墓碑检测区域大小（以单位位置为中心的区域）
         # 用于在单位位置附近检测墓碑，避免位置偏移导致的检测失败
-        self.tombstone_detection_radius = 30  # 墓碑检测半径（像素）
+        self.tombstone_detection_radius = CombatConstants.TOMBSTONE_DETECTION_RADIUS
 
         # 敌人固定位置（已根据游戏截图固定配置）
         # 格式：{(account_index, enemy_index): (x, y)} - 敌人的中心点坐标
-        # 根据截图，左侧3个敌人中心点大约在：(150, 300), (150, 375), (150, 450)
+        # 根据截图，左侧3个敌人中心点大约在：(97, 246), (104, 344), (115, 446)
         self.fixed_enemy_positions = {
             # 账号0的敌人位置
-            (0, 0): (150, 300),  # 敌人1中心点（上，最左侧）
-            (0, 1): (150, 375),  # 敌人2中心点（中，最左侧）
-            (0, 2): (150, 450),  # 敌人3中心点（下，最左侧）
+            (0, 0): (97, 246),  # 敌人1中心点（上，最左侧）
+            (0, 1): (104, 344),  # 敌人2中心点（中，最左侧）
+            (0, 2): (115, 446),  # 敌人3中心点（下，最左侧）
             # 账号1的敌人位置（如果多开窗口布局一致）
-            (1, 0): (150, 300),
-            (1, 1): (150, 375),
-            (1, 2): (150, 450),
+            (1, 0): (97, 246),
+            (1, 1): (104, 344),
+            (1, 2): (115, 446),
             # 账号2的敌人位置（如果多开窗口布局一致）
-            (2, 0): (150, 300),
-            (2, 1): (150, 375),
-            (2, 2): (150, 450),
+            (2, 0): (97, 246),
+            (2, 1): (104, 344),
+            (2, 2): (115, 446),
         }
 
         # 背包武将图片（用于检测背包中是否有可用武将）
         self.bag_general_images = {
-            '刘备': f"{self.get_resource_path('serveAssets/images/auto/liubei1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubei2.bmp')}",
-            '魔化关羽': self.get_resource_path(
-                'serveAssets/images/auto/mogu1.bmp'),
-            '曹操': self.get_resource_path(
-                'serveAssets/images/auto/caocao1.bmp'),
+            "刘备": f"{self.get_resource_path('serveAssets/images/auto/liubei1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubei2.bmp')}",
+            "魔化关羽": f"{self.get_resource_path('serveAssets/images/auto/mogu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/mogu1.bmp')}",
+            "曹操": self.get_resource_path("serveAssets/images/auto/caocao1.bmp"),
         }
 
         # 血量条图片（用于检测血量低的单位）
         # 识别到这张图片说明单位血量低，需要加血
-        self.low_hp_indicator_image = self.get_resource_path(
-            'serveAssets/images/auto/xueliangbuzu1.bmp')  # 血量低的标识图片
+        self.low_hp_indicator_image = f"{self.get_resource_path('serveAssets/images/auto/xueliangbuzu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/xueliangbuzu2.bmp')}"  # 血量低的标识图片
 
         # 9个血量条检测区域（每个角色和武将都有专门的区域）
         # 顺序：主角1、主角2、主角3、武将1、武将2、武将3、武将4、武将5、武将6
         # 格式：[(x1, y1, w1, h1), (x2, y2, w2, h2), ...]
         # 基于900x580游戏界面，血量条通常显示在角色头顶上方
         self.hp_bar_regions = [
-            (700, 250, 850, 280),  # 主角1血量条（上方）
-            (700, 320, 850, 350),  # 主角2血量条（中间）
-            (700, 390, 850, 420),  # 主角3血量条（下方）
-            (520, 250, 670, 280),  # 武将1血量条（上，前排）
-            (520, 320, 670, 350),  # 武将2血量条（中，前排）
-            (520, 390, 670, 420),  # 武将3血量条（下，前排）
-            (610, 250, 700, 280),  # 武将4血量条（上，后排）
-            (610, 320, 700, 350),  # 武将5血量条（中，后排）
-            (610, 390, 700, 420),  # 武将6血量条（下，后排）
+            (708, 170, 830, 340),  # 主角1血量条（上方）
+            (749, 281, 836, 409),  # 主角2血量条（中间）
+            (775, 395, 862, 542),  # 主角3血量条（下方）
+            (530, 170, 616, 340),  # 武将1血量条（上，前排）
+            (520, 270, 634, 409),  # 武将2血量条（中，前排）
+            (520, 387, 658, 542),  # 武将3血量条（下，前排）
+            (626, 170, 723, 340),  # 武将4血量条（上，后排）
+            (626, 270, 744, 409),  # 武将5血量条（中，后排）
+            (626, 387, 768, 542),  # 武将6血量条（下，后排）
         ]  # 9个血量条区域列表
 
         # 血量条区域到单位的映射关系
@@ -484,10 +580,10 @@ class CombatAutoScript:
 
         # 右侧按钮区域定义（根据实际游戏，操作按钮在右侧）
         # 按钮包括：攻击(A)、技能(S)、道具(E)、防御(D)、重复(R)、召唤(C)、自动(W)、逃跑(P)
-        self.right_button_region = (400, 450, 600, 580)  # 右侧按钮区域（中间偏右，包含操作按钮）
-        self.skill_panel_region = (200, 300, 500, 550)  # 技能面板区域（点击技能按钮后弹出的面板）
-        self.summon_panel_region = (200, 300, 500, 550)  # 召唤面板区域（点击召唤按钮后弹出的面板）
-        self.item_panel_region = (200, 300, 500, 550)  # 道具面板区域（点击道具按钮后弹出的面板）
+        self.right_button_region = (610, 203, 680, 436)  # 右侧按钮区域（中间偏右，包含操作按钮）
+        self.skill_panel_region = (480, 167, 607, 550)  # 技能面板区域（点击技能按钮后弹出的面板）
+        self.summon_panel_region = (480, 167, 607, 550)  # 召唤面板区域（点击召唤按钮后弹出的面板）
+        self.item_panel_region = (480, 167, 607, 550)  # 道具面板区域（点击道具按钮后弹出的面板）
 
         # 主角、武将、敌人的确切点位存储（单位外观中心位置，用于点击）
         # {account_index: {'main_chars': [(char_name, x, y), ...], 'generals': [(general_name, x, y), ...], 'enemies': [(enemy_name, x, y), ...]}}
@@ -498,59 +594,65 @@ class CombatAutoScript:
             # 中心点计算：区域中心 = (x1+x2)/2, (y1+y2)/2
             # 主角中心点（最右侧）
             0: {
-                'main_chars': [
-                    ('主角1', 775, 310),  # 主角1中心点 (700+850)/2, (280+340)/2
-                    ('主角2', 775, 380),  # 主角2中心点 (700+850)/2, (350+410)/2
-                    ('主角3', 775, 450),  # 主角3中心点 (700+850)/2, (420+480)/2
+                "main_chars": [
+                    ("主角1", 764, 278),  # 主角1中心点 (700+850)/2, (280+340)/2
+                    ("主角2", 793, 380),  # 主角2中心点 (700+850)/2, (350+410)/2
+                    ("主角3", 825, 490),  # 主角3中心点 (700+850)/2, (420+480)/2
                 ],
-                'generals': [
+                "generals": [
                     # 武将中心点（会在战斗中动态更新，这里是初始参考值）
                     # 前排武将
-                    ('武将1', 595, 310),  # 武将1中心点 (520+670)/2, (280+340)/2
-                    ('武将2', 595, 380),  # 武将2中心点 (520+670)/2, (350+410)/2
-                    ('武将3', 595, 450),  # 武将3中心点 (520+670)/2, (420+480)/2
+                    ("武将1", 572, 288),  # 武将1中心点 (520+670)/2, (280+340)/2
+                    ("武将2", 589, 389),  # 武将2中心点 (520+670)/2, (350+410)/2
+                    ("武将3", 613, 491),  # 武将3中心点 (520+670)/2, (420+480)/2
                     # 后排武将
-                    ('武将4', 655, 310),  # 武将4中心点 (610+700)/2, (280+340)/2
-                    ('武将5', 655, 380),  # 武将5中心点 (610+700)/2, (350+410)/2
-                    ('武将6', 655, 450),  # 武将6中心点 (610+700)/2, (420+480)/2
+                    ("武将4", 667, 279),  # 武将4中心点 (610+700)/2, (280+340)/2
+                    ("武将5", 688, 376),  # 武将5中心点 (610+700)/2, (350+410)/2
+                    ("武将6", 722, 490),  # 武将6中心点 (610+700)/2, (420+480)/2
                 ],
-                'enemies': [
+                "enemies": [
                     # 敌人中心点需要通过set_fixed_enemy_positions设置
                     # 一般敌人的中心点位置在左侧，x约150-350, y约300-450
-                ]
+                ],
             },
             1: {
-                'main_chars': [
-                    ('主角1', 775, 310),
-                    ('主角2', 775, 380),
-                    ('主角3', 775, 450),
+                "main_chars": [
+                    ("主角1", 764, 278),  # 主角1中心点 (700+850)/2, (280+340)/2
+                    ("主角2", 793, 380),  # 主角2中心点 (700+850)/2, (350+410)/2
+                    ("主角3", 825, 490),  # 主角3中心点 (700+850)/2, (420+480)/2
                 ],
-                'generals': [
-                    ('武将1', 595, 310),
-                    ('武将2', 595, 380),
-                    ('武将3', 595, 450),
-                    ('武将4', 655, 310),
-                    ('武将5', 655, 380),
-                    ('武将6', 655, 450),
+                "generals": [
+                    # 武将中心点（会在战斗中动态更新，这里是初始参考值）
+                    # 前排武将
+                    ("武将1", 572, 288),  # 武将1中心点 (520+670)/2, (280+340)/2
+                    ("武将2", 589, 389),  # 武将2中心点 (520+670)/2, (350+410)/2
+                    ("武将3", 613, 491),  # 武将3中心点 (520+670)/2, (420+480)/2
+                    # 后排武将
+                    ("武将4", 667, 279),  # 武将4中心点 (610+700)/2, (280+340)/2
+                    ("武将5", 688, 376),  # 武将5中心点 (610+700)/2, (350+410)/2
+                    ("武将6", 722, 490),  # 武将6中心点 (610+700)/2, (420+480)/2
                 ],
-                'enemies': []
+                "enemies": [],
             },
             2: {
-                'main_chars': [
-                    ('主角1', 775, 310),
-                    ('主角2', 775, 380),
-                    ('主角3', 775, 450),
+                "main_chars": [
+                    ("主角1", 764, 278),  # 主角1中心点 (700+850)/2, (280+340)/2
+                    ("主角2", 793, 380),  # 主角2中心点 (700+850)/2, (350+410)/2
+                    ("主角3", 825, 490),  # 主角3中心点 (700+850)/2, (420+480)/2
                 ],
-                'generals': [
-                    ('武将1', 595, 310),
-                    ('武将2', 595, 380),
-                    ('武将3', 595, 450),
-                    ('武将4', 655, 310),
-                    ('武将5', 655, 380),
-                    ('武将6', 655, 450),
+                "generals": [
+                    # 武将中心点（会在战斗中动态更新，这里是初始参考值）
+                    # 前排武将
+                    ("武将1", 572, 288),  # 武将1中心点 (520+670)/2, (280+340)/2
+                    ("武将2", 589, 389),  # 武将2中心点 (520+670)/2, (350+410)/2
+                    ("武将3", 613, 491),  # 武将3中心点 (520+670)/2, (420+480)/2
+                    # 后排武将
+                    ("武将4", 667, 279),  # 武将4中心点 (610+700)/2, (280+340)/2
+                    ("武将5", 688, 376),  # 武将5中心点 (610+700)/2, (350+410)/2
+                    ("武将6", 722, 490),  # 武将6中心点 (610+700)/2, (420+480)/2
                 ],
-                'enemies': []
-            }
+                "enemies": [],
+            },
         }
 
         # 阵亡主角的位置存储（用于复活）
@@ -563,27 +665,99 @@ class CombatAutoScript:
         # 坐标基于最左侧三个敌人外观中心（根据图片描述，最左侧敌人x约150）
         self.fixed_enemy_positions = {
             # 账号0的三个敌人固定点位（最左侧三个敌人外观中心）
-            (0, 0): (150, 300),  # 敌人1中心点（上，最左侧）
-            (0, 1): (150, 375),  # 敌人2中心点（中，最左侧）
-            (0, 2): (150, 450),  # 敌人3中心点（下，最左侧）
+            (0, 0): (97, 246),  # 敌人1中心点（上，最左侧）
+            (0, 1): (104, 344),  # 敌人2中心点（中，最左侧）
+            (0, 2): (115, 446),  # 敌人3中心点（下，最左侧）
+            (0, 3): (202, 337),  # 敌人4中心点（中，最中间一排）
             # 账号1的三个敌人固定点位
-            (1, 0): (150, 300),
-            (1, 1): (150, 375),
-            (1, 2): (150, 450),
+            (1, 0): (97, 246),
+            (1, 1): (104, 344),
+            (1, 2): (115, 446),
+            (1, 3): (202, 337),  # 敌人4中心点（中，最中间一排）
             # 账号2的三个敌人固定点位
-            (2, 0): (150, 300),
-            (2, 1): (150, 375),
-            (2, 2): (150, 450),
+            (2, 0): (97, 246),
+            (2, 1): (104, 344),
+            (2, 2): (115, 446),
+            (2, 3): (202, 337),  # 敌人4中心点（中，最中间一排）
         }
 
         # 状态追踪（用于状态3和状态4的处理逻辑）
         # {account_index: {'status3_present': bool, 'status3_last_seen_turn': int, 'status4_present': bool}}
         self.enemy_status_tracking = {}
 
+        # 敌军武将配置（每个武将的检测状态图片、检测状态区域、施法点位）
+        # 格式：{武将名称: {'status_images': {...}, 'status_region': (x, y, w, h), 'cast_position': (x, y)}}
+        self.enemy_general_config = {
+            "刘备": {
+                "status_images": {
+                    # 可以添加多个状态图片路径，用|分隔
+                    "状态1": self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
+                },
+                "status_region": (165, 258, 246, 291),  # 检测状态区域（x, y, w, h），w和h是结束坐标
+                "cast_position": (203, 346),  # 施法点位（x, y）
+            },
+            "诸葛亮": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/bumiexiongxin1.bmp"),
+                    "状态2": self.get_resource_path("serveAssets/images/auto/gangqi1.bmp"),
+                },
+                "status_region": (61, 257, 145, 312),
+                "cast_position": (104, 344),
+            },
+            "赵云29": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/longdan1.bmp"),
+                },
+                "status_region": (54, 168, 280, 541),
+                "cast_position": (115, 446),
+            },
+            "龙": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (61, 257, 145, 312),
+                "cast_position": (112, 372),
+            },
+            "人参娃": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (174, 382, 224, 426),
+                "cast_position": (222, 472),
+            },
+            "上龙": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (48, 169, 141, 216),
+                "cast_position": (97, 246),
+            },
+            "猴子": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (61, 257, 145, 312),
+                "cast_position": (112, 372),
+            },
+            "猴子狮": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (146, 177, 227, 225),
+                "cast_position": (150, 300),
+            },
+            "赵云28": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/longdan1.bmp"),
+                },
+                "status_region": (165, 255, 207, 307),
+                "cast_position": (202, 337),
+            },
+        }
+
         # 己方异常状态图片路径（混乱、冰封、眩晕、嘲讽）
         self.ally_abnormal_status_images = {
-            '冰封': self.get_resource_path(
-                'serveAssets/images/auto/bingfeng1.bmp'),  # 冰封状态图片
+            "冰封": self.get_resource_path("serveAssets/images/auto/bingfeng1.bmp"),  # 冰封状态图片
         }
 
         # 己方单位异常状态追踪
@@ -594,2919 +768,1996 @@ class CombatAutoScript:
 
         # 异常状态检测区域大小（以单位位置为中心的区域）
         # 用于在单位位置附近检测异常状态图标
-        self.status_detection_radius = 40  # 状态检测半径（像素）
+        self.status_detection_radius = CombatConstants.STATUS_DETECTION_RADIUS
 
         # 按钮图片路径
         self.button_images = {
-            '技能按钮': self.get_resource_path(
-                'serveAssets/images/auto/jineng.bmp'),
-            '召唤按钮': self.get_resource_path(
-                'serveAssets/images/auto/zhaohuan.bmp'),
-            '道具按钮': self.get_resource_path(
-                'serveAssets/images/auto/yaopin.bmp'),
+            "技能按钮": self.get_resource_path("serveAssets/images/auto/jineng.bmp"),
+            "召唤按钮": self.get_resource_path("serveAssets/images/auto/zhaohuan.bmp"),
+            "道具按钮": self.get_resource_path("serveAssets/images/auto/yaopin.bmp"),
+            "防御按钮": self.get_resource_path("serveAssets/images/auto/fangyu.bmp"),  # 防御按钮
+            "操作按钮": self.get_resource_path("serveAssets/images/auto/jineng.bmp"),  # 操作按钮(检测是否在战斗页面)
+            "取消按钮": self.get_resource_path("serveAssets/images/quxiaozdzd.bmp"),  # 取消按钮
         }
+        
+        # zdzd图片路径（需要检测并点击取消的弹窗）
+        self.zdzd_image = self.get_resource_path("serveAssets/images/zdzd111.bmp")
+        
+        # zdzd检测区域（全屏检测）
+        self.zdzd_region = (0, 0, 900, 580)  # 全屏区域
 
         # 三个账号的角色站位区域（基于900x580游戏界面）
         # 格式：(x, y, w, h) - 左上角坐标和宽高
         # 根据游戏截图：左侧是敌军，右侧是我军，最右侧是三个主角，前面是武将
         self.account_regions = [
-                                   {
-                                       # 主角位置（最右侧，x约750）
-                                       'ally_char_1': (700, 280, 850, 340),
-                                       # 主角1位置（上）
-                                       'ally_char_2': (700, 350, 850, 410),
-                                       # 主角2位置（中）
-                                       'ally_char_3': (700, 420, 850, 480),
-                                       # 主角3位置（下）
-
-                                       # 武将位置（主角前方，x约550-650，分前后两列）
-                                       # 前排武将（靠近中心）
-                                       'ally_general_1': (520, 280, 670, 340),
-                                       # 武将1位置（上，前排）
-                                       'ally_general_2': (520, 350, 670, 410),
-                                       # 武将2位置（中，前排）
-                                       'ally_general_3': (520, 420, 670, 480),
-                                       # 武将3位置（下，前排）
-                                       # 后排武将（中间列，可选）
-                                       'ally_general_4': (610, 280, 700, 340),
-                                       # 武将4位置（上，后排）
-                                       'ally_general_5': (610, 350, 700, 410),
-                                       # 武将5位置（中，后排）
-                                       'ally_general_6': (610, 420, 700, 480),
-                                       # 武将6位置（下，后排）
-                                   }
-                               ] * 3  # 假设三个账号区域相同，如果不同需要分别定义
-
-    def init_combat_tracking(self):
-        """
-        初始化战斗追踪（第一回合调用）
-        检测所有账号的武将和主角情况并初始化追踪数据
-        """
-        self.general_tracking = {}
-        self.unit_positions = {}
-        self.dead_main_char_positions = {}  # 初始化阵亡主角位置存储
-        self.skill_cd_tracking = {}
-        self.item_cd_tracking = {}
-        self.current_turn = 0
-        self.support_general_account = None
-        self.turn_processed = False  # 修复：初始化时重置回合处理标志
-        self._last_turn_state = {}  # 修复：每个账号的回合状态 {account_index: bool}
-
-        # 初始化己方状态追踪
-        self.ally_status_tracking = {}
-
-        # 注意：回合超时和错误追踪已在__init__中初始化，这里只需重置
-        self.turn_start_time = None  # 重置回合开始时间
-        self.account_error_count = {}  # 重置错误计数（清空所有账号的错误计数）
-
-        # 检测每个账号的武将和主角
-        account_count = self.get_account_count()
-        for i in range(account_count):
-            # 安全检查：确保account_dm已初始化且索引有效
-            if not self.validate_account_index(i):
-                continue
-
-            self.general_tracking[i] = {}
-            self.unit_positions[i] = {
-                'main_chars': [],
-                'generals': [],
-                'enemies': []
+            {
+                # 主角位置（最右侧，x约750）
+                "ally_char_1": (708, 168, 815, 329),
+                # 主角1位置（上）
+                "ally_char_2": (735, 251, 856, 426),
+                # 主角2位置（中）
+                "ally_char_3": (769, 348, 862, 527),
+                # 主角3位置（下）
+                # 武将位置（主角前方，x约550-650，分前后两列）
+                # 前排武将（靠近中心）
+                "ally_general_1": (530, 148, 616, 329),
+                # 武将1位置（上，前排）
+                "ally_general_2": (520, 251, 634, 426),
+                # 武将2位置（中，前排）
+                "ally_general_3": (520, 348, 658, 527),
+                # 武将3位置（下，前排）
+                # 后排武将（中间列，可选）
+                "ally_general_4": (610, 148, 623, 329),
+                # 武将4位置（上，后排）
+                "ally_general_5": (610, 251, 644, 426),
+                # 武将5位置（中，后排）
+                "ally_general_6": (610, 348, 668, 527),
+                # 武将6位置（下，后排）
             }
+        ] * 3  # 假设三个账号区域相同，如果不同需要分别定义
 
-            # 检测武将
-            generals = self.get_all_generals(i)
-            for general in generals:
-                general_name = general['name']
-                general_pos = self.find_general(general_name, i)
-                if general_pos:
-                    self.general_tracking[i][general_name] = {
-                        'type': general['type'],
-                        'deployed_turn': self.current_turn,
-                        'position': (general_pos.x, general_pos.y)
-                    }
-                    self.unit_positions[i]['generals'].append(
-                        (general_name, general_pos.x, general_pos.y))
+    # ==================== 重写后的核心战斗逻辑 ====================
 
-                    # 记录哪个账号有辅助武将
-                    if general['type'] == 'support':
-                        self.support_general_account = i
+    # 获取账号数量
+    def get_account_count(self):
+        """获取账号数量（根据实际可用的大漠对象）"""
+        count = 0
+        if self.thread.dm:
+            count += 1
+        if getattr(self.thread, 'win1_dm', None):
+            count += 1
+        if getattr(self.thread, 'win2_dm', None):
+            count += 1
+        return max(count, 1)  # 至少返回1（主账号）
 
-            # 检测主角
-            team_status = self.get_team_status(i)
-            if team_status:
-                for char_name in team_status['main_chars']:
-                    char_pos = self.find_main_char(char_name, i)
-                    if char_pos:
-                        self.unit_positions[i]['main_chars'].append(
-                            (char_name, char_pos.x, char_pos.y))
-                        print(
-                            f"账号{i} 主角 {char_name} 位置: ({char_pos.x}, {char_pos.y})")
-
-        # 检测敌人位置（需要在战斗开始后检测）
-        # self.detect_enemy_positions(i)  # 注释掉，在auto_combat中实时检测
-
-    def find_pic_with_timeout(self, dm_object, x, y, w, h, image_path,
-                              timeout=3):
+    # 获取指定账号的dm对象
+    def get_account_dm(self, account_index):
+        """获取指定账号的dm对象
+        account_index: 0=dm, 1=win1_dm, 2=win2_dm
         """
-        带超时的图片查找（包装FindPic）
-        :param dm_object: 大漠对象
-        :param x, y, w, h: 查找区域
-        :param image_path: 图片路径（支持多个路径用|分隔）
-        :param timeout: 超时时间（秒），默认3秒
-        :return: FindPic返回的结果，如果超时返回None
-        """
-        if not dm_object or not image_path:
+        if account_index == 0:
+            return self.thread.dm
+        elif account_index == 1:
+            return getattr(self.thread, 'win1_dm', None)
+        elif account_index == 2:
+            return getattr(self.thread, 'win2_dm', None)
+        return self.thread.dm  # 默认返回主账号
+
+    # 查找图片(封装thread的方法，支持多账号)
+    def find_image(self, account_index, image_path, region, find_dir=0):
+        """查找图片，支持多账号，支持识别率递减（0.9 -> 0.8 -> 0.7）"""
+        dm = self.get_account_dm(account_index)
+        if not dm:
             return None
-
-        start_time = time.time()
-
-        # 处理多个图片路径（用|分隔）
-        image_paths = image_path.split('|')
-        if not image_paths:
-            return None  # 如果路径列表为空，直接返回
-
-        while time.time() - start_time < timeout:
-            # 尝试所有图片路径
-            for img_path in image_paths:
-                try:
-                    pos = dm_object.FindPic(int(x), int(y), int(w), int(h),
-                                            img_path.strip(), "000000", 0.9, 0)
-                    if pos and len(pos) > 0:
-                        return pos
-                except Exception as e:
-                    # 单个图片查找失败，继续尝试下一个
-                    continue
-
-            # 短暂休眠，避免CPU占用过高
-            time.sleep(0.1)
-
-        # 超时返回None
-        return None
-
-    def wait_for_image(self, dm_object, x, y, w, h, image_path, timeout=3,
-                       check_interval=0.1):
-        """
-        等待图片出现，图片出现立即返回，超时也退出
-        :param dm_object: 大漠对象
-        :param x, y, w, h: 查找区域（需要是宽度和高度格式）
-        :param image_path: 图片路径（支持多个路径用|分隔）
-        :param timeout: 超时时间（秒），默认3秒，建议2-3秒
-        :param check_interval: 检测间隔（秒），默认0.1秒
-        :return: (found, pos) - (是否找到, 位置信息) 如果找到返回(True, pos)，超时返回(False, None)
-        """
-        if not dm_object or not image_path:
-            return (False, None)
-
-        start_time = time.time()
-
-        # 处理多个图片路径（用|分隔）
-        image_paths = image_path.split('|')
-        if not image_paths:
-            return (False, None)  # 如果路径列表为空，直接返回
-
-        while time.time() - start_time < timeout:
-            # 尝试所有图片路径
-            for img_path in image_paths:
-                try:
-                    pos = dm_object.FindPic(int(x), int(y), int(w), int(h),
-                                            img_path.strip(), "000000", 0.9, 0)
-                    if pos and len(pos) > 0:
-                        # 图片出现，立即返回
-                        return (True, pos)
-                except Exception as e:
-                    # 单个图片查找失败，继续尝试下一个
-                    continue
-
-            # 短暂休眠，避免CPU占用过高
-            time.sleep(check_interval)
-
-        # 超时，图片未出现
-        return (False, None)
-
-    def is_turn_timeout(self):
-        """
-        检查当前回合是否超时（25秒限制）
-        :return: True if 超时, False otherwise
-        """
-        if self.turn_start_time is None:
-            return False
-        return time.time() - self.turn_start_time > self.turn_timeout
-
-    def reset_turn_timer(self):
-        """重置回合计时器（线程安全）"""
-        with self._state_lock:
-            self.turn_start_time = time.time()
-
-    def get_panel_region(self, panel_type='skill'):
-        """
-        获取面板区域（统一处理面板区域获取）
-        :param panel_type: 面板类型 ('skill', 'item', 'summon', 或其他使用right_button_region)
-        :return: (panel_region, fallback_region) 或 (None, None) 如果都不可用
-        """
-        panel_region = None
-        if panel_type == 'skill':
-            panel_region = self.skill_panel_region
-        elif panel_type == 'item':
-            panel_region = self.item_panel_region
-        elif panel_type == 'summon':
-            panel_region = self.summon_panel_region
-
-        fallback_region = self.right_button_region
-        result_region = panel_region if panel_region else fallback_region
-
-        return result_region, fallback_region
-
-    def convert_region_coords(self, region):
-        """
-        转换区域坐标格式（从结束坐标转为宽度高度）
-        :param region: 区域元组 (x, y, w, h) 其中w和h可能是结束坐标或宽度高度
-        :return: (x, y, width, height) 或 None 如果格式错误
-        """
-        if not region:
-            return None
-
-        if not isinstance(region, (tuple, list)) or len(region) != 4:
-            return None
-
+        
+        # 直接使用dm对象，避免修改共享状态（线程安全）
+        # 大漠插件本身是线程安全的，可以直接在子线程中使用
         try:
             x, y, w, h = region
-            # 判断w和h是结束坐标还是宽度高度
-            # 如果w或h大于典型的屏幕尺寸（900或580），则认为是结束坐标
-            if w > 900 or h > 580:
-                width = w - x
-                height = h - y
-            else:
-                width = w
-                height = h
-
-            # 验证转换后的值是否合理
-            if width <= 0 or height <= 0:
+            # 验证坐标有效性（w和h是结束坐标）
+            if w <= x or h <= y:
                 return None
-
-            return (x, y, width, height)
-        except (ValueError, TypeError) as e:
+            
+            # 识别率递减：0.9 -> 0.8 -> 0.7
+            confidence_levels = [0.9, 0.8, 0.7]
+            
+            for confidence in confidence_levels:
+                pos = dm.FindPicEx(int(x), int(y), int(w), int(h), image_path, "", confidence, find_dir)
+                if pos:
+                    # 找到图片，解析坐标
+                    pos = pos.split("|")
+                    pos_res = pos[0].split(",")
+                    pics = image_path.split("|")
+                    picSize = dm.GetPicSize(pics[int(pos_res[0])])
+                    picSize = picSize.split(",")
+                    picW, picH = picSize[0], picSize[1]
+                    posX = int(pos_res[1]) + (int(picW) * 0.5)
+                    posY = int(pos_res[2]) + (int(picH) * 0.5)
+                    return ResXy(int(posX), int(posY))
+            
+            # 所有识别率都未找到，返回None
+            return None
+        except Exception:
             return None
 
-    def get_account_count(self):
+    # 查找文字(封装thread的方法，支持动态识别率)
+    def find_text(self, account_index, text, region, find_dir=0, confidence=None):
+        """查找文字，支持动态识别率
+        confidence: 识别率，如果为None则使用默认值
         """
-        获取账号数量（动态获取，替代硬编码的3）
-        :return: 账号数量（只计算非None的账号）
-        """
-        account_dm_list = self.account_dm
-        if not account_dm_list:
-            return 0
-        # 只计算非None的账号数量
-        return sum(1 for dm in account_dm_list if dm is not None)
-
-    def validate_account_index(self, account_index):
-        """
-        验证账号索引是否有效
-        :param account_index: 账号索引
-        :return: True if 有效, False otherwise
-        """
-        if not self.account_dm:
-            return False
-        if account_index < 0 or account_index >= len(self.account_dm):
-            return False
-        if not self.account_dm[account_index]:
-            return False
-        return True
-
-    def safe_get_dict_value(self, dictionary, key, default=None):
-        """
-        安全获取字典值（处理嵌套字典和列表）
-        :param dictionary: 字典对象
-        :param key: 键
-        :param default: 默认值
-        :return: 值或默认值
-        """
-        if not dictionary:
-            return default
-        if not isinstance(dictionary, dict):
-            return default
-        return dictionary.get(key, default)
-
-    def increment_error_count(self, account_index):
-        """
-        增加账号的错误计数（线程安全）
-        :param account_index: 账号索引
-        :return: 当前错误计数
-        """
-        with self._state_lock:
-            if account_index not in self.account_error_count:
-                self.account_error_count[account_index] = 0
-            self.account_error_count[account_index] += 1
-            return self.account_error_count[account_index]
-
-    def reset_error_count(self, account_index):
-        """重置账号的错误计数（线程安全）"""
-        with self._state_lock:
-            self.account_error_count[account_index] = 0
-
-    def should_skip_turn(self, account_index):
-        """
-        判断是否应该跳过当前回合（错误过多或超时）
-        :param account_index: 账号索引
-        :return: True if 应该跳过, False otherwise
-        """
-        # 检查超时
-        if self.is_turn_timeout():
-            print(
-                f"警告：账号{account_index} 回合操作超时（超过{self.turn_timeout}秒），跳过剩余操作")
-            return True
-
-        # 检查错误次数
-        error_count = self.account_error_count.get(account_index, 0)
-        if error_count >= self.max_errors_per_turn:
-            print(
-                f"警告：账号{account_index} 回合内错误次数过多（{error_count}次），跳过剩余操作")
-            return True
-
-        return False
-
-    def execute_with_retry(self, func, max_retries=3, retry_delay=0.5,
-                           account_index=None):
-        """
-        带重试的执行函数
-        :param func: 要执行的函数（无参数）
-        :param max_retries: 最大重试次数
-        :param retry_delay: 重试间隔（秒）
-        :param account_index: 账号索引（用于错误计数）
-        :return: 函数执行结果，如果所有重试都失败返回None或False
-        """
-        for attempt in range(max_retries):
-            try:
-                result = func()
-                if result:  # 如果返回True或非None，认为成功
-                    return result
-            except Exception as e:
-                print(f"执行操作失败（尝试 {attempt + 1}/{max_retries}）: {e}")
-            # 注意：异常时先不计数，等所有重试都失败后再计数
-
-            # 如果不是最后一次尝试，等待后重试
-            if attempt < max_retries - 1:
-                time.sleep(retry_delay)
-
-        # 所有重试都失败，只计数一次
-        if account_index is not None:
-            self.increment_error_count(account_index)
+        dm = self.get_account_dm(account_index)
+        if not dm:
+            return None
+        
+        # 获取默认识别率和颜色格式
+        default_confidence = getattr(self.thread, 'confidenceNum', 0.9)
+        color_format = 'ffff00-000000|fff200-000000|fdfd06-000000'
+        
+        # 使用指定的识别率或默认值
+        use_confidence = confidence if confidence is not None else default_confidence
+        # 直接使用dm对象，避免修改共享的confidenceNum（线程安全）
+        # 大漠插件本身是线程安全的，可以直接在子线程中使用
+        x, y, w, h = region
+        find_str_result = dm.FindStrFastE(
+            int(x), int(y), int(w), int(h), text, color_format, use_confidence
+        )
+        return self._parse_find_str_result(find_str_result, find_dir)
+    
+    # 解析FindStrFastE的结果
+    def _parse_find_str_result(self, find_str_result, find_dir):
+        """解析FindStrFastE的结果"""
+        if not find_str_result:
+            return None
+        find_str_result = find_str_result.split("|")
+        if int(find_str_result[0]) >= 0:
+            pos_res = None
+            if len(find_str_result) == 3:
+                pos_res = find_str_result
+            elif len(find_str_result) > 3:
+                if int(find_str_result[1]) < int(find_str_result[4]) and find_dir in [0, 1]:
+                    pos_res = find_str_result[:3]
+                else:
+                    pos_res = find_str_result[3:6]
+            if pos_res:
+                posX = pos_res[1]
+                posY = pos_res[2]
+                return ResXy(int(posX), int(posY))
         return None
-
-    def set_combat_regions(self, enemy_region, ally_region, main_char_region,
-                           general_region, turn_region,
-                           right_button_region=None, hp_bar_regions=None):
-        """
-        设置战斗区域
-        :param enemy_region: 敌军区域 (x, y, w, h)
-        :param ally_region: 己方区域 (x, y, w, h)
-        :param main_char_region: 主角区域 (x, y, w, h)
-        :param general_region: 武将区域 (x, y, w, h)
-        :param turn_region: 回合指示器区域 (x, y, w, h)
-        :param right_button_region: 右侧按钮区域 (x, y, w, h)
-        :param hp_bar_regions: 9个血量条检测区域列表 [(x1, y1, w1, h1), (x2, y2, w2, h2), ...]
-        """
-        self.enemy_region = enemy_region
-        self.ally_region = ally_region
-        self.main_char_region = main_char_region
-        self.general_region = general_region
-        self.turn_indicator_region = turn_region
-        if right_button_region:
-            self.right_button_region = right_button_region
-        if hp_bar_regions:
-            if len(hp_bar_regions) == 9:
-                self.hp_bar_regions = hp_bar_regions
-            else:
-                print(
-                    f"警告：血量条区域数量不正确，期望9个，实际{len(hp_bar_regions)}个")
-
-    def set_fixed_enemy_positions(self, account_index, enemy_positions):
-        """
-        设置敌人的固定点位（三个点位）
+    
+    # 检查敌军场上是否有配置的敌军单位
+    def find_enemy_unit_on_field(self, account_index):
+        """检查敌军场上是否有配置的敌军单位，返回第一个找到的单位的cast_position
         :param account_index: 账号索引
-        :param enemy_positions: 敌人位置列表，格式为 [(x1, y1), (x2, y2), (x3, y3)]
+        :return: (x, y) 坐标元组或None
         """
-        if len(enemy_positions) >= 3:
-            for i in range(3):
-                self.fixed_enemy_positions[(account_index, i)] = \
-                    enemy_positions[i]
-            print(f"账号{account_index} 设置了3个固定敌人点位")
-        else:
-            print(f"警告：账号{account_index} 提供的敌人点位数量不足3个")
-
-    def is_my_turn(self, dm_object):
-        """
-        判断是否是己方回合（通过检测右侧按钮区是否存在来判断）
-        :param dm_object: 大漠对象
-        :return: True if 己方回合, False otherwise
-        """
-        if not self.right_button_region:
-            # 如果没有设置按钮区域，使用原来的方法检测回合指示器
-            if self.turn_indicator_region:
-                try:
-                    x, y, w, h = self.turn_indicator_region
-                    result = dm_object.FindStrEx(int(x), int(y), int(w), int(h),
-                                                 "25", "ffffff-000000", 1.0)
-                    if result and '|' in result:
-                        return int(result.split('|')[0]) >= 0
-                except Exception as e:
-                    print(f"检测回合指示器时出错: {e}")
-            return False
-
-        # 通过检测右侧按钮区域是否存在来判断是否是我方回合
-        # 如果按钮区域存在（可以识别到按钮），说明是我方回合
-        try:
-            if not isinstance(self.right_button_region, (tuple, list)) or len(
-                    self.right_button_region) != 4:
-                return False
-            x, y, w, h = self.right_button_region
-            # 检测任意一个按钮是否存在（技能按钮、召唤按钮、道具按钮）
-            for button_name in ['技能按钮', '召唤按钮', '道具按钮']:
-                image_path = self.button_images.get(button_name, '')
-                if image_path:
-                    try:
-                        # 使用带超时的查找（快速检测，1秒超时）
-                        pos = self.find_pic_with_timeout(dm_object, x, y, w, h,
-                                                         image_path, timeout=1)
-                        if pos and len(pos) > 0:
-                            return True
-                    except Exception as e:
-                        print(f"检测按钮 {button_name} 时出错: {e}")
-                        continue
-        except (ValueError, TypeError) as e:
-            print(f"判断回合状态时出错: {e}")
-        return False
-
-    def check_tombstone_at_position(self, dm_object, pos_x, pos_y):
-        """
-        检查指定位置是否有墓碑（判断单位是否死亡）
-        :param dm_object: 大漠对象
-        :param pos_x: 位置X坐标
-        :param pos_y: 位置Y坐标
-        :return: True if 检测到墓碑（死亡），False if 未检测到（存活）
-        """
-        if not dm_object or not self.tombstone_image:
-            return False
-
-        # 在单位位置附近检测墓碑（使用检测半径）
-        radius = self.tombstone_detection_radius
-        # 计算检测区域：左上角坐标和宽高
-        # 注意：这里w和h应该是宽度和高度，不是结束坐标
-        detection_region = (
-            max(0, int(pos_x - radius)),  # 左上角x
-            max(0, int(pos_y - radius)),  # 左上角y
-            int(radius * 2),  # 宽度
-            int(radius * 2)  # 高度
-        )
-
-        try:
-            x, y, width, height = detection_region
-            # FindPic参数：x, y, w, h 其中w和h是宽度和高度
-            # 使用带超时的图片查找（1秒超时，墓碑检测应该很快）
-            pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                             self.tombstone_image, timeout=1)
-            # 如果找到墓碑，说明单位已死亡
-            return pos and len(pos) > 0
-        except Exception as e:
-            print(f"检测墓碑时出错: {e}")
-            return False
-
-    def find_general(self, general_name, account_index):
-        """
-        在指定账号中查找武将
-        :param general_name: 武将名称（'刘备', '魔化关羽', '曹操'）
-        :param account_index: 账号索引（0=主账号, 1=账号1, 2=账号2）
-        :return: ResXy 对象 or False
-        """
-        if not self.account_dm or account_index < 0 or account_index >= len(
-                self.account_dm):
-            return False
-
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return False
-
-        if not self.ally_region:
-            return False
-
-        x, y, w, h = self.ally_region
-        # 根据注释，w和h是结束坐标，需要转换为宽度和高度用于FindPic
-        width = w - x if w > 900 or h > 580 else w  # 判断是结束坐标还是宽度
-        height = h - y if w > 900 or h > 580 else h
-
-        image_path = self.general_images.get(general_name, '')
-        if not image_path:
-            return False
-
-        pos = dm_object.FindPic(int(x), int(y), int(width), int(height),
-                                image_path, "000000", 0.9999, 0)
-        if pos and len(pos) > 0:
-            try:
-                # 修复：检查pos的类型，如果是tuple则直接解包，如果是字符串则split
-                if isinstance(pos, tuple):
-                    if len(pos) >= 2:
-                        pos_x, pos_y = pos[0], pos[1]
-                    else:
-                        return False
-                elif isinstance(pos, str):
-                    pos_list = pos.split(',')
-                    if len(pos_list) >= 2:
-                        # 修复：验证是否为有效数字
-                        pos_x = int(pos_list[0])
-                        pos_y = int(pos_list[1])
-                    else:
-                        return False
-                else:
-                    return False
-                # 检查该位置是否有墓碑
-                if self.check_tombstone_at_position(dm_object, pos_x,
-                                                    pos_y):
-                    # 检测到墓碑，说明武将已死亡
-                    print(
-                        f"账号{account_index} 武将 {general_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
-                    return False
-
-                # 未检测到墓碑，说明武将存活
-                return ResXy(pos_x, pos_y)
-            except (ValueError, IndexError) as e:
-                print(f"解析武将 {general_name} 位置失败: {pos}, 错误: {e}")
-                return False
-
-        # 如果未找到武将图片，检查之前保存的位置是否有墓碑
-        if account_index in self.unit_positions:
-            for saved_general_name, saved_x, saved_y in self.unit_positions[
-                account_index].get('generals', []):
-                if saved_general_name == general_name:
-                    # 检查保存的位置是否有墓碑
-                    if self.check_tombstone_at_position(dm_object, saved_x,
-                                                        saved_y):
-                        print(
-                            f"账号{account_index} 武将 {general_name} 之前位置 ({saved_x}, {saved_y}) 检测到墓碑，已死亡")
-                        return False
-                    # 如果没有墓碑，可能还存活，但位置已改变，返回False让系统重新搜索
-                    return False
-
-        return False
-
-    def find_main_char(self, char_name, account_index):
-        """
-        在指定账号中查找主角
-        :param char_name: 主角名称（'主角1', '主角2', '主角3'）
-        :param account_index: 账号索引（0=主账号, 1=账号1, 2=账号2）
-        :return: ResXy 对象 or False
-        """
-        if account_index < 0 or account_index >= len(self.account_dm):
-            return False
-    def find_main_char(self, char_name, account_index):
-        """
-        在指定账号中查找主角
-        :param char_name: 主角名称（'主角1', '主角2', '主角3'）
-        :param account_index: 账号索引（0=主账号, 1=账号1, 2=账号2）
-        :return: ResXy 对象 or False
-        """
-        if account_index < 0 or account_index >= len(self.account_dm):
-            return False
-
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return False
-
-        if not self.main_char_region:
-            return False
-
-        x, y, w, h = self.main_char_region
-        # 转换坐标格式
-        width = w - x if w > 900 or h > 580 else w  # 判断是结束坐标还是宽度
-        height = h - y if w > 900 or h > 580 else h
-
-        image_path = self.main_char_images.get(char_name, '')
-        if not image_path:
-            return False
-
-        # 使用带超时的图片查找（2秒超时）
-        pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                         image_path, timeout=2)
-        if pos and len(pos) > 0:
-            try:
-                # 修复：检查pos的类型，如果是tuple则直接解包，如果是字符串则split
-                if isinstance(pos, tuple):
-                    if len(pos) >= 2:
-                        pos_x, pos_y = pos[0], pos[1]
-                    else:
-                        return False
-                elif isinstance(pos, str):
-                    pos_list = pos.split(',')
-                    if len(pos_list) >= 2:
-                        # 修复：验证是否为有效数字
-                        pos_x = int(pos_list[0])
-                        pos_y = int(pos_list[1])
-                    else:
-                        return False
-                else:
-                    return False
-
-                # 检查该位置是否有墓碑
-                if self.check_tombstone_at_position(dm_object, pos_x,
-                                                    pos_y):
-                    # 检测到墓碑，说明主角已死亡
-                    print(
-                        f"账号{account_index} 主角 {char_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
-                    return False
-
-                # 未检测到墓碑，说明主角存活
-                return ResXy(pos_x, pos_y)
-            except (ValueError, IndexError) as e:
-                print(f"解析主角 {char_name} 位置失败: {pos}, 错误: {e}")
-                return False
-
-        # 如果未找到主角图片，检查之前保存的位置是否有墓碑
-        if account_index in self.unit_positions:
-            for saved_char_name, saved_x, saved_y in self.unit_positions[
-                account_index].get('main_chars', []):
-                if saved_char_name == char_name:
-                    # 检查保存的位置是否有墓碑
-                    if self.check_tombstone_at_position(dm_object, saved_x,
-                                                        saved_y):
-                        print(
-                            f"账号{account_index} 主角 {char_name} 之前位置 ({saved_x}, {saved_y}) 检测到墓碑，已死亡")
-                        return False
-                    # 如果没有墓碑，可能还存活，但位置已改变，返回False让系统重新搜索
-                    return False
-
-        return False
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return False
-
-        if not self.main_char_region:
-            return False
-
-        x, y, w, h = self.main_char_region
-        # 转换坐标格式
-        width = w - x if w > 900 or h > 580 else w  # 判断是结束坐标还是宽度
-        height = h - y if w > 900 or h > 580 else h
-
-        image_path = self.main_char_images.get(char_name, '')
-        if not image_path:
-            return False
-
-        # 使用带超时的图片查找（2秒超时）
-        pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                         image_path, timeout=2)
-        if pos and len(pos) > 0:
-            try:
-                pos_list = pos.split(',')
-                if len(pos_list) >= 2:
-                    # 修复：验证是否为有效数字
-                    pos_x = int(pos_list[0])
-                    pos_y = int(pos_list[1])
-
-                    # 检查该位置是否有墓碑
-                    if self.check_tombstone_at_position(dm_object, pos_x,
-                                                        pos_y):
-                        # 检测到墓碑，说明主角已死亡
-                        print(
-                            f"账号{account_index} 主角 {char_name} 位置 ({pos_x}, {pos_y}) 检测到墓碑，已死亡")
-                        return False
-
-                    # 未检测到墓碑，说明主角存活
-                    return ResXy(pos_x, pos_y)
-            except (ValueError, IndexError) as e:
-                print(f"解析主角 {char_name} 位置失败: {pos}, 错误: {e}")
-                return False
-
-        # 如果未找到主角图片，检查之前保存的位置是否有墓碑
-        # 这样可以检测到已死亡但位置已知的主角
-        if account_index in self.unit_positions:
-            for saved_char_name, saved_x, saved_y in self.unit_positions[
-                account_index].get('main_chars', []):
-                if saved_char_name == char_name:
-                    # 检查保存的位置是否有墓碑
-                    if self.check_tombstone_at_position(dm_object, saved_x,
-                                                        saved_y):
-                        print(
-                            f"账号{account_index} 主角 {char_name} 之前位置 ({saved_x}, {saved_y}) 检测到墓碑，已死亡")
-                        return False
-                    # 如果没有墓碑，可能还存活，但位置已改变，返回False让系统重新搜索
-                    return False
-
-        return False
-
-    def detect_enemy_positions(self, account_index):
-        """
-        检测并记录敌人的确切位置
-        :param account_index: 账号索引
-        """
-        if account_index not in self.unit_positions:
-            self.unit_positions[account_index] = {'main_chars': [],
-                                                  'generals': [], 'enemies': []}
-
-        if not self.enemy_region or not self.account_dm or account_index >= len(
-                self.account_dm) or not self.account_dm[account_index]:
-            return
-
-        dm_object = self.account_dm[account_index]
-        # 修复：再次确认区域格式正确后再解包
-        if not isinstance(self.enemy_region, (tuple, list)) or len(
-                self.enemy_region) != 4:
-            return
-        x, y, w, h = self.enemy_region
-        # 根据注释，w和h是结束坐标，需要转换为宽度和高度用于FindPic
-        width = w - x  # 宽度 = 结束x - 开始x
-        height = h - y  # 高度 = 结束y - 开始y
-
-        # 检测所有敌人的位置
-        enemy_positions = []
-        for enemy_name, enemy_image_path in self.enemy_images.items():
-            try:
-                pos = dm_object.FindPic(int(x), int(y), int(width), int(height),
-                                        enemy_image_path, "000000", 0.9999, 0)
-                if pos and len(pos) > 0:
-                    try:
-                        pos_list = pos.split(',')
-                        if len(pos_list) >= 2:
-                            # 修复：验证是否为有效数字
-                            enemy_x = int(pos_list[0])
-                            enemy_y = int(pos_list[1])
-
-                            # 检查该位置是否有墓碑
-                            if self.check_tombstone_at_position(dm_object,
-                                                                enemy_x,
-                                                                enemy_y):
-                                # 检测到墓碑，说明敌人已死亡，不添加到列表
-                                print(
-                                    f"账号{account_index} 敌人 {enemy_name} 位置 ({enemy_x}, {enemy_y}) 检测到墓碑，已死亡")
-                                continue
-
-                            # 未检测到墓碑，说明敌人存活
-                            enemy_positions.append(
-                                (enemy_name, enemy_x, enemy_y))
-                            print(
-                                f"账号{account_index} 检测到存活 {enemy_name} 位置: ({enemy_x}, {enemy_y})")
-                    except (ValueError, IndexError) as e:
-                        print(
-                            f"解析敌人 {enemy_name} 位置失败: {pos}, 错误: {e}")
-                        continue
-            except Exception as e:
-                print(f"检测敌人 {enemy_name} 时出错: {e}")
+        for enemy_name, config in self.enemy_general_config.items():
+            status_images = config.get("status_images", {})
+            status_region = config.get("status_region")
+            
+            if not status_region:
                 continue
-
-        # 更新敌人位置列表
-        self.unit_positions[account_index]['enemies'] = enemy_positions
-
-    def _get_account_dm(self):
-        """
-        获取账号大漠对象列表（延迟初始化）
-        :return: [dm, win1_dm, win2_dm] 列表
-        """
-        if self._account_dm is None:
-            # 延迟初始化，安全地获取账号对象
-            try:
-                self._account_dm = [
-                    getattr(self.thread, 'dm', None) if self.thread else None,
-                    # 主账号
-                    getattr(self.thread, 'win1_dm',
-                            None) if self.thread else None,  # 账号1
-                    getattr(self.thread, 'win2_dm',
-                            None) if self.thread else None  # 账号2
-                ]
-            except AttributeError as e:
-                print(f"获取账号对象时出错: {e}")
-                self._account_dm = [None, None, None]
-        return self._account_dm
-
-    @property
-    def account_dm(self):
-        """
-        账号大漠对象列表属性（向后兼容）
-        """
-        return self._get_account_dm()
-
-    def has_support_general_alive(self, account_index):
-        """
-        检查指定账号是否有辅助武将存活
+            
+            # 检查该敌军是否有状态图片（说明在场）
+            for status_name, status_image_path in status_images.items():
+                if status_image_path:
+                    # 检查状态图片是否存在
+                    status_pos = self.find_image(account_index, status_image_path, status_region, 0)
+                    if status_pos:
+                        # 找到敌军单位，返回其cast_position
+                        cast_position = config.get("cast_position")
+                        if cast_position:
+                            return cast_position
+                        break
+        
+        return None
+    
+    # 检测召唤成功文字
+    def check_summon_success(self, account_index, timeout=3.0):
+        """检测召唤是否成功（通过检测"召唤成功"文字）
         :param account_index: 账号索引
-        :return: True if 刘备存活, False otherwise
+        :param timeout: 超时时间（秒）
+        :return: True/False
         """
-        result = self.find_general('刘备', account_index)
-        return result is not False and result is not None
-
-    def get_all_generals(self, account_index):
-        """
-        获取指定账号中所有在场的武将列表
+        success_text = "召唤武将"
+        # 在全屏区域检测"召唤成功"文字
+        search_region = (0, 0, 900, 580)  # 全屏区域
+        confidence_levels = [0.9, 0.8, 0.7]  # 识别率递减
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            # 尝试多个识别率
+            for confidence in confidence_levels:
+                if time.time() - start_time >= timeout:
+                    break
+                
+                success_pos = self.find_text(account_index, success_text, search_region, 0, confidence)
+                if success_pos:
+                    self.report_battle_info(
+                        f"账号{account_index} 召唤操作成功", "success"
+                    )
+                    return True
+                time.sleep(0.05)  # 短暂延迟后重试
+            
+            time.sleep(0.1)  # 每次循环后稍作延迟
+        
+        self.report_battle_info(
+            f"账号{account_index} 召唤可能失败", "warning"
+        )
+        return False
+    
+    # 查找技能目标选择图片（lantiao）
+    def find_target_lantiao(self, account_index, search_region, timeout=3.0):
+        """查找技能目标选择图片（lantiao）
         :param account_index: 账号索引
-        :return: 武将列表，每个元素包含武将名称和类型
+        :param search_region: 搜索区域
+        :param timeout: 超时时间（秒）
+        :return: ResXy对象或None
         """
-        generals = []
-        general_info = [
-            ('刘备', 'support'),
-            ('魔化关羽', 'dps'),
-            ('曹操', 'dps')
-        ]
-
-        for general_name, general_type in general_info:
-            if self.find_general(general_name, account_index):
-                generals.append({
-                    'name': general_name,
-                    'type': general_type
-                })
-
-        return generals
-
-    def update_general_tracking(self, account_index):
-        """
-        更新武将追踪信息（检测阵亡的武将和主角）
-        """
-        if account_index not in self.general_tracking:
-            self.general_tracking[account_index] = {}
-        if account_index not in self.unit_positions:
-            self.unit_positions[account_index] = {'main_chars': [],
-                                                  'generals': [], 'enemies': []}
-
-        # 检测武将阵亡
-        current_generals = self.get_all_generals(account_index)
-        current_general_names = {g['name'] for g in current_generals}
-
-        # 检测哪些武将阵亡了
-        dead_generals = []
-        for general_name in list(self.general_tracking[account_index].keys()):
-            if general_name not in current_general_names:
-                # 武将阵亡
-                if self.general_tracking[account_index][general_name][
-                    'type'] == 'support':
-                    # 辅助武将阵亡
-                    self.support_general_account = None
-                dead_generals.append(general_name)
-                print(f"账号{account_index}的武将{general_name}阵亡了")
-                del self.general_tracking[account_index][general_name]
-
-        # 修复：清空武将位置列表，重新填充所有存活武将的位置（与主角位置更新策略一致）
-        self.unit_positions[account_index]['generals'] = []
-
-        # 检测新上场的武将并更新所有存活武将的位置
-        for general in current_generals:
-            general_name = general['name']
-            general_pos = self.find_general(general_name, account_index)
-            # 防御性检查：确保general_pos不是None且是ResXy对象
-            pos = (general_pos.x, general_pos.y) if general_pos and hasattr(general_pos, 'x') and hasattr(general_pos, 'y') else None
-
-            if general_name not in self.general_tracking[account_index]:
-                # 新武将上场
-                self.general_tracking[account_index][general_name] = {
-                    'type': general['type'],
-                    'deployed_turn': self.current_turn,
-                    'position': pos
-                }
-                if general['type'] == 'support':
-                    self.support_general_account = account_index
-            else:
-                # 更新已存在武将的位置信息（位置可能发生变化）
-                self.general_tracking[account_index][general_name][
-                    'position'] = pos
-
-            # 更新位置列表（所有存活武将）
-            if general_pos:
-                self.unit_positions[account_index]['generals'].append(
-                    (general_name, general_pos.x, general_pos.y))
-
-        # 检测主角阵亡（修复BUG：在清空列表前保存阵亡主角的位置）
-        team_status = self.get_team_status(account_index)
-        if team_status:
-            current_main_chars = set(team_status['main_chars'])
-            tracked_main_chars_dict = {}
-
-            # 在清空列表前，保存所有追踪的主角位置
-            for char_name, x, y in self.unit_positions[account_index][
-                'main_chars']:
-                tracked_main_chars_dict[char_name] = (x, y)
-
-            tracked_main_chars = set(tracked_main_chars_dict.keys())
-
-            # 检测阵亡的主角，并保存其位置信息（用于复活）
-            dead_main_chars = tracked_main_chars - current_main_chars
-            for char_name in dead_main_chars:
-                death_msg = f"账号{account_index}的主角{char_name}阵亡了"
-                print(death_msg)
-                self.report_battle_info(death_msg, "warning")
-                # 保存阵亡主角的位置到独立字典（用于后续复活）
-                if account_index not in self.dead_main_char_positions:
-                    self.dead_main_char_positions[account_index] = {}
-                if char_name in tracked_main_chars_dict:
-                    self.dead_main_char_positions[account_index][char_name] = \
-                        tracked_main_chars_dict[char_name]
-
-            # 更新主角位置列表
-            self.unit_positions[account_index]['main_chars'] = []
-            for char_name in current_main_chars:
-                char_pos = self.find_main_char(char_name, account_index)
-                if char_pos:
-                    self.unit_positions[account_index]['main_chars'].append(
-                        (char_name, char_pos.x, char_pos.y))
-                    print(
-                        f"账号{account_index} 主角 {char_name} 存活，位置: ({char_pos.x}, {char_pos.y})")
-
-    def get_team_status(self, account_index):
-        """
-        获取指定账号的完整队伍状态
-        :param account_index: 账号索引
-        :return: 包含主角和武将状态的字典
-        """
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
+        if not self.target_lantiao_image:
             return None
-
-        # 检测主角存活状态
-        main_chars = []
-        # 修复：检查区域是否已设置
-        if not self.main_char_region:
-            # 区域未设置，返回空列表（不影响其他状态的检测）
-            pass
+        
+        dm = self.get_account_dm(account_index)
+        if not dm:
+            return None
+        
+        confidence_levels = [0.9, 0.8, 0.7]  # 识别率递减
+        target_pos = None
+        start_time = time.time()
+        
+        try:
+            x, y, w, h = search_region
+            # 验证坐标有效性（w和h是结束坐标）
+            if w <= x or h <= y:
+                return None
+            
+            while time.time() - start_time < timeout:
+                # 尝试多个识别率
+                for confidence in confidence_levels:
+                    if time.time() - start_time >= timeout:
+                        break
+                    
+                    pos = dm.FindPicEx(int(x), int(y), int(w), int(h), self.target_lantiao_image, "", confidence, 0)
+                    if pos:
+                        # 找到图片，解析坐标
+                        pos = pos.split("|")
+                        pos_res = pos[0].split(",")
+                        pics = self.target_lantiao_image.split("|")
+                        picSize = dm.GetPicSize(pics[int(pos_res[0])])
+                        picSize = picSize.split(",")
+                        picW, picH = picSize[0], picSize[1]
+                        posX = int(pos_res[1]) + (int(picW) * 0.5)
+                        posY = int(pos_res[2]) + (int(picH) * 0.5)
+                        target_pos = ResXy(int(posX), int(posY))
+                        break
+                    time.sleep(0.05)  # 短暂延迟后重试
+                
+                if target_pos:
+                    break
+                time.sleep(0.1)  # 每次循环后稍作延迟
+        except Exception:
+            return None
+        
+        # 如果找到目标，将坐标偏移 x+30, y+60
+        if target_pos:
+            target_pos.x = target_pos.x + random.randint(25, 30)
+            target_pos.y = target_pos.y + random.randint(45, 60)
+        
+        return target_pos
+    
+    # 统一的查找"选择目标"文字方法（保留用于兼容）
+    def find_target_text(self, account_index, search_region, timeout=3.0):
+        """查找"选择目标"文字（已废弃，改用find_target_lantiao）
+        :param account_index: 账号索引
+        :param search_region: 搜索区域，可以是单个区域或区域列表
+        :param timeout: 超时时间（秒）
+        :return: ResXy对象或None
+        """
+        target_text = "选择目标"
+        target_pos = None
+        start_time = time.time()
+        confidence_levels = [0.9, 0.8, 0.7, 0.6, 0.5]  # 识别率递减
+        
+        # 如果search_region是单个区域，转换为列表
+        if isinstance(search_region, tuple) and len(search_region) == 4:
+            search_regions = [search_region]
         else:
-            for char_name, char_image in self.main_char_images.items():
-                try:
-                    x, y, w, h = self.main_char_region
-                    # 转换坐标格式
-                    width = w - x if w > 900 or h > 580 else w
-                    height = h - y if w > 900 or h > 580 else h
-                    # 使用带超时的图片查找（2秒超时）
-                    pos = self.find_pic_with_timeout(dm_object, x, y, width,
-                                                     height, char_image,
-                                                     timeout=2)
-                    if pos and len(pos) > 0:
-                        main_chars.append(char_name)
-                except Exception as e:
-                    print(f"检测主角 {char_name} 时出错: {e}")
+            search_regions = search_region if isinstance(search_region, list) else [search_region]
+        
+        while time.time() - start_time < timeout:
+            # 尝试多个区域
+            for search_reg in search_regions:
+                if time.time() - start_time >= timeout:
+                    break
+                # 尝试多个识别率
+                for confidence in confidence_levels:
+                    if time.time() - start_time >= timeout:
+                        break
+                    
+                    target_pos = self.find_text(account_index, target_text, search_reg, 0, confidence)
+                    if target_pos:
+                        break
+                    time.sleep(0.05)  # 短暂延迟后重试
+                if target_pos:
+                    break
+            if target_pos:
+                break
+            time.sleep(0.1)  # 每次循环后稍作延迟
+        
+        return target_pos
+
+    # 点击坐标
+    def click_position(self, account_index, x, y):
+        """点击指定坐标"""
+        dm = self.get_account_dm(account_index)
+        dm.MoveTo(int(x), int(y))
+        time.sleep(CombatConstants.CLICK_DELAY)
+        dm.LeftClick()
+        time.sleep(CombatConstants.ACTION_DELAY)
+
+    # 点击技能并验证是否成功
+    def click_skill_with_verification(self, account_index, skill_image_path, skill_pos, skill_name="技能", max_retries=1):
+        """点击技能并验证是否成功
+        :param account_index: 账号索引
+        :param skill_image_path: 技能图片路径
+        :param skill_pos: 技能位置（ResXy对象）
+        :param skill_name: 技能名称（用于日志）
+        :param max_retries: 最大重试次数（默认1次）
+        :return: True表示点击成功（技能图标已消失），False表示点击失败
+        """
+        if not skill_pos:
+            return False
+        
+        # 第一次点击
+        self.click_position(account_index, skill_pos.x, skill_pos.y)
+        time.sleep(CombatConstants.SKILL_CLICK_VERIFY_DELAY)
+        
+        # 验证点击是否成功
+        verify_skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+        if not verify_skill_pos:
+            # 技能图标已消失，点击成功
+            return True
+        
+        # 技能图标还在，说明点击失败，进行重试
+        for retry_count in range(max_retries):
+            self.report_battle_info(
+                f"账号{account_index} 释放{skill_name}失败（技能图标仍在），第{retry_count + 1}次重试", 
+                "warning"
+            )
+            self.click_position(account_index, verify_skill_pos.x, verify_skill_pos.y)
+            time.sleep(CombatConstants.SKILL_CLICK_VERIFY_DELAY)
+            
+            # 再次验证
+            verify_skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+            if not verify_skill_pos:
+                # 技能图标已消失，点击成功
+                return True
+        
+        # 所有重试都失败
+        self.report_battle_info(
+            f"账号{account_index} 释放{skill_name}失败（重试{max_retries}次后技能图标仍在），跳过", 
+            "warning"
+        )
+        return False
+
+    # 初始化单位信息
+    def init_unit_info(self):
+        """初始化单位信息数据结构"""
+        account_count = self.get_account_count()
+        for i in range(account_count):
+            self.unit_info[i] = {
+                "main_chars": [
+                    {
+                        "name": "主角1",
+                        "position": (763, 251),
+                        "alive": True,
+                        "need_revive": False,
+                        "general_count": 0,
+                        "generals": [],
+                        "deployed_turn": 0,
+                    },
+                    {
+                        "name": "主角2",
+                        "position": (792, 346),
+                        "alive": True,
+                        "need_revive": False,
+                        "general_count": 0,
+                        "generals": [],
+                        "deployed_turn": 0,
+                    },
+                    {
+                        "name": "主角3",
+                        "position": (823, 460),
+                        "alive": True,
+                        "need_revive": False,
+                        "general_count": 0,
+                        "generals": [],
+                        "deployed_turn": 0,
+                    },
+                ],
+                "generals": [],  # 格式: [{'name': '刘备', 'position': (x, y), 'alive': True, 'deployed_turn': 0, 'account_index': i, 'char_index': 0}, ...]
+            }
+            self.dead_units[i] = {
+                "main_chars": [],
+                "generals": [],
+            }  # 格式: {'main_chars': [{'name': '主角1', 'position': (x, y), 'account_index': i}, ...], 'generals': [...]}
+            self.enemies_need_clear[i] = (
+                []
+            )  # 格式: [{'enemy_name': '刘备', 'position': (x, y), 'account_index': i}, ...]
+            self.skill_cd[i] = {}
+            self.pending_liubei_summon[i] = None  # 待召唤刘备记录：None 或 {'target_account_index': int, 'target_char_index': int, 'target_char_info': dict}
+            self.has_liubei_on_field[i] = False  # 初始化场上是否有刘备的状态
+            self.liubei_skill_index[i] = 0  # 初始化刘备技能索引
+            self.liubei_skill_cd[i] = {}  # 初始化刘备技能冷却记录
+            self.low_hp_units[i] = []  # 初始化血量低的单位列表
+            self.zhugeliang_found[i] = False  # 初始化诸葛亮单位标记
+            # 初始化账号区域映射(每个账号检测自己主角和武将的区域)
+            if i not in self.hp_bar_unit_mapping:
+                self.hp_bar_unit_mapping[i] = {}
+                # 映射9个血量条区域到单位
+                for region_idx in range(9):
+                    if region_idx < 3:  # 主角
+                        char_idx = region_idx
+                        unit_name = f"主角{char_idx + 1}"
+                        position = self.unit_positions[i]["main_chars"][char_idx][1:]
+                        self.hp_bar_unit_mapping[i][region_idx] = ("main_char", unit_name, position)
+                    else:  # 武将
+                        general_idx = region_idx - 3
+                        unit_name = f"武将{general_idx + 1}"
+                        if general_idx < len(self.unit_positions[i]["generals"]):
+                            position = self.unit_positions[i]["generals"][general_idx][1:]
+                        else:
+                            position = (0, 0)  # 默认位置
+                        self.hp_bar_unit_mapping[i][region_idx] = ("general", unit_name, position)
+
+    # ==================== 轮询监听核心功能 ====================
+
+    # 检测墓碑(检测阵亡)
+    def check_tombstones(self, account_index):
+        """检测指定账号的墓碑,返回阵亡单位列表
+        判定死亡需要同时满足两个条件：
+        1. 检测到墓碑
+        2. 在对应区域找不到lantiao.bmp图片（说明单位确实不在场）
+        """
+        dead_list = []
+        # 遍历9个血量条区域检测墓碑
+        for region_idx, region in enumerate(self.hp_bar_regions):
+            # 在区域内查找墓碑图片
+            tombstone_pos = self.find_image(account_index, self.tombstone_image, region, 0)
+            if tombstone_pos:
+                # 找到墓碑，还需要检查对应区域是否找不到lantiao.bmp图片
+                # 在对应区域查找lantiao.bmp图片
+                lantiao_pos = self.find_image(account_index, self.target_lantiao_image, region, 0)
+                # 如果找不到lantiao图片，说明单位确实不在场，判定为死亡
+                if not lantiao_pos:
+                    # 找到墓碑且找不到lantiao图片,根据区域索引确定是哪个单位
+                    if account_index in self.hp_bar_unit_mapping:
+                        if region_idx in self.hp_bar_unit_mapping[account_index]:
+                            unit_type, unit_name, position = self.hp_bar_unit_mapping[account_index][region_idx]
+                            dead_list.append(
+                                {
+                                    "account_index": account_index,
+                                    "unit_type": unit_type,
+                                    "unit_name": unit_name,
+                                    "position": position,
+                                    "region_index": region_idx,
+                                }
+                            )
+        return dead_list
+
+    # 检测敌军需要清除的状态
+    def check_enemy_status(self, account_index):
+        """检测指定账号的敌军是否需要清除状态"""
+        need_clear_list = []
+        # 遍历敌军武将配置
+        for enemy_name, config in self.enemy_general_config.items():
+            status_region = config["status_region"]
+            status_images = config["status_images"]
+            cast_position = config["cast_position"]
+
+            # 诸葛亮特殊处理：需要先找到状态1和状态2同时存在，然后下次检测时如果状态2存在但状态1不存在，才需要清除
+            if enemy_name == "诸葛亮":
+                
+                # 检测状态1和状态2
+                status1_image = status_images.get("状态1")
+                status2_image = status_images.get("状态2")
+                
+                status1_exists = False
+                status2_exists = False
+                
+                if status1_image:
+                    status1_pos = self.find_image(account_index, status1_image, status_region, 0)
+                    status1_exists = (status1_pos is not None)
+                
+                if status2_image:
+                    status2_pos = self.find_image(account_index, status2_image, status_region, 0)
+                    status2_exists = (status2_pos is not None)
+                
+                # 检查是否已经找到过诸葛亮的单位（状态1和状态2同时存在）
+                if not self.zhugeliang_found.get(account_index, False):
+                    # 第一次检测：如果状态1和状态2同时存在，设置标记
+                    if status1_exists and status2_exists:
+                        self.zhugeliang_found[account_index] = True
+                else:
+                    # 标记已存在，处理各种情况
+                    if status1_exists and status2_exists:
+                        # 状态1和状态2又同时存在了，说明状态已恢复，重置标记
+                        self.zhugeliang_found[account_index] = False
+                    elif not status1_exists and not status2_exists:
+                        # 状态1和状态2都消失了，重置标记
+                        self.zhugeliang_found[account_index] = False
+                    elif status1_exists and not status2_exists:
+                        # 状态1存在但状态2不存在，可能是状态变化，重置标记
+                        self.zhugeliang_found[account_index] = False
+                    elif status2_exists and not status1_exists:
+                        # 状态2存在，状态1不存在，说明需要清除状态
+                        need_clear_list.append(
+                            {
+                                "account_index": account_index,
+                                "enemy_name": enemy_name,
+                                "status_name": "状态1",  # 需要清除状态1
+                                "cast_position": cast_position,
+                                "status_region": status_region,
+                            }
+                        )
+            else:
+                # 其他武将：找到状态图片就返回需要清除
+                for status_name, status_image_path in status_images.items():
+                    status_pos = self.find_image(account_index, status_image_path, status_region, 0)
+                    if status_pos:
+                        # 找到需要清除的状态
+                        need_clear_list.append(
+                            {
+                                "account_index": account_index,
+                                "enemy_name": enemy_name,
+                                "status_name": status_name,
+                                "cast_position": cast_position,
+                                "status_region": status_region,
+                            }
+                        )
+                        break  # 找到一个状态就够了
+        return need_clear_list
+
+    # 检测血量低的单位
+    def check_low_hp_units(self, target_account_index, detect_account_index=None):
+        """检测指定账号的血量低的单位,返回血量低单位列表
+        :param target_account_index: 目标账号索引（要检测哪个账号的单位）
+        :param detect_account_index: 检测账号索引（使用哪个账号的dm对象进行检测，默认为None表示使用target_account_index）
+        """
+        if detect_account_index is None:
+            detect_account_index = target_account_index
+        
+        low_hp_list = []
+        # 遍历9个血量条区域检测血量低标识
+        for region_idx, region in enumerate(self.hp_bar_regions):
+            # 在区域内查找血量低标识图片（使用detect_account_index的dm对象）
+            low_hp_pos = self.find_image(detect_account_index, self.low_hp_indicator_image, region, 0)
+            if low_hp_pos:
+                # 找到血量低标识,根据区域索引确定是哪个单位（使用target_account_index确定单位信息）
+                if target_account_index in self.hp_bar_unit_mapping:
+                    if region_idx in self.hp_bar_unit_mapping[target_account_index]:
+                        unit_type, unit_name, position = self.hp_bar_unit_mapping[target_account_index][region_idx]
+                        # 检查单位是否存活（避免给已死亡的单位加血）
+                        is_alive = False
+                        if unit_type == "main_char":
+                            for char_info in self.unit_info[target_account_index]["main_chars"]:
+                                if char_info["name"] == unit_name and char_info.get("alive", True):
+                                    is_alive = True
+                                    break
+                        elif unit_type == "general":
+                            # 先检查武将是否在列表中
+                            found_general = False
+                            for general_info in self.unit_info[target_account_index]["generals"]:
+                                if (general_info.get("name") == unit_name or 
+                                    general_info.get("position") == position):
+                                    found_general = True
+                                    if general_info.get("alive", True):
+                                        is_alive = True
+                                    break
+                            
+                            # 如果武将不在列表中，说明是第一个回合的初始武将，将其添加到列表中（默认为存活）
+                            if not found_general:
+                                # 确定武将属于哪个主角（根据位置判断，武将位置在主角前方）
+                                char_index = None
+                                for idx, char_info in enumerate(self.unit_info[target_account_index]["main_chars"]):
+                                    char_pos = char_info.get("position")
+                                    if char_pos:
+                                        # 武将位置在主角前方，通过y坐标判断（武将y坐标应该接近主角y坐标）
+                                        if abs(position[1] - char_pos[1]) < 50:  # 允许50像素的误差
+                                            char_index = idx
+                                            break
+                                
+                                # 如果无法确定主角，默认使用第一个主角
+                                if char_index is None:
+                                    char_index = 0
+                                
+                                # 创建武将信息并添加到列表
+                                new_general = {
+                                    "name": unit_name,
+                                    "position": position,
+                                    "alive": True,
+                                    "deployed_turn": self.current_turn if self.current_turn > 0 else 0,
+                                    "account_index": target_account_index,
+                                    "char_index": char_index,
+                                }
+                                self.unit_info[target_account_index]["generals"].append(new_general)
+                                
+                                # 同时添加到对应主角的武将列表中
+                                char_info = self.unit_info[target_account_index]["main_chars"][char_index]
+                                if new_general not in char_info["generals"]:
+                                    char_info["generals"].append(new_general)
+                                    char_info["general_count"] = len(char_info["generals"])
+                                
+                                is_alive = True
+                        if is_alive:
+                            low_hp_list.append(
+                                {
+                                    "account_index": target_account_index,
+                                    "unit_type": unit_type,
+                                    "unit_name": unit_name,
+                                    "position": position,
+                                    "region_index": region_idx,
+                                }
+                            )
+        return low_hp_list
+
+    # 检测操作按钮(检测是否在战斗页面且可以操作)
+    def check_action_button(self, account_index):
+        """检测指定账号是否在战斗页面且可以操作(通过检测操作按钮)
+        需要同时检测多个按钮来确认真的在战斗页面
+        """
+        # 检查操作按钮图片是否存在
+        action_button_image = self.button_images.get("操作按钮")
+        if not action_button_image:
+            return False
+        
+        # 在右侧按钮区域查找操作按钮
+        button_pos = self.find_image(account_index, action_button_image, self.right_button_region, 0)
+        if not button_pos:
+            return False
+        
+        # 额外验证：检查是否在战斗页面（通过检测其他战斗相关的元素）
+        # 例如：检测技能按钮或召唤按钮是否存在（战斗页面特有的按钮）
+        skill_button_pos = self.find_image(account_index, self.button_images.get("技能按钮"), self.right_button_region, 0)
+        summon_button_pos = self.find_image(account_index, self.button_images.get("召唤按钮"), self.right_button_region, 0)
+        
+        # 如果操作按钮存在，且至少有一个其他战斗按钮存在，才认为在战斗页面
+        if skill_button_pos or summon_button_pos:
+            return True
+        
+        return False
+
+    # 更新单位信息(根据墓碑检测结果)
+    def update_unit_info_from_tombstones(self, dead_list):
+        """根据墓碑检测结果更新单位信息（统一存储到全局记录）"""
+        # 第一个回合开始时，将所有单位默认为存活状态
+        # 只在current_turn == 0时清空（真正的第一个回合初始化）
+        # 之后不再清空，避免清空已检测到的阵亡单位
+        if self.current_turn == 0:
+            account_count = self.get_account_count()
+            for account_idx in range(account_count):
+                if account_idx not in self.unit_info:
                     continue
+                
+                # 将所有主角设置为存活
+                for char_info in self.unit_info[account_idx]["main_chars"]:
+                    char_info["alive"] = True
+                    char_info["need_revive"] = False
+                
+                # 将所有武将设置为存活
+                for general_info in self.unit_info[account_idx]["generals"]:
+                    general_info["alive"] = True
+                
+                # 清空阵亡记录（本地和全局）
+                self.dead_units[account_idx]["main_chars"] = []
+                self.dead_units[account_idx]["generals"] = []
+            # 清空全局阵亡记录
+            self.global_dead_units["main_chars"] = []
+            self.global_dead_units["generals"] = []
+            # 将current_turn设置为1，避免后续再次清空
+            self.current_turn = 1
+        
+        # 根据墓碑检测结果，将检测到墓碑的单位设置为死亡状态
+        for dead_unit in dead_list:
+            account_idx = dead_unit["account_index"]
+            unit_type = dead_unit["unit_type"]
+            unit_name = dead_unit["unit_name"]
+            position = dead_unit["position"]
 
-        # 获取在场武将
-        generals = self.get_all_generals(account_index)
+            if unit_type == "main_char":
+                # 主角阵亡 - 先检查全局记录，避免重复
+                already_in_global = False
+                for dead_char in self.global_dead_units["main_chars"]:
+                    if dead_char.get("name") == unit_name and dead_char.get("account_index") == account_idx:
+                        already_in_global = True
+                        break
+                
+                if already_in_global:
+                    # 已经在全局记录中，跳过处理
+                    continue
+                
+                # 更新单位信息
+                for char_info in self.unit_info[account_idx]["main_chars"]:
+                    if char_info["name"] == unit_name:
+                        if char_info["alive"]:  # 之前是存活的,现在阵亡了
+                            char_info["alive"] = False
+                            char_info["need_revive"] = True
+                            
+                            # 添加到全局阵亡记录（所有账号共享）
+                            dead_char_info = {"name": unit_name, "position": position, "account_index": account_idx}
+                            self.global_dead_units["main_chars"].append(dead_char_info)
+                            
+                            # 也添加到本地记录（用于兼容旧代码）
+                            self.dead_units[account_idx]["main_chars"].append(dead_char_info)
+                            
+                            self.report_battle_info(f"账号{account_idx} {unit_name}阵亡", "warning")
+                        break
+            elif unit_type == "general":
+                # 武将阵亡 - 先检查全局记录，避免重复
+                already_in_global = False
+                for dead_general in self.global_dead_units["generals"]:
+                    if (dead_general.get("name") == unit_name and 
+                        dead_general.get("account_index") == account_idx and
+                        dead_general.get("position") == position):
+                        already_in_global = True
+                        break
+                
+                if already_in_global:
+                    # 已经在全局记录中，跳过处理
+                    continue
+                
+                # 更新单位信息
+                for general_info in self.unit_info[account_idx]["generals"]:
+                    if general_info.get("name") == unit_name or general_info.get("position") == position:
+                        if general_info.get("alive", True):
+                            general_info["alive"] = False
+                            
+                            # 添加到全局阵亡记录（所有账号共享）
+                            dead_general_info = {
+                                "name": general_info.get("name", unit_name),
+                                "position": position,
+                                "account_index": account_idx,
+                            }
+                            self.global_dead_units["generals"].append(dead_general_info)
+                            
+                            # 也添加到本地记录（用于兼容旧代码）
+                            self.dead_units[account_idx]["generals"].append(dead_general_info)
+                            
+                            self.report_battle_info(
+                                f"账号{account_idx} {general_info.get('name', unit_name)}阵亡", "warning"
+                            )
+                            
+                            # 从对应主角的武将列表中移除
+                            found_in_char = False
+                            for char_info in self.unit_info[account_idx]["main_chars"]:
+                                # 使用更宽松的匹配方式：通过name或position匹配
+                                for gen in char_info["generals"]:
+                                    if (gen.get("name") == general_info.get("name", unit_name) or 
+                                        gen.get("position") == position):
+                                        char_info["generals"].remove(gen)
+                                        char_info["general_count"] = len(char_info["generals"])
+                                        found_in_char = True
+                                        break
+                                if found_in_char:
+                                    break
+                            
+                            if not found_in_char:
+                                self.report_battle_info(
+                                    f"账号{account_idx} 警告：武将{general_info.get('name', unit_name)}阵亡，但未在任何主角的武将列表中找到，无法更新general_count", "warning"
+                                )
+                            
+                            # 从武将列表中移除
+                            if general_info in self.unit_info[account_idx]["generals"]:
+                                self.unit_info[account_idx]["generals"].remove(general_info)
+                        break
 
-        # 检测是否有辅助武将
-        has_support = any(g['type'] == 'support' for g in generals)
+    # 更新敌军状态记录
+    def update_enemy_status(self, need_clear_list):
+        """更新需要清除状态的敌军记录"""
+        for status_info in need_clear_list:
+            account_idx = status_info["account_index"]
+            enemy_name = status_info["enemy_name"]
+            cast_position = status_info["cast_position"]
 
-        return {
-            'main_chars': main_chars,  # 存活的男主角列表
-            'generals': generals,  # 在场武将列表
-            'has_support': has_support,  # 是否有辅助武将
-            'general_count': len(generals)  # 武将数量
-        }
+            # 检查是否已记录
+            already_recorded = False
+            for recorded in self.enemies_need_clear[account_idx]:
+                if recorded["enemy_name"] == enemy_name:
+                    already_recorded = True
+                    break
 
-    def check_bag_for_general(self, account_index, general_name):
-        """
-        检查背包中是否有指定武将
+            if not already_recorded:
+                self.enemies_need_clear[account_idx].append(
+                    {"enemy_name": enemy_name, "position": cast_position, "account_index": account_idx}
+                )
+                self.report_battle_info(f"账号{account_idx} 敌军{enemy_name}需要清除状态", "warning")
+
+    # 更新血量低的单位记录
+    def update_low_hp_units(self, low_hp_list):
+        """更新血量低的单位记录"""
+        # 先清空所有账号的血量低单位记录
+        account_count = self.get_account_count()
+        for i in range(account_count):
+            self.low_hp_units[i] = []
+        
+        # 更新新的血量低单位记录
+        for unit_info in low_hp_list:
+            account_idx = unit_info["account_index"]
+            # 检查是否已记录（避免重复）
+            already_recorded = False
+            for recorded in self.low_hp_units[account_idx]:
+                if (recorded["unit_type"] == unit_info["unit_type"] and 
+                    recorded["unit_name"] == unit_info["unit_name"]):
+                    already_recorded = True
+                    break
+            
+            if not already_recorded:
+                self.low_hp_units[account_idx].append(unit_info)
+
+    # 使用恢复药
+    def use_heal_item(self, account_index, target_unit_info):
+        """使用恢复药给目标单位加血
         :param account_index: 账号索引
-        :param general_name: 武将名称
-        :return: True if 背包中有该武将
+        :param target_unit_info: 目标单位信息 {'unit_type': str, 'unit_name': str, 'position': (x, y)}
+        :return: True/False
         """
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return False
-
-        # 背包区域（需要根据实际游戏界面设置）
-        # 修复：使用召唤面板区域或右侧按钮区域作为背包检测区域
-        bag_region = self.summon_panel_region if self.summon_panel_region else (
-            self.right_button_region if self.right_button_region else (0, 0,
-                                                                       500,
-                                                                       500))
-        if isinstance(bag_region, tuple) and len(bag_region) == 4:
-            pass  # 使用提供的区域
-        else:
-            bag_region = (0, 0, 500, 500)  # 备用默认区域
-
-        image_path = self.bag_general_images.get(general_name, '')
-        if not image_path:
-            return False
-
-        # 安全检查：确保bag_region格式正确
-        if not isinstance(bag_region, (tuple, list)) or len(bag_region) != 4:
-            return False
-
-        x, y, w, h = bag_region
-        # 根据注释，w和h是结束坐标，需要转换为宽度和高度用于FindPic
-        width = w - x if w > 900 or h > 580 else w  # 判断是结束坐标还是宽度
-        height = h - y if w > 900 or h > 580 else h
-
-        # 使用带超时的图片查找（2秒超时），避免立即返回false
-        pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                         image_path, timeout=2)
-        return pos and len(pos) > 0
-
-    def check_bag_for_support_general(self, account_index):
-        """
-        检查背包中是否有辅助武将
-        :param account_index: 账号索引
-        :return: True if 背包中有辅助武将（刘备）
-        """
-        return self.check_bag_for_general(account_index, '刘备')
-
-    def need_summon_support_general(self, account_index):
-        """
-        判断是否需要召唤辅助武将（刘备）
-        :param account_index: 账号索引
-        :return: True if 需要召唤刘备, False otherwise
-        """
-        if not self.keep_support_general:
-            return False
-
-        generals = self.get_all_generals(account_index)
-        has_support = any(g['name'] == '刘备' for g in generals)
-
-        # 如果没有辅助武将，需要召唤
-        return not has_support
-
-    def can_summon_general(self, account_index):
-        """
-        判断是否可以召唤武将（检查武将数量是否少于2个）
-        :param account_index: 账号索引
-        :return: True if 可以召唤（少于2个武将）, False otherwise
-        """
-        generals = self.get_all_generals(account_index)
-        # 每个主角最多可以出战2个武将
-        return len(generals) < 2
-
-    def is_skill_ready(self, account_index, skill_name):
-        """
-        检查技能是否可以使用（不在CD中）
-        :param account_index: 账号索引
-        :param skill_name: 技能名称
-        :return: True if 技能可以使用, False otherwise
-        """
-        cd_rounds = self.skill_cd_config.get(skill_name, 0)
-        if cd_rounds == 0:
-            return True  # 无CD技能
-
-        if account_index not in self.skill_cd_tracking:
-            self.skill_cd_tracking[account_index] = {}
-
-        last_used_turn = self.skill_cd_tracking[account_index].get(skill_name,
-                                                                   -999)
-        turns_passed = self.current_turn - last_used_turn
-
-        return turns_passed >= cd_rounds
-
-    def is_skill_visible(self, account_index, skill_name, dm_object):
-        """
-        检测技能是否在技能面板中可见（不在CD中，技能图标可见）
-        如果能找到技能图标，说明技能没有进入CD，可以使用
-        如果找不到技能图标，说明技能在CD中或被控制状态影响
-        :param account_index: 账号索引
-        :param skill_name: 技能名称
-        :param dm_object: 大漠对象
-        :return: True if 技能可见（可用）, False otherwise
-        """
-        if not dm_object:
-            return False
-
-        panel_region, _ = self.get_panel_region('skill')
-        if not panel_region:
-            print(
-                f"警告：账号{account_index} 未设置技能面板区域，无法检测技能可见性")
-            return False
-
-        # 先检查技能面板是否已经打开
-        coords = self.convert_region_coords(panel_region)
-        if not coords:
-            print(f"警告：技能面板区域格式错误: {panel_region}")
-            return False
-
-        x, y, width, height = coords
-
-        test_skill = self.skill_images.get('主角群体攻击1', '')
-        panel_opened = False
-
-        if test_skill:
-            test_pos = self.find_pic_with_timeout(dm_object, x, y, width,
-                                                  height, test_skill, timeout=2)
-            panel_opened = test_pos and len(test_pos) > 0
-
-        # 如果面板未打开，打开它
-        if not panel_opened:
-            if not self.click_right_button('技能按钮', dm_object):
+        try:
+            # 检查恢复药CD
+            item_cd_config = self.item_cd_config.get("恢复药", 3)
+            last_used_turn = self.item_cd_tracking.get(account_index, {}).get("恢复药", -999)
+            if (self.current_turn - last_used_turn) < item_cd_config:
+                # 恢复药在冷却中
+                return False
+            
+            # 1. 点击道具按钮（5秒内找到，否则返回False）
+            start_time = time.time()
+            timeout = 5.0
+            item_button_pos = None
+            
+            while time.time() - start_time < timeout:
+                item_button_pos = self.find_image(
+                    account_index, self.button_images["道具按钮"], self.right_button_region, 0
+                )
+                if item_button_pos:
+                    break
+                time.sleep(0.2)  # 每次查找间隔0.2秒
+            
+            if not item_button_pos:
+                self.report_battle_info(f"账号{account_index} 未找到道具按钮（5秒超时）", "error")
                 return False
 
-            # 等待面板出现（最多等待3秒）
-            if test_skill:
-                found, test_pos = self.wait_for_image(dm_object, x, y, width,
-                                                      height, test_skill,
-                                                      timeout=3,
-                                                      check_interval=0.1)
-                if found and test_pos:
-                    panel_opened = True
-                else:
-                    print(f"警告：技能面板可能未完全打开（已等待3秒）")
-                    return False
-            else:
-                # 如果没有test_skill，假设面板已打开（理论上不应该发生）
-                print(f"警告：账号{account_index} test_skill为空，假设面板已打开")
-                panel_opened = True
+            self.click_position(account_index, item_button_pos.x, item_button_pos.y)
+            time.sleep(CombatConstants.PANEL_WAIT_TIMEOUT)
 
-        # 在技能面板中查找技能图标
-        image_path = self.skill_images.get(skill_name, '')
-        if not image_path:
-            return False
+            # 2. 等待恢复药出现并点击（5秒内找到，否则返回False）
+            heal_item_image = self.item_images.get("恢复药")
+            if not heal_item_image:
+                self.report_battle_info(f"账号{account_index} 未找到恢复药图片配置", "error")
+                return False
 
-        # 使用带超时的图片查找（2秒超时）
-        pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                         image_path, timeout=2)
-        found = pos and len(pos) > 0
+            # 5秒内循环查找恢复药
+            start_time = time.time()
+            timeout = 5.0
+            heal_item_pos = None
+            
+            while time.time() - start_time < timeout:
+                heal_item_pos = self.find_image(account_index, heal_item_image, self.item_panel_region, 0)
+                if heal_item_pos:
+                    break
+                time.sleep(0.2)  # 每次查找间隔0.2秒
+            
+            if not heal_item_pos:
+                self.report_battle_info(f"账号{account_index} 道具面板中未找到恢复药（5秒超时）", "error")
+                return False
 
-        # 如果能找到技能图标，说明技能可见（不在CD中）
-        return found
+            self.click_position(account_index, heal_item_pos.x, heal_item_pos.y)
+            time.sleep(CombatConstants.ACTION_DELAY)
 
-    def is_item_ready(self, account_index, item_name):
-        """
-        检查药品是否可以使用（不在CD中）
-        :param account_index: 账号索引
-        :param item_name: 药品名称
-        :return: True if 药品可以使用, False otherwise
-        """
-        cd_rounds = self.item_cd_config.get(item_name, 0)
-        if cd_rounds == 0:
-            return True  # 无CD药品
+            # 3. 点击目标单位的位置
+            target_position = target_unit_info["position"]
+            self.click_position(account_index, target_position[0], target_position[1])
+            time.sleep(CombatConstants.ACTION_DELAY)
 
-        if account_index not in self.item_cd_tracking:
-            self.item_cd_tracking[account_index] = {}
+            # 4. 记录恢复药使用和冷却时间
+            if account_index not in self.item_cd_tracking:
+                self.item_cd_tracking[account_index] = {}
+            self.item_cd_tracking[account_index]["恢复药"] = self.current_turn
 
-        last_used_turn = self.item_cd_tracking[account_index].get(item_name,
-                                                                  -999)
-        turns_passed = self.current_turn - last_used_turn
+            # 5. 从血量低单位列表中移除（如果存在）
+            if account_index in self.low_hp_units:
+                for unit_info in self.low_hp_units[account_index][:]:
+                    if (unit_info["unit_type"] == target_unit_info["unit_type"] and 
+                        unit_info["unit_name"] == target_unit_info["unit_name"]):
+                        self.low_hp_units[account_index].remove(unit_info)
+                        break
 
-        return turns_passed >= cd_rounds
+            self.report_battle_info(
+                f"账号{account_index} 使用恢复药给{target_unit_info['unit_name']}加血", "success"
+            )
+            return True
 
-    def mark_skill_used(self, account_index, skill_name):
-        """
-        标记技能已使用（更新CD追踪）
-        :param account_index: 账号索引
-        :param skill_name: 技能名称
-        """
-        if account_index not in self.skill_cd_tracking:
-            self.skill_cd_tracking[account_index] = {}
-        self.skill_cd_tracking[account_index][skill_name] = self.current_turn
-        skill_msg = f"账号{account_index} 使用技能 {skill_name}，标记CD（回合{self.current_turn}）"
-        print(skill_msg)
-        self.report_battle_info(skill_msg, "success")
-
-    def mark_item_used(self, account_index, item_name):
-        """
-        标记药品已使用（更新CD追踪）
-        :param account_index: 账号索引
-        :param item_name: 药品名称
-        """
-        if account_index not in self.item_cd_tracking:
-            self.item_cd_tracking[account_index] = {}
-        self.item_cd_tracking[account_index][item_name] = self.current_turn
-        item_msg = f"账号{account_index} 使用药品 {item_name}，标记CD（回合{self.current_turn}）"
-        print(item_msg)
-        self.report_battle_info(item_msg, "success")
-
-    def detect_ally_abnormal_status(self, account_index, unit_type, unit_name,
-                                    unit_x, unit_y):
-        """
-        检测己方单位的异常状态（混乱、冰封、眩晕、嘲讽）
-        :param account_index: 账号索引
-        :param unit_type: 单位类型 'main_char' 或 'general'
-        :param unit_name: 单位名称
-        :param unit_x: 单位X坐标
-        :param unit_y: 单位Y坐标
-        :return: 异常状态列表，如 ['混乱', '冰封'] 或 []
-        """
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return []
-
-        # 在单位位置附近检测异常状态图标
-        radius = self.status_detection_radius
-        detection_region = (
-            max(0, int(unit_x - radius)),
-            max(0, int(unit_y - radius)),
-            int(radius * 2),
-            int(radius * 2)
-        )
-
-        detected_statuses = []
-
-        try:
-            x, y, w, h = detection_region
-            for status_name, status_image_path in self.ally_abnormal_status_images.items():
-                pos = dm_object.FindPic(x, y, w, h, status_image_path, "000000",
-                                        0.9, 0)
-                if pos and len(pos) > 0:
-                    detected_statuses.append(status_name)
-                    print(
-                        f"账号{account_index} {unit_type} {unit_name} 检测到异常状态: {status_name}")
         except Exception as e:
-            print(f"检测 {unit_type} {unit_name} 异常状态时出错: {e}")
-
-        return detected_statuses
-
-    def check_all_ally_status(self, account_index):
-        """
-        检测账号中所有存活单位（主角和武将）的异常状态
-        :param account_index: 账号索引
-        :return: 单位状态字典 {(unit_type, unit_name): [状态列表]}
-        """
-        if account_index not in self.unit_positions:
-            return {}
-
-        unit_statuses = {}
-
-        # 检测主角异常状态
-        main_chars = self.unit_positions[account_index].get('main_chars', [])
-        for char_name, char_x, char_y in main_chars:
-            statuses = self.detect_ally_abnormal_status(account_index,
-                                                        'main_char', char_name,
-                                                        char_x, char_y)
-            if statuses:
-                unit_statuses[('main_char', char_name)] = statuses
-
-        # 检测武将异常状态
-        generals = self.unit_positions[account_index].get('generals', [])
-        for general_name, general_x, general_y in generals:
-            statuses = self.detect_ally_abnormal_status(account_index,
-                                                        'general', general_name,
-                                                        general_x, general_y)
-            if statuses:
-                unit_statuses[('general', general_name)] = statuses
-
-        # 更新状态追踪（初始化如果不存在）
-        if account_index not in self.ally_status_tracking:
-            self.ally_status_tracking[account_index] = {}
-        self.ally_status_tracking[account_index] = unit_statuses
-
-        return unit_statuses
-
-    def has_unit_abnormal_status(self, account_index, unit_type, unit_name,
-                                 status_name=None):
-        """
-        检查单位是否有异常状态
-        :param account_index: 账号索引
-        :param unit_type: 单位类型 'main_char' 或 'general'
-        :param unit_name: 单位名称
-        :param status_name: 特定状态名称（可选），如果不提供则检查是否有任何异常状态
-        :return: True if 有异常状态, False otherwise
-        """
-        # 初始化状态追踪字典（如果不存在）
-        if account_index not in self.ally_status_tracking:
-            self.ally_status_tracking[account_index] = {}
+            self.report_battle_info(f"账号{account_index} 使用恢复药失败: {e}", "error")
             return False
 
-        key = (unit_type, unit_name)
-        if key not in self.ally_status_tracking[account_index]:
-            return False
+    # 召唤武将
+    def summon_general(self, account_index, char_index, general_name):
+        """召唤武将"""
+        try:
+            # 1. 点击召唤按钮
+            summon_button_pos = self.find_image(
+                account_index, self.button_images["召唤按钮"], self.right_button_region, 0
+            )
+            if not summon_button_pos:
+                self.report_battle_info(f"账号{account_index} 未找到召唤按钮", "error")
+                return False
 
-        statuses = self.ally_status_tracking[account_index][key]
+            self.click_position(account_index, summon_button_pos.x, summon_button_pos.y)
+            time.sleep(CombatConstants.PANEL_WAIT_TIMEOUT)
 
-        if status_name:
-            # 检查是否有特定状态
-            return status_name in statuses
-        else:
-            # 检查是否有任何异常状态
-            return len(statuses) > 0
+            # 2. 等待召唤面板出现
+            # 在召唤面板区域查找武将图片（5秒内找到，否则返回False）
+            general_image_path = self.bag_general_images.get(general_name)
+            if not general_image_path:
+                self.report_battle_info(f"账号{account_index} 未找到武将{general_name}的图片配置", "error")
+                return False
 
-    def can_unit_use_skill(self, account_index, unit_type, unit_name):
-        """
-        判断单位是否可以使用技能
-        :param account_index: 账号索引
-        :param unit_type: 单位类型 'main_char' 或 'general'
-        :param unit_name: 单位名称
-        :return: True if 可以使用技能, False otherwise
-        """
-        # 如果有冰封状态，不能使用技能
-        if self.has_unit_abnormal_status(account_index, unit_type, unit_name,
-                                         '冰封'):
-            return False
+            # 5秒内循环查找武将图片
+            start_time = time.time()
+            timeout = 5.0
+            general_pos = None
+            
+            while time.time() - start_time < timeout:
+                general_pos = self.find_image(account_index, general_image_path, self.summon_panel_region, 0)
+                if general_pos:
+                    break
+                time.sleep(0.2)  # 每次查找间隔0.2秒
+            
+            if not general_pos:
+                self.report_battle_info(f"账号{account_index} 召唤面板中未找到{general_name}（5秒超时）", "error")
+                return False
 
-        # 其他异常状态（混乱、眩晕、嘲讽）不影响技能使用
-        return True
+            # 3. 点击武将图片
+            self.click_position(account_index, general_pos.x, general_pos.y)
+            time.sleep(CombatConstants.ACTION_DELAY)
 
-    def can_unit_use_item(self, account_index, unit_type, unit_name):
-        """
-        判断单位是否可以使用药品
-        :param account_index: 账号索引
-        :param unit_type: 单位类型 'main_char' 或 'general'
-        :param unit_name: 单位名称
-        :return: True if 可以使用药品, False otherwise
-        """
-        # 冰封状态下可以使用药品
-        # 其他异常状态也可以使用药品
-        return True
+            # 4. 如果是召唤刘备且当前角色两个武将全部存活,需要替换
+            char_info = self.unit_info[account_index]["main_chars"][char_index]
+            if general_name == "刘备" and char_info["general_count"] >= 2:
+                # 找到上场回合更多的武将进行替换
+                alive_generals = [g for g in char_info["generals"] if g.get("alive", True)]
+                if len(alive_generals) >= 2:
+                    # 找到上场回合最多的武将
+                    oldest_general = max(alive_generals, key=lambda g: g.get("deployed_turn", 0))
+                    # 点击该武将的位置进行替换
+                    self.click_position(account_index, oldest_general["position"][0], oldest_general["position"][1])
+                    time.sleep(CombatConstants.ACTION_DELAY)
+                    # 更新武将信息
+                    oldest_general["alive"] = False
+                    if oldest_general in self.unit_info[account_index]["generals"]:
+                        self.unit_info[account_index]["generals"].remove(oldest_general)
+                    char_info["generals"].remove(oldest_general)
 
-    def can_unit_summon(self, account_index, unit_type, unit_name):
-        """
-        判断单位是否可以召唤武将
-        :param account_index: 账号索引
-        :param unit_type: 单位类型 'main_char' 或 'general'
-        :param unit_name: 单位名称
-        :return: True if 可以召唤, False otherwise
-        """
-        # 冰封状态下可以召唤武将
-        # 其他异常状态也可以召唤
-        return True
+            # 5. 记录召唤的武将信息
+            # 确定武将位置(根据char_index和当前武将数量)
+            general_position = None
+            if char_index == 0:  # 主角1
+                if char_info["general_count"] == 0:
+                    general_position = self.unit_positions[account_index]["generals"][0][1:]  # 武将1位置
+                else:
+                    general_position = self.unit_positions[account_index]["generals"][3][1:]  # 武将4位置
+            elif char_index == 1:  # 主角2
+                if char_info["general_count"] == 0:
+                    general_position = self.unit_positions[account_index]["generals"][1][1:]  # 武将2位置
+                else:
+                    general_position = self.unit_positions[account_index]["generals"][4][1:]  # 武将5位置
+            else:  # 主角3
+                if char_info["general_count"] == 0:
+                    general_position = self.unit_positions[account_index]["generals"][2][1:]  # 武将3位置
+                else:
+                    general_position = self.unit_positions[account_index]["generals"][5][1:]  # 武将6位置
 
-    def query_turn_status(self, account_index):
-        """
-        每回合开始时的查询机制：查询技能CD、场上武将等信息
-        :param account_index: 账号索引
-        :return: 查询结果字典
-        """
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return {}
-
-        query_result = {
-            'skill_cd_status': {},  # 技能CD状态 {skill_name: bool} True表示可用（不在CD）
-            'generals_on_field': [],  # 场上武将列表
-            'has_liubei': False,  # 是否存在刘备
-            'general_count': 0,  # 场上武将数量
-        }
-
-        # 1. 查询场上是否存在刘备等武将
-        team_status = self.get_team_status(account_index)
-        if team_status:
-            query_result['generals_on_field'] = [g['name'] for g in
-                                                 team_status['generals']]
-            query_result['has_liubei'] = any(
-                g['name'] == '刘备' for g in team_status['generals'])
-            query_result['general_count'] = team_status['general_count']
-
-        # 2. 查询技能CD状态（通过检测技能面板中技能是否可见）
-        # 注意：查询完成后需要关闭技能面板，避免影响后续操作
-        panel_region, _ = self.get_panel_region('skill')
-        if not panel_region:
-            # 如果没有设置面板区域，跳过技能CD查询
-            print(f"警告：账号{account_index} 未设置技能面板区域，跳过技能CD查询")
-        else:
-            # 转换坐标格式（使用统一方法）
-            coords = self.convert_region_coords(panel_region)
-            if not coords:
-                print(
-                    f"警告：技能面板区域格式错误: {panel_region}，跳过技能CD查询")
-            else:
-                x, y, width, height = coords
-                test_skill = self.skill_images.get('主角群体攻击1', '')
-                panel_opened = False
-                need_close_panel = False  # 标记是否需要关闭面板
-
-                if test_skill:
-                    test_pos = self.find_pic_with_timeout(dm_object, x, y,
-                                                          width, height,
-                                                          test_skill, timeout=2)
-                    panel_opened = test_pos and len(test_pos) > 0
-
-                # 如果面板未打开，打开它
-                if not panel_opened:
-                    if self.click_right_button('技能按钮', dm_object):
-                        # 等待面板出现（最多等待3秒）
-                        if test_skill:
-                            found, test_pos = self.wait_for_image(dm_object, x,
-                                                                  y, width,
-                                                                  height,
-                                                                  test_skill,
-                                                                  timeout=3,
-                                                                  check_interval=0.1)
-                            if found and test_pos:
-                                panel_opened = True
-                                need_close_panel = True  # 标记需要关闭
-                            else:
-                                print(f"警告：技能面板可能未完全打开（已等待3秒）")
-                        else:
-                            # 如果没有test_skill，假设面板已打开（理论上不应该发生）
-                            print(
-                                f"警告：账号{account_index} test_skill为空，假设面板已打开")
-                            panel_opened = True
-                            need_close_panel = True  # 标记需要关闭
-
-                # 如果面板已打开或刚刚打开，进行查询
-                if panel_opened:
-                    try:
-                        # 查询主角技能CD（使用带超时的查找，快速查询）
-                        main_char_skills = ['主角群体攻击1', '主角群体攻击2',
-                                            '主角群体攻击3', '主角群体攻击4',
-                                            '主角群体攻击5']
-                        for skill_name in main_char_skills:
-                            image_path = self.skill_images.get(skill_name, '')
-                            if image_path:
-                                # 使用带超时的查找，快速查询（1秒超时）
-                                pos = self.find_pic_with_timeout(dm_object, x,
-                                                                 y, width,
-                                                                 height,
-                                                                 image_path,
-                                                                 timeout=1)
-                                # 如果能找到技能图标，说明不在CD中，可用
-                                query_result['skill_cd_status'][
-                                    skill_name] = pos and len(pos) > 0
-
-                        # 查询刘备技能CD（使用带超时的查找）
-                        if query_result['has_liubei']:
-                            liubei_skills = ['加血', '加攻击', '控制',
-                                             '清除状态']
-                            for skill_name in liubei_skills:
-                                image_path = self.skill_images.get(skill_name,
-                                                                   '')
-                                if image_path:
-                                    pos = self.find_pic_with_timeout(dm_object,
-                                                                     x, y,
-                                                                     width,
-                                                                     height,
-                                                                     image_path,
-                                                                     timeout=1)
-                                    query_result['skill_cd_status'][
-                                        skill_name] = pos and len(pos) > 0
-
-                        # 查询输出武将技能CD（使用带超时的查找）
-                        output_generals = ['武将群体攻击1', '武将群体攻击2']
-                        for skill_name in output_generals:
-                            image_path = self.skill_images.get(skill_name, '')
-                            if image_path:
-                                # 使用带超时的查找，快速查询（1秒超时）
-                                pos = self.find_pic_with_timeout(dm_object, x,
-                                                                 y, width,
-                                                                 height,
-                                                                 image_path,
-                                                                 timeout=1)
-                                query_result['skill_cd_status'][
-                                    skill_name] = pos and len(pos) > 0
-                    finally:
-                        # 如果是我们打开的面板，关闭它（通过按ESC键或点击空白处）
-                        if need_close_panel:
-                            try:
-                                dm_object.KeyPressChar('esc')
-                                time.sleep(0.1)
-                            except:
-                                pass  # 如果关闭失败，继续执行
-
-        return query_result
-
-    def print_turn_query_result(self, account_index, query_result):
-        """
-        打印回合查询结果
-        :param account_index: 账号索引
-        :param query_result: 查询结果字典
-        """
-        if not query_result:
-            return
-
-        print(f"\n【账号{account_index} 回合查询结果】")
-
-        # 打印武将信息
-        generals = query_result.get('generals_on_field', [])
-        general_count = query_result.get('general_count', 0)
-        has_liubei = query_result.get('has_liubei', False)
-
-        if generals:
-            print(f"  场上武将: {', '.join(generals)} ({general_count}个)")
-        else:
-            print(f"  场上武将: 无 ({general_count}个)")
-
-        print(f"  是否存在刘备: {'是' if has_liubei else '否'}")
-
-        # 打印技能CD状态
-        skill_cd = query_result.get('skill_cd_status', {})
-        if skill_cd:
-            available_skills = [name for name, available in skill_cd.items() if
-                                available]
-            cd_skills = [name for name, available in skill_cd.items() if
-                         not available]
-
-            if available_skills:
-                print(
-                    f"  可用技能 ({len(available_skills)}个): {', '.join(available_skills)}")
-            if cd_skills:
-                print(
-                    f"  CD中技能 ({len(cd_skills)}个): {', '.join(cd_skills)}")
-        else:
-            print(f"  技能CD状态: 未查询到")
-
-        print("")
-
-    def has_enemy_status(self, account_index):
-        """
-        检测敌军是否有需要清除的状态（四种状态之一）
-        同时追踪状态3和状态4的变化，用于判断是否需要清除状态
-        :param account_index: 账号索引
-        :return: 状态检测结果字典，包含各种状态信息
-        """
-        dm_object = self.account_dm[account_index]
-        if not dm_object or not self.enemy_region:
-            return {'has_status': False, 'status3': False, 'status4': False}
-
-        # 初始化状态追踪
-        if account_index not in self.enemy_status_tracking:
-            self.enemy_status_tracking[account_index] = {
-                'status3_present': False,
-                'status3_last_seen_turn': -1,
-                'status4_present': False
+            new_general = {
+                "name": general_name,
+                "position": general_position,
+                "alive": True,
+                "deployed_turn": self.current_turn,
+                "account_index": account_index,
+                "char_index": char_index,
             }
 
-        # 在敌军区域检测四种状态
-        if not self.enemy_region:
-            return {'has_status': False, 'status3': False, 'status4': False,
-                    'need_clear': False}
+            char_info["generals"].append(new_general)
+            char_info["general_count"] = len(char_info["generals"])
+            self.unit_info[account_index]["generals"].append(new_general)
 
-        if not isinstance(self.enemy_region, (tuple, list)) or len(
-                self.enemy_region) != 4:
-            return {'has_status': False, 'status3': False, 'status4': False,
-                    'need_clear': False}
-
-        x, y, w, h = self.enemy_region
-
-        status3_found = False
-        status4_found = False
-        has_any_status = False
-
-        for status_name, status_image_path in self.enemy_status_images.items():
-            # 转换坐标格式
-            width = w - x if w > 900 or h > 580 else w
-            height = h - y if w > 900 or h > 580 else h
-            # 使用带超时的图片查找（2秒超时）
-            pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                             status_image_path, timeout=2)
-            if pos and len(pos) > 0:
-                has_any_status = True
-                if status_name == '状态3':
-                    status3_found = True
-                elif status_name == '状态4':
-                    status4_found = True
-
-        # 更新状态追踪
-        tracking = self.enemy_status_tracking[account_index]
-        prev_status3 = tracking['status3_present']
-        prev_status4 = tracking['status4_present']
-
-        # 更新状态3
-        if status3_found:
-            if not prev_status3:
-                # 状态3刚出现
-                tracking['status3_present'] = True
-                tracking['status3_last_seen_turn'] = self.current_turn
-            else:
-                # 状态3持续存在，更新最后见到的时间
-                tracking['status3_last_seen_turn'] = self.current_turn
-        else:
-            if prev_status3:
-                # 状态3消失
-                tracking['status3_present'] = False
-
-        # 更新状态4
-        tracking['status4_present'] = status4_found
-
-        # 判断是否需要清除状态
-        need_clear = False
-        if status3_found and status4_found:
-            # 状态3出现且状态4存在：不清除
-            need_clear = False
-        elif not status3_found and status4_found and prev_status3:
-            # 状态3消失后，状态4仍然存在：需要清除
-            need_clear = True
-        elif has_any_status and not (status3_found and status4_found):
-            # 其他状态（不是状态3+状态4同时存在的情况）：需要清除
-            need_clear = True
-
-        return {
-            'has_status': has_any_status,
-            'status3': status3_found,
-            'status4': status4_found,
-            'need_clear': need_clear
-        }
-
-    def click_right_button(self, button_name, dm_object):
-        """
-        点击右侧操作按钮（技能/召唤/道具）
-        :param button_name: 按钮名称
-        :param dm_object: 大漠对象
-        :return: True if 点击成功
-        """
-        image_path = self.button_images.get(button_name, '')
-        if not image_path or not self.right_button_region:
-            return False
-
-        x, y, w, h = self.right_button_region
-        # 转换坐标格式
-        width = w - x if w > 900 or h > 580 else w
-        height = h - y if w > 900 or h > 580 else h
-        # 使用带超时的图片查找（3秒超时）
-        pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                         image_path, timeout=3)
-        if pos and len(pos) > 0:
-            try:
-                pos_list = pos.split(',')
-                if len(pos_list) >= 2:
-                    # 修复：验证是否为有效数字
-                    btn_x = int(pos_list[0])
-                    btn_y = int(pos_list[1])
-                    dm_object.MoveTo(btn_x, btn_y)
-                    time.sleep(0.2)  # 增加移动后等待时间
-                    dm_object.LeftClick()
-                    time.sleep(0.3)  # 增加等待时间，确保点击生效
-                    return True
-            except (ValueError, IndexError) as e:
-                print(f"解析按钮 {button_name} 位置失败: {pos}, 错误: {e}")
-                return False
-        return False
-
-    def click_skill_icon(self, skill_name, dm_object, panel_region):
-        """
-        在技能面板中点击技能图标
-        :param skill_name: 技能名称
-        :param dm_object: 大漠对象
-        :param panel_region: 技能面板区域
-        :return: True if 点击成功
-        """
-        image_path = self.skill_images.get(skill_name, '')
-        if not image_path:
-            return False
-
-        # 转换坐标格式（使用统一方法）
-        coords = self.convert_region_coords(panel_region)
-        if not coords:
-            print(f"警告：技能面板区域格式错误: {panel_region}")
-            return False
-
-        x, y, width, height = coords
-        # 使用带超时的图片查找（2秒超时）
-        pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                         image_path, timeout=2)
-        if pos and len(pos) > 0:
-            try:
-                pos_list = pos.split(',')
-                if len(pos_list) >= 2:
-                    # 修复：验证是否为有效数字
-                    skill_x = int(pos_list[0])
-                    skill_y = int(pos_list[1])
-                    dm_object.MoveTo(skill_x, skill_y)
-                    time.sleep(0.2)  # 增加移动后等待时间
-                    dm_object.LeftClick()
-                    time.sleep(0.3)  # 增加等待时间，确保进入选择目标状态
-                    return True
-            except (ValueError, IndexError) as e:
-                print(f"解析技能 {skill_name} 位置失败: {pos}, 错误: {e}")
-                return False
-        return False
-
-    def use_skill_workflow(self, skill_name, dm_object, target_type='enemy',
-                           account_index=0, target_x=None, target_y=None,
-                           enemy_index=0):
-        """
-        使用技能的完整流程：检测技能可见性 -> 点击按钮 -> 选择技能 -> 选择目标
-        如果能找到技能图标，说明技能没有进入CD，可以使用（不受混乱/冰封/眩晕影响）
-        :param skill_name: 技能名称
-        :param dm_object: 大漠对象
-        :param target_type: 目标类型 'enemy' or 'ally'
-        :param account_index: 账号索引，用于获取目标的确切位置
-        :param target_x: 目标X坐标（确切点位，可选）
-        :param target_y: 目标Y坐标（确切点位，可选）
-        :param enemy_index: 敌人索引（当target_type='enemy'时使用）
-        :return: True if 成功
-        """
-        # 0. 检测技能是否可见（在技能面板中能找到，说明不在CD中且未被控制）
-        # is_skill_visible 会打开技能面板并检测，如果技能可见则面板仍然打开
-        skill_visible = self.is_skill_visible(account_index, skill_name,
-                                              dm_object)
-
-        if not skill_visible:
-            print(
-                f"账号{account_index} 技能 {skill_name} 不可见（可能CD中或被控制）")
-            return False
-
-        # 注意：is_skill_visible 已经检测了技能面板，如果可见则面板应该已打开
-        # 1. 确保技能面板已打开，然后在技能面板中选择技能
-        panel_region, _ = self.get_panel_region('skill')
-        if not panel_region:
-            print(f"警告：账号{account_index} 未设置技能面板区域，无法使用技能")
-            return False
-
-        # 检查面板是否打开
-        coords = self.convert_region_coords(panel_region)
-        if not coords:
-            print(f"警告：技能面板区域格式错误: {panel_region}")
-            return False
-
-        x, y, width, height = coords
-        test_skill = self.skill_images.get('主角群体攻击1', '')
-        panel_opened = False
-
-        if test_skill:
-            test_pos = self.find_pic_with_timeout(dm_object, x, y, width,
-                                                  height, test_skill, timeout=2)
-            panel_opened = test_pos and len(test_pos) > 0
-
-        # 如果面板未打开，打开它
-        if not panel_opened:
-            if not self.click_right_button('技能按钮', dm_object):
-                return False
-
-            # 等待面板出现（最多等待3秒）
-            if test_skill:
-                found, test_pos = self.wait_for_image(dm_object, x, y, width,
-                                                      height, test_skill,
-                                                      timeout=3,
-                                                      check_interval=0.1)
-                if found and test_pos:
-                    panel_opened = True
-                else:
-                    print(f"警告：技能面板可能未完全打开（已等待3秒）")
-                    return False
-            else:
-                # 如果没有test_skill，假设面板已打开（理论上不应该发生）
-                print(f"警告：账号{account_index} test_skill为空，假设面板已打开")
-                panel_opened = True
-
-        # 在技能面板中选择技能
-        if not self.click_skill_icon(skill_name, dm_object, panel_region):
-            return False
-
-        # 2. 选择目标（使用确切点位）
-        click_success = False
-        if target_type == 'enemy':
-            # 确保 enemy_region 已设置
-            if not self.enemy_region:
-                print(
-                    f"警告：账号{account_index} 未设置敌军区域，无法选择敌人目标")
-                return False
-
-            # 尝试点击敌人，如果敌人死亡则自动尝试下一个（最多尝试3个敌人）
-            for attempt_index in range(3):
-                current_index = (enemy_index + attempt_index) % 3
-                if self.click_enemy_unit(dm_object, self.enemy_region,
-                                         account_index, current_index):
-                    click_success = True
-                    break
-                else:
-                    # 当前敌人死亡，尝试下一个
-                    if attempt_index < 2:  # 还有下一个可以尝试
-                        print(
-                            f"账号{account_index} 敌人{current_index + 1}已死亡，尝试下一个敌人")
-
-            if not click_success:
-                print(f"账号{account_index} 所有敌人都已死亡，无法选择目标")
-        elif target_type == 'ally':
-            # 如果提供了确切坐标，使用提供的坐标
-            if target_x is not None and target_y is not None:
-                click_success = self.click_ally_unit(dm_object, target_x,
-                                                     target_y, account_index)
-            else:
-                # 从unit_positions获取友军位置
-                if account_index in self.unit_positions:
-                    main_chars = self.unit_positions[account_index].get(
-                        'main_chars', [])
-                    if main_chars:
-                        # 使用第一个主角的位置
-                        _, x, y = main_chars[0]
-                        click_success = self.click_ally_unit(dm_object, x, y,
-                                                             account_index)
-
-        # 3. 只有成功完成所有步骤才标记技能已使用
-        if click_success:
-            self.mark_skill_used(account_index, skill_name)
-            return True
-        else:
-            print(
-                f"账号{account_index} 技能 {skill_name} 使用失败（目标选择失败）")
-            return False
-
-    def get_random_ally_position(self, account_index):
-        """
-        随机获取一个己方队友的确切坐标（包括主角和武将）
-        :param account_index: 账号索引
-        :return: (x, y) 坐标元组，如果没有队友则返回 None
-        """
-        if account_index not in self.unit_positions:
-            return None
-
-        all_allies = []
-        # 获取所有主角位置
-        all_allies.extend(
-            self.unit_positions[account_index].get('main_chars', []))
-        # 获取所有武将位置
-        all_allies.extend(
-            self.unit_positions[account_index].get('generals', []))
-
-        if not all_allies:
-            return None
-
-        # 随机选择一个队友
-        random_ally = random.choice(all_allies)
-        # 返回 (name, x, y) 中的坐标
-        _, x, y = random_ally
-        return (x, y)
-
-    def click_ally_unit(self, dm_object, target_x, target_y,
-                        account_index=None):
-        """
-        点击友军单位（使用确切点位）
-        :param dm_object: 大漠对象
-        :param target_x: 目标X坐标（确切点位）
-        :param target_y: 目标Y坐标（确切点位）
-        :param account_index: 账号索引（可选，用于从unit_positions获取位置）
-        :return: True if 点击成功
-        """
-        dm_object.MoveTo(int(target_x), int(target_y))
-        time.sleep(0.2)  # 增加移动后等待时间
-        dm_object.LeftClick()
-        time.sleep(0.2)  # 增加点击后等待时间
-        print(f"点击友军位置: ({target_x}, {target_y})")
-        return True
-
-    def click_enemy_unit(self, dm_object, enemy_region, account_index=0,
-                         enemy_index=0):
-        """
-        点击一个敌军单位（优先使用固定的确切位置）
-        :param dm_object: 大漠对象
-        :param enemy_region: 敌军区域（备用，如果找不到确切位置则使用）
-        :param account_index: 账号索引，用于获取敌人位置列表
-        :param enemy_index: 敌人索引（0=第一个敌人，1=第二个敌人，2=第三个敌人）
-        :return: True if 点击成功
-        """
-        # 1. 优先使用固定的配置位置（主要使用固定点位）
-        enemy_key = (account_index, enemy_index)
-        if enemy_key in self.fixed_enemy_positions:
-            enemy_x, enemy_y = self.fixed_enemy_positions[enemy_key]
-
-            # 点击前检查敌人是否存活（检测墓碑）
-            if self.check_tombstone_at_position(dm_object, enemy_x, enemy_y):
-                # 检测到墓碑，说明敌人已死亡
-                print(
-                    f"敌人{enemy_index + 1}位置 ({enemy_x}, {enemy_y}) 检测到墓碑，已死亡，跳过")
-                return False
-
-            # 敌人存活，点击敌人中心位置
-            dm_object.MoveTo(int(enemy_x), int(enemy_y))
-            time.sleep(0.2)  # 增加移动后等待时间
-            dm_object.LeftClick()
-            time.sleep(0.2)  # 增加点击后等待时间
-            print(
-                f"使用固定坐标点击敌人{enemy_index + 1}位置: ({enemy_x}, {enemy_y})")
+            self.report_battle_info(f"账号{account_index} {char_info['name']}召唤{general_name}成功", "success")
             return True
 
-        # 2. 使用检测到的敌人位置（通过图片识别，备用方案）
-        if account_index in self.unit_positions:
-            enemies = self.unit_positions[account_index].get('enemies', [])
-            if enemies and enemy_index < len(enemies):
-                enemy_name, enemy_x, enemy_y = enemies[enemy_index]
+        except Exception as e:
+            self.report_battle_info(f"账号{account_index} 召唤{general_name}失败: {e}", "error")
+            return False
 
-                # 点击前检查敌人是否存活（检测墓碑）
-                if self.check_tombstone_at_position(dm_object, enemy_x,
-                                                    enemy_y):
-                    # 检测到墓碑，说明敌人已死亡
-                    print(
-                        f"敌人 {enemy_name} 位置 ({enemy_x}, {enemy_y}) 检测到墓碑，已死亡，跳过")
+    # 检查并标记正在复活的主角
+    def _check_and_mark_reviving(self, target_account_index, char_name):
+        """检查并标记正在复活的主角
+        :param target_account_index: 目标账号索引（阵亡主角所属的账号）
+        :param char_name: 主角名称
+        :return: True表示可以复活（未被标记），False表示正在被其他账号复活
+        """
+        with self.revive_lock:
+            # 使用 (target_account_index, char_name) 作为键
+            revive_key = (target_account_index, char_name)
+            
+            # 检查是否正在被复活（检查所有账号）
+            account_count = self.get_account_count()
+            for acc_idx in range(account_count):
+                check_key = (acc_idx, char_name)
+                if check_key in self.reviving_chars:
+                    # 正在被复活，返回False
                     return False
+            
+            # 没有被标记，标记为正在复活
+            self.reviving_chars[revive_key] = time.time()
+            return True
+    
+    # 清除正在复活的标记
+    def _clear_reviving_mark(self, target_account_index, char_name):
+        """清除正在复活的标记
+        :param target_account_index: 目标账号索引（阵亡主角所属的账号）
+        :param char_name: 主角名称
+        """
+        with self.revive_lock:
+            revive_key = (target_account_index, char_name)
+            if revive_key in self.reviving_chars:
+                del self.reviving_chars[revive_key]
+    
+    # 清理过期的复活标记（防止标记永久存在）
+    def _cleanup_expired_revive_marks(self):
+        """清理过期的复活标记（超过10秒的标记视为过期）"""
+        with self.revive_lock:
+            current_time = time.time()
+            expired_keys = []
+            for key, timestamp in self.reviving_chars.items():
+                if current_time - timestamp > 10.0:  # 10秒超时
+                    expired_keys.append(key)
+            for key in expired_keys:
+                del self.reviving_chars[key]
 
-                # 敌人存活，点击敌人位置
-                dm_object.MoveTo(int(enemy_x), int(enemy_y))
-                time.sleep(0.2)  # 增加移动后等待时间
-                dm_object.LeftClick()
-                time.sleep(0.2)  # 增加点击后等待时间
-                print(f"点击敌人 {enemy_name} 位置: ({enemy_x}, {enemy_y})")
-                return True
-
-        # 3. 如果没有找到确切位置，使用区域中心位置（最后备用方案）
-        # 注意：在使用区域中心前，应该先检测是否有存活的敌人
+    # 复活主角
+    def revive_main_char(self, account_index, dead_char_info):
+        """复活主角"""
         try:
-            if not isinstance(enemy_region, (tuple, list)) or len(
-                    enemy_region) != 4:
-                print(f"敌军区域格式错误: {enemy_region}")
-                return False
-            x, y, w, h = enemy_region
-            # 根据初始化注释，enemy_region格式是(x, y, w, h)其中w和h是结束坐标
-            # 但在FindPic中，w和h应该是宽度和高度
-            # 这里统一处理：如果w和h超过屏幕尺寸（说明是结束坐标），需要转换为宽度和高度
-            # 否则直接使用（已经是宽度和高度）
-            if w > 900 or h > 580:  # 判断：w和h可能是结束坐标
-                center_x = (x + w) // 2  # 结束坐标情况：中心点 = (开始 + 结束) / 2
-                center_y = (y + h) // 2
-            else:  # w和h是宽度和高度
-                center_x = x + w // 2  # 宽度情况：中心点 = 开始 + 宽度/2
-                center_y = y + h // 2
-
-            # 检测区域中心是否有墓碑（如果中心点有墓碑，说明可能所有敌人都死了）
-            if self.check_tombstone_at_position(dm_object, center_x, center_y):
-                print(
-                    f"使用备用方案，但区域中心 ({center_x}, {center_y}) 检测到墓碑，可能所有敌人已死亡")
+            # 1. 点击道具按钮（5秒内找到，否则返回False）
+            # 5秒内循环查找道具按钮
+            start_time = time.time()
+            timeout = 5.0
+            item_button_pos = None
+            
+            while time.time() - start_time < timeout:
+                item_button_pos = self.find_image(
+                    account_index, self.button_images["道具按钮"], self.right_button_region, 0
+                )
+                if item_button_pos:
+                    break
+                time.sleep(0.2)  # 每次查找间隔0.2秒
+            
+            if not item_button_pos:
+                self.report_battle_info(f"账号{account_index} 未找到道具按钮（5秒超时）", "error")
                 return False
 
-            dm_object.MoveTo(center_x, center_y)
-            time.sleep(0.2)  # 增加移动后等待时间
-            dm_object.LeftClick()
-            time.sleep(0.2)  # 增加点击后等待时间
-            print(f"使用备用方案，点击敌军区域中心: ({center_x}, {center_y})")
+            self.click_position(account_index, item_button_pos.x, item_button_pos.y)
+            time.sleep(CombatConstants.PANEL_WAIT_TIMEOUT)
+
+            # 2. 等待复活药出现并点击（5秒内找到，否则返回False）
+            revive_item_image = self.item_images.get("复活药")
+            if not revive_item_image:
+                self.report_battle_info(f"账号{account_index} 未找到复活药图片配置", "error")
+                return False
+
+            # 5秒内循环查找复活药
+            start_time = time.time()
+            timeout = 5.0
+            revive_item_pos = None
+            
+            while time.time() - start_time < timeout:
+                revive_item_pos = self.find_image(account_index, revive_item_image, self.item_panel_region, 0)
+                if revive_item_pos:
+                    break
+                time.sleep(0.2)  # 每次查找间隔0.2秒
+            
+            if not revive_item_pos:
+                self.report_battle_info(f"账号{account_index} 道具面板中未找到复活药（5秒超时）", "error")
+                return False
+
+            self.click_position(account_index, revive_item_pos.x, revive_item_pos.y)
+            time.sleep(CombatConstants.ACTION_DELAY)
+
+            # 3. 点击阵亡主角的位置
+            char_position = dead_char_info["position"]
+            self.click_position(account_index, char_position[0], char_position[1])
+            time.sleep(CombatConstants.ACTION_DELAY)
+
+            # 4. 更新单位信息
+            char_name = dead_char_info["name"]
+            for char_info in self.unit_info[account_index]["main_chars"]:
+                if char_info["name"] == char_name:
+                    char_info["alive"] = True
+                    char_info["need_revive"] = False
+                    break
+
+            # 从全局和本地阵亡记录中移除
+            if dead_char_info in self.global_dead_units["main_chars"]:
+                self.global_dead_units["main_chars"].remove(dead_char_info)
+            if dead_char_info in self.dead_units[account_index]["main_chars"]:
+                self.dead_units[account_index]["main_chars"].remove(dead_char_info)
+
+            self.report_battle_info(f"账号{account_index} {char_name}复活成功", "success")
             return True
-        except (ValueError, TypeError) as e:
-            print(f"使用备用方案点击敌军位置时出错: {e}")
+
+        except Exception as e:
+            self.report_battle_info(f"账号{account_index} 复活{dead_char_info['name']}失败: {e}", "error")
             return False
 
-    def use_item_workflow(self, item_name, dm_object, target_x, target_y,
-                          account_index):
-        """
-        使用药品的完整流程：检查CD -> 点击按钮 -> 选择药品 -> 选择目标
-        :param item_name: 药品名称
-        :param dm_object: 大漠对象
-        :param target_x: 目标X坐标（确切点位）
-        :param target_y: 目标Y坐标（确切点位）
+    # 检测背包中是否有指定武将（通过召唤面板）
+    def has_general_in_bag(self, account_index, general_name):
+        """检测背包中是否有指定武将
         :param account_index: 账号索引
-        :return: True if 成功
+        :param general_name: 武将名称（"刘备", "曹操", "魔化关羽"）
+        :return: True/False
         """
-        # 0. 检查药品CD
-        if not self.is_item_ready(account_index, item_name):
-            print(f"账号{account_index} 药品 {item_name} 还在CD中")
+        # 获取背包武将图片路径
+        general_image_path = self.bag_general_images.get(general_name)
+        if not general_image_path:
             return False
-
-        # 1. 获取药品图片路径
-        item_image = self.item_images.get(item_name, '')
-        if not item_image:
-            print(f"未找到药品 {item_name} 图片")
-            return False
-
-        # 2. 点击道具按钮
-        if not self.click_right_button('道具按钮', dm_object):
-            return False
-
-        # 等待道具面板出现（通过查找道具图标验证）
-        # 获取面板区域（复用变量，避免重复获取）
-        panel_region, _ = self.get_panel_region('item')
-        if panel_region:
-            coords = self.convert_region_coords(panel_region)
-            if coords:
-                x, y, width, height = coords
-                # 等待道具图标出现（最多等待3秒）
-                found, _ = self.wait_for_image(dm_object, x, y, width, height,
-                                               item_image, timeout=3,
-                                               check_interval=0.1)
-                if not found:
-                    print(f"警告：道具面板可能未完全打开（已等待3秒），继续尝试...")
-            else:
-                print(f"警告：道具面板区域格式错误: {panel_region}")
-
-        # 3. 选择药品（在道具面板中查找药品图片）
-        # 复用上面的panel_region，避免重复获取
-        if not panel_region:
-            print(f"警告：未设置道具面板区域")
-            return False
-
-        coords = self.convert_region_coords(panel_region)
-        if not coords:
-            print(f"警告：道具面板区域格式错误: {panel_region}")
-            return False
-
-        x, y, width, height = coords
-        # 等待道具图标出现（最多等待3秒）
-        found, pos = self.wait_for_image(dm_object, x, y, width, height,
-                                         item_image, timeout=3,
-                                         check_interval=0.1)
-        if found and pos:
-            try:
-                pos_list = pos.split(',')
-                if len(pos_list) >= 2:
-                    # 修复：验证是否为有效数字
-                    item_x = int(pos_list[0])
-                    item_y = int(pos_list[1])
-                    dm_object.MoveTo(item_x, item_y)
-                    time.sleep(0.2)  # 增加移动后等待时间
-                    dm_object.LeftClick()
-                    time.sleep(0.3)  # 增加等待时间，确保进入选择目标状态
-
-                    # 3. 点击目标位置（确切点位）
-                    dm_object.MoveTo(int(target_x), int(target_y))
-                    time.sleep(0.2)  # 增加移动后等待时间
-                    dm_object.LeftClick()
-                    time.sleep(0.2)  # 增加点击后等待时间
-                    print(
-                        f"使用药品 {item_name} 对位置 ({target_x}, {target_y}) 施放")
-
-                    # 4. 标记药品已使用
-                    self.mark_item_used(account_index, item_name)
-                    return True
-            except (ValueError, IndexError) as e:
-                print(f"解析药品 {item_name} 位置失败: {pos}, 错误: {e}")
-                return False
-        return False
-
-    def _update_hp_bar_unit_mapping(self, account_index):
-        """
-        更新血量条区域到单位的映射关系
-        :param account_index: 账号索引
-        """
-        if account_index not in self.hp_bar_unit_mapping:
-            self.hp_bar_unit_mapping[account_index] = {}
-
-        if account_index not in self.unit_positions:
-            return
-
-        # 获取存活的主角列表
-        main_chars = self.unit_positions[account_index].get('main_chars', [])
-        # 获取存活的武将列表
-        generals = self.unit_positions[account_index].get('generals', [])
-
-        # 清除旧的映射
-        self.hp_bar_unit_mapping[account_index] = {}
-
-        # 映射主角（region_index 0-2）
-        for idx, (char_name, x, y) in enumerate(main_chars[:3]):
-            region_index = idx  # 0, 1, 2
-            self.hp_bar_unit_mapping[account_index][region_index] = (
-                'main_char', char_name, (x, y))
-
-        # 映射武将（region_index 3-8）
-        for idx, (general_name, x, y) in enumerate(generals[:6]):
-            region_index = idx + 3  # 3, 4, 5, 6, 7, 8
-            self.hp_bar_unit_mapping[account_index][region_index] = ('general',
-                                                                     general_name,
-                                                                     (x, y))
-
-    def detect_low_hp_units(self, account_index):
-        """
-        检测账号中血量低的单位
-        :param account_index: 账号索引
-        :return: 列表，每个元素为 (unit_type, unit_name, heal_position)，按优先级排序
-        """
-        if not self.hp_bar_regions or len(self.hp_bar_regions) != 9:
-            return []
-
-        if account_index not in self.account_dm:
-            return []
-
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return []
-
-        low_hp_units = []
-
-        # 遍历9个血量条区域
-        for region_index, hp_bar_region in enumerate(self.hp_bar_regions):
-            try:
-                if not isinstance(hp_bar_region, (tuple, list)) or len(
-                        hp_bar_region) != 4:
-                    continue
-
-                x, y, w, h = hp_bar_region
-                # 在血量条区域中查找血量低标识图片
-                # 转换坐标格式
-                width = w - x if w > 900 or h > 580 else w
-                height = h - y if w > 900 or h > 580 else h
-                # 使用带超时的图片查找（1秒超时）
-                pos = self.find_pic_with_timeout(dm_object, x, y, width, height,
-                                                 self.low_hp_indicator_image,
-                                                 timeout=1)
-
-                if pos and len(pos) > 0:
-                    # 识别到血量低的标识，查找对应的单位
-                    if account_index in self.hp_bar_unit_mapping:
-                        mapping = self.hp_bar_unit_mapping[account_index]
-                        if region_index in mapping:
-                            unit_type, unit_name, heal_position = mapping[
-                                region_index]
-                            low_hp_units.append(
-                                (unit_type, unit_name, heal_position))
-                            print(
-                                f"账号{account_index} 检测到 {unit_type} {unit_name} 血量低，加血位置: {heal_position}")
-            except Exception as e:
-                print(
-                    f"账号{account_index} 检测血量条区域 {region_index} 时出错: {e}")
-                continue
-
-        return low_hp_units
-
-    def main_char_action(self, account_index):
-        """
-        主角操作：优先检测血量低的单位并加血，否则尝试释放群体攻击，如果全部CD则给血量低的单位或武将加血
-        注意：如果主角有冰封状态，不能使用技能，但可以使用药品和召唤
-        :param account_index: 账号索引
-        """
-        # 添加边界检查
-        if not self.account_dm or account_index < 0 or account_index >= len(
-                self.account_dm):
-            return
-
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return
-
-        # 检查主角是否有异常状态
-        team_status = self.get_team_status(account_index)
-        can_use_skill = True  # 默认可以使用技能
-        # 安全检查：确保main_chars列表存在且有元素
-        main_chars_list = team_status.get('main_chars',
-                                          []) if team_status else []
-        if main_chars_list and len(main_chars_list) > 0:
-            # 检查第一个主角的状态（假设所有主角状态相同，或只控制第一个主角）
-            main_char_name = main_chars_list[0]
-            can_use_skill = self.can_unit_use_skill(account_index, 'main_char',
-                                                    main_char_name)
-
-        # 优先检测血量低的单位并加血（冰封状态下也可以使用药品）
-        if self.enable_main_heal:
-            low_hp_units = self.detect_low_hp_units(account_index)
-            if low_hp_units:
-                # 优先给主角加血，然后是武将
-                low_hp_units.sort(
-                    key=lambda x: (0 if x[0] == 'main_char' else 1, x[1]))
-
-                for unit_type, unit_name, heal_position in low_hp_units:
-                    heal_x, heal_y = heal_position
-                    print(
-                        f"账号{account_index} 检测到 {unit_type} {unit_name} 血量低，使用恢复药加血")
-                    if self.use_item_workflow('恢复药', dm_object, heal_x,
-                                              heal_y, account_index):
-                        # 成功给一个单位加血后，等待一下再检查下一个
-                        time.sleep(0.3)
-                        return  # 每回合只给一个单位加血，避免占用过多时间
-
-        # 尝试使用群体攻击（包括新增的第5个技能）
-        # 注意：如果主角有冰封状态，不能使用技能
-        skill_used = False
-        if can_use_skill:
-            group_attack_skills = ['主角群体攻击1', '主角群体攻击2',
-                                   '主角群体攻击3', '主角群体攻击4',
-                                   '主角群体攻击5']
-            for skill_name in group_attack_skills:
-                # 尝试使用技能，如果技能可见（不在CD且未被控制）则使用
-                if self.use_skill_workflow(skill_name, dm_object,
-                                           target_type='enemy',
-                                           account_index=account_index):
-                    skill_used = True
-                    break
+        
+        # 处理多个图片路径
+        if isinstance(general_image_path, str) and "|" in general_image_path:
+            image_paths = general_image_path.split("|")
         else:
-            frozen_msg = f"账号{account_index} 主角有冰封状态，无法使用技能"
-            print(frozen_msg)
-            self.report_battle_info(frozen_msg, "warning")
-
-        # 如果所有技能都在CD，则检测血量并给血量低的单位加血
-        if not skill_used and self.enable_main_heal:
-            try:
-                # 再次检测血量低的单位
-                low_hp_units = self.detect_low_hp_units(account_index)
-                if low_hp_units and len(low_hp_units) > 0:
-                    # 给第一个血量低的单位加血
-                    unit_type, unit_name, heal_position = low_hp_units[0]
-                    # 安全检查：确保heal_position格式正确
-                    if isinstance(heal_position, (tuple, list)) and len(
-                            heal_position) >= 2:
-                        heal_x, heal_y = heal_position[0], heal_position[1]
-                        heal_msg = f"账号{account_index} 所有技能CD，给血量低的 {unit_type} {unit_name} 使用恢复药"
-                        print(heal_msg)
-                        self.report_battle_info(heal_msg, "success")
-                        self.use_item_workflow('恢复药', dm_object, heal_x,
-                                               heal_y, account_index)
-                    else:
-                        warn_msg = f"警告：治疗位置格式错误: {heal_position}，跳过加血操作"
-                        print(warn_msg)
-                        self.report_battle_info(warn_msg, "warning")
-                elif account_index in self.unit_positions:
-                    # 如果没有检测到血量低的单位，给随机武将使用恢复药（保持向后兼容）
-                    generals = self.unit_positions[account_index].get(
-                        'generals', [])
-                    if generals:
-                        random_general = random.choice(generals)
-                        _, x, y = random_general
-                        print(
-                            f"账号{account_index} 所有技能CD，给随机武将使用恢复药")
-                        self.use_item_workflow('恢复药', dm_object, x, y,
-                                               account_index)
-            except Exception as e:
-                print(f"账号{account_index} 给单位使用恢复药时出错: {e}")
-
-    def general_action(self, general_type, account_index, general_name=None):
-        """
-        武将操作
-        :param general_type: 'support' 辅助武将 or 'dps' 输出武将
-        :param account_index: 账号索引
-        :param general_name: 武将名称（用于检测异常状态）
-        """
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return
-
-        # 检查武将是否有异常状态
-        can_use_skill = True
-        if general_name:
-            can_use_skill = self.can_unit_use_skill(account_index, 'general',
-                                                    general_name)
-            has_frozen = self.has_unit_abnormal_status(account_index, 'general',
-                                                       general_name, '冰封')
-            if has_frozen:
-                print(
-                    f"账号{account_index} 武将 {general_name} 有冰封状态，无法使用技能")
-
-        if general_type == 'dps':
-            # 输出武将：使用群体攻击（尝试两个技能，都是无CD）
-            # 注意：如果武将有冰封状态，不能使用技能
-            group_attack_skills = ['武将群体攻击1', '武将群体攻击2']
-            skill_used = False
-
-            if can_use_skill:
-                for skill_name in group_attack_skills:
-                    # 尝试使用技能（由于都是无CD，会尝试使用第一个可用的）
-                    if self.use_skill_workflow(skill_name, dm_object,
-                                               target_type='enemy',
-                                               account_index=account_index):
-                        skill_used = True
-                        break  # 成功使用一个技能后退出
-            else:
-                print(
-                    f"账号{account_index} 输出武将 {general_name} 有冰封状态，无法使用技能")
-
-            # 如果所有技能都不可用（理论上不应该发生，因为都是无CD），打印信息
-            if not skill_used and can_use_skill:
-                print(f"账号{account_index} 输出武将的所有群体攻击技能都不可用")
-        elif general_type == 'support':
-            # 辅助武将（刘备）：按策略释放技能
-            # 注意：如果武将有冰封状态，不能使用技能
-            if not can_use_skill:
-                print(f"账号{account_index} 刘备有冰封状态，无法使用技能")
-                return
-
-            status_info = self.has_enemy_status(account_index)
-
-            if status_info['need_clear']:
-                # 需要清除状态（状态3消失后状态4存在，或其他状态）
-                # 检测清除状态技能是否可见
-                if self.is_skill_visible(account_index, '清除状态', dm_object):
-                    if self.use_skill_workflow('清除状态', dm_object,
-                                               target_type='enemy',
-                                               account_index=account_index):
-                        # 成功使用清除状态技能
-                        return
-            # 如果清除状态技能不可用，尝试使用其他技能
-            # 继续执行下面的逻辑，尝试使用其他可用技能
-
-            # 尝试使用辅助技能，如果当前技能不可见则尝试其他技能
-            skill_used = False
-            if not self.support_skill_sequence or len(
-                    self.support_skill_sequence) == 0:
-                print(f"警告：账号{account_index} 辅助技能序列为空")
-                return
-            start_index = self.current_skill_index % len(
-                self.support_skill_sequence)
-
-            # 从当前索引开始，尝试所有技能直到找到可用的
-            for i in range(len(self.support_skill_sequence)):
-                skill_index = (start_index + i) % len(
-                    self.support_skill_sequence)
-                skill_name = self.support_skill_sequence[skill_index]
-
-                # 判断技能目标类型（移除加速技能）
-                target_type = 'ally' if skill_name in ['加攻击',
-                                                       '加血'] else 'enemy'
-
-                # 如果是己方目标，随机选择一个队友坐标
-                target_x, target_y = None, None
-                if target_type == 'ally':
-                    ally_pos = self.get_random_ally_position(account_index)
-                    if ally_pos:
-                        target_x, target_y = ally_pos
-                    else:
-                        # 没有可用队友，跳过这个技能
-                        continue
-
-                # 尝试使用技能（会自动检测技能是否可见）
-                if self.use_skill_workflow(skill_name, dm_object,
-                                           target_type=target_type,
-                                           account_index=account_index,
-                                           target_x=target_x,
-                                           target_y=target_y):
-                    # 成功使用技能，切换到下一个技能
-                    self.current_skill_index = (skill_index + 1) % len(
-                        self.support_skill_sequence)
-                    skill_used = True
+            image_paths = [general_image_path]
+        
+        # 点击召唤按钮打开召唤面板
+        summon_button_pos = self.find_image(
+            account_index, self.button_images["召唤按钮"], self.right_button_region, 0
+        )
+        if not summon_button_pos:
+            return False
+        
+        self.click_position(account_index, summon_button_pos.x, summon_button_pos.y)
+        time.sleep(CombatConstants.PANEL_WAIT_TIMEOUT)
+        
+        # 在召唤面板中查找武将图片（2秒内找到，否则返回False）
+        start_time = time.time()
+        timeout = 3.0
+        found = False
+        
+        while time.time() - start_time < timeout:
+            for image_path in image_paths:
+                general_pos = self.find_image(account_index, image_path, self.summon_panel_region, 0)
+                if general_pos:
+                    found = True
                     break
+            if found:
+                break
+            time.sleep(0.2)  # 每次查找间隔0.2秒
+        
+        # 关闭召唤面板（点击空白区域或ESC）
+        # 这里简单处理，点击召唤按钮区域外的地方
+        # self.click_position(account_index, 400, 300)  # 点击面板外的位置
+        # time.sleep(0.3)
+        
+        return found
 
-            # 如果所有技能都不可用，打印信息
-            if not skill_used:
-                print(
-                    f"账号{account_index} 刘备的所有技能都不可用（可能在CD中或被控制）")
-        else:
-            # 未知类型的武将，打印警告
-            print(f"警告：账号{account_index} 武将类型未知: {general_type}")
-
-    def use_heal_item(self, dm_object, account_index, target_x=None,
-                      target_y=None):
-        """
-        使用加血道具（恢复药）
-        :param dm_object: 大漠对象
-        :param account_index: 账号索引
-        :param target_x: 目标X坐标（可选，如果不提供则随机选择武将）
-        :param target_y: 目标Y坐标（可选）
-        """
-        # 如果没有提供目标坐标，随机选择一个武将
-        if target_x is None or target_y is None:
-            if account_index in self.unit_positions:
-                generals = self.unit_positions[account_index].get('generals',
-                                                                  [])
-                if generals:
-                    random_general = random.choice(generals)
-                    _, target_x, target_y = random_general
+    # 处理我方回合操作
+    def handle_our_turn(self, account_index):
+        """处理我方回合的操作"""
+        try:
+            # 0. 优先处理待召唤刘备的记录（其他账号需要召唤刘备）
+            if account_index in self.pending_liubei_summon and self.pending_liubei_summon[account_index]:
+                pending_info = self.pending_liubei_summon[account_index]
+                target_account = pending_info["target_account_index"]
+                target_char_index = pending_info["target_char_index"]
+                
+                # 检查是否能找到召唤按钮（如果找不到，说明是武将在操作，无法召唤）
+                summon_button_pos = self.find_image(
+                    account_index, self.button_images["召唤按钮"], self.right_button_region, 0
+                )
+                if not summon_button_pos:
+                    # 找不到召唤按钮，说明是武将在操作，清除记录，让目标账号自己处理
+                    self.pending_liubei_summon[account_index] = None
+                    self.report_battle_info(
+                        f"账号{account_index} 当前是武将在操作，无法召唤，清除待召唤记录", "info"
+                    )
                 else:
-                    return False
-            else:
-                return False
+                    # 检查当前账号是否有刘备可用
+                    general_image_path = self.bag_general_images.get("刘备")
+                    if general_image_path:
+                        # 检查背包中是否有刘备
+                        if self.has_general_in_bag(account_index, "刘备"):
+                            # 检查当前账号是否有存活的主角
+                            alive_chars = [c for c in self.unit_info[account_index]["main_chars"] if c["alive"]]
+                            if alive_chars:
+                                # 使用当前账号的第一个存活主角进行召唤
+                                char_info = alive_chars[0]
+                                char_index = self.unit_info[account_index]["main_chars"].index(char_info)
+                                if self.summon_general(account_index, char_index, "刘备"):
+                                    # 召唤成功，清除记录
+                                    self.pending_liubei_summon[account_index] = None
+                                    self.report_battle_info(
+                                        f"账号{account_index} 为账号{target_account}召唤刘备成功", "success"
+                                    )
+                                    time.sleep(0.5)
+                                    return True
+                    
+                    # 如果当前账号没有刘备或召唤失败，清除记录，让目标账号自己处理（继续尝试召唤其他武将）
+                    self.pending_liubei_summon[account_index] = None
+                    self.report_battle_info(
+                        f"账号{account_index} 没有刘备，清除待召唤记录，目标账号将尝试召唤其他武将", "info"
+                    )
+            
+            # 1. 检查是否有武将阵亡,优先召唤（使用全局记录）
+            dead_generals = self.global_dead_units["generals"]
+            if dead_generals:
+                # 先检查是否能找到召唤按钮（如果找不到，说明是武将在操作，无法召唤）
+                summon_button_pos = self.find_image(
+                    account_index, self.button_images["召唤按钮"], self.right_button_region, 0
+                )
+                if not summon_button_pos:
+                    # 找不到召唤按钮，说明是武将在操作，无法召唤，清空阵亡武将列表，继续执行技能释放
+                    self.report_battle_info(
+                        f"账号{account_index} 当前是武将在操作，无法召唤，继续执行技能释放", "info"
+                    )
+                    # 不清空全局记录，因为其他账号可能还需要召唤
+                else:
+                    # 使用轮询监听环节检测的结果（在非战斗回合检测，避免操作面板遮挡）
+                    has_liubei_on_field = self.has_liubei_on_field.get(account_index, False)
+                    
+                    # 找到需要召唤武将的主角
+                    need_summon = False
+                    for char_info in self.unit_info[account_index]["main_chars"]:
+                        if not char_info["alive"]:
+                            continue
 
-        # 使用恢复药（恢复药是加血又加蓝的）
-        return self.use_item_workflow('恢复药', dm_object, target_x, target_y,
-                                      account_index)
+                        # 检查该主角是否需要召唤武将
+                        if char_info["general_count"] < 2:
+                            need_summon = True
+                            char_index = self.unit_info[account_index]["main_chars"].index(char_info)
+                            
+                            # 点击召唤按钮（只点击一次）
+                            self.click_position(account_index, summon_button_pos.x, summon_button_pos.y)
+                            time.sleep(CombatConstants.PANEL_WAIT_TIMEOUT)
+                            
+                            summoned = False
+                            
+                            if not has_liubei_on_field:
+                                # 场上没有刘备，优先等待刘备，然后曹操，然后魔化关羽
+                                general_order = ["刘备", "曹操", "魔化关羽"]
+                                for general_name in general_order:
+                                    general_image_path = self.bag_general_images.get(general_name)
+                                    if not general_image_path:
+                                        continue
+                                    # 3秒内等待武将图片出现
+                                    start_time = time.time()
+                                    timeout = 3.0
+                                    general_pos = None
+                                    
+                                    while time.time() - start_time < timeout:
+                                        general_pos = self.find_image(account_index, general_image_path, self.summon_panel_region, 0)
+                                        if general_pos:
+                                            break
+                                        time.sleep(0.2)
+                                    
+                                    if general_pos:
+                                        # 找到武将，点击召唤
+                                        self.report_battle_info(
+                                            f"账号{account_index} 在召唤面板中找到{general_name}，准备召唤", "info"
+                                        )
+                                        self.click_position(account_index, general_pos.x, general_pos.y)
+                                        time.sleep(CombatConstants.ACTION_DELAY)
+                                        
+                                        # 如果需要替换武将，处理替换逻辑
+                                        if char_info["general_count"] == 1:
+                                            # 需要替换，找到上场回合更多的武将
+                                            oldest_general = None
+                                            oldest_turns = -1
+                                            for gen_info in char_info["generals"]:
+                                                if gen_info.get("alive", True):
+                                                    turns = gen_info.get("deployed_turn", 0)
+                                                    if turns > oldest_turns:
+                                                        oldest_turns = turns
+                                                        oldest_general = gen_info
+                                            
+                                            if oldest_general and oldest_general.get("position"):
+                                                # 点击需要替换的武将位置
+                                                replace_pos = oldest_general["position"]
+                                                self.report_battle_info(
+                                                    f"账号{account_index} 需要替换武将，点击位置: {replace_pos}", "info"
+                                                )
+                                                self.click_position(account_index, replace_pos[0], replace_pos[1])
+                                        
+                                        # 等待召唤操作完成，然后检测是否成功
+                                        time.sleep(0.5)  # 等待游戏响应
+                                        
+                                        # 检测3秒内是否出现"召唤成功"文字
+                                        if self.check_summon_success(account_index, timeout=3.0):
+                                            # 召唤成功
+                                            summoned = True
+                                            self.report_battle_info(f"账号{account_index} 召唤{general_name}成功", "action")
+                                            break
+                                        else:
+                                            # 召唤失败（可能是主角被控制），继续尝试下一个武将
+                                            self.report_battle_info(
+                                                f"账号{account_index} 召唤{general_name}失败（可能主角被控制）", "warning"
+                                            )
+                                            summoned = False
+                                            continue
+                            else:
+                                # 场上有刘备，只召唤曹操或魔化关羽
+                                general_order = ["曹操", "魔化关羽"]
+                                for general_name in general_order:
+                                    general_image_path = self.bag_general_images.get(general_name)
+                                    if not general_image_path:
+                                        continue
+                                    # 3秒内等待武将图片出现
+                                    start_time = time.time()
+                                    timeout = 3.0
+                                    general_pos = None
+                                    
+                                    while time.time() - start_time < timeout:
+                                        general_pos = self.find_image(account_index, general_image_path, self.summon_panel_region, 0)
+                                        if general_pos:
+                                            break
+                                        time.sleep(0.2)
+                                    
+                                    if general_pos:
+                                        # 找到武将，点击召唤
+                                        self.report_battle_info(
+                                            f"账号{account_index} 在召唤面板中找到{general_name}，准备召唤", "info"
+                                        )
+                                        self.click_position(account_index, general_pos.x, general_pos.y)
+                                        time.sleep(CombatConstants.ACTION_DELAY)
+                                        
+                                        # 如果需要替换武将，处理替换逻辑
+                                        if char_info["general_count"] == 1:
+                                            # 需要替换，找到上场回合更多的武将
+                                            oldest_general = None
+                                            oldest_turns = -1
+                                            for gen_info in char_info["generals"]:
+                                                if gen_info.get("alive", True):
+                                                    turns = gen_info.get("deployed_turn", 0)
+                                                    if turns > oldest_turns:
+                                                        oldest_turns = turns
+                                                        oldest_general = gen_info
+                                            
+                                            if oldest_general and oldest_general.get("position"):
+                                                # 点击需要替换的武将位置
+                                                replace_pos = oldest_general["position"]
+                                                self.report_battle_info(
+                                                    f"账号{account_index} 需要替换武将，点击位置: {replace_pos}", "info"
+                                                )
+                                                self.click_position(account_index, replace_pos[0], replace_pos[1])
+                                        
+                                        # 等待召唤操作完成，然后检测是否成功
+                                        time.sleep(0.5)  # 等待游戏响应
+                                        
+                                        # 检测3秒内是否出现"召唤成功"文字
+                                        if self.check_summon_success(account_index, timeout=3.0):
+                                            # 召唤成功
+                                            summoned = True
+                                            self.report_battle_info(f"账号{account_index} 召唤{general_name}成功", "action")
+                                            break
+                                        else:
+                                            # 召唤失败（可能是主角被控制），继续尝试下一个武将
+                                            self.report_battle_info(
+                                                f"账号{account_index} 召唤{general_name}失败（可能主角被控制）", "warning"
+                                            )
+                                            summoned = False
+                                            continue
+                            
+                            if summoned:
+                                # 召唤成功，从全局记录中移除已召唤的武将，避免重复召唤
+                                # 注意：这里不清空所有，只移除当前账号的武将
+                                for dead_gen in self.global_dead_units["generals"][:]:
+                                    if dead_gen.get("account_index") == account_index:
+                                        self.global_dead_units["generals"].remove(dead_gen)
+                                # 也清空本地记录（兼容旧代码）
+                                self.dead_units[account_index]["generals"] = []
+                                return True
+                            # 如果召唤失败（找不到武将图片），返回False，让下一轮再尝试
+                            else:
+                                self.report_battle_info(
+                                    f"账号{account_index} 检测到武将阵亡，但召唤失败（找不到武将图片），下一轮再尝试", "info"
+                                )
+                                return False
+                            break  # 只处理第一个需要召唤的主角
+                    
+                    # 如果检测到武将阵亡，但所有主角都不需要召唤（general_count都>=2），继续执行技能释放
+                    if not need_summon:
+                        self.report_battle_info(
+                            f"账号{account_index} 检测到武将阵亡，但所有主角武将已满，继续执行技能释放", "info"
+                        )
+                        # 不清空全局记录，因为其他账号可能还需要召唤
+                
+                # 如果检测到武将阵亡，但找不到召唤按钮（武将在操作），继续执行技能释放
+                # 这里不需要return，让代码继续执行到技能释放逻辑
 
-    def check_and_revive_dead_main_chars(self, account_index):
-        """
-        检查并复活阵亡的主角
-        :param account_index: 账号索引
-        :return: True if 有复活操作
-        """
-        # 更新追踪信息
-        self.update_general_tracking(account_index)
-
-        has_revive_action = False  # 记录是否有任何复活操作
-
-        # 检查每个账号是否有主角阵亡
-        account_count = self.get_account_count()
-        for i in range(account_count):
-            # 安全检查：确保account_dm已初始化且索引有效
-            if not self.validate_account_index(i):
-                continue
-
-            try:
-                team_status = self.get_team_status(i)
-                if not team_status:
-                    continue
-
-                # 获取阵亡的主角位置（从之前的记录中查找）
-                current_main_chars = set(team_status.get('main_chars', []))
-                # 安全地获取追踪的主角列表
-                unit_pos = self.unit_positions.get(i, {})
-                main_chars_list = unit_pos.get('main_chars', [])
-                tracked_main_chars = {char_name for char_name, _, _ in
-                                      main_chars_list if
-                                      len(main_chars_list) > 0 and isinstance(
-                                          main_chars_list[0],
-                                          (tuple, list)) and len(
-                                          main_chars_list[0]) >= 3}
-                dead_main_chars = tracked_main_chars - current_main_chars
-
-                if not dead_main_chars:
-                    continue
-
-                # 找到阵亡的主角位置（从dead_main_char_positions中获取）
-                for dead_char_name in dead_main_chars:
-                    # 从dead_main_char_positions中获取阵亡主角的位置
-                    dead_char_pos = None
-                    if i in self.dead_main_char_positions:
-                        dead_char_pos = self.dead_main_char_positions[i].get(
-                            dead_char_name)
-
-                    if not dead_char_pos:
-                        # 如果dead_main_char_positions中没有，尝试从unit_positions的旧数据中查找
-                        # 这种情况应该很少发生，因为update_general_tracking会先保存位置
-                        print(
-                            f"警告：无法找到账号{i}的主角{dead_char_name}的位置，跳过复活")
-                        continue
-
-                    # 优先让队友账号的主角复活（如果队友账号的主角存活）
-                    revive_success = False
+            # 2. 检查是否有主角阵亡,进行复活（使用全局记录）
+            dead_main_chars = self.global_dead_units["main_chars"]
+            if dead_main_chars:
+                # 使用其他账号的主角进行复活(如果当前账号主角都阵亡)
+                alive_chars = [c for c in self.unit_info[account_index]["main_chars"] if c["alive"]]
+                if not alive_chars:
+                    # 当前账号所有主角都阵亡,先尝试使用其他账号的主角进行复活
                     account_count = self.get_account_count()
-                    for ally_index in range(account_count):
-                        if ally_index == i or not self.validate_account_index(
-                                ally_index):
+                    found_other_alive_char = False
+                    for other_account in range(account_count):
+                        if other_account == account_index:
                             continue
-
-                        try:
-                            ally_status = self.get_team_status(ally_index)
-                            if ally_status and len(
-                                    ally_status['main_chars']) > 0:
-                                # 队友账号有存活的主角，用主角复活
-                                print(
-                                    f"账号{ally_index}的主角复活账号{i}的主角{dead_char_name}")
-                                # 使用复活药（通过use_item_workflow）
-                                if self.use_item_workflow('复活药',
-                                                          self.account_dm[
-                                                              ally_index],
-                                                          dead_char_pos[0],
-                                                          dead_char_pos[1],
-                                                          ally_index):
-                                    revive_success = True
-                                    has_revive_action = True
-                                    break
-                        except Exception as e:
-                            print(
-                                f"账号{ally_index}复活账号{i}的主角{dead_char_name}时出错: {e}")
-                            continue
-
-                    # 如果队友主角都死了，用武将复活
-                    if not revive_success:
-                        try:
-                            # 检查当前账号是否有存活的武将
-                            team_status = self.get_team_status(i)
-                            if team_status and team_status['general_count'] > 0:
-                                # 用武将复活
-                                print(f"账号{i}的武将复活主角{dead_char_name}")
-                                # 需要找到武将按钮的位置，然后点击药品按钮
-                                # 这里需要武将也能点击药品按钮的逻辑
-                                # 使用复活药（通过use_item_workflow）
-                                if self.use_item_workflow('复活药',
-                                                          self.account_dm[i],
-                                                          dead_char_pos[0],
-                                                          dead_char_pos[1], i):
-                                    revive_success = True
-                                    has_revive_action = True
-                        except Exception as e:
-                            print(
-                                f"账号{i}的武将复活主角{dead_char_name}时出错: {e}")
-
-                    if revive_success:
-                        time.sleep(1.0)  # 增加等待时间，确保复活动画完成
-                        # 更新追踪信息
-                        self.update_general_tracking(i)
-            except Exception as e:
-                print(f"检查账号{i}的主角复活状态时出错: {e}")
-                continue
-
-        return has_revive_action
-
-    def summon_general(self, exempt_account_index, target_account_index=None):
-        """
-        召唤武将
-        :param exempt_account_index: 执行召唤的账号（当前回合的账号）
-        :param target_account_index: 目标账号（为哪个账号召唤，None表示为自己召唤）
-        """
-        if target_account_index is None:
-            target_account_index = exempt_account_index
-
-        dm_object = self.account_dm[exempt_account_index]
-        if not dm_object:
-            return
-
-        # 获取目标账号的队伍状态
-        team_status = self.get_team_status(target_account_index)
-        if not team_status:
-            return
-
-        # 检查是否可以召唤（武将数量少于2个，或者已经有2个但可以替换）
-        # 注意：即使有2个武将，也可以替换，所以不在这里返回
-
-        # 优先策略：检查是否需要辅助武将
-        if self.keep_support_general and not team_status['has_support']:
-            # 需要辅助武将，检查背包
-            if self.check_bag_for_support_general(target_account_index):
-                # 背包中有辅助武将，召唤刘备
-                self._execute_summon(dm_object, '刘备', target_account_index)
-                return
-
-        # 如果没有辅助武将需求或背包中没有辅助武将，召唤输出武将
-        output_generals = ['魔化关羽', '曹操']
-        for general_name in output_generals:
-            if self.check_bag_for_general(target_account_index, general_name):
-                self._execute_summon(dm_object, general_name,
-                                     target_account_index)
-                return
-
-    def _execute_summon(self, dm_object, general_name, account_index):
-        """
-        执行召唤操作
-        :param dm_object: 大漠对象
-        :param general_name: 要召唤的武将名称
-        :param account_index: 目标账号索引
-        """
-        # 1. 点击召唤按钮
-        if not self.click_right_button('召唤按钮', dm_object):
-            print(f"无法点击召唤按钮，召唤失败")
-            return False
-
-        # 等待召唤面板出现（通过查找面板中的武将图片验证）
-        # 获取面板区域（复用变量，避免重复获取）
-        panel_region, _ = self.get_panel_region('summon')
-        if panel_region:
-            coords = self.convert_region_coords(panel_region)
-            if coords:
-                x, y, width, height = coords
-                # 尝试查找任意一个武将图片来验证面板是否打开（最多等待3秒）
-                test_general_image = self.safe_get_dict_value(
-                    self.bag_general_images, '刘备', '')
-                if test_general_image:
-                    found, _ = self.wait_for_image(dm_object, x, y, width,
-                                                   height, test_general_image,
-                                                   timeout=3,
-                                                   check_interval=0.1)
-                    if not found:
-                        print(
-                            f"警告：召唤面板可能未完全打开（已等待3秒），继续尝试...")
-
-        # 2. 在召唤面板左侧查找要召唤的武将图片（背包中的武将）
-        general_bag_image = self.safe_get_dict_value(self.bag_general_images,
-                                                     general_name, '')
-        if not general_bag_image:
-            print(f"未找到武将 {general_name} 的背包图片")
-            return False
-
-        # 在召唤面板区域查找武将图片（复用上面的panel_region）
-        if not panel_region:
-            print("未设置召唤面板区域")
-            return False
-
-        coords = self.convert_region_coords(panel_region)
-        if not coords:
-            print(f"警告：召唤面板区域格式错误: {panel_region}")
-            return False
-
-        x, y, width, height = coords
-        # 等待武将图片出现（最多等待3秒）
-        found, pos = self.wait_for_image(dm_object, x, y, width, height,
-                                         general_bag_image, timeout=3,
-                                         check_interval=0.1)
-        if not found or not pos:
-            print(f"在召唤面板中未找到武将 {general_name}（已等待3秒）")
-            return False
-
-        try:
-            pos_list = pos.split(',')
-            if len(pos_list) < 2:
-                return False
-
-            # 修复：验证是否为有效数字
-            general_x = int(pos_list[0])
-            general_y = int(pos_list[1])
-
-            # 点击武将图片
-            dm_object.MoveTo(general_x, general_y)
-            time.sleep(0.2)  # 增加移动后等待时间
-            dm_object.LeftClick()
-            time.sleep(0.5)  # 增加点击后等待时间，确保响应完成
-        except (ValueError, IndexError) as e:
-            print(f"解析召唤武将 {general_name} 位置失败: {pos}, 错误: {e}")
-            return False
-
-        # 3. 检查是否需要替换武将（如果已有2个武将）
-        team_status = self.get_team_status(account_index)
-        if team_status and team_status['general_count'] >= 2:
-            # 需要替换，找到出战时间最长的武将并点击其位置
-            if account_index in self.general_tracking:
-                # 找到出战回合最早的武将（出战时间最长）
-                oldest_general = None
-                oldest_turn = self.current_turn + 1
-
-                for gen_name, gen_info in self.general_tracking[
-                    account_index].items():
-                    if gen_info.get('deployed_turn',
-                                    self.current_turn) < oldest_turn:
-                        oldest_turn = gen_info.get('deployed_turn',
-                                                   self.current_turn)
-                        oldest_general = (gen_name, gen_info.get('position'))
-
-                if oldest_general and oldest_general[1]:
-                    # 点击被替换武将的位置
-                    try:
-                        gen_name = oldest_general[0]
-                        gen_position = oldest_general[1]
-                        # 检查位置是否为元组格式 (x, y)
-                        if isinstance(gen_position, (tuple, list)) and len(
-                                gen_position) >= 2:
-                            gen_x, gen_y = gen_position[0], gen_position[1]
-                            replace_msg = f"账号{account_index} 需要替换武将 {gen_name}，点击位置 ({gen_x}, {gen_y})"
-                            print(replace_msg)
-                            self.report_battle_info(replace_msg, "action")
-                            dm_object.MoveTo(int(gen_x), int(gen_y))
-                            time.sleep(0.2)  # 增加移动后等待时间
-                            dm_object.LeftClick()
-                            time.sleep(0.5)  # 增加点击后等待时间，确保替换响应完成
+                        other_alive_chars = [c for c in self.unit_info[other_account]["main_chars"] if c["alive"]]
+                        if other_alive_chars:
+                            # 使用其他账号的主角进行复活
+                            dead_char = dead_main_chars[0]
+                            # 检查是否正在被其他账号复活
+                            if self._check_and_mark_reviving(account_index, dead_char["name"]):
+                                if self.revive_main_char(other_account, dead_char):
+                                    self._clear_reviving_mark(account_index, dead_char["name"])
+                                    time.sleep(1)
+                                    return True
+                                else:
+                                    # 复活失败，清除标记
+                                    self._clear_reviving_mark(account_index, dead_char["name"])
+                            else:
+                                # 正在被其他账号复活，跳过
+                                self.report_battle_info(
+                                    f"账号{account_index} {dead_char['name']}正在被其他账号复活，跳过", "info"
+                                )
+                            found_other_alive_char = True
+                    
+                    # 如果所有账号的主角都阵亡了，让武将使用复活药复活主角
+                    if not found_other_alive_char:
+                        # 所有主角都阵亡了，当前操作的一定是武将，直接让武将使用复活药
+                        dead_char = dead_main_chars[0]
+                        # 检查是否正在被其他账号复活
+                        if self._check_and_mark_reviving(account_index, dead_char["name"]):
+                            if self.revive_main_char(account_index, dead_char):
+                                self._clear_reviving_mark(account_index, dead_char["name"])
+                                self.report_battle_info(f"账号{account_index} 武将使用复活药复活{dead_char['name']}", "success")
+                                time.sleep(1)
+                                return True
+                            else:
+                                # 复活失败，清除标记
+                                self._clear_reviving_mark(account_index, dead_char["name"])
                         else:
-                            print(
-                                f"武将 {gen_name} 的位置格式不正确: {gen_position}")
-                    except (ValueError, TypeError, IndexError) as e:
-                        print(f"解析武将位置失败: {e}")
-        else:
-            # 直接召唤，不需要替换
-            summon_msg = f"账号{account_index} 直接召唤武将 {general_name}（武将数量少于2个）"
-            print(summon_msg)
-            self.report_battle_info(summon_msg, "action")
-
-        # 召唤完成
-        summon_success_msg = f"成功召唤武将 {general_name} 到账号 {account_index}"
-        print(summon_success_msg)
-        self.report_battle_info(summon_success_msg, "success")
-
-        # 修复：召唤成功后立即更新武将追踪信息
-        time.sleep(0.3)  # 等待召唤动画完成
-        self.update_general_tracking(account_index)
-
-        return True
-
-    def check_and_summon_for_allies(self, current_account_index):
-        """
-        检查队友账号是否需要召唤武将，优先召唤辅助武将
-        :param current_account_index: 当前执行回合的账号索引
-        """
-        # 检查所有账号
-        account_count = self.get_account_count()
-        for i in range(account_count):
-            # 安全检查：确保account_dm已初始化且索引有效
-            if i == current_account_index or not self.validate_account_index(i):
-                continue
-
-            # 获取该账号的队伍状态
-            team_status = self.get_team_status(i)
-            if not team_status:
-                continue
-
-            # 每个账号的武将数量少于2个时，尝试为其召唤
-            # 3个 contributor 加起来最多6个武将（每个最多2个）
-            if team_status['general_count'] < 2:
-                # 优先召唤辅助武将
-                if self.keep_support_general and not team_status['has_support']:
-                    if self.check_bag_for_support_general(i):
-                        self.summon_general(current_account_index,
-                                            target_account_index=i)
-                        return
-
-                # 如果没有辅助武将，召唤输出武将
-                output_generals = ['魔化关羽', '曹操']
-                for general_name in output_generals:
-                    if self.check_bag_for_general(i, general_name):
-                        self.summon_general(current_account_index,
-                                            target_account_index=i)
-                        return
-
-    def check_has_any_alive_units(self):
-        """
-        检查是否还有任何存活的主角或武将
-        :return: True if 至少有一个主角或武将存活, False otherwise
-        """
-        account_count = self.get_account_count()
-        for i in range(account_count):
-            # 安全检查：确保account_dm已初始化且索引有效
-            if not self.validate_account_index(i):
-                continue
-
-            team_status = self.get_team_status(i)
-            if team_status:
-                # 如果有存活的主角或武将，返回True
-                if (team_status.get('main_chars') and len(
-                        team_status['main_chars']) > 0) or team_status.get(
-                    'general_count', 0) > 0:
-                    return True
-
-        return False
-
-    def auto_combat(self, account_index):
-        """
-        自动战斗主循环
-        :param account_index: 账号索引
-        """
-        # 添加边界检查
-        if not self.account_dm or account_index < 0 or account_index >= len(
-                self.account_dm):
-            return
-
-        dm_object = self.account_dm[account_index]
-        if not dm_object:
-            return
-
-        # 检查线程是否已停止
-        if self.thread:
-            if hasattr(self.thread, 'overed') and self.thread.overed:
-                return
-            if hasattr(self.thread, 'stoped') and self.thread.stoped:
-                return
-
-        # 检查是否是己方回合
-        is_current_turn = self.is_my_turn(dm_object)
-
-        # 修复：如果从非己方回合转为己方回合，重置处理标志（每个账号独立判断）
-        if account_index not in self._last_turn_state:
-            self._last_turn_state[account_index] = False
-
-        last_state = self._last_turn_state.get(account_index, False)
-
-        # 如果从非己方回合转为己方回合（任意一个账号），重置处理标志
-        # 这样可以确保至少有一个账号进入回合时执行查询和全局检测
-        if is_current_turn and not last_state:
-            # 刚切换到己方回合，重置处理标志（全局）
-            self.turn_processed = False
-
-        self._last_turn_state[account_index] = is_current_turn
-
-        if not is_current_turn:
-            return
-
-        # 0. 更新回合数（修复BUG：防止重复更新，线程安全）
-        # 如果当前回合还未处理，则更新回合数并标记为已处理
-        # 注意：只有第一个进入回合的账号会执行这里的代码（因为turn_processed是全局的）
-        with self._state_lock:
-            if not self.turn_processed:
-                self.current_turn += 1
-                self.turn_processed = True
-                turn_updated = True
-            else:
-                turn_updated = False
-        
-        if turn_updated:
-            # 重置回合计时器和错误计数
-            self.reset_turn_timer()
-            account_count = self.get_account_count()
-            for i in range(account_count):
-                # 安全检查：确保索引有效
-                if self.validate_account_index(i):
-                    self.reset_error_count(i)
-            turn_msg = f"{'=' * 50}\n回合 {self.current_turn} 开始（{self.turn_timeout}秒操作时间）\n{'=' * 50}"
-            print(f"\n{turn_msg}\n")
-            self.report_battle_info(turn_msg, "turn")
-
-            # 0.1. 每回合开始时的查询机制：查询技能CD、场上武将等信息
-            account_count = self.get_account_count()
-            for i in range(account_count):
-                # 安全检查：确保account_dm已初始化且索引有效
-                if self.validate_account_index(i):
-                    try:
-                        query_result = self.query_turn_status(i)
-                        if query_result:
-                            self.print_turn_query_result(i, query_result)
-                    except Exception as e:
-                        # 查询错误不影响主要流程，但记录错误
-                        self.increment_error_count(i)
-                        print(
-                            f"账号{i} 回合查询时出错: {e} (错误计数: {self.account_error_count.get(i, 0)})")
-
-            # 0. 全局检测所有账号的队伍状态（包括主角和武将）
-            # 注意：这部分代码应该只在第一个账号进入回合时执行一次（在turn_processed设置之前）
-            account_count = self.get_account_count()
-            for i in range(account_count):
-                # 安全检查：确保account_dm已初始化且索引有效
-                if self.validate_account_index(i):
-                    try:
-                        team_status = self.get_team_status(i)
-                        if team_status:
-                            # 更新追踪信息（检测阵亡的武将和主角）
-                            self.update_general_tracking(i)
-                            # 检测敌人位置
-                            self.detect_enemy_positions(i)
-                            # 更新血量条区域到单位的映射
-                            self._update_hp_bar_unit_mapping(i)
-                            # 检测所有存活单位的异常状态（只检测冰封）
-                            unit_statuses = self.check_all_ally_status(i)
-                            if unit_statuses:
-                                print(
-                                    f"账号{i} 检测到异常状态: {unit_statuses}")
-                            main_char_count = len(
-                                team_status.get('main_chars', []))
-                            general_count = team_status.get('general_count', 0)
-                            has_support = team_status.get('has_support', False)
-                            enemy_count = len(
-                                self.unit_positions.get(i, {'enemies': []})[
-                                    'enemies'])
-                            status_msg = f"账号{i} 状态: 主角{main_char_count}个存活, 武将{general_count}个存活, 有辅助{has_support}, 敌人{enemy_count}个"
-                            print(status_msg)
-                            self.report_battle_info(status_msg, "info")
-                    except Exception as e:
-                        # 检测错误记录但不中断流程
-                        self.increment_error_count(i)
-                        print(
-                            f"账号{i} 检测队伍状态时出错: {e} (错误计数: {self.account_error_count.get(i, 0)})")
-                        continue
-
-            # 0.1. 检查是否还有存活的单位（主角或武将），如果没有则停止战斗
-            # 注意：这个检查应该在全局检测之后，并且只在第一个账号进入回合时执行一次
-            if not self.check_has_any_alive_units():
-                end_msg = "所有账号的主角 and 武将全部阵亡，停止自动战斗"
-                print(end_msg)
-                self.report_battle_info(end_msg, "error")
-                # 停止战斗自动操作
-                if self.thread and hasattr(self.thread, '_stop_combat_auto'):
-                    self.thread._stop_combat_auto()
-                return
-
-        # 开始执行操作前，先检查是否应该跳过
-        if self.should_skip_turn(account_index):
-            print(f"账号{account_index} 跳过当前回合操作")
-            return
-
-        # 1. 主角操作（只有在主角存活的情况下）
-        try:
-            # 再次检查（防止在检测阶段超时）
-            if self.should_skip_turn(account_index):
-                print(f"账号{account_index} 操作超时，跳过主角操作")
-                return
-            else:
-                team_status = self.get_team_status(account_index)
-                if team_status and team_status.get('main_chars') and len(
-                        team_status['main_chars']) > 0:
-                    self.main_char_action(account_index)
+                            # 正在被其他账号复活，跳过
+                            self.report_battle_info(
+                                f"账号{account_index} {dead_char['name']}正在被其他账号复活，跳过", "info"
+                            )
                 else:
-                    print(f"账号{account_index}的主角全部阵亡，跳过主角操作")
-        except Exception as e:
-            error_count = self.increment_error_count(account_index)
-            print(
-                f"账号{account_index} 主角操作出错: {e} (错误计数: {error_count})")
-            if error_count >= self.max_errors_per_turn:
-                print(f"账号{account_index} 错误过多，跳过剩余操作")
-                return
+                    # 使用当前账号存活的主角进行复活
+                    dead_char = dead_main_chars[0]
+                    # 检查是否正在被其他账号复活
+                    if self._check_and_mark_reviving(account_index, dead_char["name"]):
+                        if self.revive_main_char(account_index, dead_char):
+                            self._clear_reviving_mark(account_index, dead_char["name"])
+                            time.sleep(1)
+                            return True
+                        else:
+                            # 复活失败，清除标记
+                            self._clear_reviving_mark(account_index, dead_char["name"])
+                    else:
+                        # 正在被其他账号复活，跳过
+                        self.report_battle_info(
+                            f"账号{account_index} {dead_char['name']}正在被其他账号复活，跳过", "info"
+                        )
 
-        # 2. 检查是否需要召唤武将
-        try:
-            # 检查超时
-            if self.should_skip_turn(account_index):
-                print(f"账号{account_index} 操作超时，跳过召唤武将")
-                return
-            elif self.enable_main_summon:
-                # 优先检查是否需要为队友召唤武将
-                self.check_and_summon_for_allies(account_index)
-
-                # 为自己召唤武将
-                self.summon_general(account_index)
-        except Exception as e:
-            error_count = self.increment_error_count(account_index)
-            print(
-                f"账号{account_index} 召唤武将出错: {e} (错误计数: {error_count})")
-            if error_count >= self.max_errors_per_turn:
-                print(f"账号{account_index} 错误过多，跳过剩余操作")
-                return
-
-        # 3. 武将操作
-        try:
-            # 检查超时
-            if self.should_skip_turn(account_index):
-                print(f"账号{account_index} 操作超时，跳过武将操作")
-                return
-            else:
-                # 获取所有在场的武将
-                generals = self.get_all_generals(account_index)
-
-                # 遍历每个武将，执行相应操作
-                for general in generals:
-                    # 每个武将操作前都检查超时和错误
-                    if self.should_skip_turn(account_index):
-                        print(f"账号{account_index} 操作超时，跳过剩余武将操作")
-                        break
-
-                    general_name = general['name']
-                    general_type = general['type']
-
-                    try:
-                        # 根据武将类型执行相应操作（传递武将名称用于状态检测）
-                        self.general_action(general_type, account_index,
-                                            general_name=general_name)
-
-                        # 短暂延时，避免操作过快
-                        time.sleep(0.3)
-                    except Exception as e:
-                        error_count = self.increment_error_count(account_index)
-                        print(
-                            f"账号{account_index} 武将 {general_name} 操作出错: {e} (错误计数: {error_count})")
-                        if error_count >= self.max_errors_per_turn:
-                            print(f"账号{account_index} 错误过多，跳过剩余操作")
+            # 3. 没有血量低的单位需要处理,进行技能释放
+            # 由于无法区分是主角还是武将，直接检测技能面板中所有可用的技能
+            
+            # 先检测其他攻击技能（主角和武将）
+            # 主角技能：根据技能名称判断（只保留三个技能）
+            main_char_skill_names = ["寂灭神劫", "锁魂", "天灾"]
+            # 武将攻击技能：根据技能名称判断
+            general_attack_skill_names = ["剑阵灭杀", "武神一怒"]
+            
+            # 检测所有攻击技能（2秒内找到）
+            start_time = time.time()
+            timeout = 2.0
+            found_skill = None
+            skill_type = None  # "main_char" 或 "general"
+            
+            while time.time() - start_time < timeout:
+                # 先检测武将攻击技能
+                for skill_name in general_attack_skill_names:
+                    skill_image_path = self.skill_images.get(skill_name)
+                    if skill_image_path:
+                        skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+                        if skill_pos:
+                            found_skill = skill_name
+                            skill_type = "general"
                             break
-        except Exception as e:
-            error_count = self.increment_error_count(account_index)
-            print(
-                f"账号{account_index} 武将操作出错: {e} (错误计数: {error_count})")
-
-    def cleanup(self):
-        """
-        清理资源（停止定时器等）
-        """
-        # 取消所有定时器
-        for timer in self._timer_refs:
-            try:
-                timer.cancel()
-            except Exception:
-                pass
-        self._timer_refs.clear()
-        
-        # 安全关闭窗口
-        if self.battle_report_dialog:
-            try:
-                self.battle_report_dialog.close_safely()
-            except Exception:
-                pass
-
-    def run_combat_loop(self):
-        """
-        战斗循环（在多开场景下，对每个账号执行）
-        """
-        max_attempts = 100  # 最大执行次数
-        attempt = 0
-
-        try:
-            while attempt < max_attempts:
-                # 检查是否应该停止（修复：兼容多种状态管理方式）
-                if self.thread:
-                    # 优先检查 overed（停止标志）
-                    if hasattr(self.thread, 'overed') and self.thread.overed:
-                        break
-                    # 检查 stoped（暂停标志），暂停时跳过当前循环但继续等待
-                    if hasattr(self.thread, 'stoped') and self.thread.stoped:
-                        time.sleep(0.5)
+                if found_skill:
+                    break
+                
+                # 再检测主角攻击技能
+                for skill_name in main_char_skill_names:
+                    skill_image_path = self.skill_images.get(skill_name)
+                    if skill_image_path:
+                        skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+                        if skill_pos:
+                            found_skill = skill_name
+                            skill_type = "main_char"
+                            break
+                if found_skill:
+                    break
+                
+                time.sleep(0.2)  # 每次查找间隔0.2秒
+            
+            if found_skill:
+                # 找到了攻击技能，进行对应的操作
+                skill_image_path = self.skill_images.get(found_skill)
+                if skill_image_path:
+                    # 再次查找技能图片（确保还在）
+                    skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+                    if skill_pos:
+                        time.sleep(0.2)
+                        char_type = "主角" if skill_type == "main_char" else "武将"
+                        # 使用统一的技能点击验证方法
+                        if self.click_skill_with_verification(account_index, skill_image_path, skill_pos, f"{char_type}{found_skill}", max_retries=1):
+                            # 技能点击成功，继续后续操作
+                            # 攻击技能：在敌军区域找lantiao图片
+                            target_pos = self.find_target_lantiao(account_index, self.enemy_region, timeout=3.0)
+                            
+                            if target_pos:
+                                # 直接点击找到的图片位置
+                                self.click_position(account_index, target_pos.x, target_pos.y)
+                                char_type = "主角" if skill_type == "main_char" else "武将"
+                                self.report_battle_info(f"账号{account_index} {char_type}释放{found_skill}", "action")
+                                time.sleep(1)
+                                return True
+                            else:
+                                # 未找到lantiao图片，检查敌军场上是否有配置的敌军单位
+                                enemy_cast_position = self.find_enemy_unit_on_field(account_index)
+                                if enemy_cast_position:
+                                    # 找到敌军单位，使用其cast_position
+                                    self.click_position(account_index, enemy_cast_position[0], enemy_cast_position[1])
+                                    char_type = "主角" if skill_type == "main_char" else "武将"
+                                    self.report_battle_info(f"账号{account_index} {char_type}释放{found_skill}（使用敌军单位位置）", "action")
+                                    time.sleep(1)
+                                    return True
+                                else:
+                                    # 没有找到敌军单位，使用默认点位
+                                    default_position = (104, 344)
+                                    self.click_position(account_index, default_position[0], default_position[1])
+                                    char_type = "主角" if skill_type == "main_char" else "武将"
+                                    self.report_battle_info(f"账号{account_index} {char_type}释放{found_skill}（使用默认点位）", "action")
+                                    time.sleep(1)
+                                    return True
+            
+            # 如果找不到其他攻击技能，则检测是否有刘备的技能
+            liubei_skill_names = ["加攻击", "加血", "清除状态", "控制"]
+            is_liubei = False
+            
+            # 检测是否有刘备的技能（2秒内找到）
+            start_time = time.time()
+            timeout = 2.0
+            while time.time() - start_time < timeout:
+                for skill_name in liubei_skill_names:
+                    skill_image_path = self.skill_images.get(skill_name)
+                    if skill_image_path:
+                        skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+                        if skill_pos:
+                            is_liubei = True
+                            break
+                if is_liubei:
+                    break
+                time.sleep(0.2)  # 每次查找间隔0.2秒
+            
+            # 如果找到刘备的技能，说明当前武将是刘备
+            if is_liubei:
+                # 判断是否需要清除状态
+                need_clear = (
+                    account_index in self.enemies_need_clear 
+                    and self.enemies_need_clear[account_index]
+                )
+                
+                if need_clear:
+                    # 需要清除状态，使用清除技能
+                    skill_image_path = self.skill_images.get("清除状态")
+                    if skill_image_path:
+                        # 3秒内循环查找技能图片
+                        start_time = time.time()
+                        timeout = 3.0
+                        skill_pos = None
+                        
+                        while time.time() - start_time < timeout:
+                            skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+                            if skill_pos:
+                                break
+                            time.sleep(0.2)  # 每次查找间隔0.2秒
+                        
+                        if skill_pos:
+                            # 检查清除状态技能是否在冷却中
+                            skill_cd_config = self.skill_cd_config.get("清除状态", 0)
+                            last_used_turn = self.liubei_skill_cd.get(account_index, {}).get("清除状态", -999)
+                            if (self.current_turn - last_used_turn) >= skill_cd_config:
+                                # 使用统一的技能点击验证方法
+                                if self.click_skill_with_verification(account_index, skill_image_path, skill_pos, "清除状态", max_retries=1):
+                                    # 技能点击成功，继续后续操作
+                                    # 点击需要清除状态对应单位的固定点位
+                                    enemy_info = self.enemies_need_clear[account_index][0]
+                                    cast_position = enemy_info["position"]
+                                    self.click_position(account_index, cast_position[0], cast_position[1])
+                                    # 从需要清除列表中移除
+                                    self.enemies_need_clear[account_index].remove(enemy_info)
+                                    # 如果是诸葛亮，清除完成后重置标记
+                                    if enemy_info.get("enemy_name") == "诸葛亮":
+                                        self.zhugeliang_found[account_index] = False
+                                    # 记录技能释放和冷却时间
+                                    if account_index not in self.liubei_skill_cd:
+                                        self.liubei_skill_cd[account_index] = {}
+                                    self.liubei_skill_cd[account_index]["清除状态"] = self.current_turn
+                                    self.report_battle_info(
+                                        f"账号{account_index} 刘备释放清除状态清除{enemy_info['enemy_name']}状态", "action"
+                                    )
+                                    time.sleep(1)
+                                    return True
+                
+                # 不需要清除或清除技能不可用，按照技能顺序找技能
+                # 获取当前账号的技能索引（如果不存在则初始化为0）
+                if account_index not in self.liubei_skill_index:
+                    self.liubei_skill_index[account_index] = 0
+                
+                # 按照顺序尝试释放技能，跳过冷却中的技能
+                sequence_length = len(self.liubei_skill_sequence)
+                
+                for attempt in range(sequence_length):
+                    # 获取当前应该释放的技能
+                    current_index = self.liubei_skill_index[account_index]
+                    skill_to_use = self.liubei_skill_sequence[current_index]
+                    
+                    # 检查技能是否在冷却中
+                    skill_cd_config = self.skill_cd_config.get(skill_to_use, 0)
+                    last_used_turn = self.liubei_skill_cd.get(account_index, {}).get(skill_to_use, -999)
+                    if (self.current_turn - last_used_turn) < skill_cd_config:
+                        # 技能在冷却中，移动到下一个技能
+                        self.liubei_skill_index[account_index] = (current_index + 1) % sequence_length
                         continue
-
-                # 修复：不再在循环开始时重置标志，而是基于回合变化来重置（在auto_combat中处理）
-
-                # 对每个有效的账号执行战斗操作
+                    
+                    # 尝试释放技能（2秒内找到）
+                    skill_image_path = self.skill_images.get(skill_to_use)
+                    if not skill_image_path:
+                        # 技能图片路径不存在，移动到下一个技能
+                        self.liubei_skill_index[account_index] = (current_index + 1) % sequence_length
+                        continue
+                    
+                    # 2秒内循环查找技能图片
+                    start_time = time.time()
+                    timeout = 2.0
+                    skill_pos = None
+                    
+                    while time.time() - start_time < timeout:
+                        skill_pos = self.find_image(account_index, skill_image_path, self.skill_panel_region, 0)
+                        if skill_pos:
+                            break
+                        time.sleep(0.2)  # 每次查找间隔0.2秒
+                    
+                    if not skill_pos:
+                        # 找不到技能图片，移动到下一个技能
+                        self.liubei_skill_index[account_index] = (current_index + 1) % sequence_length
+                        continue
+                    
+                    # 使用统一的技能点击验证方法
+                    if not self.click_skill_with_verification(account_index, skill_image_path, skill_pos, skill_to_use, max_retries=1):
+                        # 技能点击失败，跳过这次技能释放
+                        self.liubei_skill_index[account_index] = (current_index + 1) % sequence_length
+                        continue  # 继续下一个技能
+                    
+                    # 根据技能类型选择目标
+                    if skill_to_use in ["加攻击", "加血"]:
+                        # 辅助技能：在我军区域找"jifangliubei"图片
+                        target_start_time = time.time()
+                        target_timeout = 5.0
+                        target_pos = None
+                        
+                        while time.time() - target_start_time < target_timeout:
+                            target_pos = self.find_image(account_index, self.liubei_target_image, self.ally_region, 0)
+                            if target_pos:
+                                break
+                            time.sleep(0.2)  # 每次查找间隔0.2秒
+                        
+                        if target_pos:
+                            # 点击找到的图片位置
+                            self.click_position(account_index, target_pos.x, target_pos.y)
+                        else:
+                            # 未找到"jifangliubei"图片，在己方区域找蓝条（lantiao）
+                            lantiao_pos = self.find_target_lantiao(account_index, self.ally_region, timeout=3.0)
+                            if lantiao_pos:
+                                # 找到蓝条，点击蓝条位置
+                                self.click_position(account_index, lantiao_pos.x, lantiao_pos.y)
+                                self.report_battle_info(f"账号{account_index} 未找到jifangliubei图片，使用蓝条位置释放{skill_to_use}", "info")
+                            else:
+                                # 未找到蓝条，在己方队伍固定点位中随机选一个点击
+                                ally_positions = []
+                                if account_index in self.unit_positions:
+                                    # 添加主角位置
+                                    for char_name, x, y in self.unit_positions[account_index].get("main_chars", []):
+                                        ally_positions.append((x, y))
+                                    # 添加武将位置
+                                    for general_name, x, y in self.unit_positions[account_index].get("generals", []):
+                                        ally_positions.append((x, y))
+                                
+                                if ally_positions:
+                                    # 随机选择一个己方单位位置
+                                    random_position = random.choice(ally_positions)
+                                    self.click_position(account_index, random_position[0], random_position[1])
+                                    self.report_battle_info(f"账号{account_index} 未找到jifangliubei和蓝条，使用随机己方单位位置释放{skill_to_use}", "info")
+                                else:
+                                    # 如果没有任何己方单位位置，点击原地
+                                    self.click_position(account_index, skill_pos.x, skill_pos.y)
+                                    self.report_battle_info(f"账号{account_index} 未找到jifangliubei、蓝条和己方单位位置，点击原地释放{skill_to_use}", "info")
+                    
+                    elif skill_to_use == "控制":
+                        # 攻击技能：在敌军区域找lantiao图片
+                        target_pos = self.find_target_lantiao(account_index, self.enemy_region, timeout=3.0)
+                        
+                        if target_pos:
+                            # 直接点击找到的图片位置
+                            self.click_position(account_index, target_pos.x, target_pos.y)
+                        else:
+                            # 未找到lantiao图片，检查敌军场上是否有配置的敌军单位
+                            enemy_cast_position = self.find_enemy_unit_on_field(account_index)
+                            if enemy_cast_position:
+                                # 找到敌军单位，使用其cast_position
+                                self.click_position(account_index, enemy_cast_position[0], enemy_cast_position[1])
+                            else:
+                                # 没有找到敌军单位，使用默认点位
+                                default_position = (104, 344)
+                                self.click_position(account_index, default_position[0], default_position[1])
+                                self.report_battle_info(f"账号{account_index} 刘备释放{skill_to_use}（使用默认点位）", "info")
+                    
+                    # 技能释放成功，记录冷却时间并移动到下一个技能
+                    if account_index not in self.liubei_skill_cd:
+                        self.liubei_skill_cd[account_index] = {}
+                    self.liubei_skill_cd[account_index][skill_to_use] = self.current_turn
+                    # 移动到下一个技能
+                    self.liubei_skill_index[account_index] = (current_index + 1) % sequence_length
+                    self.report_battle_info(f"账号{account_index} 刘备释放{skill_to_use}", "action")
+                    time.sleep(1)
+                    return True
+                
+                # 如果所有刘备技能都无法释放，继续执行加血逻辑（不直接返回）
+            
+            # 4. 如果技能都在CD中，检查是否有血量低的单位，使用恢复药
+            low_hp_target = None
+            
+            # 先检查当前账号是否有血量低的单位
+            if account_index in self.low_hp_units and self.low_hp_units[account_index]:
+                low_hp_target = self.low_hp_units[account_index][0]  # 取第一个血量低的单位
+            else:
+                # 检查其他账号是否有血量低的单位
                 account_count = self.get_account_count()
-                for i in range(account_count):
-                    # 安全检查：确保account_dm已初始化且索引有效
-                    if self.validate_account_index(i):
-                        self.auto_combat(i)
+                for other_account in range(account_count):
+                    if other_account != account_index and other_account in self.low_hp_units:
+                        if self.low_hp_units[other_account]:
+                            low_hp_target = self.low_hp_units[other_account][0]
+                            break
+            # 如果有血量低的单位，使用恢复药
+            if low_hp_target:
+                # 确定使用恢复药的账号（优先使用当前账号，如果当前账号没有存活主角则使用其他账号）
+                use_account = account_index
+                alive_chars = [c for c in self.unit_info[account_index]["main_chars"] if c["alive"]]
+                if not alive_chars:
+                    # 当前账号所有主角都阵亡，尝试使用其他账号
+                    account_count = self.get_account_count()
+                    for other_account in range(account_count):
+                        if other_account != account_index:
+                            other_alive_chars = [c for c in self.unit_info[other_account]["main_chars"] if c["alive"]]
+                            if other_alive_chars:
+                                use_account = other_account
+                                break
+                
+                # 使用恢复药
+                if self.use_heal_item(use_account, low_hp_target):
+                    time.sleep(1)
+                    return True
+            
+            # 如果没找到主角的三个技能和刘备技能，尝试检测防御按钮
+            if not found_skill and not is_liubei:
+                defense_button_pos = self.find_image(
+                    account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
+                )
+                if defense_button_pos:
+                    self.click_position(account_index, defense_button_pos.x, defense_button_pos.y)
+                    self.report_battle_info(f"账号{account_index} 主角未找到技能，执行防御", "action")
+                    time.sleep(1)
+                    return True
+            
+            return False
 
-                # 如果当前回合已被处理，等待下一次循环
-                # 这样确保每次循环只处理一次回合数更新
-                time.sleep(0.5)  # 短暂延时
-                attempt += 1
-        finally:
-            # 清理资源
-            self.cleanup()
+        except Exception as e:
+            self.report_battle_info(f"账号{account_index} 处理回合操作失败: {e}", "error")
+            return False
+
+    # 轮询监听主循环
+    def start_polling_loop(self):
+        """启动轮询监听循环(在新线程中运行)"""
+        if self.polling_running:
+            self.report_battle_info("轮询监听已在运行中", "warning")
+            return
+
+        self.polling_running = True
+        self.polling_thread = threading.Thread(target=self._polling_loop, daemon=True)
+        self.polling_thread.start()
+        self.report_battle_info("轮询监听线程已启动", "system")
+
+    # 轮询监听循环(内部方法)
+    def _polling_loop(self):
+        """轮询监听循环(内部实现)"""
+        self.report_battle_info("开始轮询监听战斗状态", "system")
+        account_count = self.get_account_count()
+
+        # 初始化单位信息
+        self.init_unit_info()
+
+        while self.polling_running:
+            try:
+                # 第零步：检测所有账号是否有zdzd弹窗，如果有则点击取消按钮
+                for account_index in [0, 1, 2]:
+                    if not self.polling_running:
+                        break
+                    
+                    dm = self.get_account_dm(account_index)
+                    if not dm:
+                        continue
+                    
+                    # 检测zdzd图片
+                    zdzd_pos = self.find_image(account_index, self.zdzd_image, self.zdzd_region, 0)
+                    if zdzd_pos:
+                        # 找到zdzd图片，点击取消按钮
+                        cancel_button_pos = self.find_image(
+                            account_index, self.button_images["取消按钮"], self.zdzd_region, 0
+                        )
+                        if cancel_button_pos:
+                            self.click_position(account_index, cancel_button_pos.x, cancel_button_pos.y)
+                            self.report_battle_info(f"账号{account_index} 检测到zdzd弹窗，已点击取消", "warning")
+                            time.sleep(0.5)  # 等待弹窗关闭
+                
+                # 第二步：检测所有账号的操作按钮（同步检测）
+                accounts_ready = []  # 记录需要操作的账号列表
+                for account_index in [0, 1, 2]:
+                    if not self.polling_running:
+                        break
+                    
+                    dm = self.get_account_dm(account_index)
+                    if not dm:
+                        continue
+                    
+                    # 检测操作按钮（确认在战斗页面且可以操作）
+                    if self.check_action_button(account_index):
+                        accounts_ready.append(account_index)
+                
+                # 第三步：如果有账号需要操作，先处理操作，操作完成后再进行状态检测
+                if accounts_ready:
+                    self.report_battle_info(f"检测到账号 {accounts_ready} 操作按钮，开始操作", "turn")
+                    
+                    # 为每个账号启动操作线程（实现同步操作）
+                    operation_threads = []  # 记录操作线程
+                    for account_index in accounts_ready:
+                        thread = threading.Thread(
+                            target=self.handle_our_turn,
+                            args=(account_index,),
+                            daemon=False  # 改为False，确保等待完成
+                        )
+                        thread.start()
+                        operation_threads.append(thread)
+                    
+                    # 等待所有操作线程完成
+                    for thread in operation_threads:
+                        thread.join(timeout=30)  # 最多等待30秒，避免无限等待
+                    
+                    # 操作完成后，短暂延迟
+                    time.sleep(0.5)
+                    # 跳过状态检测，直接进入下一轮循环
+                    continue
+                
+                # 清理过期的复活标记
+                self._cleanup_expired_revive_marks()
+                
+                # 第一步：检测所有账号的状态（墓碑、敌军状态、场上是否有刘备）
+                # 只在没有操作时进行状态检测
+                # 只处理实际存在的账号（0, 1, 2）
+                for account_index in [0, 1, 2]:
+                    if not self.polling_running:
+                        break
+                    
+                    # 检查账号是否可用
+                    dm = self.get_account_dm(account_index)
+                    if not dm:
+                        continue  # 跳过未设置的账号
+
+                    # 1. 检测墓碑(阵亡)
+                    dead_list = self.check_tombstones(account_index)
+                    if dead_list:
+                        self.update_unit_info_from_tombstones(dead_list)
+
+                    # 2. 检测敌军状态(需要清除的状态)
+                    need_clear_list = self.check_enemy_status(account_index)
+                    if need_clear_list:
+                        self.update_enemy_status(need_clear_list)
+                    
+                    # 3. 检测场上是否有刘备（在非战斗回合检测，避免操作面板遮挡）
+                    # 2秒内循环查找刘备图片
+                    has_liubei = False
+                    liubei_pos = self.find_image(account_index, self.has_liubei_on_field, self.ally_region, 0)
+                    if liubei_pos:
+                        has_liubei = True
+                    self.has_liubei_on_field[account_index] = has_liubei
+                    
+                    # 4. 检测血量低的单位（在非战斗回合检测，避免操作面板遮挡）
+                    # 只使用主账号（account_index=0）去检测所有账号的血量低单位
+                    all_low_hp_units = []
+                    account_count = self.get_account_count()
+                    main_account_index = 0  # 主账号索引
+                    for acc_idx in range(account_count):
+                        # 使用主账号的dm对象检测所有账号的血量低单位
+                        acc_low_hp = self.check_low_hp_units(acc_idx, detect_account_index=main_account_index)
+                        all_low_hp_units.extend(acc_low_hp)
+                    # 更新所有账号的血量低单位记录
+                    if all_low_hp_units:
+                        self.update_low_hp_units(all_low_hp_units)
+                        
+
+                # 轮询间隔
+                if self.polling_running:
+                    time.sleep(CombatConstants.DEFAULT_CHECK_INTERVAL)
+
+            except KeyboardInterrupt:
+                self.polling_running = False
+                self.report_battle_info("轮询监听已停止(KeyboardInterrupt)", "system")
+                break
+            except Exception as e:
+                self.report_battle_info(f"轮询监听出错: {e}", "error")
+                if self.polling_running:
+                    time.sleep(CombatConstants.DEFAULT_CHECK_INTERVAL)
+
+        self.report_battle_info("轮询监听循环已结束", "system")
+
+    # 停止轮询监听
+    def stop_polling_loop(self):
+        """停止轮询监听"""
+        if not self.polling_running:
+            return
+
+        self.polling_running = False
+        self.report_battle_info("正在停止轮询监听...", "system")
+
+        # 等待线程结束(最多等待2秒)
+        if self.polling_thread and self.polling_thread.is_alive():
+            self.polling_thread.join(timeout=2.0)
+
+        self.report_battle_info("轮询监听已停止", "system")
+    
+    # 兼容方法：run_combat_loop (供newMain.py调用)
+    def run_combat_loop(self):
+        """运行战斗循环(兼容方法名，在当前线程中运行轮询循环)"""
+        # 注意：这个方法会在调用它的线程中运行，不需要再启动新线程
+        self.polling_running = True
+        self._polling_loop()
+    
+    # 清理资源
+    def cleanup(self):
+        """清理战斗脚本资源"""
+        try:
+            self.stop_polling_loop()
+            # 关闭战斗播报窗口
+            if self.battle_report_dialog:
+                try:
+                    self.battle_report_dialog.close_safely()
+                except Exception:
+                    pass
+                self.battle_report_dialog = None
+            self.report_battle_info("战斗脚本资源已清理", "system")
+        except Exception as e:
+            print(f"清理战斗脚本资源时出错: {e}")
 
 
 # 示例使用
