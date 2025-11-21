@@ -14843,7 +14843,7 @@ class MyFrame(wx.Frame):
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                "测试",
+                # "测试",
             ],
         )
         self.free_choices = (
@@ -15486,7 +15486,6 @@ class MyFrame(wx.Frame):
         dlg.Destroy()
         app.MainLoop()
 
-
 class MyDialog(wx.Dialog):
     def __init__(self, parent, has_script):
         super().__init__(parent, title="设置游戏信息", size=(680, 650),
@@ -15615,7 +15614,7 @@ class MyDialog(wx.Dialog):
         row2_zhanhun.Add(lianyu_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         self.choiceZhanHunCeng = wx.ComboBox(
             panel, size=(120, 28),
-            choices=["26层", "27层", "手动27层"]
+            choices=["26层", "27层"]
         )
         self.choiceZhanHunCeng.SetHint("炼狱层数")
         row2_zhanhun.Add(self.choiceZhanHunCeng, 0, wx.RIGHT, 12)
@@ -16266,6 +16265,7 @@ class MyDialog(wx.Dialog):
         # parent.selections = selections
         # 关闭对话框
         self.EndModal(wx.ID_OK)
+
 
 
 class NumberValidator(wx.Validator):

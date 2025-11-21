@@ -15518,7 +15518,7 @@ class MyDialog(wx.Dialog):
         row2_zhanhun.Add(lianyu_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         self.choiceZhanHunCeng = wx.ComboBox(
             panel, size=(120, 28),
-            choices=["26层", "27层", "手动27层"]
+            choices=["26层", "27层"]
         )
         self.choiceZhanHunCeng.SetHint("炼狱层数")
         row2_zhanhun.Add(self.choiceZhanHunCeng, 0, wx.RIGHT, 12)
