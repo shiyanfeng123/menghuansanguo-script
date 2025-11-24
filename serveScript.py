@@ -1084,39 +1084,39 @@ class MyThread(threading.Thread):
             self.locationRightTopWidth,
             self.locationRightTopHeight,
         )
-        if (
-                self.scriptName in ["官渡", "黑风", "魔镜", "矿产", "测试"]
-                and not self.refreshFlag
-                and not self.hasRefresh
-                and (self.teammate1_name or self.teammate2_name)
-        ):
-            self.dm.KeyPressChar("t")
-            time.sleep(2)
-            self.dm.Capture(
-                304,
-                315,
-                353,
-                337,
-                self.get_resource_path("serveAssets/images/team_mate.bmp"),
-            )
-            time.sleep(2)
-            self.dm.Capture(
-                426,
-                315,
-                461,
-                337,
-                self.get_resource_path("serveAssets/images/team_mate1.bmp"),
-            )
-            time.sleep(2)
-            self.dm.Capture(
-                538,
-                315,
-                587,
-                337,
-                self.get_resource_path("serveAssets/images/team_mate2.bmp"),
-            )
-            time.sleep(2)
-            self.dm.KeyPressChar("t")
+        # if (
+        #         self.scriptName in ["官渡", "黑风", "魔镜", "矿产", "测试"]
+        #         and not self.refreshFlag
+        #         and not self.hasRefresh
+        #         and (self.teammate1_name or self.teammate2_name)
+        # ):
+        #     self.dm.KeyPressChar("t")
+        #     time.sleep(2)
+        #     self.dm.Capture(
+        #         304,
+        #         315,
+        #         353,
+        #         337,
+        #         self.get_resource_path("serveAssets/images/team_mate.bmp"),
+        #     )
+        #     time.sleep(2)
+        #     self.dm.Capture(
+        #         426,
+        #         315,
+        #         461,
+        #         337,
+        #         self.get_resource_path("serveAssets/images/team_mate1.bmp"),
+        #     )
+        #     time.sleep(2)
+        #     self.dm.Capture(
+        #         538,
+        #         315,
+        #         587,
+        #         337,
+        #         self.get_resource_path("serveAssets/images/team_mate2.bmp"),
+        #     )
+        #     time.sleep(2)
+        #     self.dm.KeyPressChar("t")
         return True
 
     def find_pic_or_str(self, find, region, find_dir):
@@ -6878,9 +6878,9 @@ class MyThread(threading.Thread):
             target = self.find_pic(image_path, image_region, find_dir)
         if not target:
             return False
-        yjian = 50 if not types else 20
+        # yjian = 50 if not types else 20
         if "zdzd" in image_path2:
-            self.dm.MoveTo(target.x, int(target.y - yjian))
+            self.dm.MoveTo(target.x, target.y)
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.4)
