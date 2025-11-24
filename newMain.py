@@ -9247,78 +9247,135 @@ class MyThread(threading.Thread):
             # self._stop_combat_auto()  # 停止战斗自动操作
             self.outScript("战魂")
             return True
+        self.findAndClickPic(
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/lianyu1.bmp"),
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/chuansongmen.bmp"),
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/chuansongmen.bmp"),
+            self.dituLocation,
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/lianyu2.bmp"),
+            self.dituLocation,
+            "",
+        )
+        self.findAndClickPic(
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/lianyu2.bmp"),
+            "周瑜",
+            "周瑜",
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd.bmp"),
+            self.gameBottomLocation,
+            "0.098,0.113",
+        )
+        self.waitFor(
+            self.get_resource_path("serveAssets/images/xiulian.bmp"),
+            self.gameLocation
+        )
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            self.get_resource_path("serveAssets/images/zhanhun/lianyu2.bmp"),
+            "洛阳",
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("27层没打过")
+            return True
         if self.zhanhunFloorNew == "27层":
-            self.findAndClickPic(
-                self.get_resource_path(
-                    "serveAssets/images/zhanhun/lianyu1.bmp"),
-                self.get_resource_path(
-                    "serveAssets/images/zhanhun/chuansongmen.bmp"),
-                self.get_resource_path(
-                    "serveAssets/images/zhanhun/chuansongmen.bmp"),
-                self.dituLocation,
-                self.get_resource_path(
-                    "serveAssets/images/zhanhun/lianyu2.bmp"),
-                self.dituLocation,
-                "",
-            )
-            self.findAndClickPic(
-                self.get_resource_path(
-                    "serveAssets/images/zhanhun/lianyu2.bmp"),
-                "周瑜",
-                "周瑜",
-                self.gameBottomLocation,
-                self.get_resource_path("serveAssets/images/zdzd.bmp"),
-                self.gameBottomLocation,
-                "0.098,0.113",
-            )
-            self.waitFor(
-                self.get_resource_path("serveAssets/images/xiulian.bmp"),
-                self.gameLocation,
-            )
-            # 停止战斗自动操作
-            # self._stop_combat_auto()
             # 退出副本
             self.outScript(
                 self.get_resource_path("serveAssets/images/zhanhun/lianyu2.bmp")
             )
             return True
-        elif self.zhanhunFloorNew == "手动27层":
-            self.print_and_speak("27层到了，准备好了请进入下一层")
-            self.waitFor(
-                self.get_resource_path(
-                    "serveAssets/images/zhanhun/lianyu2.bmp"),
-                self.dituLocation,
-            )
-            self.findAndClickPic(
-                self.get_resource_path(
-                    "serveAssets/images/zhanhun/lianyu2.bmp"),
-                "周瑜",
-                "周瑜",
-                self.gameBottomLocation,
-                self.get_resource_path("serveAssets/images/zdzd.bmp"),
-                self.gameBottomLocation,
-                "0.098,0.113",
-            )
-            self.waitFor(
-                self.get_resource_path("serveAssets/images/xiulian.bmp"),
-                self.gameLocation,
-            )
-            # 停止战斗自动操作
-            # self._stop_combat_auto()
+        self.findAndClickPic(
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/lianyu2.bmp"),
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/chuansongmen.bmp"),
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/chuansongmen.bmp"),
+            self.dituLocation,
+            '3层',
+            self.dituLocation,
+            "",
+        )
+        self.findAndClickPic(
+            '3层',
+            "马超",
+            "马超",
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd.bmp"),
+            self.gameBottomLocation,
+            "0.098,0.113",
+        )
+        self.waitFor(
+            self.get_resource_path("serveAssets/images/xiulian.bmp"),
+            self.gameLocation
+        )
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            '3层',
+            "洛阳",
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("28层没打过")
+            return True
+        if self.zhanhunFloorNew == "28层":
             # 退出副本
             self.outScript(
-                self.get_resource_path("serveAssets/images/zhanhun/lianyu2.bmp")
+                '3层'
             )
             return True
-        else:
-            # 停止战斗自动操作
-            # self._stop_combat_auto()
+        self.findAndClickPic(
+            '3层',
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/chuansongmen.bmp"),
+            self.get_resource_path(
+                "serveAssets/images/zhanhun/chuansongmen.bmp"),
+            self.dituLocation,
+            '4层',
+            self.dituLocation,
+            "",
+        )
+        self.findAndClickPic(
+            '4层',
+            "诸葛亮",
+            "诸葛亮",
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd.bmp"),
+            self.gameBottomLocation,
+            "0.098,0.113",
+        )
+        self.waitFor(
+            self.get_resource_path("serveAssets/images/xiulian.bmp"),
+            self.gameLocation
+        )
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            '4层',
+            "洛阳",
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("29层没打过")
+            return True
+        if self.zhanhunFloorNew == "29层":
             # 退出副本
             self.outScript(
-                self.get_resource_path("serveAssets/images/zhanhun/lianyu2.bmp")
+                '4层'
             )
             return True
-
+        # self.outScript(
+        #         self.get_resource_path("serveAssets/images/zhanhun/lianyu2.bmp")
+        #     )
+        # return True
+    
     # 魔镜脚本
     def mojingScript(self):
         if self.overed:
@@ -14843,7 +14900,7 @@ class MyFrame(wx.Frame):
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                # "测试",
+                "测试",
             ],
         )
         self.free_choices = (
@@ -14871,7 +14928,7 @@ class MyFrame(wx.Frame):
                 "天外天传送符",
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
-                # "测试",
+                "测试",
             ],
         )
         has_choices = []
@@ -15614,7 +15671,7 @@ class MyDialog(wx.Dialog):
         row2_zhanhun.Add(lianyu_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         self.choiceZhanHunCeng = wx.ComboBox(
             panel, size=(120, 28),
-            choices=["26层", "27层"]
+            choices=["26层", "27层", "28层","29层"]
         )
         self.choiceZhanHunCeng.SetHint("炼狱层数")
         row2_zhanhun.Add(self.choiceZhanHunCeng, 0, wx.RIGHT, 12)

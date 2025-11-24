@@ -646,8 +646,8 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png")
-# find_str_result = dm.FindStrFastE(0, 0, x, y, "吕布", color_format, sim)
-# print(f"FindStrFast 返回结果: {find_str_result}")
+find_str_result = dm.FindStrFastE(0, 0, x, y, "1层", color_format, sim)
+print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
