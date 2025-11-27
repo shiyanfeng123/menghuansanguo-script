@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='脚本v25.11.5',
+    name='脚本v25.11.6',
     version='version_info.txt',  # 元组格式
     debug=False,
     bootloader_ignore_signals=False,

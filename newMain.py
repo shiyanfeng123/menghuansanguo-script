@@ -21,7 +21,7 @@ import sys
 from collections import OrderedDict
 
 # 导入战斗自动操作脚本
-from Kanloong_combat_script import CombatAutoScript
+from Kanloong_combat_script_copy import CombatAutoScript
 
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\newMain.py
 # pyinstaller newMain.spec
@@ -345,7 +345,7 @@ class MyThread(threading.Thread):
 
             # 初始化战斗自动操作实例（如果还没有创建）
             if not self.combat_auto_instance:
-                self.combat_auto_instance = CombatAutoScript(self)
+                self.combat_auto_instance = CombatAutoScript(self,['猴子','人参娃'])
                 
                 # 设置配置（根据你的需求调整）
                 self.combat_auto_instance.keep_support_general = False  # 是否保证辅助武将在场

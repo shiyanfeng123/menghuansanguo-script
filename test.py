@@ -368,7 +368,7 @@ def get_resource_path(self, relative_path):
 # dm.KeyDownChar('right')
 # time.sleep(5)
 # dm_ret = dm.FindPicEx(0, 0, x, y,
-#                       r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\images\zhanhun/1.bmp",
+#                       r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\images\zhengdian/shandongsanceng.bmp",
 #                       "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
 # dm_ret3 = dm.FindPicEx(530, 0, 589, 580, r"E:\project\python\name1.bmp", "", similarity, 0)
@@ -645,8 +645,8 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # x, y, r = dm_ret
 # print(dm_ret)
 
-# dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png")
-find_str_result = dm.FindStrFastE(0, 0, x, y, "1层", color_format, sim)
+# dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png") 534 368
+find_str_result = dm.FindStrFastE(0, 0, x, y, "实", color_format, sim)
 print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)

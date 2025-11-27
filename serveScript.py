@@ -459,6 +459,50 @@ class MyThread(threading.Thread):
                 "delX": [int(744 + self.locationX), int(816 + self.locationX)],
                 "delY": [int(52 + self.locationY)],
             },
+            {
+                "ditu": "地图明镜湖",
+                "city": self.get_resource_path(
+                    "serveAssets/images/zhengdian/xuchang.bmp"
+                ),
+                "findAddress": self.get_resource_path(
+                    "serveAssets/images/zhengdian/mingjinghu.bmp"
+                ),
+                "delX": [],
+                "delY": [],
+            },
+            {
+                "ditu": "地图恶龙洞",
+                "city": self.get_resource_path(
+                    "serveAssets/images/zhengdian/zhuojun.bmp"
+                ),
+                "findAddress": self.get_resource_path(
+                    "serveAssets/images/zhengdian/elongdong.bmp"
+                ),
+                "delX": [],
+                "delY": [],
+            },
+            {
+                "ditu": "地图祭坛",
+                "city": self.get_resource_path(
+                    "serveAssets/images/zhengdian/zhuojun.bmp"
+                ),
+                "findAddress": self.get_resource_path(
+                    "serveAssets/images/zhengdian/jitan1.bmp"
+                ),
+                "delX": [],
+                "delY": [],
+            },
+            {
+                "ditu": "地图山洞三层",
+                "city": self.get_resource_path(
+                    "serveAssets/images/zhengdian/zhuojun.bmp"
+                ),
+                "findAddress": self.get_resource_path(
+                    "serveAssets/images/zhengdian/shandongsanceng.bmp"
+                ),
+                "delX": [],
+                "delY": [],
+            },
         ]
         self.beginFun()
         if self.scriptName == "官渡":
@@ -468,7 +512,19 @@ class MyThread(threading.Thread):
             self.zhengdianFloor = "龙+全打"
             self.new_zhengdian()
         elif self.scriptName == "测试":
-            self.new_zhengdian()
+            self.find_zd_in_view_easy("九黎族祭坛"
+                , '蛇生肖')
+            # self.go_in_ditu(
+            #     "地图山洞三层",
+            #     self.get_resource_path(
+            #         "serveAssets/images/zhengdian/zhuojun.bmp"),
+            #     self.get_resource_path(
+            #         "serveAssets/images/zhengdian/shandongsanceng.bmp"),
+            #     "",
+            #     "",
+            #     True,
+            # )
+            # self.new_zhengdian()
             # self.go_zhengdian()
             # self.check_line('三线')
             # self.zhengDian()
@@ -3998,7 +4054,7 @@ class MyThread(threading.Thread):
         ]:
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
-            for i in range(10):
+            for i in range(14):
                 last_item1 = shuffled1[-1]
                 shuffled1 = shuffled1[:-1]
                 print(f"飞{last_item1['ditu']}")
@@ -4023,7 +4079,7 @@ class MyThread(threading.Thread):
         ]:
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
-            for i in range(10):
+            for i in range(14):
                 last_item1 = shuffled1[-1]
                 shuffled1 = shuffled1[:-1]
                 print(f"飞{last_item1['ditu']}")
@@ -4792,8 +4848,7 @@ class MyThread(threading.Thread):
         self.clear_info()
         shuffled = self.zdList.copy()
         random.shuffle(shuffled)
-        for i in range(10):
-
+        for i in range(14):
             last_item = shuffled[-1]
             shuffled = shuffled[:-1]
             print(f"飞{last_item['ditu']}")
@@ -4835,7 +4890,7 @@ class MyThread(threading.Thread):
         self.clear_info()
         shuffled = self.zdList.copy()
         random.shuffle(shuffled)
-        for i in range(10):
+        for i in range(14):
 
             last_item = shuffled[-1]
             shuffled = shuffled[:-1]
@@ -5641,8 +5696,8 @@ class MyThread(threading.Thread):
                             print(f"打了${find_sx}")
             self.confidenceNum = 0.6
             left_x = random.randint(738, 748)
-            rand_y = random.randint(61, 80)
-            right_x = random.randint(871, 881)
+            rand_y = 80
+            right_x = random.randint(861, 871)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
             if not find_left_flag:
                 if self.find_pic_or_str(
@@ -5665,7 +5720,7 @@ class MyThread(threading.Thread):
                         self.get_resource_path(
                             "serveAssets/images/zhengdian/xiaobairen.bmp"
                         ),
-                        (872, 41, 898, 96),
+                        (861, 41, 881, 96),
                         0,
                 ):
                     self.confidenceNum = 0.9
@@ -5675,7 +5730,7 @@ class MyThread(threading.Thread):
                     time.sleep(0.001)
                     self.dm.LeftClick()
             self.confidenceNum = 0.9
-            time.sleep(0.4)
+            time.sleep(0.6)
 
     def find_zd_in_view_easy(self, base_image, find_sx):
         # 左 (725,46,771,94) 右 (842,41,898,96)
@@ -5749,8 +5804,8 @@ class MyThread(threading.Thread):
             self.confidenceNum = 0.6
             left_x = random.randint(738, 748)
             # rand_y = random.randint(61, 80)
-            rand_y = 70
-            right_x = random.randint(871, 881)
+            rand_y = 80
+            right_x = random.randint(861, 871)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
             if not find_left_flag:
                 if self.find_pic_or_str(
@@ -5773,7 +5828,7 @@ class MyThread(threading.Thread):
                         self.get_resource_path(
                             "serveAssets/images/zhengdian/xiaobairen.bmp"
                         ),
-                        (872, 41, 898, 96),
+                        (861, 41, 881, 96),
                         0,
                 ):
                     self.confidenceNum = 0.9
@@ -5783,7 +5838,7 @@ class MyThread(threading.Thread):
                     time.sleep(0.001)
                     self.dm.LeftClick()
             self.confidenceNum = 0.9
-            time.sleep(0.4)
+            time.sleep(0.6)
 
     # 在地图通过小绿人打整点
     def zhengdian_by_xiaolvren(
@@ -6570,7 +6625,7 @@ class MyThread(threading.Thread):
         self.dm.MoveTo(address_pos_city_pos.x, address_pos_city_pos.y)
         time.sleep(0.3)
         self.dm.LeftClick()
-        if find_address in ["地图绿林路", "地图落日峰", "地图碧波潭"]:
+        if find_address in ["地图绿林路", "地图落日峰", "地图碧波潭","地图祭坛"]:
             fei_pos = self.waitFor(
                 f"{self.get_resource_path('serveAssets/images/zhengdian/fei.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/fei1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/fei2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/fei3.bmp')}",
                 self.gameBottomLocation,
@@ -6606,7 +6661,7 @@ class MyThread(threading.Thread):
         if not is_find_address:
             self.click_image(address_pos_city, 0.8, self.gameLocation)
             is_find_address1 = self.waitFor(find_address, self.gameLocation, 3)
-            if not is_find_address1:
+            if not is_find_address1 and find_address != "地图山洞三层":
                 return False
         if not is_fei:
             go_pos = self.fing_fei_in_image_or_str(
@@ -6653,6 +6708,9 @@ class MyThread(threading.Thread):
             if find_address == "地图徐州":
                 find_address = "地图官渡"
                 region = (0, -18, 180, 38)
+            if find_address == "地图山洞三层":
+                find_address = "地图恶龙洞"
+                region = (0, 21, 180, 0)
             while True:
                 if time.time() - find_fei_time > 10:
                     self.dm.KeyPressChar("m")
@@ -6872,15 +6930,15 @@ class MyThread(threading.Thread):
         if not types:
             target = self.find_str(image_path, image_region, find_dir)
             if target:
-                target.x = target.x + random.randint(20, 30)
+                target.x = target.x + random.randint(10, 30)
                 target.y = target.y + 5
         else:
             target = self.find_pic(image_path, image_region, find_dir)
         if not target:
             return False
-        # yjian = 50 if not types else 20
+        yjian = random.randint(35, 55) if not types else 0
         if "zdzd" in image_path2:
-            self.dm.MoveTo(target.x, target.y)
+            self.dm.MoveTo(target.x, int(target.y - yjian))
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.4)
@@ -15630,7 +15688,7 @@ class MyDialog(wx.Dialog):
         row_zhengdian.Add(zhengdian_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         choices = ["蛇+全打","龙+全打", "全打", "走路"]
         if has_script != "all" and "整点" not in has_script:
-            choices = ["全打", "走路"]
+            choices = ["蛇+全打","龙+全打", "全打", "走路"]
         self.choiceZhengdian = wx.ComboBox(
             panel, size=(-1, 28), choices=choices
         )
@@ -16615,7 +16673,7 @@ class UpdateDialog(wx.Dialog):
 
     @staticmethod
     def get_current_version():
-        return "25.11.5"  # 默认版本
+        return "25.11.6"  # 默认版本
 
     def download_update(self):
         """下载更新包"""

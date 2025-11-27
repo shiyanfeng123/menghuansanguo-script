@@ -21,10 +21,10 @@ class CombatConstants:
     ACTION_DELAY = 0.3
     SKILL_CLICK_VERIFY_DELAY = 0.8
     PANEL_WAIT_TIMEOUT = 3
-    MAIN_CHAR_SKILL_WAIT_TIMEOUT = 3.0  # 主角技能等待超时
+    MAIN_CHAR_SKILL_WAIT_TIMEOUT = 2.0  # 主角技能等待超时
     GENERAL_SKILL_WAIT_TIMEOUT = 3.0  # 武将技能等待超时
     ACTION_BUTTON_WAIT_TIMEOUT = 3.0  # 攻击按钮等待超时
-    SUMMON_BUTTON_WAIT_TIMEOUT = 3.0  # 召唤按钮等待超时
+    SUMMON_BUTTON_WAIT_TIMEOUT = 2.0  # 召唤按钮等待超时
     SUMMON_BUTTON_INITIAL_DELAY = 0.3  # 召唤按钮初始等待时间
 
 
@@ -258,10 +258,10 @@ class CombatAutoScript:
         
         # 按钮图片
         self.button_images = {
-            "技能按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}",
-            "召唤按钮": f"{self.get_resource_path('serveAssets/images/auto/zhaohuan.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhaohuan1.bmp')}",
-            "道具按钮": f"{self.get_resource_path('serveAssets/images/auto/yaopin.bmp')}|{self.get_resource_path('serveAssets/images/auto/yaopin1.bmp')}",
-            "操作按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}",
+            "技能按钮": self.get_resource_path("serveAssets/images/auto/jineng.bmp"),
+            "召唤按钮": self.get_resource_path("serveAssets/images/auto/zhaohuan.bmp"),
+            "道具按钮": self.get_resource_path("serveAssets/images/auto/yaopin.bmp"),
+            "操作按钮": self.get_resource_path("serveAssets/images/auto/jineng.bmp"),
             "取消按钮": self.get_resource_path("serveAssets/images/quxiaozdzd.bmp"),  # 取消按钮
             "防御按钮": self.get_resource_path("serveAssets/images/auto/fangyu.bmp"),  # 防御按钮
         }
@@ -276,13 +276,13 @@ class CombatAutoScript:
         self.skill_images = {
             # 主角技能
             "寂灭神劫": f"{self.get_resource_path('serveAssets/images/auto/cehsi.bmp')}|{self.get_resource_path('serveAssets/images/auto/jimie2.bmp')}",
-            "锁魂": f"{self.get_resource_path('serveAssets/images/auto/zhanshiqun.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhanshiqun1.bmp')}",
+            "锁魂": f"{self.get_resource_path('serveAssets/images/auto/zhanshiqun.bmp')}|{self.get_resource_path('serveAssets/images/auto/suohun2.bmp')}",
             "天灾": f"{self.get_resource_path('serveAssets/images/auto/tianzai1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tianzai2.bmp')}",
             # 辅助武将技能（刘备）
             "加血": f"{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan2.bmp')}",
-            "加攻击": f"{self.get_resource_path('serveAssets/images/auto/liubeizengshang1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeizengshang2.bmp')}",
-            "控制": f"{self.get_resource_path('serveAssets/images/auto/liubeikong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeikong2.bmp')}",
-            "清除状态": f"{self.get_resource_path('serveAssets/images/auto/liubeijie1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeijie2.bmp')}",
+            "加攻击": self.get_resource_path("serveAssets/images/auto/liubeizengshang1.bmp"),
+            "控制": self.get_resource_path("serveAssets/images/auto/liubeikong1.bmp"),
+            "清除状态": self.get_resource_path("serveAssets/images/auto/liubeijie1.bmp"),
             # 攻击武将技能
             "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun3.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocaoqun2.bmp')}",
             "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguqun1.bmp')}|{self.get_resource_path('serveAssets/images/auto/moguqun2.bmp')}",
@@ -485,7 +485,7 @@ class CombatAutoScript:
         dm = self.get_account_dm(dm_index)
         if dm:
             dm.MoveTo(int(x), int(y))
-            time.sleep(0.001)
+            time.sleep(0.05)
             dm.LeftClick()
             time.sleep(CombatConstants.ACTION_DELAY)
 
@@ -531,7 +531,7 @@ class CombatAutoScript:
         x, y, w, h = self.skill_panel_region
         
         while time.time() - start_time < timeout:
-            for confidence in [0.9, 0.8, 0.7, 0.6]:
+            for confidence in [0.9, 0.8, 0.7]:
                 pos = dm.FindPicEx(int(x), int(y), int(w), int(h), combined_path, "", confidence, 0)
                 if pos:
                     # FindPicEx 返回格式: "图片索引,x,y|图片索引,x,y"
@@ -552,7 +552,7 @@ class CombatAutoScript:
                                         posX = int(pos_res[1]) + (picW * 0.5)
                                         posY = int(pos_res[2]) + (picH * 0.5)
                                         return found_skill, ResXy(int(posX), int(posY))
-            time.sleep(0.05)
+            time.sleep(0.1)
         return None, None
     
     def click_skill(self, dm_index, skill_name, skill_pos):
@@ -560,31 +560,11 @@ class CombatAutoScript:
         skill_path = self.skill_images.get(skill_name)
         if not skill_path:
             return False
-        
-        # 最多重试2次（首次点击 + 1次重试）
-        max_retries = 2
-        for attempt in range(max_retries):
-            # 点击技能
-            self.click_position(dm_index, skill_pos.x, skill_pos.y)
-            time.sleep(CombatConstants.SKILL_CLICK_VERIFY_DELAY)
-            
-            # 验证技能是否消失
-            verify_pos = self.find_image(dm_index, skill_path, self.skill_panel_region, 0)
-            if verify_pos is None:
-                # 技能已消失，点击成功
-                if attempt > 0:
-                    self.report_battle_info(f"大漠对象{dm_index} 技能{skill_name}点击成功（第{attempt + 1}次尝试）", "info")
-                return True
-            else:
-                # 技能还在，需要重试
-                if attempt < max_retries - 1:
-                    self.report_battle_info(f"大漠对象{dm_index} 技能{skill_name}点击后未消失，进行第{attempt + 2}次点击", "warning")
-                    time.sleep(0.2)  # 短暂延迟后重试
-                else:
-                    # 最后一次尝试也失败
-                    self.report_battle_info(f"大漠对象{dm_index} 技能{skill_name}点击失败（已重试{max_retries - 1}次，技能仍未消失）", "error")
-        
-        return False
+        self.click_position(dm_index, skill_pos.x, skill_pos.y)
+        time.sleep(CombatConstants.SKILL_CLICK_VERIFY_DELAY)
+        # 验证技能是否消失
+        verify_pos = self.find_image(dm_index, skill_path, self.skill_panel_region, 0)
+        return verify_pos is None
     
     def release_skill(self, dm_index, skill_name, skill_pos, target_position):
         """释放技能"""
@@ -747,7 +727,7 @@ class CombatAutoScript:
             if round_num < loop_count:  # 如果不是最后一轮，等待下一轮
                 time.sleep(0.3)
                 for dm_index in [0, 1, 2]:
-                    self.wait_for_action_button(dm_index, timeout=3.0)
+                    self.wait_for_action_button(dm_index, timeout=1.0)
         
         # 更新全局状态
         self.update_global_state()
@@ -790,11 +770,9 @@ class CombatAutoScript:
         try:
             dm = self.get_account_dm(dm_index)
             if not dm:
-                self.report_battle_info(f"大漠对象{dm_index} 主角操作：大漠对象不存在，跳过", "warning")
                 return
             
             account = self.state_map.get_account(dm_index)
-            self.report_battle_info(f"大漠对象{dm_index} 开始主角操作阶段（当前状态：alive={account.main_char.alive}, reviving={account.main_char.reviving}, is_first_turn={self.is_first_turn}）", "info")
             
             # 等待召唤按钮出现（我方操作回合开始时，召唤按钮可能需要一些时间才出现）
             # 先等待一段时间，确保召唤按钮已经出现
@@ -806,71 +784,53 @@ class CombatAutoScript:
             while time.time() - start_time < CombatConstants.SUMMON_BUTTON_WAIT_TIMEOUT:
                 has_summon_button = self.check_summon_button(dm_index)
                 if has_summon_button:
-                    self.report_battle_info(f"大漠对象{dm_index} 识别到召唤按钮，确认为主角操作回合", "success")
                     break
                 time.sleep(CombatConstants.DEFAULT_CHECK_INTERVAL)
-            
-            if not has_summon_button:
-                self.report_battle_info(f"大漠对象{dm_index} 未识别到召唤按钮（等待{CombatConstants.SUMMON_BUTTON_WAIT_TIMEOUT}秒超时）", "info")
             
             # 在非第一回合，如果没有识别到召唤按钮或主角技能，视为主角死亡
             if not self.is_first_turn:
                 if not has_summon_button:
                     # 没有召唤按钮，尝试查找主角技能确认（增加超时时间，并尝试打开技能面板）
-                    self.report_battle_info(f"大漠对象{dm_index} 非第一回合未识别到召唤按钮，尝试通过技能面板确认主角状态", "info")
                     # 先尝试打开技能面板
                     skill_btn = self.find_image(dm_index, self.button_images["技能按钮"], self.right_button_region, 0)
                     if skill_btn:
-                        self.report_battle_info(f"大漠对象{dm_index} 找到技能按钮，打开技能面板", "info")
                         self.click_position(dm_index, skill_btn.x, skill_btn.y)
-                        time.sleep(0.1)  # 等待技能面板打开
-                    else:
-                        self.report_battle_info(f"大漠对象{dm_index} 未找到技能按钮", "warning")
+                        time.sleep(0.3)  # 等待技能面板打开
                     
                     skill_name, skill_pos = self.find_skill_in_panel(
-                        dm_index, self.main_char_skills, timeout=2  # 增加超时时间从0.5秒到1.5秒
+                        dm_index, self.main_char_skills, timeout=1.5  # 增加超时时间从0.5秒到1.5秒
                     )
                     if not skill_name:
                         # 没有召唤按钮且没有主角技能，视为主角死亡
-                        death_reason = f"非第一回合：未识别到召唤按钮 + 未识别到主角技能（已尝试打开技能面板查找，超时2秒）"
                         with self._state_lock:
                             if account.main_char.alive or account.main_char.reviving:
                                 account.main_char.alive = False
                                 account.main_char.reviving = False
                                 self.state_map.dead_main_char_count += 1
                                 self.state_map.dead_main_char_account_indices.add(dm_index)  # 记录死亡主角的大漠对象下标
-                                self.report_battle_info(f"大漠对象{dm_index} 【判定死亡】{death_reason}", "warning")
-                                return
-                    else:
-                        self.report_battle_info(f"大漠对象{dm_index} 通过技能面板识别到主角技能: {skill_name}，主角存活", "success")
+                                self.report_battle_info(f"大漠对象{dm_index} 非第一回合未识别到召唤按钮和主角技能，标记主角为死亡", "warning")
                 else:
                     # 有召唤按钮，尝试查找主角技能（先确保技能面板已打开）
-                    self.report_battle_info(f"大漠对象{dm_index} 已识别到召唤按钮，尝试查找主角技能确认状态", "info")
                     # 先尝试打开技能面板
                     skill_btn = self.find_image(dm_index, self.button_images["技能按钮"], self.right_button_region, 0)
                     if skill_btn:
-                        self.report_battle_info(f"大漠对象{dm_index} 找到技能按钮，打开技能面板", "info")
                         self.click_position(dm_index, skill_btn.x, skill_btn.y)
-                        time.sleep(0.1)  # 等待技能面板打开
-                    else:
-                        self.report_battle_info(f"大漠对象{dm_index} 未找到技能按钮", "warning")
+                        time.sleep(0.3)  # 等待技能面板打开
                     
                     skill_name, skill_pos = self.find_skill_in_panel(
                         dm_index, self.main_char_skills, timeout=CombatConstants.MAIN_CHAR_SKILL_WAIT_TIMEOUT
                     )
                     if not skill_name:
                         # 有召唤按钮但没有主角技能，视为主角死亡
-                        death_reason = f"非第一回合：识别到召唤按钮 + 未识别到主角技能（超时{CombatConstants.MAIN_CHAR_SKILL_WAIT_TIMEOUT}秒）"
                         with self._state_lock:
                             if account.main_char.alive or account.main_char.reviving:
                                 account.main_char.alive = False
                                 account.main_char.reviving = False
                                 self.state_map.dead_main_char_count += 1
                                 self.state_map.dead_main_char_account_indices.add(dm_index)  # 记录死亡主角的大漠对象下标
-                                self.report_battle_info(f"大漠对象{dm_index} 【判定死亡】{death_reason}", "warning")
+                                self.report_battle_info(f"大漠对象{dm_index} 非第一回合有召唤按钮但未识别到主角技能，标记主角为死亡", "warning")
                     else:
                         # 识别到主角技能，说明主角存活
-                        self.report_battle_info(f"大漠对象{dm_index} 识别到主角技能: {skill_name}，位置: ({skill_pos.x}, {skill_pos.y})", "success")
                         with self._state_lock:
                             # 如果是第一回合且位置未设置，进行初始化
                             if self.is_first_turn and account.main_char.position is None:
@@ -886,28 +846,19 @@ class CombatAutoScript:
                                 # 清除死亡标记
                                 if dm_index in self.state_map.dead_main_char_account_indices:
                                     self.state_map.dead_main_char_account_indices.discard(dm_index)
-                                self.report_battle_info(f"大漠对象{dm_index} 主角复活成功（通过技能识别确认）", "success")
+                                self.report_battle_info(f"大漠对象{dm_index} 主角复活成功", "success")
                             else:
                                 # 正常存活状态，确保状态正确
                                 account.main_char.alive = True
                                 account.main_char.reviving = False
-                                self.report_battle_info(f"大漠对象{dm_index} 主角状态正常（已确认存活）", "info")
                         
                         # 注意：这里不直接return，继续执行后续的召唤武将和复活检查逻辑
                         # 技能释放会在最后执行
             
             # 第一回合或正常情况下的处理
             if not has_summon_button:
-                # 如果没有召唤按钮，可能是武将回合，尝试通过技能确认
-                self.report_battle_info(f"大漠对象{dm_index} 未识别到召唤按钮，尝试通过技能面板确认是否为武将回合", "info")
-                skill_name, skill_pos = self.find_skill_in_panel(
-                        dm_index, self.main_char_skills, timeout=CombatConstants.MAIN_CHAR_SKILL_WAIT_TIMEOUT
-                    )
-                if not skill_name:
-                    self.report_battle_info(f"大漠对象{dm_index} 未识别到主角技能，确认为武将回合，跳过主角操作", "info")
-                    return
-                else:
-                    self.report_battle_info(f"大漠对象{dm_index} 通过技能面板识别到主角技能: {skill_name}，继续主角操作", "info")
+                # 如果没有召唤按钮，可能是武将回合，跳过主角操作
+                return
             
             # ==================== 第一步：检查是否需要召唤武将 ====================
             # 1. 首先检查是否需要召唤武将（非第一回合）
@@ -942,61 +893,29 @@ class CombatAutoScript:
             # 注意：这里需要先检查主角是否存活，如果主角存活，优先让主角去复活
             # 在非第一回合，如果识别到召唤按钮，说明主角存活
             if has_summon_button:
-                self.report_battle_info(f"大漠对象{dm_index} 主角存活，检查是否需要复活其他账号的主角", "info")
                 # 确保主角状态为存活（如果之前没有更新）
                 with self._state_lock:
                     if not account.main_char.alive:
                         account.main_char.alive = True
                         account.main_char.reviving = False
-                        self.report_battle_info(f"大漠对象{dm_index} 更新主角状态为存活", "info")
                 
                 # 检查是否需要复活其他账号的主角（主角优先级最高）
                 # 使用更严格的加锁机制，确保同一时间只有一个主角分配复活任务
-                assigned_target = None
-                # 在锁内完成所有检查和分配，确保原子性操作
-                with self._state_lock:
-                    # 检查当前主角是否已经分配了复活任务
-                    if account.main_char.revive_assigned is not None:
-                        # 已经分配了任务，跳过
-                        self.report_battle_info(f"大漠对象{dm_index} 主角已分配复活任务（目标账号: {account.main_char.revive_assigned}），跳过", "info")
-                        assigned_target = account.main_char.revive_assigned
-                    else:
+                if not account.main_char.revive_assigned:
+                    assigned_target = None
+                    # 在锁内获取所有需要被复活的账号列表并分配任务
+                    with self._state_lock:
                         all_dead_accounts = list(self.state_map.all_dead_account_indices)
                         dead_main_char_accounts = list(self.state_map.dead_main_char_account_indices)
                         
-                        # 优先处理全员阵亡的账号，按账号索引顺序分配，避免多个主角同时分配
-                        for dead_acc_idx in sorted(all_dead_accounts):
-                            if dead_acc_idx == dm_index:
-                                continue
-                            
-                            dead_account = self.state_map.get_account(dead_acc_idx)
-                            
-                            # 检查目标是否已经在复活中
-                            if dead_account.main_char.reviving:
-                                continue
-                            
-                            # 检查是否有其他主角已经分配了复活任务（严格检查）
-                            already_assigned = False
-                            for other_dm_idx in [0, 1, 2]:
-                                if other_dm_idx == dm_index:
-                                    continue
-                                other_acc = self.state_map.get_account(other_dm_idx)
-                                # 检查其他主角是否已分配复活任务
-                                if other_acc.main_char.alive and other_acc.main_char.revive_assigned == dead_acc_idx:
-                                    already_assigned = True
-                                    break
-                            
-                            if not already_assigned:
-                                # 找到第一个未被分配的目标，立即分配（在锁内完成分配）
-                                account.main_char.revive_assigned = dead_acc_idx
-                                assigned_target = dead_acc_idx
-                                self.report_battle_info(f"大漠对象{dm_index} 主角检测到账号{dead_acc_idx}全部阵亡，优先分配主角进行跨账号复活", "info")
-                                break
-                        
-                        # 如果没有找到全员阵亡的账号，再处理主角死亡但武将可能存活的账号
-                        if assigned_target is None:
-                            for dead_acc_idx in sorted(dead_main_char_accounts):
-                                if dead_acc_idx == dm_index or dead_acc_idx in all_dead_accounts:
+                        # 检查当前主角是否已经被其他主角"抢占"了任务（双重检查）
+                        if account.main_char.revive_assigned is not None:
+                            # 已经被分配了任务，跳过
+                            pass
+                        else:
+                            # 优先处理全员阵亡的账号，按账号索引顺序分配，避免多个主角同时分配
+                            for dead_acc_idx in sorted(all_dead_accounts):
+                                if dead_acc_idx == dm_index:
                                     continue
                                 
                                 dead_account = self.state_map.get_account(dead_acc_idx)
@@ -1005,62 +924,85 @@ class CombatAutoScript:
                                 if dead_account.main_char.reviving:
                                     continue
                                 
-                                # 检查是否有其他主角已经分配了复活任务
+                                # 检查是否有其他主角已经分配了复活任务（严格检查）
                                 already_assigned = False
                                 for other_dm_idx in [0, 1, 2]:
                                     if other_dm_idx == dm_index:
                                         continue
                                     other_acc = self.state_map.get_account(other_dm_idx)
+                                    # 检查其他主角是否已分配复活任务（包括当前正在检查的主角）
                                     if other_acc.main_char.alive and other_acc.main_char.revive_assigned == dead_acc_idx:
                                         already_assigned = True
                                         break
                                 
-                                if already_assigned:
-                                    continue
-                                
-                                # 检查目标账号是否有存活的武将
-                                has_alive_general = False
-                                for gen_name, gen in dead_account.get_active_generals():
-                                    if gen.alive:
-                                        has_alive_general = True
-                                        break
-                                
-                                if not has_alive_general:
-                                    # 目标账号的主角死亡且没有存活的武将，分配当前账号的主角进行跨账号复活
+                                if not already_assigned:
+                                    # 找到第一个未被分配的目标，立即分配（在锁内完成分配）
                                     account.main_char.revive_assigned = dead_acc_idx
                                     assigned_target = dead_acc_idx
-                                    self.report_battle_info(f"大漠对象{dm_index} 主角检测到账号{dead_acc_idx}主角死亡且武将全部死亡，优先分配主角进行跨账号复活", "info")
+                                    self.report_battle_info(f"大漠对象{dm_index} 主角检测到账号{dead_acc_idx}全部阵亡，优先分配主角进行跨账号复活", "info")
                                     break
-                
-                # 执行复活操作（在锁外执行，避免长时间持有锁）
-                if assigned_target is not None:
-                    self.report_battle_info(f"大漠对象{dm_index} 主角开始执行复活操作（目标账号: {assigned_target}）", "action")
-                    dead_account = self.state_map.get_account(assigned_target)
-                    if self.try_revive_main_char(dm_index, account, assigned_target):
-                        # 复活操作完成，标记目标主角为复活中
-                        with self._state_lock:
-                            dead_account.main_char.reviving = True
-                        self.report_battle_info(f"大漠对象{dm_index} 主角使用复活药复活账号{assigned_target}的主角成功", "action")
-                        return
-                    else:
-                        # 复活失败，清除任务分配
-                        with self._state_lock:
-                            account.main_char.revive_assigned = None
-                        self.report_battle_info(f"大漠对象{dm_index} 主角跨账号复活账号{assigned_target}的主角失败", "warning")
-                else:
-                    self.report_battle_info(f"大漠对象{dm_index} 主角无需执行复活操作（没有需要复活的目标）", "info")
+                            
+                            # 如果没有找到全员阵亡的账号，再处理主角死亡但武将可能存活的账号
+                            if assigned_target is None:
+                                for dead_acc_idx in sorted(dead_main_char_accounts):
+                                    if dead_acc_idx == dm_index or dead_acc_idx in all_dead_accounts:
+                                        continue
+                                    
+                                    dead_account = self.state_map.get_account(dead_acc_idx)
+                                    
+                                    # 检查目标是否已经在复活中
+                                    if dead_account.main_char.reviving:
+                                        continue
+                                    
+                                    # 检查是否有其他主角已经分配了复活任务
+                                    already_assigned = False
+                                    for other_dm_idx in [0, 1, 2]:
+                                        if other_dm_idx == dm_index:
+                                            continue
+                                        other_acc = self.state_map.get_account(other_dm_idx)
+                                        if other_acc.main_char.alive and other_acc.main_char.revive_assigned == dead_acc_idx:
+                                            already_assigned = True
+                                            break
+                                    
+                                    if already_assigned:
+                                        continue
+                                    
+                                    # 检查目标账号是否有存活的武将
+                                    has_alive_general = False
+                                    for gen_name, gen in dead_account.get_active_generals():
+                                        if gen.alive:
+                                            has_alive_general = True
+                                            break
+                                    
+                                    if not has_alive_general:
+                                        # 目标账号的主角死亡且没有存活的武将，分配当前账号的主角进行跨账号复活
+                                        account.main_char.revive_assigned = dead_acc_idx
+                                        assigned_target = dead_acc_idx
+                                        self.report_battle_info(f"大漠对象{dm_index} 主角检测到账号{dead_acc_idx}主角死亡且武将全部死亡，优先分配主角进行跨账号复活", "info")
+                                        break
+                    
+                    # 执行复活操作（在锁外执行，避免长时间持有锁）
+                    if assigned_target is not None:
+                        dead_account = self.state_map.get_account(assigned_target)
+                        if self.try_revive_main_char(dm_index, account, assigned_target):
+                            # 复活操作完成，标记目标主角为复活中
+                            with self._state_lock:
+                                dead_account.main_char.reviving = True
+                            self.report_battle_info(f"大漠对象{dm_index} 主角使用复活药复活账号{assigned_target}的主角", "action")
+                            return
+                        else:
+                            # 复活失败，清除任务分配
+                            with self._state_lock:
+                                account.main_char.revive_assigned = None
+                            self.report_battle_info(f"大漠对象{dm_index} 主角跨账号复活账号{assigned_target}的主角失败", "warning")
             
             # ==================== 第三步：正常的技能释放 ====================
             # 3. 等待主角技能（2秒超时）
-            self.report_battle_info(f"大漠对象{dm_index} 开始查找主角技能进行释放", "info")
             # 先确保技能面板已打开
             skill_btn = self.find_image(dm_index, self.button_images["技能按钮"], self.right_button_region, 0)
             if skill_btn:
-                self.report_battle_info(f"大漠对象{dm_index} 找到技能按钮，打开技能面板", "info")
                 self.click_position(dm_index, skill_btn.x, skill_btn.y)
-                time.sleep(0.1)  # 等待技能面板打开
-            else:
-                self.report_battle_info(f"大漠对象{dm_index} 未找到技能按钮", "warning")
+                time.sleep(0.3)  # 等待技能面板打开
             
             skill_name, skill_pos = self.find_skill_in_panel(
                 dm_index, self.main_char_skills, timeout=CombatConstants.MAIN_CHAR_SKILL_WAIT_TIMEOUT
@@ -1068,7 +1010,6 @@ class CombatAutoScript:
             
             if skill_name and skill_pos:
                 # 识别到主角技能，说明主角存活
-                self.report_battle_info(f"大漠对象{dm_index} 识别到主角技能: {skill_name}，位置: ({skill_pos.x}, {skill_pos.y})", "success")
                 with self._state_lock:
                     # 如果是第一回合且位置未设置，进行初始化
                     if self.is_first_turn and account.main_char.position is None:
@@ -1084,99 +1025,77 @@ class CombatAutoScript:
                         # 清除死亡标记
                         if dm_index in self.state_map.dead_main_char_account_indices:
                             self.state_map.dead_main_char_account_indices.discard(dm_index)
-                        self.report_battle_info(f"大漠对象{dm_index} 主角复活成功（通过技能识别确认）", "success")
+                        self.report_battle_info(f"大漠对象{dm_index} 主角复活成功", "success")
                     else:
                         # 正常存活状态，确保状态正确
                         account.main_char.alive = True
                         account.main_char.reviving = False
-                        self.report_battle_info(f"大漠对象{dm_index} 主角状态正常（已确认存活）", "info")
                 
                 # 释放技能
                 target_pos = self.state_map.enemy_target_position or self.default_enemy_target_position
-                self.report_battle_info(f"大漠对象{dm_index} 准备释放技能{skill_name}，目标位置: {target_pos}", "info")
                 if self.release_skill(dm_index, skill_name, skill_pos, target_pos):
-                    self.report_battle_info(f"大漠对象{dm_index} 主角释放{skill_name}成功", "action")
-                else:
-                    self.report_battle_info(f"大漠对象{dm_index} 主角释放{skill_name}失败", "error")
+                    self.report_battle_info(f"大漠对象{dm_index} 主角释放{skill_name}", "action")
             else:
                 # 未识别到主角技能，再次尝试（可能技能面板还没完全打开）
-                self.report_battle_info(f"大漠对象{dm_index} 首次未识别到主角技能，进行重试（可能技能面板未完全打开）", "warning")
                 # 再次尝试打开技能面板并查找
                 skill_btn = self.find_image(dm_index, self.button_images["技能按钮"], self.right_button_region, 0)
                 if skill_btn:
-                    self.report_battle_info(f"大漠对象{dm_index} 重试：找到技能按钮，重新打开技能面板", "info")
                     self.click_position(dm_index, skill_btn.x, skill_btn.y)
-                    time.sleep(0.1)  # 等待技能面板打开
-                else:
-                    self.report_battle_info(f"大漠对象{dm_index} 重试：未找到技能按钮", "warning")
-                # 再次查找技能
-                skill_name, skill_pos = self.find_skill_in_panel(
-                    dm_index, self.main_char_skills, timeout=3
-                )
-                if skill_name and skill_pos:
-                    # 识别到主角技能，说明主角存活
-                    self.report_battle_info(f"大漠对象{dm_index} 重试成功：识别到主角技能: {skill_name}，位置: ({skill_pos.x}, {skill_pos.y})", "success")
-                    with self._state_lock:
-                        # 如果是第一回合且位置未设置，进行初始化
-                        if self.is_first_turn and account.main_char.position is None:
-                            account.main_char.position = (764, 380)  # 默认位置
-                            self.report_battle_info(f"大漠对象{dm_index} 初始化：识别到主角技能: {skill_name}", "success")
-                        
-                        # 如果之前是死亡状态或正在复活中，说明复活成功（在下一个回合更新具体复活状态）
-                        if not account.main_char.alive or account.main_char.reviving:
-                            account.main_char.alive = True
-                            account.main_char.reviving = False
-                            if self.state_map.dead_main_char_count > 0:
-                                self.state_map.dead_main_char_count -= 1
-                            # 清除死亡标记
-                            if dm_index in self.state_map.dead_main_char_account_indices:
-                                self.state_map.dead_main_char_account_indices.discard(dm_index)
-                            self.report_battle_info(f"大漠对象{dm_index} 主角复活成功（重试后通过技能识别确认）", "success")
-                        else:
-                            # 正常存活状态，确保状态正确
-                            account.main_char.alive = True
-                            account.main_char.reviving = False
-                            self.report_battle_info(f"大漠对象{dm_index} 主角状态正常（重试后已确认存活）", "info")
-                    
-                    # 释放技能
-                    target_pos = self.state_map.enemy_target_position or self.default_enemy_target_position
-                    self.report_battle_info(f"大漠对象{dm_index} 准备释放技能{skill_name}，目标位置: {target_pos}", "info")
-                    if self.release_skill(dm_index, skill_name, skill_pos, target_pos):
-                        self.report_battle_info(f"大漠对象{dm_index} 主角释放{skill_name}成功", "action")
-                    else:
-                        self.report_battle_info(f"大漠对象{dm_index} 主角释放{skill_name}失败", "error")
-                else:
-                    # 两次都没找到技能
-                    self.report_battle_info(f"大漠对象{dm_index} 重试后仍未识别到主角技能（首次超时{CombatConstants.MAIN_CHAR_SKILL_WAIT_TIMEOUT}秒，重试超时3秒）", "warning")
-                    # 注意：这里不标记死亡，因为可能是技能冷却或其他原因
-                    
-                    # 如果没找到技能，进行加血操作（如果主角需要加血）
-                    if account.main_char.need_heal:
-                        self.report_battle_info(f"大漠对象{dm_index} 主角需要加血，尝试使用恢复药", "info")
-                        heal_success = self.try_heal_main_char(dm_index, account)
-                        if heal_success:
-                            self.report_battle_info(f"大漠对象{dm_index} 主角加血成功", "action")
-                        else:
-                            # 如果没找到恢复药图片，点击防御按钮进行防御操作
-                            self.report_battle_info(f"大漠对象{dm_index} 未找到恢复药，尝试执行防御操作", "warning")
-                            defense_btn = self.find_image(dm_index, self.button_images["防御按钮"], self.right_button_region, 0)
-                            if defense_btn:
-                                self.click_position(dm_index, defense_btn.x, defense_btn.y)
-                                time.sleep(CombatConstants.ACTION_DELAY)
-                                self.report_battle_info(f"大漠对象{dm_index} 执行防御操作成功", "action")
+                    time.sleep(0.5)  # 等待技能面板打开
+                    # 再次查找技能
+                    skill_name, skill_pos = self.find_skill_in_panel(
+                        dm_index, self.main_char_skills, timeout=1.0
+                    )
+                    if skill_name and skill_pos:
+                        # 第二次找到了技能，说明主角存活
+                        with self._state_lock:
+                            if not account.main_char.alive or account.main_char.reviving:
+                                account.main_char.alive = True
+                                account.main_char.reviving = False
+                                if self.state_map.dead_main_char_count > 0:
+                                    self.state_map.dead_main_char_count -= 1
+                                if dm_index in self.state_map.dead_main_char_account_indices:
+                                    self.state_map.dead_main_char_account_indices.discard(dm_index)
+                                self.report_battle_info(f"大漠对象{dm_index} 主角复活成功（第二次查找）", "success")
                             else:
-                                self.report_battle_info(f"大漠对象{dm_index} 未找到恢复药且未找到防御按钮", "warning")
-                    else:
-                        # 不需要加血，直接执行防御操作
-                        self.report_battle_info(f"大漠对象{dm_index} 主角不需要加血，尝试执行防御操作", "info")
+                                account.main_char.alive = True
+                                account.main_char.reviving = False
+                        
+                        # 释放技能
+                        target_pos = self.state_map.enemy_target_position or self.default_enemy_target_position
+                        if self.release_skill(dm_index, skill_name, skill_pos, target_pos):
+                            self.report_battle_info(f"大漠对象{dm_index} 主角释放{skill_name}", "action")
+                        return
+                
+                # 两次都没找到技能，标记为死亡
+                with self._state_lock:
+                    # 如果正在复活中但没识别到技能，说明复活失败，标记为死亡
+                    if account.main_char.reviving:
+                        account.main_char.alive = False
+                        account.main_char.reviving = False
+                        self.state_map.dead_main_char_count += 1
+                        self.state_map.dead_main_char_account_indices.add(dm_index)  # 记录死亡主角的大漠对象下标
+                        self.report_battle_info(f"大漠对象{dm_index} 主角复活失败（未识别到技能），标记为死亡", "warning")
+                    elif not self.is_first_turn and account.main_char.alive:
+                        # 非第一回合且之前存活，现在没识别到技能，标记为死亡
+                        account.main_char.alive = False
+                        account.main_char.reviving = False
+                        self.state_map.dead_main_char_count += 1
+                        self.state_map.dead_main_char_account_indices.add(dm_index)  # 记录死亡主角的大漠对象下标
+                        self.report_battle_info(f"大漠对象{dm_index} 非第一回合未识别到主角技能（已重试），标记主角为死亡", "warning")
+                
+                # 如果没找到技能，进行加血操作（如果主角需要加血）
+                if not skill_name and account.main_char.need_heal:
+                    heal_success = self.try_heal_main_char(dm_index, account)
+                    # 如果没找到恢复药图片，点击防御按钮进行防御操作
+                    if not heal_success:
                         defense_btn = self.find_image(dm_index, self.button_images["防御按钮"], self.right_button_region, 0)
                         if defense_btn:
                             self.click_position(dm_index, defense_btn.x, defense_btn.y)
                             time.sleep(CombatConstants.ACTION_DELAY)
-                            self.report_battle_info(f"大漠对象{dm_index} 执行防御操作成功", "action")
+                            self.report_battle_info(f"大漠对象{dm_index} 未找到恢复药，执行防御操作", "action")
                         else:
-                            self.report_battle_info(f"大漠对象{dm_index} 未找到防御按钮", "warning")
-                            
+                            self.report_battle_info(f"大漠对象{dm_index} 未找到恢复药且未找到防御按钮", "warning")
         except Exception as e:
             self.report_battle_info(f"大漠对象{dm_index} 主角操作出错: {e}", "error")
     
@@ -1207,7 +1126,7 @@ class CombatAutoScript:
                 return
             
             # 等待操作按钮出现（确保技能面板已显示）
-            if not self.wait_for_action_button(dm_index, timeout=4.0):
+            if not self.wait_for_action_button(dm_index, timeout=2.0):
                 self.report_battle_info(f"大漠对象{dm_index} 武将操作阶段未检测到操作按钮", "warning")
                 # 检测不到操作按钮，可能是武将已死亡，进行死亡判定
                 with self._state_lock:
@@ -1340,11 +1259,7 @@ class CombatAutoScript:
                     # 跳过当前账号（已经在上面处理了）
                     continue
                 
-                # 加锁检查并分配复活任务（确保原子性操作）
-                assigned_target = None
-                assigned_general = None
-                assigned_gen_name = None
-                
+                # 加锁检查并分配复活任务
                 with self._state_lock:
                     target_account = self.state_map.get_account(target_acc_idx)
                     
@@ -1353,7 +1268,7 @@ class CombatAutoScript:
                         # 已经在复活中，跳过
                         continue
                     
-                    # 检查是否有其他单位已经分配了复活任务（严格检查）
+                    # 检查是否有其他单位已经分配了复活任务
                     already_assigned = False
                     for other_dm_idx in [0, 1, 2]:
                         if other_dm_idx == dm_index:
@@ -1370,32 +1285,39 @@ class CombatAutoScript:
                     
                     # 检查当前账号是否有存活的武将可以执行复活
                     has_alive_general = False
+                    available_general = None
                     for gen_name, gen in account.get_active_generals():
                         if gen.alive and not gen.revive_assigned:
-                            # 检查是否应该由当前账号的武将来复活
-                            if target_acc_idx in self.state_map.all_dead_account_indices:
-                                # 目标账号全部阵亡，分配当前账号的武将进行跨账号复活
-                                gen.revive_assigned = target_acc_idx
-                                assigned_target = target_acc_idx
-                                assigned_general = gen
-                                assigned_gen_name = gen_name
-                                has_alive_general = True
-                                self.report_battle_info(f"大漠对象{dm_index} 武将{gen_name}检测到账号{target_acc_idx}全部阵亡，尝试跨账号复活", "info")
-                                break
+                            has_alive_general = True
+                            available_general = (gen_name, gen)
+                            break
+                    
+                    if has_alive_general:
+                        # 当前账号有存活的武将，尝试分配复活任务
+                        gen_name, gen = available_general
+                        # 检查是否应该由当前账号的武将来复活
+                        if target_acc_idx in self.state_map.all_dead_account_indices:
+                            # 目标账号全部阵亡，分配当前账号的武将进行跨账号复活
+                            gen.revive_assigned = target_acc_idx
+                            self.report_battle_info(f"大漠对象{dm_index} 武将{gen_name}检测到账号{target_acc_idx}全部阵亡，尝试跨账号复活", "info")
+                        else:
+                            continue
                 
                 # 执行复活操作（在锁外执行）
-                if assigned_target is not None and assigned_general is not None:
-                    if self.try_revive_main_char(dm_index, account, assigned_target):
-                        # 复活操作完成，标记目标主角为复活中
-                        with self._state_lock:
-                            target_account.main_char.reviving = True
-                        self.report_battle_info(f"大漠对象{dm_index} 武将{assigned_gen_name}使用复活药复活账号{assigned_target}的主角", "action")
-                        return
-                    else:
-                        # 复活失败，清除任务分配
-                        with self._state_lock:
-                            assigned_general.revive_assigned = None
-                        self.report_battle_info(f"大漠对象{dm_index} 武将{assigned_gen_name}跨账号复活账号{assigned_target}的主角失败", "warning")
+                if has_alive_general and available_general:
+                    gen_name, gen = available_general
+                    if gen.revive_assigned == target_acc_idx:
+                        if self.try_revive_main_char(dm_index, account, target_acc_idx):
+                            # 复活操作完成，标记目标主角为复活中
+                            with self._state_lock:
+                                target_account.main_char.reviving = True
+                            self.report_battle_info(f"大漠对象{dm_index} 武将{gen_name}使用复活药复活账号{target_acc_idx}的主角", "action")
+                            return
+                        else:
+                            # 复活失败，清除任务分配
+                            with self._state_lock:
+                                gen.revive_assigned = None
+                            self.report_battle_info(f"大漠对象{dm_index} 武将{gen_name}跨账号复活账号{target_acc_idx}的主角失败", "warning")
             
             # 2. 查找武将技能（3秒超时）
             self.report_battle_info(f"大漠对象{dm_index} 开始查找武将技能", "info")
@@ -1686,41 +1608,13 @@ class CombatAutoScript:
                 break
             time.sleep(0.1)
         
-        if not general_pos:
-            self.report_battle_info(f"大漠对象{dm_index} 查找武将{general_name}图片超时（3秒）", "warning")
-            return False
-        
-        # 点击武将图片，并验证是否点击成功（最多重试2次）
-        max_retries = 2
-        click_success = False
-        for attempt in range(max_retries):
-            # 点击武将图片
+        if general_pos:
             self.click_position(dm_index, general_pos.x, general_pos.y)
             time.sleep(CombatConstants.ACTION_DELAY)
-            
-            # 验证武将图片是否消失（点击成功）
-            verify_pos = self.find_image(dm_index, general_path, self.summon_panel_region, 0)
-            if verify_pos is None:
-                # 武将图片已消失，点击成功
-                click_success = True
-                if attempt > 0:
-                    self.report_battle_info(f"大漠对象{dm_index} 武将{general_name}点击成功（第{attempt + 1}次尝试）", "info")
-                break
-            else:
-                # 武将图片还在，需要重试
-                if attempt < max_retries - 1:
-                    self.report_battle_info(f"大漠对象{dm_index} 武将{general_name}点击后未消失，进行第{attempt + 2}次点击", "warning")
-                    general_pos = verify_pos  # 更新位置（可能位置有变化）
-                    time.sleep(0.2)  # 短暂延迟后重试
-                else:
-                    # 最后一次尝试也失败
-                    self.report_battle_info(f"大漠对象{dm_index} 武将{general_name}点击失败（已重试{max_retries - 1}次，武将图片仍未消失）", "error")
-                    return False
-        
-        if click_success:
             self.report_battle_info(f"大漠对象{dm_index} 召唤{general_name}成功", "action")
             return True
         else:
+            self.report_battle_info(f"大漠对象{dm_index} 查找武将{general_name}图片超时（3秒）", "warning")
             return False
 
     def _clear_all_revive_assignments(self):
@@ -1832,35 +1726,8 @@ class CombatAutoScript:
             self.report_battle_info(f"大漠对象{dm_index} 查找复活药图片超时（3秒）", "warning")
             return False
         
-        # 点击复活药，并验证是否点击成功（最多重试2次）
-        max_retries = 2
-        click_success = False
-        for attempt in range(max_retries):
-            # 点击复活药
-            self.click_position(dm_index, revive_pos.x, revive_pos.y)
-            time.sleep(CombatConstants.ACTION_DELAY)
-            
-            # 验证复活药是否消失（点击成功）
-            verify_pos = self.find_image(dm_index, revive_path, self.item_panel_region, 0)
-            if verify_pos is None:
-                # 复活药已消失，点击成功
-                click_success = True
-                if attempt > 0:
-                    self.report_battle_info(f"大漠对象{dm_index} 复活药点击成功（第{attempt + 1}次尝试）", "info")
-                break
-            else:
-                # 复活药还在，需要重试
-                if attempt < max_retries - 1:
-                    self.report_battle_info(f"大漠对象{dm_index} 复活药点击后未消失，进行第{attempt + 2}次点击", "warning")
-                    revive_pos = verify_pos  # 更新位置（可能位置有变化）
-                    time.sleep(0.2)  # 短暂延迟后重试
-                else:
-                    # 最后一次尝试也失败
-                    self.report_battle_info(f"大漠对象{dm_index} 复活药点击失败（已重试{max_retries - 1}次，复活药仍未消失）", "error")
-                    return False
-        
-        if not click_success:
-            return False
+        self.click_position(dm_index, revive_pos.x, revive_pos.y)
+        time.sleep(CombatConstants.ACTION_DELAY)
         
         # 在指定账号的主角区域查找复活目标图片（fuhuohuo）
         # 大漠对象0对应中间，大漠对象1对应上面，大漠对象2对应下面
@@ -2079,35 +1946,8 @@ class CombatAutoScript:
             self.report_battle_info(f"大漠对象{dm_index} 查找恢复药图片超时（3秒）", "warning")
             return False
 
-        # 点击恢复药，并验证是否点击成功（最多重试2次）
-        max_retries = 2
-        click_success = False
-        for attempt in range(max_retries):
-            # 点击恢复药
-            self.click_position(dm_index, heal_pos.x, heal_pos.y)
-            time.sleep(CombatConstants.ACTION_DELAY)
-            
-            # 验证恢复药是否消失（点击成功）
-            verify_pos = self.find_image(dm_index, heal_path, self.item_panel_region, 0)
-            if verify_pos is None:
-                # 恢复药已消失，点击成功
-                click_success = True
-                if attempt > 0:
-                    self.report_battle_info(f"大漠对象{dm_index} 恢复药点击成功（第{attempt + 1}次尝试）", "info")
-                break
-            else:
-                # 恢复药还在，需要重试
-                if attempt < max_retries - 1:
-                    self.report_battle_info(f"大漠对象{dm_index} 恢复药点击后未消失，进行第{attempt + 2}次点击", "warning")
-                    heal_pos = verify_pos  # 更新位置（可能位置有变化）
-                    time.sleep(0.2)  # 短暂延迟后重试
-                else:
-                    # 最后一次尝试也失败
-                    self.report_battle_info(f"大漠对象{dm_index} 恢复药点击失败（已重试{max_retries - 1}次，恢复药仍未消失）", "error")
-                    return False
-        
-        if not click_success:
-            return False
+        self.click_position(dm_index, heal_pos.x, heal_pos.y)
+        time.sleep(CombatConstants.ACTION_DELAY)
         
         # 点击主角位置
         target_pos = account.main_char.position or (764, 380)
