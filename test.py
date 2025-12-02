@@ -618,10 +618,11 @@ dict_id2 = dm.SetDict(2, r"D:\myproject\menghuansanguo-script-master\menghuansan
 print(f"字库加载成功，{dict_id},{dict_id1},{dict_id2}")
 # print(dm.GetDictCount(0), dm.GetDictCount(1), dm.GetDictCount(2))
 # 文字识别参数
-color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
+# color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
 # color_format = "ffff00-000000|fff200-000000|fdfd06-000000"  # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
-# color_format = 'ff0000-000000'
+print(dm.GetColor(854,334))
+color_format = "ffff00-000000|fff200-000000|f4f400-000000"
 # 切换到目标窗口
 # dm.SetWindowState(hwnd, 1)  # 激活窗口
 # dm.MoveTo(1000, 500)
@@ -646,7 +647,7 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png") 534 368
-find_str_result = dm.FindStrFastE(0, 0, x, y, "实", color_format, sim)
+find_str_result = dm.FindStrFastE(0, 0, x, y, "挑战者", color_format, sim)
 print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)

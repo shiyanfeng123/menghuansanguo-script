@@ -6,7 +6,11 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('serveAssets', 'serveAssets'),('version_info.txt', 'version_info.txt')],
-    hiddenimports=[],
+    hiddenimports=[
+        'Kanloong_combat_script_copy',
+        'wx.lib.scrolledpanel',
+        'wx.lib.scrolledpanel.scrolled',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -22,7 +26,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='脚本v25.11.6',
+    name='脚本v25.12.1',
     version='version_info.txt',  # 元组格式
     debug=False,
     bootloader_ignore_signals=False,

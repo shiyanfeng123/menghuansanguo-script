@@ -732,15 +732,8 @@ class CombatAutoScript:
         
         # 武将操作阶段（根据实际武将数量循环，最多2次）
         # 获取最大武将数量
-        max_general_count = 0
-        for dm_index in [0, 1, 2]:
-            account = self.state_map.get_account(dm_index)
-            general_count = account.get_general_count()
-            if general_count > max_general_count:
-                max_general_count = general_count
-        
-        # 根据实际武将数量循环（至少循环1次，最多2次）
-        loop_count = max(1, min(2, max_general_count))
+        # 固定循环2次
+        loop_count = 2
         for round_num in range(1, loop_count + 1):
             self.report_battle_info(f"武将操作阶段 - 第{round_num}轮（共{loop_count}轮）", "info")
             self.handle_general_phase()
