@@ -159,6 +159,7 @@ class GlobalStateMap:
         # 待复活点位记录：key为施法坐标元组(cast_x, cast_y)，value为正在复活的账号索引和施法坐标
         # 格式：{(cast_x, cast_y): {"target_account_idx": int, "reviver_dm_index": int, "target_pos": (x, y)}}
         self.pending_revive_positions = {}
+        self.has_liubei_on_field = False  # 场上是否有刘备（每回合开始时重置为False，检测到辅助武将或召唤刘备时设置为True）
     
     def get_account(self, dm_index):
         """获取指定大漠对象的账号状态"""
@@ -272,21 +273,22 @@ class CombatAutoScript:
         # zdzd检测区域（全屏检测）
         self.zdzd_region = (0, 0, 900, 580)  # 全屏区域
         
-        # 技能图片
+        # 技能图片路径（需要根据实际技能图标添加）
         self.skill_images = {
             # 主角技能
-            "寂灭神劫": f"{self.get_resource_path('serveAssets/images/auto/cehsi.bmp')}|{self.get_resource_path('serveAssets/images/auto/jimie2.bmp')}",
-            "锁魂": f"{self.get_resource_path('serveAssets/images/auto/zhanshiqun.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhanshiqun1.bmp')}",
+            "寂灭神劫": f"{self.get_resource_path('serveAssets/images/auto/jimie1.bmp')}|{self.get_resource_path('serveAssets/images/auto/jimie2.bmp')}",
+            "锁魂": f"{self.get_resource_path('serveAssets/images/auto/suohun1.bmp')}|{self.get_resource_path('serveAssets/images/auto/suohun2.bmp')}",
             "天灾": f"{self.get_resource_path('serveAssets/images/auto/tianzai1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tianzai2.bmp')}",
-            # 辅助武将技能（刘备）
-            "加血": f"{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan2.bmp')}",
+            # 辅助武将技能
+           "加血": f"{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan2.bmp')}",
             "加攻击": f"{self.get_resource_path('serveAssets/images/auto/liubeizengshang1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeizengshang2.bmp')}",
             "控制": f"{self.get_resource_path('serveAssets/images/auto/liubeikong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeikong2.bmp')}",
             "清除状态": f"{self.get_resource_path('serveAssets/images/auto/liubeijie1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeijie2.bmp')}",
-            # 攻击武将技能
+            # 输出武将技能
             "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun3.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocaoqun2.bmp')}",
             "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguqun1.bmp')}|{self.get_resource_path('serveAssets/images/auto/moguqun2.bmp')}",
         }
+
 
         # 物品图片
         self.item_images = {
@@ -298,7 +300,7 @@ class CombatAutoScript:
         self.bag_general_images = {
             "刘备": f"{self.get_resource_path('serveAssets/images/auto/liubei1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubei2.bmp')}",
             "魔化关羽": f"{self.get_resource_path('serveAssets/images/auto/mogu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/mogu1.bmp')}",
-            "曹操": self.get_resource_path("serveAssets/images/auto/caocao1.bmp"),
+            "曹操": f"{self.get_resource_path('serveAssets/images/auto/bawang1.bmp')}|{self.get_resource_path('serveAssets/images/auto/luanshi1.bmp')}",
         }
 
         # 目标选择图片
@@ -373,7 +375,7 @@ class CombatAutoScript:
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/longdan1.bmp"),
                 },
-                "status_region": (165, 255, 207, 307),
+                "status_region": (157, 253, 245, 312),
                 "cast_position": (202, 337),
             },
         }
@@ -685,6 +687,8 @@ class CombatAutoScript:
         self.enemy_target_detected_this_turn = False
         # 重置我军辅助技能施法点位识别标志，以便本轮重新识别
         self.ally_support_target_detected_this_turn = False
+        # 重置场上是否有刘备的标记（每回合开始时重置为False）
+        self.state_map.has_liubei_on_field = False
         
         # 检测我军辅助技能施法点位（在我方回合开始时检测，因为敌军回合可能阵亡）
         dm_index = 0
@@ -734,13 +738,12 @@ class CombatAutoScript:
         # 获取最大武将数量
         # 固定循环2次
         loop_count = 2
-        for round_num in range(1, loop_count + 1):
-            self.report_battle_info(f"武将操作阶段 - 第{round_num}轮（共{loop_count}轮）", "info")
+        for i in range(loop_count):
+            self.report_battle_info(f"武将操作阶段 - 第{i+1}轮（共{loop_count}轮）", "info")
             self.handle_general_phase()
-            if round_num < loop_count:  # 如果不是最后一轮，等待下一轮
-                time.sleep(0.3)
-                for dm_index in [0, 1, 2]:
-                    self.wait_for_action_button(dm_index, timeout=3.0)
+            time.sleep(0.3)
+            for dm_index in [0, 1, 2]:
+                self.wait_for_action_button(dm_index, timeout=3.0)
         
         # 更新全局状态
         self.update_global_state()
@@ -1039,6 +1042,7 @@ class CombatAutoScript:
                         # 复活失败，清除任务分配
                         with self._state_lock:
                             account.main_char.revive_assigned = None
+                        self.click_position(dm_index, 100, 100)
                         self.report_battle_info(f"大漠对象{dm_index} 主角跨账号复活账号{assigned_target}的主角失败", "warning")
                 else:
                     self.report_battle_info(f"大漠对象{dm_index} 主角无需执行复活操作（没有需要复活的目标）", "info")
@@ -1276,6 +1280,7 @@ class CombatAutoScript:
                                 # 复活失败，清除任务分配
                                 with self._state_lock:
                                     account.main_char.revive_assigned = None
+                                self.click_position(dm_index, 100, 100)
                                 self.report_battle_info(f"大漠对象{dm_index} 主角跨账号复活账号{dead_acc_idx}的主角失败", "warning")
                 
                 return
@@ -1307,6 +1312,8 @@ class CombatAutoScript:
                                 dead_account.main_char.reviving = True
                             self.report_battle_info(f"大漠对象{dm_index} 使用当前账号武将复活主角", "action")
                             return
+                        else:
+                            self.click_position(dm_index, 100, 100)
                     else:
                         # 当前账号武将全部死亡，分配其他账号去复活这个主角
                         self.report_battle_info(f"大漠对象{dm_index} 当前账号武将全部死亡，分配其他账号进行复活", "info")
@@ -1322,6 +1329,7 @@ class CombatAutoScript:
                                 # 跨账号复活失败，清除所有账号的复活任务分配
                                 with self._state_lock:
                                     self._clear_all_revive_assignments()
+                                self.click_position(dm_index, 100, 100)
                                 self.report_battle_info(f"大漠对象{dm_index} 跨账号复活失败，已清除所有复活任务分配", "warning")
                         else:
                             self.report_battle_info(f"大漠对象{dm_index} 未能分配跨账号复活任务", "warning")
@@ -1388,6 +1396,7 @@ class CombatAutoScript:
                         # 复活失败，清除任务分配
                         with self._state_lock:
                             assigned_general.revive_assigned = None
+                        self.click_position(dm_index, 100, 100)
                         self.report_battle_info(f"大漠对象{dm_index} 武将{assigned_gen_name}跨账号复活账号{assigned_target}的主角失败", "warning")
             
             # 2. 查找武将技能（3秒超时）
@@ -1475,6 +1484,8 @@ class CombatAutoScript:
                                 self.report_battle_info(f"大漠对象{dm_index} 初始化：识别到辅助武将（第2个）技能: {skill_name}", "success")
                         
                         self.update_general_status(account, "support", skill_name)
+                        # 识别到辅助武将，说明场上有刘备
+                        self.state_map.has_liubei_on_field = True
                         
                         # 清除状态：对需要清除的敌军释放（使用固定点位）
                         if self.state_map.enemies_need_clear:
@@ -1526,6 +1537,8 @@ class CombatAutoScript:
                             self.report_battle_info(f"大漠对象{dm_index} 初始化：识别到辅助武将（第2个）技能: {skill_name}", "success")
                     
                     self.update_general_status(account, "support", skill_name)
+                    # 识别到辅助武将，说明场上有刘备
+                    self.state_map.has_liubei_on_field = True
                 
                 # 按技能顺序释放
                 self.release_support_skill(dm_index, account, skill_name, skill_pos)
@@ -1581,19 +1594,22 @@ class CombatAutoScript:
 
     def try_summon_general(self, dm_index, account):
         """尝试召唤武将"""
-        # 召唤顺序：刘备（如果不存在存活的辅助武将）→ 曹操 → 魔化关羽
-        has_support = False
-        for gen in [account.general1, account.general2]:
-            if gen.alive and gen.general_type == "support":
-                has_support = True
-                break
+        # 召唤顺序：刘备（如果场上没有刘备）→ 曹操 → 魔化关羽
+        # 检查场上是否有刘备（通过全局标记判断，而不是只检查当前账号）
+        has_liubei = self.state_map.has_liubei_on_field
         
-        general_order = ["刘备", "曹操", "魔化关羽"] if not has_support else ["曹操", "魔化关羽"]
+        general_order = ["刘备", "曹操", "魔化关羽"] if not has_liubei else ["曹操", "魔化关羽"]
         
         for general_name in general_order:
             if self.summon_general(dm_index, general_name):
                 # 确定要召唤的武将类型
                 target_type = "support" if general_name == "刘备" else "attack"
+                
+                # 如果召唤了刘备，标记场上有刘备
+                if general_name == "刘备":
+                    with self._state_lock:
+                        self.state_map.has_liubei_on_field = True
+                        self.report_battle_info(f"大漠对象{dm_index} 召唤刘备成功，标记场上有刘备", "info")
                 
                 # 更新武将状态为复活中（优先分配给已死亡且类型匹配的位置，然后是已死亡的位置，最后是空位）
                 assigned = False

@@ -23,8 +23,8 @@ from collections import OrderedDict
 # 导入战斗自动操作脚本
 from Kanloong_combat_script_copy import CombatAutoScript
 
-# 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --icon=serveAssets\images\script.ico .\serveScript.py
-# pyinstaller serveScript.spec
+# 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --hidden-import Kanloong_combat_script_copy --icon=serveAssets\images\script.ico .\newMain.py
+# pyinstaller   newMain.spec
 condition = threading.Condition()
 
 # Windows API 常量
@@ -579,7 +579,7 @@ class MyThread(threading.Thread):
             self.zhengdianFloor = "龙+全打"
             self.new_zhengdian()
         elif self.scriptName == "测试":
-            self._start_combat_auto(['赵云28'])
+            self._start_combat_auto(['赵云29','诸葛亮'])
             # self.find_zd_in_view_easy("九黎族祭坛"
             #     , '蛇生肖')
             # self.go_in_ditu(
@@ -14995,7 +14995,7 @@ class MyFrame(wx.Frame):
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                # "测试",
+                "测试",
             ],
         )
         self.free_choices = (
