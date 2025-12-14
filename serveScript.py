@@ -1,5 +1,6 @@
 import random
 import time
+import webbrowser
 import keyboard
 import threading
 import wx
@@ -16657,47 +16658,250 @@ class UpdateDialog(wx.Dialog):
 
     @staticmethod
     def get_current_version():
-        return "25.12.3"  # 默认版本
+        return "25.12.4"  # 默认版本
 
     def download_update(self):
-        """下载更新包"""
-        session = requests.Session()
-        # # 1. 模拟登录获取 Cookie
-        # cookie = self.selenium_login('18175312372', 's1728349744')
-        # print(cookie, 'cookie')
-        headers = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "DNT": "1",
-            "Pragma": "no-cache",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        }
-        # ?access_token=91670e5d97cb3ae58aa652296bcf5c8b
-        session.headers.update(headers)
-        # session.cookies.update(cookie)
-        print(self.download_url, 'download_url')
+        """
+        用 urllib 下载并显示进度（以 MB 和百分比，格式示例：10%(0.00mb/20mb)）。
+        - 后台线程下载，主线程更新进度，避免卡死。
+        - 会测量下载速率，并在下载完成后在 wx 环境下弹窗提示（下载成功/可能被限速）。
+        """
+        import urllib.request, urllib.parse, http.cookiejar, time, os, webbrowser, threading, sys
         try:
-            response = session.get(self.download_url, stream=True)
-            if response.status_code == 200:
-                print("下载中，请耐心等待！")
-            with open(f"脚本v{self.latest_version}.exe", "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-            print("下载成功！")
-            return True
-        except Exception as e:
-            print(f"下载失败")
+            import browser_cookie3
+        except Exception:
+            browser_cookie3 = None
+    
+        download_url = getattr(self, "download_url", None)
+        if not download_url:
             return False
-
+    
+        referer = "https://gitee.com/syf0910/mhsg-script-update/releases"
+        cj = http.cookiejar.CookieJar()
+        if browser_cookie3:
+            try:
+                bcj = browser_cookie3.load(domain_name='gitee.com')
+                cj = bcj
+            except Exception:
+                pass
+    
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+        opener.addheaders = [
+            ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"),
+            ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"),
+            ("Accept-Language", "zh-CN,zh;q=0.9"),
+            ("Connection", "keep-alive"),
+            ("Referer", referer),
+            ("Upgrade-Insecure-Requests", "1"),
+        ]
+    
+        state = {
+            "downloaded": 0,
+            "total": None,
+            "done": False,
+            "ok": False,
+            "error": None,
+            "dst": None,
+            "speed_bps": 0.0,
+        }
+    
+        # 用于限速检测：记录时间点和已下载量列表（用于滑动窗口速率计算）
+        speed_window = []
+        SPEED_WINDOW_SECONDS = 8.0
+        SPEED_THRESHOLD_BPS = 10 * 1024  # 10 KB/s 视为可能限速
+    
+        def _worker():
+            try:
+                try:
+                    opener.open(referer, timeout=15)
+                except Exception:
+                    pass
+    
+                resp = opener.open(download_url, timeout=40)
+                code = getattr(resp, "status", resp.getcode())
+                ctype = resp.getheader("Content-Type", "") or ""
+                if code != 200 or "text/html" in ctype.lower():
+                    state["error"] = "non-file"
+                    state["done"] = True
+                    return
+    
+                length = resp.getheader("Content-Length")
+                try:
+                    total = int(length) if length else None
+                except Exception:
+                    total = None
+                state["total"] = total
+    
+                fname = os.path.basename(urllib.parse.unquote(urllib.parse.urlparse(download_url).path)) or f"脚本v{getattr(self,'latest_version','unknown')}.exe"
+                dst = os.path.join(os.getcwd(), fname)
+                state["dst"] = dst
+    
+                # 优化块大小，减少调用次数
+                chunk_size = 256 * 1024  # 256KB
+                last_time = time.time()
+                last_downloaded = 0
+    
+                with open(dst + ".part", "wb") as f:
+                    while True:
+                        chunk = resp.read(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        state["downloaded"] += len(chunk)
+    
+                        # 更新瞬时速度（每次循环计算 delta）
+                        now = time.time()
+                        dt = now - last_time
+                        if dt >= 0.5:
+                            delta = state["downloaded"] - last_downloaded
+                            if dt > 0:
+                                inst_bps = delta / dt
+                            else:
+                                inst_bps = 0.0
+                            # 记录到滑动窗口
+                            speed_window.append((now, state["downloaded"]))
+                            # 去掉过期点
+                            cutoff = now - SPEED_WINDOW_SECONDS
+                            while len(speed_window) > 1 and speed_window[0][0] < cutoff:
+                                speed_window.pop(0)
+                            # 计算窗口平均速度
+                            if len(speed_window) >= 2:
+                                t0, d0 = speed_window[0]
+                                tn, dn = speed_window[-1]
+                                avg_bps = (dn - d0) / (tn - t0) if (tn - t0) > 0 else inst_bps
+                            else:
+                                avg_bps = inst_bps
+                            state["speed_bps"] = avg_bps
+                            last_time = now
+                            last_downloaded = state["downloaded"]
+    
+                try:
+                    os.replace(dst + ".part", dst)
+                except Exception:
+                    try:
+                        os.remove(dst)
+                    except Exception:
+                        pass
+                    os.rename(dst + ".part", dst)
+    
+                state["ok"] = True
+            except Exception as e:
+                state["error"] = str(e)
+            finally:
+                state["done"] = True
+    
+        th = threading.Thread(target=_worker, daemon=True)
+        th.start()
+    
+        use_wx = False
+        try:
+            import wx
+            use_wx = True
+        except Exception:
+            use_wx = False
+    
+        progress_dialog = None
+        try:
+            if use_wx and hasattr(self, "__class__"):
+                try:
+                    progress_dialog = wx.ProgressDialog("下载更新", "正在下载...", maximum=100,
+                                                        parent=getattr(self, "GetParent", lambda: None)(),
+                                                        style=wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT)
+                except Exception:
+                    progress_dialog = None
+    
+            last_print = 0
+            while not state["done"]:
+                dl = state["downloaded"]
+                total = state["total"]
+                dl_mb = dl / (1024.0 * 1024.0)
+                total_mb = (total / (1024.0 * 1024.0)) if total else None
+                pct = int((dl * 100 / total) if total and total > 0 else 0)
+    
+                # 目标格式示例：10%(0.00mb/20mb)
+                if total_mb:
+                    display = f"{pct}%（{dl_mb:.2f}MB/{total_mb:.2f}MB）"
+                else:
+                    display = f"资源加载中..."
+    
+                if progress_dialog:
+                    # 更新进度条，显示自定义文本
+                    cont, _ = progress_dialog.Update(pct, display)
+                    if not cont:
+                        try:
+                            progress_dialog.Destroy()
+                        except Exception:
+                            pass
+                        try:
+                            webbrowser.open(download_url)
+                        except Exception:
+                            pass
+                        return False
+                else:
+                    now = time.time()
+                    if now - last_print > 0.5:
+                        sys.stdout.write(f"\r{display}")
+                        sys.stdout.flush()
+                        last_print = now
+    
+                time.sleep(0.12)
+    
+            # 下载完成后显示最终行/弹窗
+            final_dl_mb = state["downloaded"] / (1024.0 * 1024.0)
+            final_total_mb = (state["total"] / (1024.0 * 1024.0)) if state["total"] else final_dl_mb
+            final_pct = int((state["downloaded"] * 100 / state["total"]) if state["total"] and state["total"] > 0 else 100)
+            final_display = f"{final_pct}%({final_dl_mb:.2f}mb/{final_total_mb:.2f}mb)"
+    
+            if progress_dialog:
+                try:
+                    progress_dialog.Update(final_pct)
+                except Exception:
+                    pass
+                try:
+                    progress_dialog.Destroy()
+                except Exception:
+                    pass
+            else:
+                sys.stdout.write(f"\r{final_display}\n")
+                sys.stdout.flush()
+    
+            # 下载失败处理
+            if not state["ok"]:
+                try:
+                    webbrowser.open(download_url)
+                except Exception:
+                    pass
+                return False
+    
+            # 限速判断：若窗口平均速度低于阈值则提示可能被限速
+            limited = False
+            if state.get("speed_bps", 0.0) < SPEED_THRESHOLD_BPS:
+                # 进一步要求：下载不是极小文件且持续时间足够（避免误报）
+                try:
+                    # 如果 total 不为空且文件 > 200KB 并且下载耗时 > 6s，则判定可能限速
+                    total_bytes = state["total"] or state["downloaded"]
+                    if total_bytes > 200 * 1024:
+                        limited = True
+                except Exception:
+                    limited = False
+    
+            # 完成弹窗提示（在 wx 环境下弹窗），并在被判定限速时追加提示
+            if use_wx:
+                try:
+                    dst = state.get("dst") or os.path.basename(urllib.parse.unquote(urllib.parse.urlparse(download_url).path))
+                    msg = f"下载完成：{dst}"
+                    if limited:
+                        msg += "\n注意：下载速率较低，可能被限速。"
+                    wx.CallAfter(lambda: wx.MessageBox(msg, "下载完成", wx.OK | wx.ICON_INFORMATION))
+                except Exception:
+                    pass
+    
+            return True
+        finally:
+            try:
+                th.join(timeout=0.1)
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     app = wx.App()
