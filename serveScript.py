@@ -310,6 +310,17 @@ class MyThread(threading.Thread):
                 # 【关键修复】不要在这里提前调用 init_combat_tracking()
                 # run_combat_loop() 会在检测到战斗页面时自动调用 init_combat_tracking()
                 print("战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
+            else:
+                # 【关键修复】如果实例已存在但窗口已关闭，重置标志并重新创建窗口
+                if hasattr(self.combat_auto_instance, '_dialog_closed') and self.combat_auto_instance._dialog_closed:
+                    print("检测到窗口已关闭，重置标志并重新创建战斗播报窗口")
+                    self.combat_auto_instance._dialog_closed = False
+                    self.combat_auto_instance._battle_dialog_retry_count = 0
+                    # 重新创建窗口
+                    timer = threading.Timer(0.3, self.combat_auto_instance._create_battle_report_dialog)
+                    if hasattr(self.combat_auto_instance, '_timer_refs'):
+                        self.combat_auto_instance._timer_refs.append(timer)
+                    timer.start()
 
             # 使用内置的run_combat_loop方法（推荐方式）
             # 这个方法会自动处理所有账号的战斗操作
@@ -342,6 +353,9 @@ class MyThread(threading.Thread):
                     self.combat_auto_instance.cleanup()
                 except Exception as e:
                     print(f"清理战斗脚本资源时出错: {e}")
+                finally:
+                    # 【关键修复】清除实例引用，确保下次启动时创建新实例
+                    self.combat_auto_instance = None
             
             # 等待线程结束（最多等待3秒）
             if self.combat_auto_thread and self.combat_auto_thread.is_alive():
@@ -15077,9 +15091,9 @@ class MyFrame(wx.Frame):
             "4.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
             "6.挂机+整点，使用之前打开查看副本，点一下需要打的副本，然后启动脚本即可；",
             "7.保存数据之后会在脚本同级文件夹生成一个data.txt，下次使用脚本直接点击读取即可自动填入；",
-            "8.日常顺序是：战魂楼精英=>炼狱战魂楼=>溶洞=>炼丹=>五行=>云游精英=>名将挑战赛=>八门精英=>老鼠精英=>英魂=>三顾茅庐=>红=>青渊=>官渡精英;",
-            "9.线路为卡住十分钟之后刷新后选择的线路，方位为角色位置，逆时针方向的1234;",
-            "10.整点虎猴羊为跑过去的整点，适用于非V3玩家。",
+            "8.日常顺序是：战魂楼精英=>炼狱战魂楼=>溶洞=>炼丹=>五行=>云游精英=>名将挑战赛=>八门精英=>老鼠精英=>英魂=>三顾茅庐=>红=>青渊=>帮派任务=>官渡精英;",
+            "9.自动战斗点击之后，战魂楼28，29层会自己战斗；",
+            "10.整点全打为飞过去打页面上能找到的怪物，走路打九黎族祭坛，魔魂山，魔谷西三个地图的怪物。",
             "常见问题：",
             "1.点开始脚本没任何反应：使用管理员打开脚本；",
             "2.点开始之后提示无效窗口：务必保证输入的没问题，360最新版的只能绑定第一个打开的窗口；",
@@ -16658,7 +16672,7 @@ class UpdateDialog(wx.Dialog):
 
     @staticmethod
     def get_current_version():
-        return "25.12.4"  # 默认版本
+        return "25.12.5"  # 默认版本
 
     def download_update(self):
         """

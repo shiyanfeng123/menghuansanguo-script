@@ -308,6 +308,17 @@ class MyThread(threading.Thread):
                 # 【关键修复】不要在这里提前调用 init_combat_tracking()
                 # run_combat_loop() 会在检测到战斗页面时自动调用 init_combat_tracking()
                 print("战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
+            else:
+                # 【关键修复】如果实例已存在但窗口已关闭，重置标志并重新创建窗口
+                if hasattr(self.combat_auto_instance, '_dialog_closed') and self.combat_auto_instance._dialog_closed:
+                    print("检测到窗口已关闭，重置标志并重新创建战斗播报窗口")
+                    self.combat_auto_instance._dialog_closed = False
+                    self.combat_auto_instance._battle_dialog_retry_count = 0
+                    # 重新创建窗口
+                    timer = threading.Timer(0.3, self.combat_auto_instance._create_battle_report_dialog)
+                    if hasattr(self.combat_auto_instance, '_timer_refs'):
+                        self.combat_auto_instance._timer_refs.append(timer)
+                    timer.start()
 
             # 使用内置的run_combat_loop方法（推荐方式）
             # 这个方法会自动处理所有账号的战斗操作
@@ -340,6 +351,9 @@ class MyThread(threading.Thread):
                     self.combat_auto_instance.cleanup()
                 except Exception as e:
                     print(f"清理战斗脚本资源时出错: {e}")
+                finally:
+                    # 【关键修复】清除实例引用，确保下次启动时创建新实例
+                    self.combat_auto_instance = None
             
             # 等待线程结束（最多等待3秒）
             if self.combat_auto_thread and self.combat_auto_thread.is_alive():
@@ -580,6 +594,12 @@ class MyThread(threading.Thread):
             self.new_zhengdian()
         elif self.scriptName == "测试":
             self._start_combat_auto(['赵云29','诸葛亮'])
+            time.sleep(5)
+            self._stop_combat_auto()
+            time.sleep(5)
+            self._start_combat_auto(['赵云29','诸葛亮'])
+            time.sleep(5)
+            self._stop_combat_auto()
             # self.find_zd_in_view_easy("九黎族祭坛"
             #     , '蛇生肖')
             # self.go_in_ditu(

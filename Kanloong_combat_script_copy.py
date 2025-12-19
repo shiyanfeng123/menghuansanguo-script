@@ -52,8 +52,8 @@ class CombatConstants:
     # 操作延迟（秒）
     CLICK_DELAY = 0.001
     MOVE_DELAY = 0.2
-    ACTION_DELAY = 0.3
-    SKILL_CLICK_VERIFY_DELAY = 0.8  # 技能点击后验证等待时间
+    ACTION_DELAY = 0.1
+    SKILL_CLICK_VERIFY_DELAY = 0.4  # 技能点击后验证等待时间
 
     # 战斗循环配置
     MAX_COMBAT_ATTEMPTS = 1000000
@@ -385,9 +385,11 @@ class CombatAutoScript:
         # 轮询监听控制
         self.polling_running = False  # 轮询监听运行标志
         self.polling_thread = None  # 轮询监听线程
+        self.account_threads = {}  # 账户处理线程引用：{account_index: thread}
 
         # 三个账号是否有武将
         self.has_general = {0: True, 1: True, 2: True}
+        self.has_liubei = {0: True, 1: True, 2: True}
         self.beidong_huihe = 0
         self.zhaohuan_index = 0
         self.clear_zhugeliang = False
@@ -893,7 +895,7 @@ class CombatAutoScript:
                     posX = int(pos_res[1]) + (int(picW) * 0.5)
                     posY = int(pos_res[2]) + (int(picH) * 0.5)
                     return ResXy(int(posX), int(posY))
-
+                time.sleep(0.02)
             # 所有识别率都未找到，返回None
             return None
         except Exception:
@@ -1073,7 +1075,7 @@ class CombatAutoScript:
         dm.MoveTo(int(x), int(y))
         time.sleep(CombatConstants.CLICK_DELAY)
         dm.LeftClick()
-        time.sleep(CombatConstants.ACTION_DELAY)
+        # time.sleep(CombatConstants.ACTION_DELAY)
 
     # 点击技能并验证是否成功
     def click_skill_with_verification(
@@ -1184,7 +1186,7 @@ class CombatAutoScript:
                 return False
 
             # 等待技能选择界面出现（避免点击目标时界面未准备好）
-            time.sleep(0.3)
+            time.sleep(0.05)
 
             # 根据技能类型选择目标
             if skill_type == "main_char" or skill_type == "attack":
@@ -1301,9 +1303,9 @@ class CombatAutoScript:
 
         # 检查武将数量是否已经达到上限（2个）
         alive_generals = [g for g in char_info.get("generals", []) if g.get("alive", True)]
-        if len(alive_generals) >= 2:
-            self.report_battle_info(f"账号{account_index} 武将数量已达上限（2个），不允许召唤", "warning")
-            return False
+        # if len(alive_generals) >= 2:
+        #     self.report_battle_info(f"账号{account_index} 武将数量已达上限（2个），不允许召唤", "warning")
+        #     return False
 
         general_count = len(alive_generals)
 
@@ -2033,7 +2035,8 @@ class CombatAutoScript:
                             if not already_recorded:
                                 if account_idx not in self.enemies_need_clear:
                                     self.enemies_need_clear[account_idx] = []
-                                self.enemies_need_clear[account_idx].append(
+                                self.enemies_need_clear[account_idx].insert(
+                                    0,
                                     {
                                         "enemy_name": enemy_key,
                                         "position": cast_position,
@@ -3277,7 +3280,7 @@ class CombatAutoScript:
                 # 等待操作按钮出现（确保进入武将操作阶段）
                 time.sleep(0.1)
                 start_time = time.time()
-                while time.time() - start_time < 3.0:
+                while time.time() - start_time < 3.0 and self.polling_running:
                     if self.check_action_button(account_index):
                         break
                     time.sleep(0.1)
@@ -3330,7 +3333,6 @@ class CombatAutoScript:
             skill_btn = self.find_image(account_index, self.button_images["技能按钮"], self.right_button_region, 0)
             if skill_btn:
                 self.click_position(account_index, skill_btn.x, skill_btn.y)
-                time.sleep(0.1)
 
             # 第一回合跳过召唤判断（第一回合武将还没有出现，不需要召唤）
             is_first_turn = self.current_turn == 0 or self.current_turn == 1
@@ -3424,27 +3426,35 @@ class CombatAutoScript:
 
                 # 4.1 召唤刘备（如果需要）
                 if (
-                    need_liubei
-                    and time.time() - turn_start_time < turn_timeout
-                    or self.beidong_huihe >= 5
-                    and self.zhaohuan_index == account_index
+                    self.has_liubei.get(account_index, False)
+                    and (time.time() - turn_start_time) < turn_timeout
+                    and (
+                        need_liubei
+                        or (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index)
+                    )
                 ):
                     if self.summon_general_with_verification(account_index, "刘备"):
                         time.sleep(0.1)
                         return True
-                        # 确保技能面板已打开（点击技能按钮）
-                        find_jineng_time = time.time()
-                        skill_btn = None
-                        while time.time() - find_jineng_time < 2.0 and not skill_btn:
-                            skill_btn = self.find_image(
-                                account_index, self.button_images["技能按钮"], self.right_button_region, 0
-                            )
-                            if skill_btn:
-                                break
-                            time.sleep(0.005)
+                    if self.beidong_huihe >= 5 and self.zhaohuan_index == account_index:
+                        self.has_liubei[account_index] = False
+                        if self.zhaohuan_index < 2:
+                            self.zhaohuan_index += 1
+                        else:
+                            self.zhaohuan_index = 0
+                    # 确保技能面板已打开（点击技能按钮）
+                    find_jineng_time = time.time()
+                    skill_btn = None
+                    while time.time() - find_jineng_time < 2.0 and not skill_btn:
+                        skill_btn = self.find_image(
+                            account_index, self.button_images["技能按钮"], self.right_button_region, 0
+                        )
                         if skill_btn:
-                            self.click_position(account_index, skill_btn.x, skill_btn.y)
-                            time.sleep(0.1)
+                            break
+                        time.sleep(0.005)
+                    if skill_btn:
+                        self.click_position(account_index, skill_btn.x, skill_btn.y)
+                        time.sleep(0.1)
 
                 # 4.2 召唤其他武将（如果需要）
                 if (
@@ -3457,21 +3467,20 @@ class CombatAutoScript:
                         if self.summon_general_with_verification(account_index, general_name):
                             time.sleep(0.1)
                             return True
-                        else:
-                            self.has_general[account_index] = False
-                            # 确保技能面板已打开（点击技能按钮）
-                            find_jineng_time = time.time()
-                            skill_btn = None
-                            while time.time() - find_jineng_time < 2.0 and not skill_btn:
-                                skill_btn = self.find_image(
-                                    account_index, self.button_images["技能按钮"], self.right_button_region, 0
-                                )
-                                if skill_btn:
-                                    break
-                                time.sleep(0.005)
-                            if skill_btn:
-                                self.click_position(account_index, skill_btn.x, skill_btn.y)
-                                time.sleep(0.1)
+                    self.has_general[account_index] = False
+                    # 确保技能面板已打开（点击技能按钮）
+                    find_jineng_time = time.time()
+                    skill_btn = None
+                    while time.time() - find_jineng_time < 2.0 and not skill_btn:
+                        skill_btn = self.find_image(
+                            account_index, self.button_images["技能按钮"], self.right_button_region, 0
+                        )
+                        if skill_btn:
+                            break
+                        time.sleep(0.005)
+                    if skill_btn:
+                        self.click_position(account_index, skill_btn.x, skill_btn.y)
+                        time.sleep(0.1)
 
                 # 4.3 执行分配的复活任务（如果当前账号有分配任务）
                 if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout:
@@ -3510,11 +3519,11 @@ class CombatAutoScript:
                                 return True
 
                 # 4.5 加血操作
-                if char_info.get("need_heal", False) and time.time() - turn_start_time < turn_timeout:
-                    target_pos = char_info.get("position") or (764, 380)
-                    if self.use_item_with_verification(account_index, "恢复药", target_pos):
-                        char_info["need_heal"] = False
-                        return True
+                # if char_info.get("need_heal", False) and time.time() - turn_start_time < turn_timeout:
+                #     target_pos = char_info.get("position") or (764, 380)
+                #     if self.use_item_with_verification(account_index, "恢复药", target_pos):
+                #         char_info["need_heal"] = False
+                #         return True
 
                 # 4.6 防御
                 defense_btn = self.find_image(
@@ -3884,6 +3893,8 @@ class CombatAutoScript:
                         thread = threading.Thread(target=self._handle_account_turn, args=(account_index,), daemon=False)
                         thread.start()
                         account_threads[account_index] = thread
+                        # 保存到实例变量，用于 cleanup 时强制停止
+                        self.account_threads[account_index] = thread
 
                     # 如果有账号需要操作，记录日志
                     if account_threads:
@@ -3893,6 +3904,9 @@ class CombatAutoScript:
                     # 等待所有账号操作完成（最多等待25秒）
                     for account_index, thread in account_threads.items():
                         thread.join(timeout=CombatConstants.TURN_TIMEOUT)
+                        # 线程完成后，从实例变量中移除引用
+                        if account_index in self.account_threads:
+                            del self.account_threads[account_index]
                     self.report_battle_info(f"我方回合结束")
                     
                     # 输出所有账号的存活状态和全局死亡列表
@@ -4030,38 +4044,166 @@ class CombatAutoScript:
         self._polling_loop()
 
     # 清理资源
-    def cleanup(self):
-        """清理战斗脚本资源"""
+    def cleanup(self, join_timeout: float = 2.0):
+        """
+        强制停止本实例内的所有线程并重置状态（最佳努力）。
+        说明：
+        - Python 无法强制杀死线程，这里只做“通知停止 + 等待 join + 清理引用”的最佳努力。
+        - 保证设置所有常用停止标志、取消定时器、等待线程结束并清空内部数据结构。
+        - 如果某些线程内部存在长时间阻塞或不响应停止标志，仍可能无法立即结束（会打印警告）。
+        """
         try:
-            # 标记窗口已关闭，防止重新创建
-            self._dialog_closed = True
+            # 1) 通知停止：设置主控制标志与常见停止事件/标志
+            try:
+                self.polling_running = False
+            except Exception:
+                pass
+            try:
+                if hasattr(self, "stop_event") and isinstance(getattr(self, "stop_event"), threading.Event):
+                    self.stop_event.set()
+            except Exception:
+                pass
+            for flag in ("stop_flag", "running", "should_stop", "shutdown"):
+                if hasattr(self, flag):
+                    try:
+                        setattr(self, flag, False)
+                    except Exception:
+                        pass
 
-            # 取消所有待处理的定时器
-            for timer in self._timer_refs:
-                try:
-                    timer.cancel()
-                except Exception:
-                    pass
-            self._timer_refs.clear()
+            # 2) 取消并清理所有定时器
+            try:
+                for timer in list(self._timer_refs):
+                    try:
+                        timer.cancel()
+                    except Exception:
+                        pass
+                self._timer_refs.clear()
+            except Exception:
+                pass
 
-            self.stop_polling_loop()
-            # 关闭战斗播报窗口
-            if self.battle_report_dialog:
-                try:
-                    self.battle_report_dialog.close_safely()
-                    # 给一点时间让窗口关闭（如果是在主线程中）
-                    if threading.current_thread() == threading.main_thread():
+            # 3) 强制等待并清理 account_threads（每个账户的处理线程）
+            try:
+                if getattr(self, "account_threads", None):
+                    for acct_idx, th in list(self.account_threads.items()):
+                        try:
+                            if isinstance(th, threading.Thread) and th.is_alive():
+                                th.join(timeout=join_timeout)
+                                if th.is_alive():
+                                    print(f"警告: 账户线程 {acct_idx} 未能在 {join_timeout}s 内停止")
+                        except Exception as e:
+                            print(f"等待账户线程 {acct_idx} 时出错: {e}")
+                    self.account_threads.clear()
+            except Exception:
+                pass
+
+            # 4) 停止并等待主轮询线程
+            try:
+                if getattr(self, "polling_thread", None) and isinstance(self.polling_thread, threading.Thread):
+                    if self.polling_thread.is_alive():
+                        self.polling_thread.join(timeout=join_timeout)
+                        if self.polling_thread.is_alive():
+                            print(f"警告: 主轮询线程未能在 {join_timeout}s 内停止")
+                    self.polling_thread = None
+            except Exception as e:
+                print(f"等待主轮询线程时出错: {e}")
+
+            # 5) 尝试 join 对象中其它可能的线程属性（名称中包含 'thread'）
+            try:
+                for name in list(dir(self)):
+                    if name in ("polling_thread", "account_threads", "_timer_refs"):
+                        continue
+                    if "thread" in name.lower():
+                        try:
+                            t = getattr(self, name)
+                            if isinstance(t, threading.Thread):
+                                if t is threading.current_thread():
+                                    continue
+                                if t.is_alive():
+                                    t.join(timeout=join_timeout)
+                                    if t.is_alive():
+                                        print(f"警告: 线程属性 {name} 未能在 {join_timeout}s 内停止")
+                                try:
+                                    setattr(self, name, None)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+            # 6) 关闭/销毁 GUI 窗口（如果存在），并给主线程机会处理事件
+            try:
+                if getattr(self, "battle_report_dialog", None):
+                    try:
+                        self.battle_report_dialog.close_safely()
+                    except Exception:
+                        pass
+                    try:
+                        self.battle_report_dialog = None
+                    except Exception:
+                        pass
+                self._dialog_closed = True
+                # 在主线程时让 wx 处理关闭事件
+                if threading.current_thread() == threading.main_thread():
+                    try:
                         import wx
+                        wx.Yield()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
-                        wx.Yield()  # 处理待处理的GUI事件，确保窗口关闭
-                except Exception as e:
-                    print(f"关闭战斗播报窗口时出错: {e}")
-                finally:
-                    self.battle_report_dialog = None
-            # 注意：这里不再调用report_battle_info，因为窗口可能已经关闭
-            print("战斗脚本资源已清理")
+            # 7) 重置/清空所有运行时数据结构（恢复到初始状态）
+            try:
+                # 基本控制字段
+                self.turn_timeout = CombatConstants.TURN_TIMEOUT
+                self.turn_start_time = None
+                self.account_error_count = {}
+                self.max_errors_per_turn = CombatConstants.MAX_ERRORS_PER_TURN
+
+                self._battle_dialog_retry_count = 0
+
+                # 清空战斗状态数据
+                self.unit_info = {}
+                self.dead_units = {}
+                self.global_dead_units = {"main_chars": [], "generals": []}
+                self.enemies_need_clear = {}
+                self.enemy_status_reported = {}
+                self.current_turn = 0
+                self.skill_cd = {}
+                self.pending_liubei_summon = {}
+                self.has_liubei_on_field = True
+                self.liubei_missing_count = 0
+                self.low_hp_units = {}
+                self.zhugeliang_found = {}
+                self.zhugeliang_status1_missing_count = {}
+                self.zhugeliang_status2_missing_count = {}
+                self.lantiao_missing_rounds = {}
+
+                self.liubei_skill_sequence = ["控制", "加攻击", "加血"]
+                self.liubei_skill_index = {}
+                self.liubei_skill_cd = {}
+
+                self.revive_assignments = {}
+
+                self.enemy_target_position = None
+                self.ally_support_target_position = None
+                self.target_positions_detected = False
+                self._target_positions_detected_this_round = False
+
+                self.has_general = {0: True, 1: True, 2: True}
+                self.has_liubei = {0: True, 1: True, 2: True}
+                self.beidong_huihe = 0
+                self.zhaohuan_index = 0
+                self.clear_zhugeliang = False
+            except Exception:
+                pass
+
+            print("cleanup: 已通知停止，尝试等待并清理线程/资源（最佳努力）")
         except Exception as e:
-            print(f"清理战斗脚本资源时出错: {e}")
+            print(f"cleanup 出错: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 # 示例使用
@@ -4073,4 +4215,3 @@ if __name__ == "__main__":
     # 3. 调用 CombatAutoScript 的功能
 
     print("战斗自动操作脚本已加载")
-    print("请将此功能集成到 serveScript.py 的 MyThread 类中")
