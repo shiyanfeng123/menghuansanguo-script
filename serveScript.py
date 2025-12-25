@@ -21,7 +21,7 @@ import os
 import sys
 from collections import OrderedDict
 
-# 导入战斗自动操作脚本
+# 导入战斗自动操作脚本``
 from Kanloong_combat_script_copy import CombatAutoScript
 
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --hidden-import Kanloong_combat_script_copy --icon=serveAssets\images\script.ico .\serveScript.py
@@ -302,7 +302,7 @@ class MyThread(threading.Thread):
                 self.combat_auto_instance = CombatAutoScript(self,clear_enemy_keys)
                 
                 # 设置配置（根据你的需求调整）
-                self.combat_auto_instance.keep_support_general = False  # 是否保证辅助武将在场
+                self.combat_auto_instance.keep_support_general = True  # 是否保证辅助武将在场
                 self.combat_auto_instance.enable_main_heal = True      # 主角自动加血
                 self.combat_auto_instance.enable_main_summon = True    # 主角自动召唤
                 
@@ -2783,7 +2783,7 @@ class MyThread(threading.Thread):
                 break
             if time.time() - find_queding_time > 30:
                 break
-            outX = 554 + self.locationX
+            outX = 514 + self.locationX
             outY = 50 + self.locationY
             self.dm.MoveTo(int(outX), int(outY))
             time.sleep(0.1)
@@ -7042,7 +7042,7 @@ class MyThread(threading.Thread):
         if not types:
             target = self.find_str(image_path, image_region, find_dir)
             if target:
-                target.x = target.x + random.randint(10, 30)
+                target.x = target.x + random.randint(10, 32)
                 target.y = target.y + 5
         else:
             target = self.find_pic(image_path, image_region, find_dir)
@@ -7053,7 +7053,7 @@ class MyThread(threading.Thread):
             self.dm.MoveTo(target.x, int(target.y - yjian))
             time.sleep(0.001)
             self.dm.LeftClick()
-            time.sleep(0.4)
+            time.sleep(0.5)
             self.dm.MoveTo(1,1)
         else:
             self.dm.MoveTo(target.x, target.y)
@@ -7664,7 +7664,7 @@ class MyThread(threading.Thread):
                     )
                     time.sleep(0.001)
                     self.dm.LeftClick()
-                    time.sleep(0.5)
+                    time.sleep(0.6)
                 if self.find_pic_or_str(C1, C2, find_dir):
                     break
                 while (
@@ -10448,7 +10448,6 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
             "0.095,0.134",
         )
-        print("准备进云端")
         # 进云端
         self.waitForAAndClickB1(
             "云端",
@@ -10457,7 +10456,6 @@ class MyThread(threading.Thread):
             self.dituLocation,
             self.dituLocation,
         )
-        print("准备打巨灵神")
         # 打boss  0.1,0.115
         self.color_format = "ffffff-00000|00ff00-000000|00fe0d-000000"
         self.findAndClickPic(
@@ -16672,7 +16670,7 @@ class UpdateDialog(wx.Dialog):
 
     @staticmethod
     def get_current_version():
-        return "25.12.5"  # 默认版本
+        return "25.12.7"  # 默认版本
 
     def download_update(self):
         """
