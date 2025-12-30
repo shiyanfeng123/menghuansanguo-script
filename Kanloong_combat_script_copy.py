@@ -579,7 +579,7 @@ class CombatAutoScript:
         self.liubei_image = f"{self.get_resource_path('serveAssets/images/auto/miankong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/miankong2.bmp')}"  # 刘备图片路径（用于检测场上是否有刘备）
         self.tiandihudun_image = self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
         self.caocaobusi_image = f"{self.get_resource_path('serveAssets/images/auto/bumiexiongxin1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugeliangbeidong.bmp')}"
-
+        self.zhugexuetiao_image = f"{self.get_resource_path('serveAssets/images/auto/zhugexuetiao.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao2.bmp')}"
         # 技能CD配置（回合数）
         self.skill_cd_config = {
             # 刘备技能
@@ -1224,10 +1224,12 @@ class CombatAutoScript:
                 elif skill_name == "清除状态":
                     # 清除状态技能：使用需要清除的敌军固定点位
                     if self.enemies_need_clear.get(account_index):
+                        # 这个地方需要换成if self.keep_support_general==False:enemy_info = self.enemies_need_clear[account_index][account_index]
                         enemy_info = self.enemies_need_clear[account_index][0]
                         target_pos = enemy_info.get("position") or (104, 344)
                         self.click_position(account_index, target_pos[0], target_pos[1])
                         # 从所有账号的需要清除列表中移除（因为敌军是全局的，一个账号清除后，其他账号就不需要再清除了）
+                        # 这里不能清除，而是置为空，需要占位
                         enemy_name = enemy_info.get("enemy_name", "敌军")
                         for account_idx in [0, 1, 2]:
                             if account_idx in self.enemies_need_clear:
@@ -2001,7 +2003,13 @@ class CombatAutoScript:
 
             # 诸葛亮特殊处理：先检测状态2，如果找到状态2，再检测状态1
             # 如果连续10次没有找到状态1（在找到状态2的前提下），说明需要清除状态
-            if enemy_key == "诸葛亮" and not self.clear_zhugeliang:
+            if enemy_key == "诸葛亮":
+                # 6曹操阵容，检测到诸葛亮血量低，开始召唤刘备准备清除状态
+                if not self.keep_support_general:
+                    xuetiao_is_found = self.find_image(dm_index, self.zhugexuetiao_image, status_region, 0)
+                    if xuetiao_is_found:
+                        self.keep_support_general = True
+                        self.beidong_huihe = 5
                 status1_image = status_images.get("状态1")
                 status2_image = status_images.get("状态2")
 
@@ -2036,6 +2044,9 @@ class CombatAutoScript:
                         # 判断条件：状态1连续10次未找到（在找到状态2的前提下）
                         if self.zhugeliang_status1_missing_count[account_idx] >= 4:
                             self.clear_zhugeliang = True
+                            # if not self.keep_support_general:
+                            #     self.keep_support_general = True
+                            #     self.beidong_huihe = 5
                             # 检查是否已记录（避免重复）
                             already_recorded = False
                             if account_idx in self.enemies_need_clear:
@@ -2070,6 +2081,10 @@ class CombatAutoScript:
                 for status_name, status_image in status_images.items():
                     status_pos = self.find_image(dm_index, status_image, status_region, 0)
                     if status_pos:
+                        # 检测到状态，在6曹操阵容下需要开始召唤刘备
+                        if not self.keep_support_general:
+                            self.keep_support_general = True
+                            self.beidong_huihe = 5
                         # 检查是否已记录（避免重复）
                         already_recorded = False
                         # 检查所有账号是否已记录
@@ -3452,19 +3467,24 @@ class CombatAutoScript:
                 # 可以加一个开关，如果需要清除状态，开关打开，召唤刘备 通过zhaohuan_index去控制召唤账号
                 # (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index) 刘备没免死了
                 # need_liubei 场上没有刘备
+                # 另外一个需要召唤的条件：
+                # self.has_liubei.get(account_index, False)
+                #  and (time.time() - turn_start_time) < turn_timeout
+                #  and self.has_general[account_index]
+                # and self.keep_support_general == False
+                # and self.enemies_need_clear[account_index][account_index] and self.enemies_need_clear[account_index][account_index].has_zhaohuan==False
                 # 4.1 召唤刘备（如果需要）
-                if (
-                    self.has_liubei.get(account_index, False)
+                if ( self.keep_support_general
+                    and self.has_liubei.get(account_index, False)
                     and (time.time() - turn_start_time) < turn_timeout
                     and self.has_general[account_index]
-                    and((
-                        self.self.keep_support_general
-                        and (need_liubei
+                    and (need_liubei
                         or (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index))
-                    ))
                 ):
                     if self.summon_general_with_verification(account_index, "刘备"):
                         time.sleep(0.1)
+                        # 召唤成功需要把self.enemies_need_clear[account_index][account_index].has_zhaohuan写为True
+                        # self.enemies_need_clear[account_index][account_index].has_zhaohuan = True
                         return True
                     if self.beidong_huihe >= 5 and self.zhaohuan_index == account_index:
                         self.has_liubei[account_index] = False
