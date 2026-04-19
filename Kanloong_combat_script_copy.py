@@ -471,7 +471,7 @@ class CombatAutoScript:
     def report_battle_info(self, message, msg_type="info"):
         # 如果窗口已被关闭，不再尝试创建
         if self._dialog_closed:
-            print(f"[战斗] {message}")
+            # print(f"[战斗] {message}")
             return
 
         # 如果窗口还未创建，尝试创建
@@ -498,9 +498,9 @@ class CombatAutoScript:
                 self.battle_report_dialog.add_log(message, color)
             except Exception as e:
                 print(f"report_battle_info出错: {e}, 消息: {message[:50]}")
-        else:
+        # else:
             # 如果窗口不存在，至少打印到控制台
-            print(f"[战斗播报-{msg_type}] {message}")
+            # print(f"[战斗播报-{msg_type}] {message}")
 
     # 获取资源文件路径
     def get_resource_path(self, relative_path):
@@ -1908,14 +1908,10 @@ class CombatAutoScript:
             target_pos.x = target_pos.x + 25
             target_pos.y = target_pos.y + 80
             self.enemy_target_position = (target_pos.x, target_pos.y)
-            # self.report_battle_info(f"我方回合，检测到攻击目标点位: {self.enemy_target_position}", "info")
         else:
             # 如果没找到，使用默认位置
             if not self.enemy_target_position:
                 self.enemy_target_position = (104, 344)  # 默认位置
-                self.report_battle_info(
-                    f"我方回合，未检测到攻击目标，使用默认位置: {self.enemy_target_position}", "warning"
-                )
 
         # 2. 检测我军辅助技能施法点位（在我军区域内识别）
         ally_target_pos = self.find_image(dm_index, self.target_lantiao_image, self.ally_region, 0)
@@ -1929,10 +1925,7 @@ class CombatAutoScript:
             # 如果没找到，使用默认位置
             if not self.ally_support_target_position:
                 self.ally_support_target_position = (764, 380)  # 默认我军中心位置
-                self.report_battle_info(
-                    f"我方回合，未检测到我军辅助技能施法点位，使用默认位置: {self.ally_support_target_position}",
-                    "warning",
-                )
+                
 
         self.target_positions_detected = True
 
@@ -1961,7 +1954,6 @@ class CombatAutoScript:
                 if self.liubei_missing_count >= 4:
                     if self.has_liubei_on_field:
                         self.has_liubei_on_field = False
-                        self.report_battle_info("连续10次未检测到刘备，设置场上无刘备标志", "info")
         if self.beidong_huihe == 0:
             liubei_beidong = self.find_image(account_index, self.tiandihudun_image, self.ally_region, 0)
             if liubei_beidong:
@@ -1993,7 +1985,6 @@ class CombatAutoScript:
                 continue
             # 从配置中获取敌军信息
             if enemy_key not in self.enemy_general_config:
-                self.report_battle_info(f"警告：敌军单位 '{enemy_key}' 不在配置中，跳过检测", "warning")
                 continue
 
             config = self.enemy_general_config[enemy_key]
@@ -2069,10 +2060,41 @@ class CombatAutoScript:
                                 # 只在第一次检测到时播报
                                 if enemy_key not in self.enemy_status_reported:
                                     self.report_battle_info(
-                                        f"检测到敌军{enemy_key}需要清除状态，固定点位: {cast_position}",
+                                        f"检测到敌军{enemy_key}需要清除状态",
                                         "warning",
                                     )
                                     self.enemy_status_reported[enemy_key] = True
+                            # already_recorded = False
+                            # if account_idx in self.enemies_need_clear:
+                            #     for enemy_info in self.enemies_need_clear[account_idx]:
+                            #         if enemy_info["enemy_name"] == enemy_key:
+                            #             already_recorded = True
+                            #             break
+
+                            # # 确保把最新检测到的条目放在首位（移除已有同名记录后插入）
+                            # if account_idx not in self.enemies_need_clear:
+                            #     self.enemies_need_clear[account_idx] = []
+                            # # 删除同名记录（若存在）
+                            # self.enemies_need_clear[account_idx] = [
+                            #     e for e in self.enemies_need_clear[account_idx]
+                            #     if e.get("enemy_name") != enemy_key
+                            # ]
+                            # # 插入到首位
+                            # self.enemies_need_clear[account_idx].insert(
+                            #     0,
+                            #     {
+                            #         "enemy_name": enemy_key,
+                            #         "position": cast_position,
+                            #         "status_name": "状态1",
+                            #     }
+                            # )
+                            # # 只在第一次检测到时播报
+                            # if enemy_key not in self.enemy_status_reported:
+                            #     self.report_battle_info(
+                            #         f"检测到敌军{enemy_key}需要清除状态，固定点位: {cast_position}",
+                            #         "warning",
+                            #     )
+                            #     self.enemy_status_reported[enemy_key] = True
                     else:
                         # 没找到状态2，重置状态1计数（不检测状态1）
                         self.zhugeliang_status1_missing_count[account_idx] = 0
@@ -2098,11 +2120,18 @@ class CombatAutoScript:
                                 break
 
                         if not already_recorded:
-                            # 记录到所有账号（因为敌军是全局的）
+                            # 记录到所有账号（因为敌军是全局的），并确保最新在首位（去重后插入）
                             for account_idx in [0, 1, 2]:
                                 if account_idx not in self.enemies_need_clear:
                                     self.enemies_need_clear[account_idx] = []
-                                self.enemies_need_clear[account_idx].append(
+                                # 删除同名记录
+                                self.enemies_need_clear[account_idx] = [
+                                    e for e in self.enemies_need_clear[account_idx]
+                                    if e.get("enemy_name") != enemy_key
+                                ]
+                                # 插入到首位
+                                self.enemies_need_clear[account_idx].insert(
+                                    0,
                                     {
                                         "enemy_name": enemy_key,
                                         "position": cast_position,
@@ -2112,7 +2141,7 @@ class CombatAutoScript:
                             # 只在第一次检测到时播报
                             if enemy_key not in self.enemy_status_reported:
                                 self.report_battle_info(
-                                    f"检测到敌军{enemy_key}需要清除状态: {status_name}，固定点位: {cast_position}",
+                                    f"检测到敌军{enemy_key}需要清除状态",
                                     "warning",
                                 )
                                 self.enemy_status_reported[enemy_key] = True
@@ -2175,10 +2204,6 @@ class CombatAutoScript:
                             char_info["reviving"] = False
                             if "reviving_timestamp" in char_info:
                                 del char_info["reviving_timestamp"]
-                            self.report_battle_info(
-                                f"账号{account_idx} {unit_name}已在全局阵亡记录中，但reviving=True，清除reviving标志（可能是重复检测墓碑）",
-                                "warning",
-                            )
                         continue
 
                     # 更新单位信息（每个账号只有1个主角）
@@ -2199,7 +2224,7 @@ class CombatAutoScript:
                     # 如果之前reviving为True，记录警告信息
                     if old_reviving:
                         self.report_battle_info(
-                            f"账号{account_idx} {unit_name}阵亡（检测到墓碑，强制清除reviving标记，之前状态：alive={old_alive}, reviving={old_reviving}, revive_pending={old_revive_pending}）",
+                            f"账号{account_idx} {unit_name}阵亡（检测到墓碑，强制清除reviving标记）",
                             "warning",
                         )
 
