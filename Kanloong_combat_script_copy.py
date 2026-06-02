@@ -402,6 +402,8 @@ class CombatAutoScript:
         self.clear_zhugeliang = False
         # 开始召唤刘备标志
         self.start_summon_liubei = False
+        # 刘备是否常驻（True=死了重召，False=一次性模式，清完状态回6曹操）
+        self.enable_persistent_liubei = True
     # 创建战斗播报窗口（在主线程中调用）
     def _create_battle_report_dialog(self):
         # 【关键修复】如果窗口已被关闭，不再创建
@@ -1245,6 +1247,18 @@ class CombatAutoScript:
                             f"账号{account_index} 刘备释放{skill_name}清除{enemy_name}状态，目标位置: {target_pos}（已从所有账号清除列表中移除）",
                             "action",
                         )
+                        # 一次性模式：检查是否所有敌军都清完了，是则关开关回6曹操
+                        if not self.enable_persistent_liubei:
+                            all_cleared = True
+                            for i in [0, 1, 2]:
+                                if self.enemies_need_clear.get(i):
+                                    all_cleared = False
+                                    break
+                            if all_cleared:
+                                self.keep_support_general = False
+                                self.report_battle_info(
+                                    "所有敌军状态清除完毕，恢复6曹操模式", "system"
+                                )
                     else:
                         # 没有需要清除的敌军，使用默认位置
                         target_pos = self.enemy_target_position or (104, 344)
@@ -2146,6 +2160,51 @@ class CombatAutoScript:
                                 )
                                 self.enemy_status_reported[enemy_key] = True
                         break
+        # 多敌军并行清除：按存活账号分配清除任务
+        self._distribute_enemies_to_accounts()
+
+    def _distribute_enemies_to_accounts(self):
+        """将需要清除的敌军按存活账号平均分配，实现多刘备并行清除"""
+        all_enemies = []
+        seen = set()
+        for i in [0, 1, 2]:
+            if i in self.enemies_need_clear:
+                for e in self.enemies_need_clear[i]:
+                    name = e.get("enemy_name", "")
+                    if name and name not in seen:
+                        seen.add(name)
+                        all_enemies.append(e)
+
+        if len(all_enemies) <= 1:
+            return
+
+        available = []
+        for i in [0, 1, 2]:
+            if i in self.unit_info:
+                char = self.unit_info[i]["main_char"]
+                if char.get("alive", False) and self.has_liubei.get(i, False):
+                    available.append(i)
+
+        if not available:
+            self.enemies_need_clear[0] = list(all_enemies)
+            for i in [1, 2]:
+                self.enemies_need_clear[i] = []
+            return
+
+        for i in [0, 1, 2]:
+            self.enemies_need_clear[i] = []
+
+        for idx, enemy in enumerate(all_enemies):
+            account = available[idx % len(available)]
+            self.enemies_need_clear[account].append(enemy)
+
+        self.report_battle_info(
+            f"敌军清除任务已分配: " + ", ".join(
+                f"账号{i}: {[e['enemy_name'] for e in self.enemies_need_clear[i]]}"
+                for i in available
+            ),
+            "system",
+        )
 
     # 更新单位信息(根据墓碑检测结果)
     def update_unit_info_from_tombstones(self, dead_list):
@@ -3406,6 +3465,7 @@ class CombatAutoScript:
             char_info = self.unit_info[account_index]["main_char"]
             need_liubei = False
             need_summon_general = False
+            need_self_liubei = False
 
             # 默认每个账号有2个武将，不需要第一回合检测
             # 第一回合不召唤
@@ -3478,6 +3538,22 @@ class CombatAutoScript:
             else:
                 self.report_battle_info(f"账号{account_index} 第一回合，跳过召唤判断", "info")
 
+            # 多刘备并行：该账号被分配了清除任务但没有刘备，需要召唤
+            # （不依赖need_summon，即使武将齐全也需要刘备来清状态）
+            with self._state_lock:
+                has_liubei_in_account_for_clear = False
+                for gen_info in char_info.get("generals", []):
+                    if gen_info.get("name") == "刘备" and gen_info.get("alive", True):
+                        has_liubei_in_account_for_clear = True
+                        break
+            if (self.enemies_need_clear.get(account_index) 
+                and not has_liubei_in_account_for_clear 
+                and char_info.get("alive", True)):
+                need_self_liubei = True
+                if not self.keep_support_general:
+                    self.keep_support_general = True
+                    self.beidong_huihe = 5
+
             # 3. 检查是否有分配到的复活任务
             # 复活任务在我方回合开始时已统一分配，这里只需要检查当前账号是否有任务
             assigned_revive_target = self.revive_assignments.get(account_index)
@@ -3504,15 +3580,14 @@ class CombatAutoScript:
                     and (time.time() - turn_start_time) < turn_timeout
                     and self.has_general[account_index]
                     and (need_liubei
+                        or need_self_liubei
                         or (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index))
                 ):
                     if self.summon_general_with_verification(account_index, "刘备"):
                         time.sleep(0.1)
-                        # 召唤成功需要把self.enemies_need_clear[account_index][account_index].has_zhaohuan写为True
-                        # self.enemies_need_clear[account_index][account_index].has_zhaohuan = True
                         return True
+                    self.has_liubei[account_index] = False
                     if self.beidong_huihe >= 5 and self.zhaohuan_index == account_index:
-                        self.has_liubei[account_index] = False
                         if self.zhaohuan_index < 2:
                             self.zhaohuan_index += 1
                         else:
@@ -4273,6 +4348,7 @@ class CombatAutoScript:
                 self.beidong_huihe = 0
                 self.zhaohuan_index = 0
                 self.clear_zhugeliang = False
+                self.enable_persistent_liubei = True
             except Exception:
                 pass
 

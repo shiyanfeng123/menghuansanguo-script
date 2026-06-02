@@ -231,6 +231,7 @@ class MyThread(threading.Thread):
         self.clickFlag = False
         self.addBloudFlag = False
         self.combat_auto_flag = False
+        self.enablePersistentLiubei = True
         self.stoped = False
         self.zdzdPath = self.get_resource_path("serveAssets/images/zdzd.bmp")
         self.BisClick = False
@@ -312,6 +313,7 @@ class MyThread(threading.Thread):
                 self.combat_auto_instance.keep_support_general = False  # 是否保证辅助武将在场
                 self.combat_auto_instance.enable_main_heal = True  # 主角自动加血
                 self.combat_auto_instance.enable_main_summon = True  # 主角自动召唤
+                self.combat_auto_instance.enable_persistent_liubei = self.frame.enablePersistentLiubei  # 刘备是否常驻
 
                 # 注意：account_dm会自动从self.dm, self.win1_dm, self.win2_dm获取，无需手动设置
                 # 【关键修复】不要在这里提前调用 init_combat_tracking()
@@ -5524,6 +5526,16 @@ class MyThread(threading.Thread):
         self.clear_info()
         shuffled = self.zd49List.copy()
         random.shuffle(shuffled)
+        while True:
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            current_time = time.localtime()
+            if (current_time.tm_min == 59 and current_time.tm_sec == 58) or (
+                    current_time.tm_min == 59 and current_time.tm_sec == 59
+            ):
+                break
+            time.sleep(1)  # 每秒钟检查一次
         for i in range(8):
             last_item = shuffled[-1]
             shuffled = shuffled[:-1]
@@ -14772,7 +14784,8 @@ class MyThread(threading.Thread):
 
 class MyFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, title="梦幻三国脚本", size=(420, 520))
+        wx.Frame.__init__(self, None, title="梦幻三国脚本", size=(370, 420),
+                          style=wx.DEFAULT_FRAME_STYLE | wx.FRAME_TOOL_WINDOW)
         self.SetIcon(
             wx.Icon(
                 self.get_resource_path("serveAssets/images/script.ico"),
@@ -14780,9 +14793,10 @@ class MyFrame(wx.Frame):
             )
         )
         self.SetPosition(wx.Point(10, 30))
+        self.SetBackgroundColour(wx.Colour(18, 18, 22))
+
         self.panel = wx.Panel(self)
-        self.panel.SetBackgroundColour(wx.Colour(245, 245, 250))
-        # self.SetWindowStyle(wx.STAY_ON_TOP)  # 按钮所在控件一直存在在桌面上
+        self.panel.SetBackgroundColour(wx.Colour(18, 18, 22))
 
         # 初始化变量
         self.scriptName = ""
@@ -14801,148 +14815,124 @@ class MyFrame(wx.Frame):
         self.shihun_floor = ""
         self.addBloudFlag = False
 
-        # 创建主布局
         main_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_sizer.AddSpacer(10)
+        main_sizer.AddSpacer(8)
 
-        # 顶部区域：脚本选择和设置按钮（将在后面初始化dropdown）
-        top_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.dropdown = None  # 将在后面初始化
-        script_label = wx.StaticText(self.panel, label="选择脚本：")
-        script_label.SetMinSize((70, -1))
-        top_sizer.Add(script_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        # dropdown将在后面添加到top_sizer
-        self.button = wx.Button(self.panel, label="设置游戏信息",
-                                size=(130, 35))
-        self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
-        self.button.SetBackgroundColour(wx.Colour(70, 130, 180))
-        self.button.SetForegroundColour(wx.Colour(255, 255, 255))
-        top_sizer.Add(self.button, 0, wx.ALIGN_CENTER_VERTICAL)
-        main_sizer.Add(top_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(12)
+        # ── 脚本选择行 ──
+        row_top = wx.BoxSizer(wx.HORIZONTAL)
+        self.dropdown = None
+        lbl = wx.StaticText(self.panel, label="脚本")
+        lbl.SetForegroundColour(wx.Colour(200, 170, 90))
+        lbl.SetMinSize((36, -1))
+        lbl.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        row_top.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
 
-        # 控制按钮区域
-        button_sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.button_start = wx.Button(
-            self.panel,
-            label="开始脚本(F1)",
-            size=(-1, 38),
-            style=wx.BORDER_NONE,
-        )
+        self.btn_settings = wx.Button(self.panel, size=(30, 30), style=wx.BORDER_NONE)
+        self.btn_settings.SetBitmap(self._load_icon("btn_settings.png", 16))
+        self.btn_settings.SetBackgroundColour(wx.Colour(38, 38, 44))
+        self.btn_settings.SetForegroundColour(wx.Colour(200, 170, 90))
+        self.btn_settings.Bind(wx.EVT_BUTTON, self.on_button_click)
+        row_top.Add(self.btn_settings, 0, wx.ALIGN_CENTER_VERTICAL)
+
+        main_sizer.Add(row_top, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
+
+        # ── 控制按钮（开始 F1 · 暂停 F2 · 继续 F3 · 重置 F4） ──
+        def _ctrl_btn(name, bg, hotkey):
+            vs = wx.BoxSizer(wx.VERTICAL)
+            path = self.get_resource_path("serveAssets/images/" + name)
+            bmp = wx.Bitmap(wx.Image(path).Scale(28, 28, wx.IMAGE_QUALITY_HIGH))
+            btn = wx.Button(self.panel, size=(46, 46), style=wx.BORDER_NONE)
+            btn.SetBitmap(bmp)
+            btn.SetBackgroundColour(bg)
+            vs.Add(btn, 0, wx.ALIGN_CENTER)
+            lb = wx.StaticText(self.panel, label=hotkey, style=wx.ALIGN_CENTER)
+            lb.SetForegroundColour(wx.Colour(150, 150, 160))
+            lb.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            vs.Add(lb, 0, wx.ALIGN_CENTER | wx.TOP, 2)
+            return vs, btn
+
+        bar = wx.BoxSizer(wx.HORIZONTAL)
+        vs1, self.button_start = _ctrl_btn("btn_start.png", wx.Colour(180, 140, 50), "F1")
         self.Bind(wx.EVT_BUTTON, self.button_start_click, self.button_start)
-        self.button_start.SetBackgroundColour(wx.Colour(20, 180, 168))
-        self.button_start.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer1.Add(self.button_start, 1, wx.EXPAND | wx.RIGHT, 10)
-
-        self.button_stop = wx.Button(self.panel, label="重置脚本(F4)",
-                                     size=(-1, 38), style=wx.BORDER_NONE)
-        self.Bind(wx.EVT_BUTTON, self.button_stop_click, self.button_stop)
-        self.button_stop.SetBackgroundColour(wx.Colour(144, 144, 153))
-        self.button_stop.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer1.Add(self.button_stop, 1, wx.EXPAND)
-        main_sizer.Add(button_sizer1, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(10)
-
-        button_sizer2 = wx.BoxSizer(wx.HORIZONTAL)
-        self.button_pause = wx.Button(self.panel, label="暂停脚本(F2)",
-                                      size=(-1, 38), style=wx.BORDER_NONE)
+        bar.Add(vs1, 0, wx.ALIGN_CENTER_VERTICAL)
+        bar.AddStretchSpacer()
+        vs2, self.button_pause = _ctrl_btn("btn_pause.png", wx.Colour(180, 50, 40), "F2")
         self.Bind(wx.EVT_BUTTON, self.button_pause_click, self.button_pause)
-        self.button_pause.SetBackgroundColour(wx.Colour(226, 96, 95))
-        self.button_pause.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer2.Add(self.button_pause, 1, wx.EXPAND | wx.RIGHT, 10)
-
-        self.button_resume = wx.Button(self.panel, label="继续脚本(F3)",
-                                       size=(-1, 38), style=wx.BORDER_NONE)
+        bar.Add(vs2, 0, wx.ALIGN_CENTER_VERTICAL)
+        bar.AddStretchSpacer()
+        vs3, self.button_resume = _ctrl_btn("btn_resume.png", wx.Colour(50, 120, 70), "F3")
         self.Bind(wx.EVT_BUTTON, self.button_resume_click, self.button_resume)
-        self.button_resume.SetBackgroundColour(wx.Colour(103, 194, 58))
-        self.button_resume.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer2.Add(self.button_resume, 1, wx.EXPAND)
-        main_sizer.Add(button_sizer2, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(15)
-
-        # 日志输出区域
-        log_label = wx.StaticText(self.panel, label="运行日志：")
-        log_label.SetFont(
-            wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                    wx.FONTWEIGHT_BOLD))
-        main_sizer.Add(log_label, 0, wx.LEFT, 15)
-        main_sizer.AddSpacer(5)
-
-        self.text_ctrl = wx.TextCtrl(self.panel, size=(-1, 200),
-                                     style=wx.TE_MULTILINE | wx.TE_READONLY)
-        self.text_ctrl.SetBackgroundColour(wx.Colour(255, 255, 255))
-        main_sizer.Add(self.text_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
+        bar.Add(vs3, 0, wx.ALIGN_CENTER_VERTICAL)
+        bar.AddStretchSpacer()
+        vs4, self.button_stop = _ctrl_btn("btn_reset.png", wx.Colour(60, 60, 66), "F4")
+        self.Bind(wx.EVT_BUTTON, self.button_stop_click, self.button_stop)
+        bar.Add(vs4, 0, wx.ALIGN_CENTER_VERTICAL)
+        main_sizer.Add(bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         main_sizer.AddSpacer(10)
 
-        # 底部链接区域（左中右布局）
-        bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # ── 日志 ──
+        log_card = wx.Panel(self.panel)
+        log_card.SetBackgroundColour(wx.Colour(26, 26, 32))
+        lcs = wx.BoxSizer(wx.VERTICAL)
 
-        # 左侧：说明
-        left_panel = wx.Panel(self.panel)
-        left_panel.SetBackgroundColour(wx.NullColour)
-        left_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.help_link = wx.StaticText(left_panel, label="说明",
-                                       style=wx.ST_NO_AUTORESIZE)
-        self.help_link.SetForegroundColour(wx.Colour(0, 100, 200))
-        self.help_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.help_link.Bind(wx.EVT_LEFT_DOWN, self.on_help_link_click)
-        left_sizer.Add(self.help_link, 0, wx.ALIGN_CENTER_VERTICAL)
-        left_panel.SetSizer(left_sizer)
-        bottom_sizer.Add(left_panel, 0, wx.LEFT, 15)
+        log_header = wx.BoxSizer(wx.HORIZONTAL)
+        log_lbl = wx.StaticText(log_card, label="● 运行日志")
+        log_lbl.SetForegroundColour(wx.Colour(200, 170, 90))
+        log_lbl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        log_header.Add(log_lbl, 0, wx.ALIGN_CENTER_VERTICAL)
+        log_header.AddStretchSpacer()
+        log_ts = wx.StaticText(log_card, label=datetime.now().strftime("%H:%M"))
+        log_ts.SetForegroundColour(wx.Colour(100, 100, 110))
+        log_ts.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        log_header.Add(log_ts, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        # 中间：交流群（使用弹性空间实现居中）
-        bottom_sizer.AddStretchSpacer(1)
-        center_panel = wx.Panel(self.panel)
-        center_panel.SetBackgroundColour(wx.NullColour)
-        center_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.contact = wx.StaticText(
-            center_panel,
-            label="交流群：955753707",
-            style=wx.ST_NO_AUTORESIZE,
-        )
-        font = wx.Font(
-            9,
-            wx.FONTFAMILY_DEFAULT,
-            wx.FONTSTYLE_NORMAL,
-            wx.FONTWEIGHT_NORMAL,
-            faceName="微软雅黑",
-        )
-        self.contact.SetFont(font)
-        center_sizer.Add(self.contact, 0, wx.ALIGN_CENTER_VERTICAL)
-        center_panel.SetSizer(center_sizer)
-        bottom_sizer.Add(center_panel, 0, wx.ALIGN_CENTER)
-        bottom_sizer.AddStretchSpacer(1)
+        lcs.Add(log_header, 0, wx.EXPAND | wx.ALL, 8)
+        lcs.AddSpacer(2)
 
-        # 右侧：检查更新
-        right_panel = wx.Panel(self.panel)
-        right_panel.SetBackgroundColour(wx.NullColour)
-        right_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.text_ctrl = wx.TextCtrl(log_card, size=(-1, 140), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
+        self.text_ctrl.SetBackgroundColour(wx.Colour(20, 20, 26))
+        self.text_ctrl.SetForegroundColour(wx.Colour(170, 180, 190))
+        self.text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        lcs.Add(self.text_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        log_card.SetSizer(lcs)
 
-        # 更新提示图标（绿色小圆点）- 使用固定大小的面板，避免影响布局
-        self.update_notify_panel = wx.Panel(right_panel, size=(12, 12))
-        self.update_notify_panel.SetBackgroundColour(wx.NullColour)  # 透明背景
-        self.update_notify_panel.Hide()  # 默认隐藏
+        main_sizer.Add(log_card, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
 
-        # 在面板上绘制绿色圆点
+        # ── 底部 ──
+        btm = wx.BoxSizer(wx.HORIZONTAL)
+        link_color = wx.Colour(200, 170, 90)
+
+        self.help_link = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
+        self.help_link.SetBitmap(self._load_icon("btn_help.png", 14))
+        self.help_link.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.help_link.Bind(wx.EVT_BUTTON, self.on_help_link_click)
+
+        self.contact = wx.StaticText(self.panel, label="群 955753707")
+        self.contact.SetForegroundColour(wx.Colour(110, 110, 120))
+        self.contact.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+
+        self.update_notify_panel = wx.Panel(self.panel, size=(8, 8))
+        self.update_notify_panel.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.update_notify_panel.Hide()
         self.update_notify_panel.Bind(wx.EVT_PAINT, self.on_update_notify_paint)
-        # 添加鼠标悬停提示
         self.update_notify_panel.SetToolTip("有新版本可用")
 
-        self.updateVersion = wx.StaticText(right_panel, label="检查更新",
-                                           style=wx.ST_NO_AUTORESIZE)
-        self.updateVersion.SetForegroundColour(wx.Colour(0, 100, 200))
+        self.updateVersion = wx.StaticText(self.panel, label="更新")
+        self.updateVersion.SetForegroundColour(link_color)
+        self.updateVersion.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
         self.updateVersion.SetCursor(wx.Cursor(wx.CURSOR_HAND))
         self.updateVersion.Bind(wx.EVT_LEFT_DOWN, self.on_update_link_click)
 
-        right_sizer.Add(self.update_notify_panel, 0,
-                        wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        right_sizer.Add(self.updateVersion, 0, wx.ALIGN_CENTER_VERTICAL)
-        right_panel.SetSizer(right_sizer)
-        bottom_sizer.Add(right_panel, 0, wx.RIGHT, 15)
+        btm.Add(self.help_link, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 12)
+        btm.AddStretchSpacer()
+        btm.Add(self.contact, 0, wx.ALIGN_CENTER_VERTICAL)
+        btm.AddStretchSpacer()
+        btm.Add(self.update_notify_panel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 3)
+        btm.Add(self.updateVersion, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
 
-        main_sizer.Add(bottom_sizer, 0,
-                       wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 15)
-
+        main_sizer.Add(btm, 0, wx.EXPAND | wx.BOTTOM, 10)
         self.panel.SetSizer(main_sizer)
 
         self.thread = None
@@ -15059,14 +15049,19 @@ class MyFrame(wx.Frame):
             has_choices = self.has_choices[0]
         elif self.has_script == "free":
             has_choices = self.free_choices[0]
-        self.dropdown = wx.ComboBox(self.panel, size=(200, 38),
+        self.dropdown = wx.ComboBox(self.panel, size=(-1, 34),
                                     choices=has_choices)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
         self.dropdown.SetHint("选择执行脚本")
-        # 将dropdown添加到顶部布局（在标签后面），与标签居中对齐
-        top_sizer.Insert(1, self.dropdown, 0,
-                         wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 15)
-        top_sizer.AddStretchSpacer()
+        row_top.Insert(1, self.dropdown, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+        self.dropdown.SetBackgroundColour(wx.Colour(26, 26, 32))
+        self.dropdown.SetForegroundColour(wx.Colour(200, 200, 210))
+        self.dropdown.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+
+    def _load_icon(self, name, size):
+        path = self.get_resource_path("serveAssets/images/" + name)
+        img = wx.Image(path).Scale(size, size, wx.IMAGE_QUALITY_HIGH)
+        return wx.Bitmap(img)
 
     def check_gitee_update(self):
         """检查Gitee上的版本信息"""
@@ -15671,457 +15666,316 @@ class MyFrame(wx.Frame):
 
 
 class MyDialog(wx.Dialog):
+    C_BG = wx.Colour(18, 18, 22)
+    C_SURFACE = wx.Colour(26, 26, 32)
+    C_GOLD = wx.Colour(230, 200, 110)
+    C_TEXT = wx.Colour(230, 230, 238)
+    C_MUTED = wx.Colour(180, 180, 190)
+    C_INPUT_BG = wx.Colour(22, 22, 28)
+
     def __init__(self, parent, has_script):
-        super().__init__(parent, title="设置游戏信息", size=(680, 730),
-                         pos=(260, 30))
-
-        # 保存父窗口引用（MyFrame实例）
+        super().__init__(parent, title="游戏设置", size=(570, 610), pos=(200, 20))
+        self.SetBackgroundColour(self.C_BG)
         self.frame = parent
-
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(245, 245, 250))
-
-        # 主布局
-        main_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_sizer.AddSpacer(10)
-
-        # 第一行：线路和方案选择
-        row1_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        # 游戏线路（隐藏但保留代码）
-        line_label = wx.StaticText(panel, label="游戏线路：")
-        line_label.SetMinSize((70, -1))
-        line_label.Hide()
-        row1_sizer.Add(line_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
-        self.choice_line = wx.ComboBox(
-            panel,
-            size=(150, 30),
-            choices=[
-                "一线",
-                "二线",
-                "三线",
-                "四线",
-                "五线",
-                "六线",
-                "七线",
-                "八线",
-                "九线",
-                "十线",
-            ],
-        )
-        self.choice_line.SetHint("游戏线路")
-        self.choice_line.Hide()
-        row1_sizer.Add(self.choice_line, 0, wx.RIGHT, 15)
-
-        scheme_label = wx.StaticText(panel, label="方案名称：")
-        scheme_label.SetMinSize((70, -1))
-        row1_sizer.Add(scheme_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.max_schemes = 10
         self.config_file = "settings_config.json"
         self.schemes = OrderedDict()
         self.current_scheme = ""
         self.load_config()
-        self.scheme_choice = wx.ComboBox(panel, size=(180, 35),
-                                         choices=list(self.schemes.keys()))
+        self.max_schemes = 10
+
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(self.C_BG)
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        main_sizer.AddSpacer(8)
+
+        def label(text, sz=36):
+            l = wx.StaticText(panel, label=text)
+            l.SetForegroundColour(self.C_MUTED)
+            l.SetMinSize((sz, -1))
+            return l
+
+        def combo(choices, hint, sz=(-1, 28)):
+            c = wx.ComboBox(panel, size=sz, choices=choices)
+            c.SetBackgroundColour(self.C_INPUT_BG)
+            c.SetForegroundColour(self.C_TEXT)
+            c.SetHint(hint)
+            return c
+
+        def text_input(hint, sz=(-1, 28), v=None):
+            if v:
+                t = wx.TextCtrl(panel, size=sz, validator=v)
+            else:
+                t = wx.TextCtrl(panel, size=sz)
+            t.SetBackgroundColour(self.C_INPUT_BG)
+            t.SetForegroundColour(self.C_TEXT)
+            t.SetHint(hint)
+            return t
+
+        # ── 标题 + 方案 ──
+        top_row = wx.BoxSizer(wx.HORIZONTAL)
+        l = label("方案", 36)
+        l.SetForegroundColour(self.C_GOLD)
+        top_row.Add(l, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+
+        self.scheme_choice = wx.ComboBox(panel, size=(140, 30), choices=list(self.schemes.keys()))
         self.scheme_choice.SetHint("方案名称")
+        self.scheme_choice.SetBackgroundColour(self.C_INPUT_BG)
+        self.scheme_choice.SetForegroundColour(self.C_TEXT)
         if self.current_scheme and self.current_scheme in self.schemes:
             self.scheme_choice.SetValue(self.current_scheme)
         self.scheme_choice.Bind(wx.EVT_COMBOBOX, self.on_scheme_select)
-        row1_sizer.Add(self.scheme_choice, 0, wx.ALIGN_CENTER_VERTICAL)
-        main_sizer.Add(row1_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(10)
+        top_row.Add(self.scheme_choice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
 
-        # 黑风/龙岛区域
-        heifeng_box = wx.StaticBox(panel, label="黑风/龙岛设置")
-        heifeng_sizer = wx.StaticBoxSizer(heifeng_box, wx.HORIZONTAL)
-        heifeng_sizer.AddSpacer(5)
-        inner_heifeng = wx.BoxSizer(wx.HORIZONTAL)
+        for name, fn in [("btn_save.png", self.on_save), ("btn_edit.png", self.on_update), ("btn_delete.png", self.on_delete)]:
+            b = wx.Button(panel, size=(28, 28), style=wx.BORDER_NONE)
+            b.SetBitmap(self._dialog_icon(name, 14))
+            b.SetBackgroundColour(self.C_SURFACE)
+            b.Bind(wx.EVT_BUTTON, fn)
+            top_row.Add(b, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 3)
+        main_sizer.Add(top_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
 
-        # 类型（与游戏名称对齐）
-        heifeng_label = wx.StaticText(panel, label="类型：")
-        heifeng_label.SetMinSize((70, -1))  # 与游戏名称label宽度相同
-        inner_heifeng.Add(heifeng_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                          8)
-        self.choiceHeifeng = wx.ComboBox(
-            panel,
-            size=(-1, 28),
-            choices=["大/80", "二/50", "刷龙珠", "大全程", "二全程"],
-        )
+        # ── 队伍 ──
+        sec = lambda t: self._section_header(main_sizer, panel, t)
+        sec("队伍")
+        tm = wx.FlexGridSizer(cols=3, vgap=5, hgap=6)
+        tm.AddGrowableCol(1, 1)
+
+        for txt, attr_hint, is_leader in [("队长", "游戏名称", True), ("队友1", "队友1", False), ("队友2", "队友2", False)]:
+            tm.Add(label(txt, 40), 0, wx.ALIGN_CENTER_VERTICAL)
+            tc = text_input(attr_hint)
+            if is_leader:
+                self.team_leader_text = tc
+                self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
+            elif "1" in txt:
+                self.teammate1_text = tc
+            else:
+                self.teammate2_text = tc
+            tm.Add(tc, 1, wx.EXPAND)
+            b = wx.Button(panel, label="📍", size=(28, 28), style=wx.BORDER_NONE)
+            b.SetBackgroundColour(self.C_SURFACE)
+            b.SetForegroundColour(self.C_MUTED)
+            b.Hide()
+            tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
+        main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+
+        # 开关行
+        sw_row = wx.BoxSizer(wx.HORIZONTAL)
+        self.persistentLiubeiCB = wx.CheckBox(panel, label="刘备常驻")
+        self.persistentLiubeiCB.SetValue(True)
+        self.persistentLiubeiCB.SetForegroundColour(self.C_MUTED)
+        self.persistentLiubeiCB.Bind(wx.EVT_CHECKBOX, self.on_persistent_liubei_change)
+        sw_row.Add(self.persistentLiubeiCB, 0, wx.ALIGN_CENTER_VERTICAL)
+        sw_row.AddStretchSpacer()
+
+        btn_container = wx.Panel(panel, size=(132, 32))
+        btn_container.SetBackgroundColour(self.C_BG)
+        self.addBloudBtn = wx.Button(btn_container, label="🔴 自动战斗 关", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
+        self.addBloudBtn.SetBackgroundColour(self.C_SURFACE)
+        self.addBloudBtn.SetForegroundColour(self.C_MUTED)
+        self.addBloudBtn.Bind(wx.EVT_BUTTON, self.addBloudFun)
+        self.closeBloudBtn = wx.Button(btn_container, label="🟢 自动战斗 开", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
+        self.closeBloudBtn.SetBackgroundColour(wx.Colour(50, 120, 70))
+        self.closeBloudBtn.SetForegroundColour(wx.Colour(255, 255, 255))
+        self.closeBloudBtn.Bind(wx.EVT_BUTTON, self.closeBloudFun)
+        self.closeBloudBtn.Hide()
+        sw_row.Add(btn_container, 0, wx.ALIGN_CENTER_VERTICAL)
+        main_sizer.Add(sw_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
+
+        # ── 三栏：副本 | 战魂 | 整点 ──
+        cols = wx.BoxSizer(wx.HORIZONTAL)
+
+        # 副本栏
+        f1 = wx.Panel(panel)
+        f1.SetBackgroundColour(self.C_SURFACE)
+        fs = wx.BoxSizer(wx.VERTICAL)
+        t0 = wx.StaticText(f1, label="副本")
+        t0.SetForegroundColour(self.C_GOLD)
+        t0.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        fs.Add(t0, 0, wx.ALL, 6)
+
+        self.choiceHeifeng = wx.ComboBox(f1, size=(-1, 28), choices=["大/80", "二/50", "刷龙珠", "大全程", "二全程"])
         self.choiceHeifeng.SetHint("黑风/龙岛")
-        inner_heifeng.Add(self.choiceHeifeng, 1, wx.EXPAND | wx.RIGHT, 12)
-
-        # 次数
-        count_label = wx.StaticText(panel, label="次数：")
-        count_label.SetMinSize((50, -1))
-        inner_heifeng.Add(count_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                          8)
-        self.number_input = wx.TextCtrl(panel, size=(-1, 28),
-                                        validator=NumberValidator())
-        self.number_input.SetHint("次数")
-        inner_heifeng.Add(self.number_input, 1, wx.EXPAND | wx.RIGHT, 12)
-
-        # 青渊次数
-        qingyuan_label = wx.StaticText(panel, label="青渊次数：")
-        qingyuan_label.SetMinSize((80, -1))
-        inner_heifeng.Add(qingyuan_label, 0,
-                          wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.qingyuan_count = wx.TextCtrl(panel, size=(-1, 28),
-                                          validator=NumberValidator())
-        self.qingyuan_count.SetHint("青渊次数")
-        inner_heifeng.Add(self.qingyuan_count, 1, wx.EXPAND)
-
-        heifeng_sizer.Add(inner_heifeng, 1, wx.EXPAND | wx.ALL, 8)
-        main_sizer.Add(heifeng_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(10)
-
-        # 战魂和炼狱战魂区域（分两排展示）
-        zhanhun_box = wx.StaticBox(panel, label="战魂/炼狱战魂设置")
-        zhanhun_sizer = wx.StaticBoxSizer(zhanhun_box, wx.VERTICAL)
-        zhanhun_sizer.AddSpacer(5)
-
-        # 第一排：战魂（与游戏名称对齐）
-        row1_zhanhun = wx.BoxSizer(wx.HORIZONTAL)
-        zhanhun_label = wx.StaticText(panel, label="战魂层数：")
-        zhanhun_label.SetMinSize((70, -1))  # 与游戏名称label宽度相同
-        row1_zhanhun.Add(zhanhun_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                         8)
-        self.choiceCeng = wx.ComboBox(
-            panel,
-            size=(120, 28),
-            choices=["20层", "21层", "22层", "23层", "24层", "25层"],
-        )
-        self.choiceCeng.SetHint("战魂层数")
-        row1_zhanhun.Add(self.choiceCeng, 0, wx.RIGHT, 12)
-
-        zhanhun_count_label = wx.StaticText(panel, label="次数：")
-        zhanhun_count_label.SetMinSize((50, -1))
-        row1_zhanhun.Add(zhanhun_count_label, 0,
-                         wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.zhanhun_count = wx.TextCtrl(panel, size=(80, 28),
-                                         validator=NumberValidator())  # 固定宽度，不等比例
-        self.zhanhun_count.SetHint("次数")
-        row1_zhanhun.Add(self.zhanhun_count, 0)
-        zhanhun_sizer.Add(row1_zhanhun, 0, wx.EXPAND | wx.ALL, 5)
-
-        # 第二排：炼狱战魂（与游戏名称对齐）
-        row2_zhanhun = wx.BoxSizer(wx.HORIZONTAL)
-        lianyu_label = wx.StaticText(panel, label="镇魂层数：")
-        lianyu_label.SetMinSize((70, -1))  # 与游戏名称label宽度相同
-        row2_zhanhun.Add(lianyu_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                         8)
-        self.choiceZhanHunCeng = wx.ComboBox(panel, size=(120, 28),
-                                             choices=["26层", "27层"])
-        self.choiceZhanHunCeng.SetHint("镇魂层数")
-        row2_zhanhun.Add(self.choiceZhanHunCeng, 0, wx.RIGHT, 12)
-
-        lianyu_count_label = wx.StaticText(panel, label="次数：")
-        lianyu_count_label.SetMinSize((50, -1))
-        row2_zhanhun.Add(lianyu_count_label, 0,
-                         wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.lianyu_count = wx.TextCtrl(panel, size=(80, 28),
-                                        validator=NumberValidator())  # 固定宽度，不等比例
-        self.lianyu_count.SetHint("次数")
-        row2_zhanhun.Add(self.lianyu_count, 0)
-        zhanhun_sizer.Add(row2_zhanhun, 0, wx.EXPAND | wx.ALL, 5)
-
-        # 第二排：炼狱战魂（与游戏名称对齐）
-        row21_zhanhun = wx.BoxSizer(wx.HORIZONTAL)
-        lianyu1_label = wx.StaticText(panel, label="噬魂层数：")
-        lianyu1_label.SetMinSize((70, -1))  # 与游戏名称label宽度相同
-        row21_zhanhun.Add(lianyu1_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                          8)
-        self.choiceShiHunCeng = wx.ComboBox(panel, size=(120, 28),
-                                            choices=["28层", "29层"])
-        self.choiceShiHunCeng.SetHint("噬魂层数")
-        row21_zhanhun.Add(self.choiceShiHunCeng, 0, wx.RIGHT, 12)
-
-        shihun_count_label = wx.StaticText(panel, label="次数：")
-        shihun_count_label.SetMinSize((50, -1))
-        row21_zhanhun.Add(shihun_count_label, 0,
-                          wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.shihun_count = wx.TextCtrl(panel, size=(80, 28),
-                                        validator=NumberValidator())  # 固定宽度，不等比例
-        self.shihun_count.SetHint("次数")
-        row21_zhanhun.Add(self.shihun_count, 0)
-        zhanhun_sizer.Add(row21_zhanhun, 0, wx.EXPAND | wx.ALL, 5)
-
-        main_sizer.Add(zhanhun_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(10)
-
-        # 整点、魔镜和0点执行脚本（同一排展示）
-        zhengdian_box = wx.StaticBox(panel, label="整点/魔镜设置")
-        zhengdian_sizer = wx.StaticBoxSizer(zhengdian_box, wx.HORIZONTAL)
-        zhengdian_sizer.AddSpacer(5)
-
-        row_zhengdian = wx.BoxSizer(wx.HORIZONTAL)
-        # 整点（与游戏名称对齐）
-        zhengdian_label = wx.StaticText(panel, label="整点：")
-        zhengdian_label.SetMinSize((70, -1))  # 与游戏名称label宽度相同
-        row_zhengdian.Add(zhengdian_label, 0,
-                          wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        choices = ["蛇+全打", "龙+全打", "全打", "走路", "49整点"]
-        if has_script != "all" and "整点" not in has_script:
-            choices = ["蛇+全打", "龙+全打", "全打", "走路", "49整点"]
-        self.choiceZhengdian = wx.ComboBox(panel, size=(-1, 28),
-                                           choices=choices)
-        self.choiceZhengdian.SetHint("整点")
-        row_zhengdian.Add(self.choiceZhengdian, 1, wx.EXPAND | wx.RIGHT, 12)
-
-        # 魔镜
-        mojing_label = wx.StaticText(panel, label="魔镜：")
-        mojing_label.SetMinSize((50, -1))
-        row_zhengdian.Add(mojing_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                          8)
-        self.choiceMojing = wx.ComboBox(
-            panel,
-            size=(-1, 28),
-            choices=["迷幻境（虚实）", "狱境（黑白无常）", "刷张辽", "炎冰境"],
-        )
+        self.choiceHeifeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceHeifeng.SetForegroundColour(self.C_TEXT)
+        self.choiceMojing = wx.ComboBox(f1, size=(-1, 28), choices=["迷幻境（虚实）", "狱境（黑白无常）", "刷张辽", "炎冰境"])
         self.choiceMojing.SetHint("魔镜层数")
-        row_zhengdian.Add(self.choiceMojing, 1, wx.EXPAND | wx.RIGHT, 12)
+        self.choiceMojing.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceMojing.SetForegroundColour(self.C_TEXT)
+        self.number_input = wx.TextCtrl(f1, size=(-1, 28), validator=NumberValidator())
+        self.number_input.SetHint("次数")
+        self.number_input.SetBackgroundColour(self.C_INPUT_BG)
+        self.number_input.SetForegroundColour(self.C_TEXT)
+        self.qingyuan_count = wx.TextCtrl(f1, size=(-1, 28), validator=NumberValidator())
+        self.qingyuan_count.SetHint("青渊次数")
+        self.qingyuan_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.qingyuan_count.SetForegroundColour(self.C_TEXT)
 
-        # 0点执行
-        afterzreo_label = wx.StaticText(panel, label="0点执行：")
-        afterzreo_label.SetMinSize((70, -1))
-        row_zhengdian.Add(afterzreo_label, 0,
-                          wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.choiceAfterZreo = wx.ComboBox(
-            panel,
-            size=(-1, 28),
-            choices=["官渡", "魔镜", "日常", "49日常", "名将闯关"],
-        )
+        for lbl_text, ctrl in [("魔镜", self.choiceMojing), ("类型", self.choiceHeifeng), ("次数", self.number_input), ("青渊", self.qingyuan_count)]:
+            rs = wx.BoxSizer(wx.HORIZONTAL)
+            lb = wx.StaticText(f1, label=lbl_text)
+            lb.SetForegroundColour(self.C_MUTED)
+            lb.SetMinSize((28, -1))
+            rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+            rs.Add(ctrl, 1, wx.EXPAND)
+            fs.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
+        f1.SetSizer(fs)
+        cols.Add(f1, 1, wx.EXPAND | wx.RIGHT, 4)
+
+        # 战魂栏
+        f2 = wx.Panel(panel)
+        f2.SetBackgroundColour(self.C_SURFACE)
+        fs2 = wx.BoxSizer(wx.VERTICAL)
+        t2 = wx.StaticText(f2, label="战魂")
+        t2.SetForegroundColour(self.C_GOLD)
+        t2.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        fs2.Add(t2, 0, wx.ALL, 6)
+
+        self.choiceCeng = wx.ComboBox(f2, size=(-1, 28), choices=["20层", "21层", "22层", "23层", "24层", "25层"])
+        self.choiceCeng.SetHint("战魂层数")
+        self.choiceCeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceCeng.SetForegroundColour(self.C_TEXT)
+        self.zhanhun_count = wx.TextCtrl(f2, size=(55, 26), validator=NumberValidator())
+        self.zhanhun_count.SetHint("次数")
+        self.zhanhun_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.zhanhun_count.SetForegroundColour(self.C_TEXT)
+        self.choiceZhanHunCeng = wx.ComboBox(f2, size=(-1, 28), choices=["26层", "27层"])
+        self.choiceZhanHunCeng.SetHint("镇魂层数")
+        self.choiceZhanHunCeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceZhanHunCeng.SetForegroundColour(self.C_TEXT)
+        self.lianyu_count = wx.TextCtrl(f2, size=(55, 26), validator=NumberValidator())
+        self.lianyu_count.SetHint("次数")
+        self.lianyu_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.lianyu_count.SetForegroundColour(self.C_TEXT)
+        self.choiceShiHunCeng = wx.ComboBox(f2, size=(-1, 28), choices=["28层", "29层"])
+        self.choiceShiHunCeng.SetHint("噬魂层数")
+        self.choiceShiHunCeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceShiHunCeng.SetForegroundColour(self.C_TEXT)
+        self.shihun_count = wx.TextCtrl(f2, size=(55, 26), validator=NumberValidator())
+        self.shihun_count.SetHint("次数")
+        self.shihun_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.shihun_count.SetForegroundColour(self.C_TEXT)
+
+        for lbl_text, ctrl, narrow in [
+            ("战魂", self.choiceCeng, False), ("次数", self.zhanhun_count, True),
+            ("镇魂", self.choiceZhanHunCeng, False), ("次数", self.lianyu_count, True),
+            ("噬魂", self.choiceShiHunCeng, False), ("次数", self.shihun_count, True),
+        ]:
+            rs = wx.BoxSizer(wx.HORIZONTAL)
+            lb = wx.StaticText(f2, label=lbl_text)
+            lb.SetForegroundColour(self.C_MUTED)
+            lb.SetMinSize((28, -1))
+            rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+            rs.Add(ctrl, 1 if not narrow else 0, wx.EXPAND)
+            fs2.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
+        f2.SetSizer(fs2)
+        cols.Add(f2, 1, wx.EXPAND | wx.RIGHT, 4)
+
+        # 整点栏
+        f3 = wx.Panel(panel)
+        f3.SetBackgroundColour(self.C_SURFACE)
+        fs3 = wx.BoxSizer(wx.VERTICAL)
+        t3 = wx.StaticText(f3, label="整点")
+        t3.SetForegroundColour(self.C_GOLD)
+        t3.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        fs3.Add(t3, 0, wx.ALL, 6)
+
+        zdc = ["蛇+全打", "龙+全打", "全打", "走路", "49整点"] if has_script == "all" or "整点" in has_script else ["蛇+全打", "龙+全打", "全打", "走路", "49整点"]
+        self.choiceZhengdian = wx.ComboBox(f3, size=(-1, 28), choices=zdc)
+        self.choiceZhengdian.SetHint("整点")
+        self.choiceZhengdian.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceZhengdian.SetForegroundColour(self.C_TEXT)
+        self.choiceAfterZreo = wx.ComboBox(f3, size=(-1, 28), choices=["官渡", "魔镜", "日常", "49日常", "名将闯关"])
         self.choiceAfterZreo.SetHint("0点执行的脚本")
-        row_zhengdian.Add(self.choiceAfterZreo, 1, wx.EXPAND)
-        zhengdian_sizer.Add(row_zhengdian, 1, wx.EXPAND | wx.ALL, 8)
+        self.choiceAfterZreo.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceAfterZreo.SetForegroundColour(self.C_TEXT)
 
-        main_sizer.Add(zhengdian_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(10)
+        for lbl_text, ctrl in [("整点", self.choiceZhengdian), ("0点", self.choiceAfterZreo)]:
+            rs = wx.BoxSizer(wx.HORIZONTAL)
+            lb = wx.StaticText(f3, label=lbl_text)
+            lb.SetForegroundColour(self.C_MUTED)
+            lb.SetMinSize((28, -1))
+            rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+            rs.Add(ctrl, 1, wx.EXPAND)
+            fs3.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
+        f3.SetSizer(fs3)
+        cols.Add(f3, 1, wx.EXPAND)
 
-        # 队友设置区域
-        teammate_box = wx.StaticBox(panel, label="队友设置")
-        teammate_sizer = wx.StaticBoxSizer(teammate_box, wx.VERTICAL)
-        teammate_sizer.AddSpacer(5)
+        main_sizer.Add(cols, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
 
-        # 第一排：游戏名称
-        leader_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        leader_label = wx.StaticText(panel, label="游戏名称：")
-        leader_label.SetMinSize((70, -1))
-        leader_sizer.Add(leader_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                         8)
-        self.team_leader_text = wx.TextCtrl(panel, size=(-1, 28))
-        self.team_leader_text.SetHint("游戏名称")
-        self.team_leader_text.Bind(wx.EVT_TEXT, self.on_text_change)
-        leader_sizer.Add(self.team_leader_text, 1, wx.EXPAND)
-        # 方位控件（隐藏但保留代码）
-        leader_pos_label = wx.StaticText(panel, label="方位：")
-        leader_pos_label.SetMinSize((40, -1))
-        leader_pos_label.Hide()
-        leader_sizer.Add(leader_pos_label, 0,
-                         wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
-        self.team_leader_pos = wx.ComboBox(panel, size=(60, 28),
-                                           choices=["1", "2", "3", "4"])
-        self.team_leader_pos.SetHint("方位")
-        self.team_leader_pos.Hide()
-        leader_sizer.Add(self.team_leader_pos, 0)
-        teammate_sizer.Add(leader_sizer, 0, wx.EXPAND | wx.ALL, 5)
-
-        # 第二排：队友1和队友2
-        teammate1_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        # 队友1（与游戏名称对齐）
-        teammate1_label = wx.StaticText(panel, label="队友1：")
-        teammate1_label.SetMinSize((70, -1))  # 与游戏名称label宽度相同
-        teammate1_sizer.Add(teammate1_label, 0,
-                            wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.teammate1_text = wx.TextCtrl(panel, size=(-1, 28))
-        self.teammate1_text.SetHint("队友1")
-        teammate1_sizer.Add(self.teammate1_text, 1, wx.EXPAND | wx.RIGHT, 12)
-        # 方位控件（隐藏但保留代码）
-        pos1_label = wx.StaticText(panel, label="方位：")
-        pos1_label.SetMinSize((40, -1))
-        pos1_label.Hide()
-        teammate1_sizer.Add(pos1_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                            5)
-        self.teammate1_pos = wx.ComboBox(panel, size=(60, 28),
-                                         choices=["1", "2", "3", "4"])
-        self.teammate1_pos.SetHint("方位")
-        self.teammate1_pos.Hide()
-        teammate1_sizer.Add(self.teammate1_pos, 0, wx.RIGHT, 20)
-
-        # 队友2
-        teammate2_label = wx.StaticText(panel, label="队友2：")
-        teammate2_label.SetMinSize((70, -1))  # 与游戏名称label宽度相同
-        teammate1_sizer.Add(teammate2_label, 0,
-                            wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self.teammate2_text = wx.TextCtrl(panel, size=(-1, 28))
-        self.teammate2_text.SetHint("队友2")
-        teammate1_sizer.Add(self.teammate2_text, 1, wx.EXPAND)
-        # 方位控件（隐藏但保留代码）
-        pos2_label = wx.StaticText(panel, label="方位：")
-        pos2_label.SetMinSize((40, -1))
-        pos2_label.Hide()
-        teammate1_sizer.Add(pos2_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
-                            5)
-        self.teammate2_pos = wx.ComboBox(panel, size=(60, 28),
-                                         choices=["1", "2", "3", "4"])
-        self.teammate2_pos.SetHint("方位")
-        self.teammate2_pos.Hide()
-        teammate1_sizer.Add(self.teammate2_pos, 0)
-        teammate_sizer.Add(teammate1_sizer, 0, wx.EXPAND | wx.ALL, 5)
-
-        main_sizer.Add(teammate_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-        main_sizer.AddSpacer(10)
-
-        # 日常选项复选框
-        checkbox_box = wx.StaticBox(panel, label="日常选项")
-        checkbox_sizer = wx.StaticBoxSizer(checkbox_box, wx.VERTICAL)
-        checkbox_sizer.AddSpacer(5)
-
-        # 使用FlexGridSizer来更好地控制布局
-        grid_sizer = wx.FlexGridSizer(cols=10, vgap=5, hgap=8)
-        grid_sizer.SetFlexibleDirection(wx.BOTH)
-        grid_sizer.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_SPECIFIED)
-
-        # 创建较小的字体用于复选框文字
-        checkbox_font = wx.Font(
-            9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL,
-            faceName="微软雅黑"
-        )
+        # ── 日常 ──
+        sec("日常")
+        day_panel = wx.Panel(panel)
+        day_panel.SetBackgroundColour(self.C_BG)
+        grid = wx.FlexGridSizer(cols=11, vgap=4, hgap=3)
+        grid.SetFlexibleDirection(wx.BOTH)
+        grid.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_SPECIFIED)
 
         self.check_boxes = []
-        options = [
-            "战",
-            "镇",
-            "噬",
-            "溶",
-            "丹",
-            "五",
-            "云",
-            "名",
-            "八",
-            "鼠",
-            "英",
-            "庐",
-            "红",
-            "渊",
-            "帮",
-            "官",
-            "镜",
-            "卖",
-            "V",
-            "整",
-            "全",
-        ]
-        for option in options:
-            if option == "整" and has_script == "free":
+        opts = ["战", "镇", "噬", "溶", "丹", "五", "云", "名", "八", "鼠", "英", "庐", "红", "渊", "帮", "官", "镜", "卖", "V", "整", "全"]
+        for opt in opts:
+            if opt == "整" and has_script == "free":
                 continue
-            self.cb = wx.CheckBox(panel, label=option)
-            # 设置较小的字体
-            self.cb.SetFont(checkbox_font)
-            # 设置复选框大小（增大框体）
-            self.cb.SetMinSize((55.9, 35))
-            if not option in ["镜", "名", "卖", "噬", "整", "渊", "庐"]:
-                self.cb.SetValue(True)
-            else:
-                self.cb.SetValue(False)
-            self.check_boxes.append(self.cb)
-            grid_sizer.Add(self.cb, 0, wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
-            if option == "全":
-                self.cb.Bind(wx.EVT_CHECKBOX, self.on_any_checkbox_change)
-
-        checkbox_sizer.Add(grid_sizer, 0, wx.ALL, 6)
-        main_sizer.Add(checkbox_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
+            cb = wx.CheckBox(day_panel, label=opt)
+            cb.SetForegroundColour(self.C_MUTED)
+            cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            if opt not in ["镜", "名", "卖", "噬", "整", "渊", "庐"]:
+                cb.SetValue(True)
+            self.check_boxes.append(cb)
+            grid.Add(cb, 0, wx.ALIGN_CENTER_VERTICAL)
+            if opt == "全":
+                cb.Bind(wx.EVT_CHECKBOX, self.on_any_checkbox_change)
+        day_panel.SetSizer(grid)
+        main_sizer.Add(day_panel, 0, wx.LEFT | wx.RIGHT, 12)
         main_sizer.AddSpacer(6)
 
-        # 底部按钮区域（铺满并增加间距，增大按钮）
-        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.button = wx.Button(panel, label="确定", style=wx.BORDER_NONE,
-                                size=(-1, 48))
-        self.button.Disable()
+        # ── 确定按钮 ──
+        self.button = wx.Button(panel, label="✓ 确定", size=(-1, 36), style=wx.BORDER_NONE)
+        self.button.SetBackgroundColour(self.C_GOLD)
+        self.button.SetForegroundColour(wx.Colour(18, 18, 22))
+        self.button.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
-        self.button.SetBackgroundColour(wx.Colour(70, 130, 180))
-        self.button.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer.Add(self.button, 1, wx.EXPAND | wx.RIGHT, 15)
+        self.button.Disable()
+        main_sizer.Add(self.button, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
 
-        self.saveButton = wx.Button(panel, label="保存方案",
-                                    style=wx.BORDER_NONE, size=(-1, 48))
-        self.saveButton.Bind(wx.EVT_BUTTON, self.on_save)
-        self.saveButton.SetBackgroundColour(wx.Colour(20, 180, 168))
-        self.saveButton.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer.Add(self.saveButton, 1, wx.EXPAND | wx.RIGHT, 15)
+        # 方案底部按钮（保留引用但移到方案行用图标了）
+        self.saveButton = self.updateButton = self.getButton = None
 
-        self.updateButton = wx.Button(panel, label="修改方案",
-                                      style=wx.BORDER_NONE, size=(-1, 48))
-        self.updateButton.Bind(wx.EVT_BUTTON, self.on_update)
-        self.updateButton.SetBackgroundColour(wx.Colour(103, 194, 58))
-        self.updateButton.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer.Add(self.updateButton, 1, wx.EXPAND | wx.RIGHT, 15)
+        # 隐藏的控件
+        self.choice_line = wx.ComboBox(panel, size=(60, 28), choices=["一线", "二线", "三线"])
+        self.choice_line.Hide()
+        self.team_leader_pos = wx.ComboBox(panel, size=(60, 28), choices=["1", "2", "3", "4"])
+        self.team_leader_pos.Hide()
+        self.teammate1_pos = wx.ComboBox(panel, size=(60, 28), choices=["1", "2", "3", "4"])
+        self.teammate1_pos.Hide()
+        self.teammate2_pos = wx.ComboBox(panel, size=(60, 28), choices=["1", "2", "3", "4"])
+        self.teammate2_pos.Hide()
 
-        self.getButton = wx.Button(panel, label="删除方案",
-                                   style=wx.BORDER_NONE, size=(-1, 48))
-        self.getButton.Bind(wx.EVT_BUTTON, self.on_delete)
-        self.getButton.SetBackgroundColour(wx.Colour(144, 144, 153))
-        self.getButton.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_sizer.Add(self.getButton, 1, wx.EXPAND | wx.RIGHT, 15)
-
-        # 创建一个容器来放置重叠的按钮
-        button_container = wx.Panel(panel)
-        button_container_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.addBloudBtn = wx.Button(button_container, label="自动战斗",
-                                     style=wx.BORDER_NONE, size=(-1, 48))
-        self.addBloudBtn.Bind(wx.EVT_BUTTON, self.addBloudFun)
-        self.addBloudBtn.SetBackgroundColour(wx.Colour(103, 194, 58))
-        self.addBloudBtn.SetForegroundColour(wx.Colour(255, 255, 255))
-        button_container_sizer.Add(self.addBloudBtn, 1, wx.EXPAND)
-
-        self.closeBloudBtn = wx.Button(button_container, label="取消自动",
-                                       style=wx.BORDER_NONE, size=(-1, 48))
-        self.closeBloudBtn.Bind(wx.EVT_BUTTON, self.closeBloudFun)
-        self.closeBloudBtn.SetBackgroundColour(wx.Colour(226, 96, 95))
-        self.closeBloudBtn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.closeBloudBtn.Hide()
-        # 将 closeBloudBtn 添加到相同位置，使其与 addBloudBtn 重叠
-        button_container_sizer.Add(self.closeBloudBtn, 1, wx.EXPAND)
-
-        button_container.SetSizer(button_container_sizer)
-        button_sizer.Add(button_container, 1, wx.EXPAND | wx.RIGHT, 15)
-
-        # 在布局完成后，将 closeBloudBtn 移动到与 addBloudBtn 相同的位置（重叠）
-        def sync_button_position():
-            """同步按钮位置，使它们重叠"""
-            if self.addBloudBtn and self.closeBloudBtn:
-                pos = self.addBloudBtn.GetPosition()
-                size = self.addBloudBtn.GetSize()
-                self.closeBloudBtn.SetPosition(pos)
-                self.closeBloudBtn.SetSize(size)
-
-        # 绑定事件，确保按钮位置同步
-        def on_add_btn_show(event):
-            wx.CallAfter(sync_button_position)
-            event.Skip()
-
-        def on_close_btn_show(event):
-            wx.CallAfter(sync_button_position)
-            event.Skip()
-
-        def on_panel_size(event):
-            wx.CallAfter(sync_button_position)
-            event.Skip()
-
-        self.addBloudBtn.Bind(wx.EVT_SHOW, on_add_btn_show)
-        self.closeBloudBtn.Bind(wx.EVT_SHOW, on_close_btn_show)
-        button_container.Bind(wx.EVT_SIZE, on_panel_size)
-
-        # 在初始化完成后同步一次位置
-        wx.CallAfter(sync_button_position)
-
-        main_sizer.Add(button_sizer, 0,
-                       wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 15)
+        self.text_ctrl = wx.TextCtrl(panel, size=(1, 1), style=wx.TE_MULTILINE)
+        self.text_ctrl.Hide()
 
         panel.SetSizer(main_sizer)
         self.load_current_scheme()
 
-        self.number_input.Bind(wx.EVT_TEXT, self.on_text_change)
+    def _section_header(self, sizer, panel, text):
+        l = wx.StaticText(panel, label=f"▸ {text}")
+        l.SetForegroundColour(wx.Colour(200, 170, 90))
+        l.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        sizer.Add(l, 0, wx.LEFT | wx.RIGHT, 12)
+        sizer.AddSpacer(4)
+
+    def _make_card(self, panel):
+        c = wx.Panel(panel)
+        c.SetBackgroundColour(wx.Colour(26, 26, 32))
+        return c
+
+    def _dialog_icon(self, name, size):
+        path = self.frame.get_resource_path("serveAssets/images/" + name)
+        img = wx.Image(path).Scale(size, size, wx.IMAGE_QUALITY_HIGH)
+        return wx.Bitmap(img)
 
     # self.choiceCeng.Hide()
     # self.Bind(wx.EVT_COMBOBOX, self.choiceCengScript, self.choiceCeng)
@@ -16327,6 +16181,11 @@ class MyDialog(wx.Dialog):
         self.frame.addBloudFlag = False
         print("自动战斗标志已设置为 False")
 
+    def on_persistent_liubei_change(self, event):
+        """刘备常驻复选框变更"""
+        self.frame.enablePersistentLiubei = self.persistentLiubeiCB.GetValue()
+        print(f"刘备常驻已设置为 {self.frame.enablePersistentLiubei}")
+
     def on_text_change(self, event):
         if self.team_leader_text.GetValue():
             self.button.Enable()
@@ -16375,6 +16234,7 @@ class MyDialog(wx.Dialog):
             "zhanhun_count": self.zhanhun_count.GetValue(),
             "shihun_count": self.shihun_count.GetValue(),
             "shihun_floor": self.choiceShiHunCeng.GetValue(),
+            "persistent_liubei": self.persistentLiubeiCB.GetValue(),
         }
 
     def apply_settings(self, settings):
@@ -16402,6 +16262,7 @@ class MyDialog(wx.Dialog):
         self.zhanhun_count.SetValue(settings.get("zhanhun_count", ""))
         self.shihun_count.SetValue(settings.get("shihun_count", ""))
         self.choiceShiHunCeng.SetValue(settings.get("shihun_floor", ""))
+        self.persistentLiubeiCB.SetValue(settings.get("persistent_liubei", True))
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -16478,6 +16339,9 @@ class MyDialog(wx.Dialog):
             wx.MessageBox("方案已删除", "成功", wx.OK | wx.ICON_INFORMATION)
 
     def on_button_click(self, event):
+        if not self.team_leader_text.GetValue().strip():
+            wx.MessageBox("请先输入游戏名称", "提示", wx.OK | wx.ICON_WARNING)
+            return
         # 获取文本框中的值并保存在父窗口(MyFrame)中
         parent = self.GetParent()
         selected_options = []
@@ -16509,6 +16373,7 @@ class MyDialog(wx.Dialog):
             parent.addBloudFlag = False
         else:
             parent.addBloudFlag = True
+        parent.enablePersistentLiubei = self.persistentLiubeiCB.GetValue()
         # parent.selections = selections
         # 关闭对话框
         self.EndModal(wx.ID_OK)
@@ -16544,340 +16409,231 @@ class NumberValidator(wx.Validator):
 
 
 class HelpDialog(wx.Dialog):
+    C_BG = wx.Colour(18, 18, 22)
+    C_SURFACE = wx.Colour(26, 26, 32)
+    C_GOLD = wx.Colour(230, 200, 110)
+    C_TEXT = wx.Colour(230, 230, 238)
+    C_MUTED = wx.Colour(180, 180, 190)
+
     def __init__(self, parent, title, content, images):
         super(HelpDialog, self).__init__(
-            parent, title=title, size=(900, 700), pos=(200, 20),
+            parent, title=title, size=(800, 600), pos=(200, 20),
             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
         )
+        self.SetBackgroundColour(self.C_BG)
 
-        # 设置背景色
-        self.SetBackgroundColour(wx.Colour(250, 250, 252))
-
-        # 创建主面板
         main_panel = wx.Panel(self)
-        main_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        main_panel.SetBackgroundColour(self.C_BG)
 
-        # 创建标题栏
         title_panel = wx.Panel(main_panel)
-        title_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        title_panel.SetBackgroundColour(self.C_BG)
         title_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
         title_text = wx.StaticText(title_panel, label=title)
-        title_font = wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                             wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
+        title_font = wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
         title_text.SetFont(title_font)
-        title_text.SetForegroundColour(wx.Colour(51, 51, 51))
+        title_text.SetForegroundColour(self.C_GOLD)
         title_sizer.Add(title_text, 1, wx.ALIGN_CENTER | wx.ALL, 12)
         title_panel.SetSizer(title_sizer)
 
-        # 创建滚动面板
-        scroll_panel = scrolled.ScrolledPanel(main_panel, -1,
-                                              style=wx.TAB_TRAVERSAL)
-        scroll_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
-        scroll_panel.SetupScrolling(scroll_x=True, scroll_y=True, rate_x=20,
-                                    rate_y=20)
+        all_text = "\n\n".join(content)
+        text_ctrl = wx.TextCtrl(main_panel, value=all_text,
+                                style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP | wx.TE_NO_VSCROLL)
+        text_ctrl.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        text_ctrl.SetForegroundColour(self.C_TEXT)
+        text_ctrl.SetBackgroundColour(self.C_BG)
+        main_sizer.Add(text_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
 
-        content_sizer = wx.BoxSizer(wx.VERTICAL)
+        if images:
+            scroll_panel = scrolled.ScrolledPanel(main_panel, -1, style=wx.TAB_TRAVERSAL)
+            scroll_panel.SetBackgroundColour(self.C_BG)
+            scroll_panel.SetupScrolling(scroll_x=True, scroll_y=True, rate_x=20, rate_y=20)
+            img_sizer = wx.BoxSizer(wx.VERTICAL)
+            for idx, image_path in enumerate(images):
+                try:
+                    image = wx.Image(image_path, wx.BITMAP_TYPE_ANY)
+                    if image.IsOk():
+                        img_panel = wx.Panel(scroll_panel)
+                        img_panel.SetBackgroundColour(self.C_SURFACE)
+                        row = wx.BoxSizer(wx.HORIZONTAL)
+                        dialog_width = self.GetSize().width
+                        max_width = int(dialog_width * 0.85)
+                        ow, oh = image.GetWidth(), image.GetHeight()
+                        if ow > max_width:
+                            nw, nh = max_width, int(oh * max_width / ow)
+                        else:
+                            nw, nh = ow, oh
+                        image = image.Scale(nw, nh, wx.IMAGE_QUALITY_HIGH)
+                        bitmap = wx.StaticBitmap(img_panel, -1, image.ConvertToBitmap())
+                        row.Add(bitmap, 0, wx.ALL | wx.LEFT, 10)
+                        img_panel.SetSizer(row)
+                        img_sizer.Add(img_panel, 0, wx.EXPAND | wx.LEFT, 5)
+                        if idx < len(images) - 1:
+                            line = wx.StaticLine(scroll_panel, style=wx.LI_HORIZONTAL)
+                            img_sizer.Add(line, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
+                except Exception as e:
+                    print(f"加载图片失败: {e}")
+            scroll_panel.SetSizer(img_sizer)
+            main_sizer.Add(scroll_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-        # 添加文字内容
-        content_font = wx.Font(
-            11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-            wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"
-        )
-        for i, text in enumerate(content):
-            # 创建文字容器，添加内边距
-            text_panel = wx.Panel(scroll_panel)
-            text_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
-            text_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-            text_ctrl = wx.StaticText(text_panel, label=text)
-            text_ctrl.SetFont(content_font)
-            text_ctrl.SetForegroundColour(wx.Colour(51, 51, 51))
-            text_sizer.Add(text_ctrl, 1, wx.ALL | wx.EXPAND, 10)
-            text_panel.SetSizer(text_sizer)
-
-            content_sizer.Add(text_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 5)
-
-            # 添加分隔线（除了最后一项）
-            if i < len(content) - 1 or images:
-                line = wx.StaticLine(scroll_panel, style=wx.LI_HORIZONTAL)
-                content_sizer.Add(line, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-
-        # 添加图片
-        for idx, image_path in enumerate(images):
-            try:
-                image = wx.Image(image_path, wx.BITMAP_TYPE_ANY)
-                if image.IsOk():
-                    # 创建图片容器
-                    img_panel = wx.Panel(scroll_panel)
-                    img_panel.SetBackgroundColour(wx.Colour(248, 248, 250))
-                    img_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-                    # 计算合适的图片尺寸（最大宽度为对话框宽度的90%）
-                    dialog_width = self.GetSize().width
-                    max_width = int(dialog_width * 0.85)
-                    original_width = image.GetWidth()
-                    original_height = image.GetHeight()
-
-                    if original_width > max_width:
-                        scale_ratio = max_width / original_width
-                        new_width = max_width
-                        new_height = int(original_height * scale_ratio)
-                    else:
-                        new_width = original_width
-                        new_height = original_height
-
-                    # 缩放图片
-                    image = image.Scale(new_width, new_height,
-                                        wx.IMAGE_QUALITY_HIGH)
-                    bitmap = wx.StaticBitmap(img_panel, -1,
-                                             image.ConvertToBitmap())
-                    img_sizer.Add(bitmap, 0, wx.ALL | wx.CENTER, 10)
-                    img_panel.SetSizer(img_sizer)
-
-                    content_sizer.Add(img_panel, 0, wx.ALL | wx.CENTER, 5)
-
-                    # 添加分隔线（除了最后一张图片）
-                    if idx < len(images) - 1:
-                        line = wx.StaticLine(scroll_panel,
-                                             style=wx.LI_HORIZONTAL)
-                        content_sizer.Add(line, 0,
-                                          wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
-            except Exception as e:
-                print(f"加载图片失败: {e}")
-
-        scroll_panel.SetSizer(content_sizer)
-
-        # 创建底部按钮区域
         button_panel = wx.Panel(main_panel)
-        button_panel.SetBackgroundColour(wx.Colour(245, 245, 247))
+        button_panel.SetBackgroundColour(self.C_BG)
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        close_button = wx.Button(button_panel, label="关闭", size=(100, 35))
-        close_button.SetFont(content_font)
-        close_button.SetBackgroundColour(wx.Colour(108, 117, 125))
-        close_button.SetForegroundColour(wx.Colour(255, 255, 255))
+        close_button = wx.Button(button_panel, label="关闭", size=(100, 35), style=wx.BORDER_NONE)
+        close_button.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        close_button.SetBackgroundColour(self.C_SURFACE)
+        close_button.SetForegroundColour(self.C_TEXT)
         close_button.Bind(wx.EVT_BUTTON, lambda e: self.Close())
         button_sizer.AddStretchSpacer()
         button_sizer.Add(close_button, 0, wx.ALL, 10)
         button_panel.SetSizer(button_sizer)
 
-        # 主布局
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer.Add(title_panel, 0, wx.EXPAND)
-        main_sizer.Add(scroll_panel, 1, wx.EXPAND | wx.ALL, 5)
+        main_sizer.Add(scroll_panel if images else text_ctrl, 1, wx.EXPAND | wx.ALL, 5)
         main_sizer.Add(button_panel, 0, wx.EXPAND)
         main_panel.SetSizer(main_sizer)
 
-        # 设置对话框布局
         dialog_sizer = wx.BoxSizer(wx.VERTICAL)
         dialog_sizer.Add(main_panel, 1, wx.EXPAND)
         self.SetSizer(dialog_sizer)
 
 
 class UpdateDialog(wx.Dialog):
+    C_BG = wx.Colour(18, 18, 22)
+    C_SURFACE = wx.Colour(26, 26, 32)
+    C_GOLD = wx.Colour(230, 200, 110)
+    C_TEXT = wx.Colour(230, 230, 238)
+    C_MUTED = wx.Colour(180, 180, 190)
+
     def __init__(self, parent, remote_info):
-        super().__init__(
-            parent, title="检查更新", size=(600, 500), pos=(260, 30),
-            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
-        )
+        super().__init__(parent, title="检查更新", size=(550, 450), pos=(260, 30),
+                         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        self.SetBackgroundColour(self.C_BG)
         self.current_version = UpdateDialog.get_current_version()
         self.remote_info = remote_info
         self.latest_version = self.remote_info["version"]
         self.download_url = self.remote_info["download_url"]
         self.release_date = self.remote_info["release_date"]
 
-        # 设置背景色
-        self.SetBackgroundColour(wx.Colour(250, 250, 252))
-
-        # 创建UI
         self.InitUI()
-
-        # 显示更新日志
         self.changelog_text.SetValue(self.remote_info["changelog"])
 
-        # 如果版本不同，显示更新按钮
         if self.current_version != self.latest_version:
             self.update_button.Show()
             self.status_label.SetLabel("发现新版本！")
-            self.status_label.SetForegroundColour(wx.Colour(40, 167, 69))
+            self.status_label.SetForegroundColour(wx.Colour(80, 220, 100))
         else:
             self.update_button.Hide()
             self.status_label.SetLabel("已是最新版本")
-            self.status_label.SetForegroundColour(wx.Colour(108, 117, 125))
+            self.status_label.SetForegroundColour(self.C_MUTED)
 
         self.Layout()
 
     def InitUI(self):
-        # 创建主面板
         main_panel = wx.Panel(self)
-        main_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        main_panel.SetBackgroundColour(self.C_BG)
 
-        # 创建标题栏
         title_panel = wx.Panel(main_panel)
-        title_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        title_panel.SetBackgroundColour(self.C_BG)
         title_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
         title_text = wx.StaticText(title_panel, label="检查更新")
-        title_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                             wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
+        title_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
         title_text.SetFont(title_font)
-        title_text.SetForegroundColour(wx.Colour(51, 51, 51))
+        title_text.SetForegroundColour(self.C_GOLD)
         title_sizer.Add(title_text, 1, wx.ALIGN_CENTER | wx.ALL, 12)
         title_panel.SetSizer(title_sizer)
 
-        # 创建内容面板
         content_panel = wx.Panel(main_panel)
-        content_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        content_panel.SetBackgroundColour(self.C_BG)
         vbox = wx.BoxSizer(wx.VERTICAL)
 
-        # 添加版本信息区域
         version_panel = wx.Panel(content_panel)
-        version_panel.SetBackgroundColour(wx.Colour(248, 249, 250))
+        version_panel.SetBackgroundColour(self.C_SURFACE)
         version_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # 版本信息标题
         version_title = wx.StaticText(version_panel, label="版本信息")
-        version_title_font = wx.Font(
-            11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD,
-            faceName="微软雅黑"
-        )
+        version_title_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
         version_title.SetFont(version_title_font)
-        version_title.SetForegroundColour(wx.Colour(73, 80, 87))
+        version_title.SetForegroundColour(self.C_GOLD)
         version_sizer.Add(version_title, 0, wx.ALL, 8)
 
-        # 版本信息网格
-        grid = wx.FlexGridSizer(cols=2, vgap=12, hgap=30)
+        grid = wx.FlexGridSizer(cols=2, vgap=10, hgap=20)
         grid.AddGrowableCol(1, 1)
+        version_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
+        label_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 
-        # 当前版本
-        current_label = wx.StaticText(version_panel, label="当前版本:")
-        current_label.SetFont(
-            wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                    wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-        )
-        current_label.SetForegroundColour(wx.Colour(108, 117, 125))
-        grid.Add(current_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
+        for lbl_text, target in [("当前版本", "current_version_label"), ("最新版本", "latest_version_label"),
+                                  ("状态", "status_label"), ("更新日期", "release_date_label")]:
+            if target == "status_label":
+                init_text = "检查中..."
+            else:
+                attr_name = target.replace("_label", "")
+                init_text = getattr(self, attr_name, "")
+            lb = wx.StaticText(version_panel, label=lbl_text + ":")
+            lb.SetFont(label_font)
+            lb.SetForegroundColour(self.C_MUTED)
+            grid.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
+            st = wx.StaticText(version_panel, label=init_text)
+            st.SetFont(version_font)
+            st.SetForegroundColour(self.C_TEXT)
+            setattr(self, target, st)
+            grid.Add(st, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        self.current_version_label = wx.StaticText(version_panel,
-                                                   label=self.current_version)
-        version_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                               wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
-        self.current_version_label.SetFont(version_font)
-        self.current_version_label.SetForegroundColour(wx.Colour(73, 80, 87))
-        grid.Add(self.current_version_label, 0, wx.ALIGN_CENTER_VERTICAL)
-
-        # 最新版本
-        latest_label = wx.StaticText(version_panel, label="最新版本:")
-        latest_label.SetFont(
-            wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                    wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-        )
-        latest_label.SetForegroundColour(wx.Colour(108, 117, 125))
-        grid.Add(latest_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
-
-        self.latest_version_label = wx.StaticText(version_panel,
-                                                  label=self.latest_version)
-        self.latest_version_label.SetFont(version_font)
-        self.latest_version_label.SetForegroundColour(wx.Colour(40, 167, 69))
-        grid.Add(self.latest_version_label, 0, wx.ALIGN_CENTER_VERTICAL)
-
-        # 状态标签
-        status_label_text = wx.StaticText(version_panel, label="状态:")
-        status_label_text.SetFont(
-            wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                    wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-        )
-        status_label_text.SetForegroundColour(wx.Colour(108, 117, 125))
-        grid.Add(status_label_text, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
-
-        self.status_label = wx.StaticText(version_panel, label="检查中...")
-        self.status_label.SetFont(version_font)
-        self.status_label.SetForegroundColour(wx.Colour(108, 117, 125))
-        grid.Add(self.status_label, 0, wx.ALIGN_CENTER_VERTICAL)
-
-        # 更新日期
-        release_date_label = wx.StaticText(version_panel, label="更新日期:")
-        release_date_label.SetFont(
-            wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                    wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-        )
-        release_date_label.SetForegroundColour(wx.Colour(108, 117, 125))
-        grid.Add(release_date_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
-
-        self.release_date_label = wx.StaticText(version_panel,
-                                                label=self.release_date)
-        self.release_date_label.SetFont(version_font)
-        self.release_date_label.SetForegroundColour(wx.Colour(73, 80, 87))
-        grid.Add(self.release_date_label, 0, wx.ALIGN_CENTER_VERTICAL)
-
+        self.current_version_label.SetLabel(self.current_version)
+        self.latest_version_label.SetLabel(self.latest_version)
+        self.release_date_label.SetLabel(self.release_date)
         version_sizer.Add(grid, 0, wx.EXPAND | wx.ALL, 10)
         version_panel.SetSizer(version_sizer)
 
-        # 添加更新日志区域
         changelog_panel = wx.Panel(content_panel)
-        changelog_panel.SetBackgroundColour(wx.Colour(248, 249, 250))
+        changelog_panel.SetBackgroundColour(self.C_SURFACE)
         changelog_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # 更新日志标题
         changelog_title = wx.StaticText(changelog_panel, label="更新日志")
         changelog_title.SetFont(version_title_font)
-        changelog_title.SetForegroundColour(wx.Colour(73, 80, 87))
+        changelog_title.SetForegroundColour(self.C_GOLD)
         changelog_sizer.Add(changelog_title, 0, wx.ALL, 8)
 
-        self.changelog_text = wx.TextCtrl(
-            changelog_panel,
-            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2, size=(-1, 150)
-        )
-        self.changelog_text.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.changelog_text.SetForegroundColour(wx.Colour(51, 51, 51))
-        changelog_font = wx.Font(
-            9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL,
-            faceName="微软雅黑"
-        )
+        self.changelog_text = wx.TextCtrl(changelog_panel, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 120))
+        self.changelog_text.SetBackgroundColour(wx.Colour(22, 22, 28))
+        self.changelog_text.SetForegroundColour(self.C_TEXT)
+        changelog_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
         self.changelog_text.SetFont(changelog_font)
-        changelog_sizer.Add(self.changelog_text, 1,
-                            wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+        changelog_sizer.Add(self.changelog_text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
         changelog_panel.SetSizer(changelog_sizer)
 
-        # 添加按钮区域
         button_panel = wx.Panel(content_panel)
-        button_panel.SetBackgroundColour(wx.Colour(245, 245, 247))
+        button_panel.SetBackgroundColour(self.C_BG)
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        button_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
 
-        button_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                              wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-
-        self.update_button = wx.Button(button_panel, label="立即更新",
-                                       size=(120, 35))
+        self.update_button = wx.Button(button_panel, label="立即更新", size=(110, 32), style=wx.BORDER_NONE)
         self.update_button.SetFont(button_font)
-        self.update_button.SetBackgroundColour(wx.Colour(40, 167, 69))
+        self.update_button.SetBackgroundColour(wx.Colour(50, 140, 70))
         self.update_button.SetForegroundColour(wx.Colour(255, 255, 255))
         self.update_button.Bind(wx.EVT_BUTTON, self.on_update)
-        button_sizer.Add(self.update_button, 0, wx.ALL, 5)
 
-        close_button = wx.Button(button_panel, label="关闭", size=(100, 35))
+        close_button = wx.Button(button_panel, label="关闭", size=(90, 32), style=wx.BORDER_NONE)
         close_button.SetFont(button_font)
-        close_button.SetBackgroundColour(wx.Colour(108, 117, 125))
-        close_button.SetForegroundColour(wx.Colour(255, 255, 255))
+        close_button.SetBackgroundColour(self.C_SURFACE)
+        close_button.SetForegroundColour(self.C_TEXT)
         close_button.Bind(wx.EVT_BUTTON, lambda e: self.Close())
-        button_sizer.Add(close_button, 0, wx.ALL, 5)
+
+        button_sizer.Add(self.update_button, 0, wx.RIGHT, 8)
+        button_sizer.AddStretchSpacer()
+        button_sizer.Add(close_button, 0)
         button_panel.SetSizer(button_sizer)
 
-        # 添加到主布局
-        vbox.Add(version_panel, 0, wx.EXPAND | wx.ALL, 10)
-        vbox.Add(changelog_panel, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM,
-                 10)
-        vbox.Add(button_panel, 0, wx.EXPAND)
+        vbox.Add(version_panel, 0, wx.EXPAND | wx.ALL, 8)
+        vbox.Add(changelog_panel, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        vbox.Add(button_panel, 0, wx.EXPAND | wx.BOTTOM, 8)
         content_panel.SetSizer(vbox)
 
-        # 主布局
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer.Add(title_panel, 0, wx.EXPAND)
         main_sizer.Add(content_panel, 1, wx.EXPAND | wx.ALL, 5)
         main_panel.SetSizer(main_sizer)
 
-        # 设置对话框布局
         dialog_sizer = wx.BoxSizer(wx.VERTICAL)
         dialog_sizer.Add(main_panel, 1, wx.EXPAND)
         self.SetSizer(dialog_sizer)
