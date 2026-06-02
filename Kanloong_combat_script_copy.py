@@ -404,6 +404,36 @@ class CombatAutoScript:
         self.start_summon_liubei = False
         # 刘备是否常驻（True=死了重召，False=一次性模式，清完状态回6曹操）
         self.enable_persistent_liubei = True
+
+        # 战斗策略引擎（优先级排序的技能释放策略）
+        self.skill_strategies = {
+            "main_char": [
+                {"priority": 80, "skill": "锁魂",       "condition": "always"},
+                {"priority": 60, "skill": "寂灭神劫",    "condition": "always"},
+                {"priority": 50, "skill": "天灾",        "condition": "always"},
+                {"priority": -1, "skill": "防御",        "condition": "always"},
+            ],
+            "attack": [
+                {"priority": 80, "skill": "剑阵灭杀",    "condition": "always"},
+                {"priority": 50, "skill": "武神一怒",    "condition": "always"},
+                {"priority": -1, "skill": "防御",        "condition": "always"},
+            ],
+            "support": [
+                {"priority": 100, "skill": "清除状态",   "condition": "enemies_need_clear"},
+                {"priority": 90,  "skill": "加血",       "condition": "ally_hp_critical"},
+                {"priority": 80,  "skill": "控制",       "condition": "always"},
+                {"priority": 75,  "skill": "加攻击",     "condition": "attack_buff_expired"},
+                {"priority": 70,  "skill": "加血",       "condition": "ally_hp_low"},
+                {"priority": 10,  "skill": None,         "condition": "always",
+                 "sequence": ["控制", "加攻击", "加血"]},
+                {"priority": -1,  "skill": "防御",       "condition": "always"},
+            ],
+        }
+        self.attack_buff_tracker = {}  # {account_index: remaining_turns} 加攻击buff剩余回合
+        self.low_hp_accounts = {}      # {account_index: count} 血量低单位计数
+
+        # 血量检测区域→账号映射（hp_bar_regions的顺序: 1主角 0主角 2主角 1将1 0将1 2将1 1将2 0将2 2将2）
+        self.hp_region_to_account = {0: 1, 1: 0, 2: 2, 3: 1, 4: 0, 5: 2, 6: 1, 7: 0, 8: 2}
     # 创建战斗播报窗口（在主线程中调用）
     def _create_battle_report_dialog(self):
         # 【关键修复】如果窗口已被关闭，不再创建
@@ -1176,6 +1206,56 @@ class CombatAutoScript:
 
         return False
 
+    def _try_release_skill(self, account_index, skill_name, caller_hint=""):
+        if skill_name == "防御":
+            defense_btn = self.find_image(
+                account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
+            )
+            if defense_btn:
+                self.click_position(account_index, defense_btn.x, defense_btn.y)
+                self.report_battle_info(f"账号{account_index} {caller_hint}执行防御", "action")
+                time.sleep(CombatConstants.ACTION_DELAY)
+                return True
+            return False
+        skill_path = self.skill_images.get(skill_name)
+        if not skill_path:
+            return False
+        skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
+        if not skill_pos:
+            return False
+        return self.release_skill_with_target(account_index, skill_name, skill_pos, caller_hint)
+
+    def _evaluate_condition(self, account_index, cond):
+        if cond == "always":
+            return True
+        elif cond == "enemies_need_clear":
+            return (account_index in self.enemies_need_clear
+                    and bool(self.enemies_need_clear[account_index]))
+        elif cond == "ally_hp_critical":
+            return self.low_hp_accounts.get(account_index, 0) >= 1
+        elif cond == "ally_hp_low":
+            return self.low_hp_accounts.get(account_index, 0) >= 2
+        elif cond == "attack_buff_expired":
+            return self.attack_buff_tracker.get(account_index, 0) <= 0
+        return True
+
+    def _execute_best_strategy(self, account_index, unit_type):
+        if unit_type not in self.skill_strategies:
+            return False
+        strategies = sorted(self.skill_strategies[unit_type], key=lambda s: s["priority"], reverse=True)
+        for st in strategies:
+            if not self._evaluate_condition(account_index, st["condition"]):
+                continue
+            skill = st["skill"]
+            if skill is None and "sequence" in st:
+                idx = self.liubei_skill_index.get(account_index, 0)
+                seq = st["sequence"]
+                skill = seq[idx % len(seq)]
+                self.liubei_skill_index[account_index] = (idx + 1) % len(seq)
+            if self._try_release_skill(account_index, skill, unit_type):
+                return True
+        return False
+
     def release_skill_with_target(self, account_index, skill_name, skill_pos, skill_type="main_char"):
         """释放技能并选择目标
         :param account_index: 账号索引
@@ -1266,6 +1346,9 @@ class CombatAutoScript:
                         self.report_battle_info(
                             f"账号{account_index} 刘备释放{skill_name}，目标位置: {target_pos}", "action"
                         )
+
+            if skill_name == "加攻击" and skill_type == "support":
+                self.attack_buff_tracker[account_index] = 3
 
             time.sleep(CombatConstants.ACTION_DELAY)
             return True
@@ -3656,26 +3739,11 @@ class CombatAutoScript:
                             if account_index in self.revive_assignments:
                                 del self.revive_assignments[account_index]
 
-                # 4.4 释放主角技能
-                main_char_skills = ["锁魂", "寂灭神劫", "天灾"]
-                for skill_name in main_char_skills:
-                    if time.time() - turn_start_time >= turn_timeout:
-                        break
-                    skill_path = self.skill_images.get(skill_name)
-                    if skill_path:
-                        skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
-                        if skill_pos:
-                            if self.release_skill_with_target(account_index, skill_name, skill_pos, "main_char"):
-                                return True
+                # 4.4 释放主角技能（策略引擎）
+                if self._execute_best_strategy(account_index, "main_char"):
+                    return True
 
-                # 4.5 加血操作
-                # if char_info.get("need_heal", False) and time.time() - turn_start_time < turn_timeout:
-                #     target_pos = char_info.get("position") or (764, 380)
-                #     if self.use_item_with_verification(account_index, "恢复药", target_pos):
-                #         char_info["need_heal"] = False
-                #         return True
-
-                # 4.6 防御
+                # 4.6 防御（策略引擎已包含防御兜底，此处保底兼容）
                 defense_btn = self.find_image(
                     account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
                 )
@@ -3775,26 +3843,9 @@ class CombatAutoScript:
                             if account_index in self.revive_assignments:
                                 del self.revive_assignments[account_index]
 
-                # 4.2 释放攻击技能
-                if detected_skill:
-                    skill_path = self.skill_images.get(detected_skill)
-                    if skill_path:
-                        skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
-                        if skill_pos:
-                            if self.release_skill_with_target(account_index, detected_skill, skill_pos, "attack"):
-                                return True
-                else:
-                    # 重新查找攻击技能
-                    attack_skills = ["剑阵灭杀", "武神一怒"]
-                    for skill_name in attack_skills:
-                        if time.time() - turn_start_time >= turn_timeout:
-                            break
-                        skill_path = self.skill_images.get(skill_name)
-                        if skill_path:
-                            skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
-                            if skill_pos:
-                                if self.release_skill_with_target(account_index, skill_name, skill_pos, "attack"):
-                                    return True
+                # 4.2 释放攻击技能（策略引擎）
+                if self._execute_best_strategy(account_index, "attack"):
+                    return True
 
             elif unit_type == "support":
                 # 刘备操作
@@ -3833,47 +3884,15 @@ class CombatAutoScript:
                     # 如果是召唤后检测到蓝条，数量会在蓝条检测时更新
                     self.unit_info[account_index]["generals"].append(new_general)
 
-                # 4.1 优先清除状态（如果需要）
-                if account_index in self.enemies_need_clear and self.enemies_need_clear[account_index]:
-                    enemy_info = self.enemies_need_clear[account_index][0]
-                    self.report_battle_info(
-                        f"账号{account_index} 检测到需要清除状态：{enemy_info.get('enemy_name', '未知')}，开始执行清除操作",
-                        "info",
-                    )
-                    clear_skill_path = self.skill_images.get("清除状态")
-                    if clear_skill_path:
-                        clear_skill_pos = self.find_image(account_index, clear_skill_path, self.skill_panel_region, 0)
-                        if clear_skill_pos:
-                            if self.release_skill_with_target(account_index, "清除状态", clear_skill_pos, "support"):
-                                self.report_battle_info(
-                                    f"账号{account_index} 清除状态操作成功：{enemy_info.get('enemy_name', '未知')}",
-                                    "action",
-                                )
-                                return True
-                            else:
-                                self.report_battle_info(
-                                    f"账号{account_index} 清除状态操作失败：技能释放失败", "warning"
-                                )
-                        else:
-                            self.report_battle_info(
-                                f"账号{account_index} 清除状态操作失败：未找到清除状态技能图标", "warning"
-                            )
-                    else:
-                        self.report_battle_info(
-                            f"账号{account_index} 清除状态操作失败：清除状态技能图片路径不存在", "warning"
-                        )
-
-                # 4.2 执行分配的复活任务（如果当前账号有分配任务）
+                # 4.1 执行分配的复活任务（如果当前账号有分配任务）
                 if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout:
                     if self._check_and_mark_reviving(assigned_revive_target, "主角"):
                         if self.revive_main_char_with_target(account_index, assigned_revive_target):
-                            # 复活任务完成，从分配列表中移除
                             if account_index in self.revive_assignments:
                                 del self.revive_assignments[account_index]
                             time.sleep(0.5)
                             return True
                         else:
-                            # 复活失败，清除reviving标记
                             with self._state_lock:
                                 if assigned_revive_target in self.unit_info:
                                     char_info = self.unit_info[assigned_revive_target]["main_char"]
@@ -3883,28 +3902,12 @@ class CombatAutoScript:
                                             f"账号{account_index} 复活账号{assigned_revive_target}的主角失败，清除reviving标记",
                                             "warning",
                                         )
-                            # 从分配列表中移除，允许重新分配
                             if account_index in self.revive_assignments:
                                 del self.revive_assignments[account_index]
 
-                # 4.3 按照顺序释放技能
-                if account_index not in self.liubei_skill_index:
-                    self.liubei_skill_index[account_index] = 0
-
-                current_index = self.liubei_skill_index[account_index]
-                sequence_length = len(self.liubei_skill_sequence)
-
-                for attempt in range(sequence_length):
-                    if time.time() - turn_start_time >= turn_timeout:
-                        break
-                    skill_to_use = self.liubei_skill_sequence[(current_index + attempt) % sequence_length]
-                    skill_path = self.skill_images.get(skill_to_use)
-                    if skill_path:
-                        skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
-                        if skill_pos:
-                            if self.release_skill_with_target(account_index, skill_to_use, skill_pos, "support"):
-                                self.liubei_skill_index[account_index] = (current_index + attempt + 1) % sequence_length
-                                return True
+                # 4.2 释放技能（策略引擎：清除状态 > 加血(重伤) > 控制 > 加攻击(buff过期) > 加血 > 循环 > 防御）
+                if self._execute_best_strategy(account_index, "support"):
+                    return True
 
             # 如果未识别到单位类型，返回False
             return False
@@ -4134,6 +4137,11 @@ class CombatAutoScript:
                             self.current_turn = 2  # 第一回合后，设置为2
                         else:
                             self.current_turn += 1  # 之后每回合递增
+                            # 加攻击buff回合递减
+                            for acct in list(self.attack_buff_tracker.keys()):
+                                self.attack_buff_tracker[acct] -= 1
+                                if self.attack_buff_tracker[acct] <= 0:
+                                    del self.attack_buff_tracker[acct]
 
                         # 操作完成后，短暂延迟
                         time.sleep(0.1)
@@ -4158,6 +4166,17 @@ class CombatAutoScript:
 
                     # 非我方回合时，由大漠对象0检测场上是否有刘备
                     self._detect_liubei_on_field()
+
+                    # 检测各账号血量低单位数量
+                    self.low_hp_accounts = {}
+                    for acct in [0, 1, 2]:
+                        cnt = 0
+                        for ridx, ac in self.hp_region_to_account.items():
+                            if ac == acct:
+                                reg = self.hp_bar_regions[ridx]
+                                if self.find_image(acct, self.low_hp_indicator_image, reg, 0):
+                                    cnt += 1
+                        self.low_hp_accounts[acct] = cnt
                 # 轮询间隔（非我方回合时）
                 if self.polling_running:
                     time.sleep(CombatConstants.DEFAULT_CHECK_INTERVAL)
@@ -4349,6 +4368,8 @@ class CombatAutoScript:
                 self.zhaohuan_index = 0
                 self.clear_zhugeliang = False
                 self.enable_persistent_liubei = True
+                self.attack_buff_tracker = {}
+                self.low_hp_accounts = {}
             except Exception:
                 pass
 
