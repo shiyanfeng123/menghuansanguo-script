@@ -49,16 +49,51 @@ COLOR_PRESETS = {
     "红色字体": "ff0000-000000",
 }
 
-MAP_LIST = ["洛阳", "襄阳", "官渡", "涿郡", "徐州", "龙岛", "许昌", "长安", "邺城"]
+MAP_LIST = [
+    "洛阳", "襄阳", "官渡", "涿郡", "徐州", "龙岛", "许昌", "长安", "邺城",
+    "五层", "城西", "野外西", "虎牢关外", "洛阳大道"
+]
 
 BUILTIN_TEMPLATES = {
-    "刷活动副本": {
-        "description": "飞到活动地图，找到Boss，打N次",
-        "params": ["活动名称", "活动入口图标", "Boss图标", "战斗结束标志", "循环次数"],
+    "刷活动副本(通用)": {
+        "description": "飞到活动地图→等入口图标→点击入口→等待确认图→循环(点击Boss→等待战斗结束)",
+        "steps": 5,
     },
-    "刷地图精英怪": {
-        "description": "飞到指定地图，找到精英怪，打N次",
-        "params": ["目的地", "精英怪图标", "循环次数"],
+    "官渡刷曹操(完整版)": {
+        "description": "飞官渡→点击曹操进大帐→进曹袁战场→循环打河北军→循环打曹操→打Boss",
+        "steps": 8,
+    },
+    "魔镜刷狮王(完整版)": {
+        "description": "飞城西→魔镜使者→进镜像地层→打吃人妖→小绿人→进遗迹镜像→打狮王→打张辽",
+        "steps": 7,
+    },
+    "战魂塔(完整版)": {
+        "description": "飞洛阳→点击战魂挑战→等待战魂地图→循环(点击指定层图标→等待战斗结束)",
+        "steps": 5,
+    },
+    "黑风山寨(完整版)": {
+        "description": "飞五层→巴山虎→进黑风山寨→循环(找刀贼→点刀贼→等战斗结束)",
+        "steps": 5,
+    },
+    "龙岛(完整版)": {
+        "description": "飞城西→帮派传送→进龙岛→打守门人→挑战龙族→循环(点龙子/龙孙→等结束)",
+        "steps": 7,
+    },
+    "打红/虎牢关(完整版)": {
+        "description": "飞虎牢关外→小白人→小绿人→进军营→循环(点红Boss→等战斗结束)",
+        "steps": 6,
+    },
+    "五行圣殿(完整版)": {
+        "description": "飞野外西→点老板→进五行→挂机打怪→等待返回",
+        "steps": 5,
+    },
+    "刷精英怪(通用)": {
+        "description": "飞指定地图→循环(找精英怪图标→点击→等自动战斗→等结束)",
+        "steps": 3,
+    },
+    "日常循环(组合)": {
+        "description": "飞到地图→循环跑图找怪→打怪→等结束→包满卖东西→继续",
+        "steps": 6,
     },
 }
 
@@ -368,11 +403,14 @@ class ScriptFactoryDialog(wx.Frame):
         # ── 主体: 三栏布局 ──
         body = wx.BoxSizer(wx.HORIZONTAL)
 
-        # 左栏: 积木面板
-        left_panel = wx.Panel(panel, size=(160, -1))
-        left_panel.SetBackgroundColour(wx.Colour(22, 22, 28))
-        self._build_block_palette(left_panel)
-        body.Add(left_panel, 0, wx.EXPAND | wx.RIGHT, 2)
+        # 左栏: 积木面板(可滚动)
+        self.left_panel = wx.Panel(panel, size=(160, -1))
+        self.left_panel.SetBackgroundColour(wx.Colour(22, 22, 28))
+        self._build_block_palette(self.left_panel)
+        left_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        left_sizer.Add(self.palette_panel, 1, wx.EXPAND)
+        self.left_panel.SetSizer(left_sizer)
+        body.Add(self.left_panel, 0, wx.EXPAND | wx.RIGHT, 2)
 
         # 中栏: 步骤列表
         mid_panel = wx.Panel(panel)
@@ -429,9 +467,13 @@ class ScriptFactoryDialog(wx.Frame):
     #  积木面板 (左侧)
     # ============================================================
     def _build_block_palette(self, parent):
+        self.palette_panel = scrolled.ScrolledPanel(parent, -1)
+        self.palette_panel.SetBackgroundColour(wx.Colour(22, 22, 28))
+        self.palette_panel.SetupScrolling(scroll_y=True, rate_y=20)
+
         sz = wx.BoxSizer(wx.VERTICAL)
 
-        title = wx.StaticText(parent, label="🧩 操作积木")
+        title = wx.StaticText(self.palette_panel, label="🧩 操作积木")
         title.SetForegroundColour(wx.Colour(230, 200, 110))
         title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
                               wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
@@ -449,7 +491,7 @@ class ScriptFactoryDialog(wx.Frame):
         ]
 
         for label, btype, tip in blocks:
-            btn = wx.Button(parent, label=label, size=(140, 33),
+            btn = wx.Button(self.palette_panel, label=label, size=(140, 33),
                             style=wx.BORDER_NONE)
             btn.SetBackgroundColour(wx.Colour(32, 32, 40))
             btn.SetForegroundColour(wx.Colour(200, 200, 210))
@@ -461,14 +503,14 @@ class ScriptFactoryDialog(wx.Frame):
 
         sz.AddSpacer(12)
 
-        title2 = wx.StaticText(parent, label="📋 模板")
+        title2 = wx.StaticText(self.palette_panel, label="📋 模板")
         title2.SetForegroundColour(wx.Colour(230, 200, 110))
         title2.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
                                wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         sz.Add(title2, 0, wx.ALL, 8)
 
         for tname in BUILTIN_TEMPLATES:
-            btn = wx.Button(parent, label=f"📄 {tname}", size=(140, 33),
+            btn = wx.Button(self.palette_panel, label=f"📄 {tname}", size=(140, 33),
                             style=wx.BORDER_NONE)
             btn.SetBackgroundColour(wx.Colour(32, 32, 40))
             btn.SetForegroundColour(wx.Colour(200, 200, 210))
@@ -477,12 +519,13 @@ class ScriptFactoryDialog(wx.Frame):
             btn.Bind(wx.EVT_BUTTON, lambda e, tn=tname: self._use_template(tn))
             sz.Add(btn, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
 
-        parent.SetSizer(sz)
+        self.palette_panel.SetSizer(sz)
 
     # ============================================================
     #  步骤列表 (中间)
     # ============================================================
     def _build_step_list(self, parent):
+        self.mid_panel = parent
         sz = wx.BoxSizer(wx.VERTICAL)
 
         hrow = wx.BoxSizer(wx.HORIZONTAL)
@@ -885,48 +928,16 @@ class ScriptFactoryDialog(wx.Frame):
             self.steps[self.selected_step_index]["params"][key] = value
 
     def _use_template(self, tname):
-        if tname == "刷活动副本":
-            self.steps = [
-                {"type": "go_ditu", "label": "飞往活动地图",
-                 "params": {"city": "洛阳"}},
-                {"type": "wait_image", "label": "等待活动入口出现",
-                 "params": {"image": "模板_活动入口.png", "region": "全屏",
-                            "timeout": 15}},
-                {"type": "find_and_click", "label": "点击活动入口",
-                 "params": {"image": "模板_活动入口.png",
-                            "confirm_image": "模板_进入确认.png",
-                            "region": "全屏", "confirm_region": "全屏",
-                            "wait_after": 2.0, "confirm_timeout": 30}},
-                {"type": "loop", "label": "打Boss循环",
-                 "params": {"count": 5, "children": [
-                     {"type": "find_and_click", "label": "点击Boss",
-                      "params": {"image": "模板_Boss.png",
-                                 "confirm_image": "模板_战斗画面.png",
-                                 "region": "左侧三分之一",
-                                 "confirm_region": "全屏",
-                                 "wait_after": 2.0, "confirm_timeout": 30}},
-                     {"type": "wait_image", "label": "等待战斗结束",
-                      "params": {"image": "模板_结束标志.png",
-                                 "region": "全屏", "timeout": 90}},
-                 ]}},
-            ]
-        elif tname == "刷地图精英怪":
-            self.steps = [
-                {"type": "go_ditu", "label": "飞往目的地",
-                 "params": {"city": "洛阳"}},
-                {"type": "loop", "label": "打精英怪循环",
-                 "params": {"count": 10, "children": [
-                     {"type": "find_and_click", "label": "点击精英怪",
-                      "params": {"image": "素材_精英怪.png",
-                                 "confirm_image": "素材_战斗.png",
-                                 "region": "左侧三分之一",
-                                 "confirm_region": "全屏",
-                                 "wait_after": 2.0, "confirm_timeout": 30}},
-                     {"type": "wait_image", "label": "等待战斗结束",
-                      "params": {"image": "素材_结束.png",
-                                 "region": "全屏", "timeout": 90}},
-                 ]}},
-            ]
+        tmpl = BUILTIN_TEMPLATES.get(tname)
+        if not tmpl:
+            return
+        desc = tmpl.get("description", "")
+        wx.MessageBox(
+            f"模板: {tname}\n\n{desc}\n\n"
+            f"将从空白步骤开始，请根据上述逻辑添加积木。\n"
+            f"推荐使用 📷 点击并确认 积木完成每一步。",
+            "模板信息", wx.OK | wx.ICON_INFORMATION)
+        self.steps = []
         self.selected_step_index = -1
         self._refresh_step_list()
         self._refresh_props_panel()
