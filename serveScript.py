@@ -6103,6 +6103,311 @@ class MyThread(threading.Thread):
         else:
             return
 
+    def _find_all_str(self, text, region):
+        x, y, w, h = region
+        result = self.dm.FindStrFastE(
+            int(x), int(y), int(w), int(h), text,
+            self.color_format, self.confidenceNum
+        )
+        result = result.split("|")
+        if int(result[0]) < 0:
+            return []
+        positions = []
+        for i in range(0, len(result), 3):
+            if i + 2 < len(result) and int(result[i]) >= 0:
+                positions.append(ResXy(int(result[i + 1]), int(result[i + 2])))
+        return positions
+
+    def _find_all_pic(self, image_path, region):
+        x, y, w, h = region
+        result = self.dm.FindPicEx(
+            int(x), int(y), int(w), int(h), image_path, "",
+            self.confidenceNum, 0
+        )
+        if not result:
+            return []
+        items = result.split("|")
+        pics = image_path.split("|")
+        positions = []
+        for item in items:
+            parts = item.split(",")
+            pic_idx = int(parts[0])
+            pic_size = self.dm.GetPicSize(pics[pic_idx]).split(",")
+            cx = int(parts[1]) + int(int(pic_size[0]) * 0.5)
+            cy = int(parts[2]) + int(int(pic_size[1]) * 0.5)
+            positions.append(ResXy(cx, cy))
+        return positions
+
+    def _merge_deduplicate_sort(self, positions, attacked_set, exclude_zones,
+                                 threshold=20):
+        screen_cx = self.locationX + 400
+        screen_cy = self.locationY + 300
+        merged = {}
+        for p in positions:
+            skip = False
+            for ax, ay in attacked_set:
+                if abs(p.x - ax) <= threshold and abs(p.y - ay) <= threshold:
+                    skip = True
+                    break
+            if skip:
+                continue
+            for ex, ey in exclude_zones:
+                if abs(p.x - ex) <= threshold and abs(p.y - ey) <= threshold:
+                    skip = True
+                    break
+            if skip:
+                continue
+            key = (p.x // threshold, p.y // threshold)
+            if key not in merged:
+                merged[key] = p
+        result = list(merged.values())
+        result.sort(key=lambda p: (p.x - screen_cx) ** 2 + (p.y - screen_cy) ** 2)
+        return result
+
+    def _try_attack_zd(self, target, base_image, auto_combat_key):
+        self.dm.MoveTo(int(target.x + 5), int(target.y + 5))
+        time.sleep(0.001)
+        self.dm.LeftClick()
+        self.color_format = "b@ffff00-000000|fff200-000000"
+        zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 3)
+        self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+        if not zhengdian_btn:
+            return False
+        self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
+        time.sleep(0.001)
+        self.dm.LeftClick()
+        if auto_combat_key is not None and self.combat_auto_flag:
+            self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
+        combat_ok = self._wait_combat_result(base_image, auto_combat_key)
+        if auto_combat_key is not None and self.combat_auto_flag:
+            self._stop_combat_auto()
+        return combat_ok
+
+    def _wait_combat_result(self, base_image, auto_combat_key):
+        query_time = time.time()
+        while True:
+            if self.check_stop_or_over():
+                return False
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            if time.time() - query_time > 5:
+                return False
+            self.confidenceNum = 0.6
+            if self.find_pic(
+                    self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+                    self.gameLocation, 0):
+                self.waitFor(base_image, self.dituLocation)
+                time.sleep(0.1)
+                self.confidenceNum = 0.9
+                return True
+            if self.find_pic(
+                    f"{self.get_resource_path('serveAssets/images/zhengdian/beitiaozhan.bmp')}",
+                    self.gameBottomLocation, 0):
+                self.confidenceNum = 0.9
+                return False
+            if self.find_pic(
+                    f"{self.get_resource_path('serveAssets/images/zhengdian/bucunzai.bmp')}",
+                    self.gameBottomLocation, 0):
+                self.confidenceNum = 0.9
+                return False
+            self.confidenceNum = 0.9
+
+    def find_zd_in_view_v2(self, base_image, find_sx, backup_images=None,
+                            auto_combat_key=None, exclude_zones=None):
+        if exclude_zones is None:
+            exclude_zones = []
+        find_left_flag = False
+        attacked_set = set()
+        while True:
+            if self.overed:
+                return
+            if self.check_stop_or_over():
+                return
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            all_positions = []
+            str_positions = self._find_all_str(find_sx, self.gameBottomLocation)
+            all_positions.extend(str_positions)
+            if backup_images:
+                for pair in backup_images:
+                    pic_path = "|".join(
+                        self.get_resource_path(p) for p in pair)
+                    pic_positions = self._find_all_pic(pic_path,
+                                                        self.gameBottomLocation)
+                    all_positions.extend(pic_positions)
+            candidates = self._merge_deduplicate_sort(
+                all_positions, attacked_set, exclude_zones
+            )
+            if candidates:
+                any_success = False
+                for target in candidates:
+                    attacked_set.add((target.x, target.y))
+                    success = self._try_attack_zd(
+                        target, base_image, auto_combat_key
+                    )
+                    if success:
+                        print(f"打了{find_sx}")
+                        any_success = True
+                        break
+                if any_success:
+                    continue
+            left_x = random.randint(738, 748)
+            rand_y = 80
+            right_x = random.randint(861, 871)
+            self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+            self.confidenceNum = 0.6
+            if not find_left_flag:
+                if self.find_pic_or_str(
+                        self.get_resource_path(
+                            "serveAssets/images/zhengdian/xiaobairen.bmp"),
+                        (725, 46, 751, 94), 0):
+                    self.dm.MoveTo(right_x, rand_y)
+                    time.sleep(0.001)
+                    self.dm.LeftClick()
+                    find_left_flag = True
+                else:
+                    self.dm.MoveTo(left_x, rand_y)
+                    time.sleep(0.001)
+                    self.dm.LeftClick()
+            else:
+                if self.find_pic_or_str(
+                        self.get_resource_path(
+                            "serveAssets/images/zhengdian/xiaobairen.bmp"),
+                        (861, 41, 881, 96), 0):
+                    self.confidenceNum = 0.9
+                    break
+                else:
+                    self.dm.MoveTo(right_x, rand_y)
+                    time.sleep(0.001)
+                    self.dm.LeftClick()
+            self.confidenceNum = 0.9
+            time.sleep(0.6)
+
+    def zhengdian_by_xiaolvren_v2(self, base_image, search_config):
+        exclude_zones = search_config.get("exclude", [])
+        search_text = search_config.get("text", "")
+        search_images = search_config.get("images", "")
+        self.confidenceNum = 0.6
+        base_image_res = self.waitFor(base_image, self.dituLocation, 3)
+        if not base_image_res:
+            return
+        attacked_set = set()
+        x, y, w, h = self.dituLocation
+        xiaolvren = self.get_resource_path(
+            "serveAssets/images/zhengdian/xiaolvren.bmp")
+        pic_size = self.dm.GetPicSize(xiaolvren).split(",")
+        pic_w, pic_h = int(pic_size[0]), int(pic_size[1])
+        xiaolvren_color = "07d307"
+        while True:
+            if self.overed or self.check_stop_or_over():
+                return
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            hit_any = False
+            green_result = self.dm.FindPicEx(
+                int(x), int(y), int(w), int(h), xiaolvren, "", 0.9, 0
+            )
+            if green_result:
+                green_dots = green_result.split("|")
+                green_dots = self._filter_green_dots(
+                    green_dots, pic_w, pic_h, xiaolvren_color,
+                    attacked_set, exclude_zones
+                )
+                screen_cx = self.locationX + 400
+                screen_cy = self.locationY + 300
+                green_dots.sort(
+                    key=lambda d: (d[0] - screen_cx) ** 2 + (
+                                d[1] - screen_cy) ** 2)
+                for dot_x, dot_y in green_dots:
+                    self.dm.MoveTo(dot_x, dot_y)
+                    time.sleep(0.001)
+                    self.dm.LeftClick()
+                    time.sleep(0.3)
+                    found_any = self._scan_and_attack_in_view(
+                        search_text, search_images, base_image,
+                        attacked_set, exclude_zones
+                    )
+                    if found_any:
+                        hit_any = True
+                        break
+            if hit_any:
+                continue
+            found_any = self._scan_and_attack_in_view(
+                search_text, search_images, base_image,
+                attacked_set, exclude_zones
+            )
+            if not found_any:
+                break
+
+    def _filter_green_dots(self, green_dots, pic_w, pic_h, green_color,
+                            attacked_set, exclude_zones):
+        valid = []
+        seen = {}
+        for item in green_dots:
+            parts = item.split(",")
+            cx = int(parts[1]) + pic_w // 2
+            cy = int(parts[2]) + pic_h // 2
+            key = (cx // 5, cy // 5)
+            if key in seen:
+                continue
+            seen[key] = True
+            skip = False
+            for ax, ay in attacked_set:
+                if abs(cx - ax) <= 20 and abs(cy - ay) <= 20:
+                    skip = True
+                    break
+            if skip:
+                continue
+            for ex, ey in exclude_zones:
+                if abs(cx - ex) <= 10 and abs(cy - ey) <= 10:
+                    skip = True
+                    break
+            if skip:
+                continue
+            if self.dm.CmpColor(cx, cy, green_color, 0.7) == 1:
+                continue
+            valid.append((cx, cy))
+        return valid
+
+    def _scan_and_attack_in_view(self, search_text, search_images, base_image,
+                                  attacked_set, exclude_zones):
+        all_positions = []
+        if search_text:
+            text_positions = self._find_all_str(search_text,
+                                                 self.gameBottomLocation)
+            all_positions.extend(text_positions)
+        if search_images:
+            pic_positions = self._find_all_pic(search_images,
+                                                self.gameBottomLocation)
+            all_positions.extend(pic_positions)
+        candidates = self._merge_deduplicate_sort(
+            all_positions, attacked_set, exclude_zones
+        )
+        if not candidates:
+            return False
+        for target in candidates:
+            attacked_set.add((target.x, target.y))
+            self.dm.MoveTo(int(target.x + 5), int(target.y + 5))
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            self.color_format = "b@ffff00-000000|fff200-000000"
+            zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 3)
+            self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+            if not zhengdian_btn:
+                continue
+            self.dm.MoveTo(int(zhengdian_btn.x + 5),
+                            int(zhengdian_btn.y + 5))
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            if self._wait_combat_result(base_image, None):
+                self.daZhengDianCount += 1
+                print(f"打了第{self.daZhengDianCount}个整点")
+                return True
+        return False
+
     # 攻城开始
     def go_gongcheng(self):
         is_fei = self.go_in_ditu(
