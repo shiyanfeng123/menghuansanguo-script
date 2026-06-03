@@ -928,19 +928,149 @@ class ScriptFactoryDialog(wx.Frame):
             self.steps[self.selected_step_index]["params"][key] = value
 
     def _use_template(self, tname):
-        tmpl = BUILTIN_TEMPLATES.get(tname)
-        if not tmpl:
+        import copy
+        templates = self._get_template_steps()
+        steps = templates.get(tname, [])
+        if not steps:
+            wx.MessageBox("模板数据缺失", "错误", wx.OK | wx.ICON_ERROR)
             return
-        desc = tmpl.get("description", "")
-        wx.MessageBox(
-            f"模板: {tname}\n\n{desc}\n\n"
-            f"将从空白步骤开始，请根据上述逻辑添加积木。\n"
-            f"推荐使用 📷 点击并确认 积木完成每一步。",
-            "模板信息", wx.OK | wx.ICON_INFORMATION)
-        self.steps = []
+        self.steps = copy.deepcopy(steps)
         self.selected_step_index = -1
         self._refresh_step_list()
         self._refresh_props_panel()
+
+    def _get_template_steps(self):
+        A = "自动战斗.png"
+        return {
+            "刷活动副本(通用)": [
+                {"type": "go_ditu", "label": "飞往活动地图", "params": {"city": "洛阳"}},
+                {"type": "wait_image", "label": "等待活动入口出现",
+                 "params": {"image": "活动入口.png", "region": "全屏", "timeout": 15}},
+                {"type": "find_and_click", "label": "点击活动入口",
+                 "params": {"image": "活动入口.png", "confirm_image": "活动地图名.png",
+                            "region": "全屏", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "loop", "label": "循环打怪", "params": {"count": 5, "children": [
+                    {"type": "find_and_click", "label": "点Boss", "params": {"image": "Boss.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 120}},
+                ]}},
+            ],
+            "官渡刷曹操(完整版)": [
+                {"type": "go_ditu", "label": "飞往官渡", "params": {"city": "官渡"}},
+                {"type": "find_and_click", "label": "点曹操进大帐(图标1)",
+                 "params": {"image": "曹操图标1.bmp", "confirm_image": "进入.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点进入曹操大帐",
+                 "params": {"image": "进入.png", "confirm_image": "曹操大帐.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 15}},
+                {"type": "find_and_click", "label": "点曹袁战场",
+                 "params": {"image": "曹袁战场.png", "confirm_image": "曹袁战场.png", "region": "地图区域", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "loop", "label": "打河北军(3轮)", "params": {"count": 3, "children": [
+                    {"type": "find_and_click", "label": "点河北军(位1)", "params": {"image": "河北军1.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
+                    {"type": "find_and_click", "label": "点河北军(位2)", "params": {"image": "河北军2.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
+                    {"type": "find_and_click", "label": "点河北军(位3)", "params": {"image": "河北军3.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
+                ]}},
+                {"type": "loop", "label": "打曹操(循环)", "params": {"count": 9999, "children": [
+                    {"type": "find_and_click", "label": "点曹操", "params": {"image": "曹操.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+                    {"type": "wait_image", "label": "等曹操死亡", "params": {"image": A, "region": "底部", "timeout": 120}},
+                ]}},
+            ],
+            "魔镜刷狮王(完整版)": [
+                {"type": "go_ditu", "label": "飞往城西", "params": {"city": "城西"}},
+                {"type": "find_and_click", "label": "点魔镜使者",
+                 "params": {"image": "魔镜使者.bmp", "confirm_image": "镜像地层.png", "region": "全屏", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "打吃人妖(第一层)",
+                 "params": {"image": "吃人妖.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+                {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 60}},
+                {"type": "find_and_click", "label": "点小绿人进遗迹镜像",
+                 "params": {"image": "小绿人.bmp", "confirm_image": "遗迹镜像.png", "region": "全屏", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "打狮王",
+                 "params": {"image": "狮王.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 120}},
+                {"type": "wait_image", "label": "等狮王死亡", "params": {"image": A, "region": "底部", "timeout": 120}},
+            ],
+            "战魂塔(完整版)": [
+                {"type": "go_ditu", "label": "飞往洛阳", "params": {"city": "洛阳"}},
+                {"type": "find_and_click", "label": "点战魂挑战",
+                 "params": {"image": "战魂挑战.bmp", "confirm_image": "进精英.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点进精英进入战魂",
+                 "params": {"image": "进精英.png", "confirm_image": "战魂地图.bmp", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 15}},
+                {"type": "loop", "label": "打战魂层(循环)", "params": {"count": 6, "children": [
+                    {"type": "find_and_click", "label": "点战魂层图标", "params": {"image": "战魂层图标.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 60}},
+                ]}},
+            ],
+            "黑风山寨(完整版)": [
+                {"type": "go_ditu", "label": "飞往五层", "params": {"city": "五层"}},
+                {"type": "find_and_click", "label": "点巴山虎进黑风",
+                 "params": {"image": "巴山虎.bmp", "confirm_image": "黑风山寨.png", "region": "左半屏", "confirm_region": "左半屏", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点黑风山寨文字进入",
+                 "params": {"image": "黑风山寨.png", "confirm_image": "黑风山寨地图.png", "region": "地图区域", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "loop", "label": "打刀贼(3轮)", "params": {"count": 3, "children": [
+                    {"type": "find_and_click", "label": "点刀贼(位置1)", "params": {"image": "刀贼.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
+                    {"type": "find_and_click", "label": "点刀贼(位置2)", "params": {"image": "刀贼.bmp", "confirm_image": A, "region": "右半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
+                ]}},
+            ],
+            "龙岛(完整版)": [
+                {"type": "go_ditu", "label": "飞往城西", "params": {"city": "城西"}},
+                {"type": "find_and_click", "label": "点帮派传送",
+                 "params": {"image": "帮派传送.bmp", "confirm_image": "进龙岛.png", "region": "底部", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点进龙岛",
+                 "params": {"image": "进龙岛.png", "confirm_image": "龙岛地图.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点小绿人打守门人",
+                 "params": {"image": "小绿人.bmp", "confirm_image": "挑战龙族.png", "region": "地图区域", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "wait_image", "label": "等守门人结束", "params": {"image": A, "region": "底部", "timeout": 60}},
+                {"type": "find_and_click", "label": "点挑战龙族",
+                 "params": {"image": "挑战龙族.png", "confirm_image": "龙岛地图.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "loop", "label": "打龙子龙孙(循环)", "params": {"count": 5, "children": [
+                    {"type": "find_and_click", "label": "点龙子/龙孙", "params": {"image": "龙子龙孙.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+                    {"type": "find_and_click", "label": "点进入下一层", "params": {"image": "进入.png", "confirm_image": "龙岛地图.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
+                ]}},
+            ],
+            "打红/虎牢关(完整版)": [
+                {"type": "go_ditu", "label": "飞往虎牢关外", "params": {"city": "虎牢关外"}},
+                {"type": "find_and_click", "label": "点小白人进红点",
+                 "params": {"image": "小白人.bmp", "confirm_image": "虎牢关.png", "region": "左上角", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点小绿人",
+                 "params": {"image": "小绿人.bmp", "confirm_image": "进入.png", "region": "右上角", "confirm_region": "底部", "wait_after": 1.0, "confirm_timeout": 8}},
+                {"type": "find_and_click", "label": "点进入军营",
+                 "params": {"image": "进入.png", "confirm_image": "军营.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "loop", "label": "打红Boss(循环)", "params": {"count": 10, "children": [
+                    {"type": "find_and_click", "label": "点Boss", "params": {"image": "红Boss.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
+                    {"type": "wait_image", "label": "等Boss死亡", "params": {"image": A, "region": "底部", "timeout": 120}},
+                ]}},
+            ],
+            "五行圣殿(完整版)": [
+                {"type": "go_ditu", "label": "飞往野外西", "params": {"city": "野外西"}},
+                {"type": "find_and_click", "label": "点老板进五行",
+                 "params": {"image": "老板.bmp", "confirm_image": "进五行.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点进五行按钮",
+                 "params": {"image": "进五行.png", "confirm_image": "五行圣殿.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
+                {"type": "find_and_click", "label": "点挂机自动打怪",
+                 "params": {"image": "挂机.bmp", "confirm_image": "野外西.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 300}},
+                {"type": "wait_image", "label": "等挂机结束回野外西", "params": {"image": "野外西.png", "region": "地图区域", "timeout": 360}},
+            ],
+            "刷精英怪(通用)": [
+                {"type": "go_ditu", "label": "飞往目标地图", "params": {"city": "洛阳"}},
+                {"type": "loop", "label": "打精英怪(循环)", "params": {"count": 10, "children": [
+                    {"type": "find_and_click", "label": "点精英怪", "params": {"image": "精英怪.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
+                ]}},
+            ],
+            "日常循环(组合)": [
+                {"type": "go_ditu", "label": "飞往任务地图", "params": {"city": "洛阳"}},
+                {"type": "loop", "label": "循环打怪", "params": {"count": 10, "children": [
+                    {"type": "find_and_click", "label": "点目标怪", "params": {"image": "目标怪.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
+                ]}},
+                {"type": "find_and_click", "label": "背包满了点卖出",
+                 "params": {"image": "背包满.png", "confirm_image": "卖出.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+                {"type": "wait_image", "label": "等贩卖完成", "params": {"image": "地图.png", "region": "地图区域", "timeout": 15}},
+                {"type": "find_and_click", "label": "继续找怪",
+                 "params": {"image": "目标怪.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
+            ],
+        }
 
     def _on_record(self, event):
         if self.recording:
