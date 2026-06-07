@@ -1,0 +1,5 @@
+Python: E:\project\python\.venv\Scripts\python.exe
+
+pip API available
+pip returned: 1
+FAILED: No module named 'psutil'

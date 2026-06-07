@@ -665,7 +665,8 @@ class MyThread(threading.Thread):
                 time.sleep(5)
                 self._stop_combat_auto()
         elif self.scriptName == "测试":
-            self.huifu_yijian(self.dm)
+            self.clearBag()
+            # self.huifu_yijian(self.dm)
             # self.find_zd_in_view_easy("九黎族祭坛"
             #     , '蛇生肖')
             # self.go_in_ditu(
@@ -3273,7 +3274,11 @@ class MyThread(threading.Thread):
             self.win1_dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.win1_dm.LeftClick()
-        chushou = self.waitFor_team1("一键出售", self.gameBottomLocation, 5)
+        chushou = self.waitFor_team1(
+            self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),
+            self.gameBottomLocation,
+            5,
+        )
         if chushou:
             self.win1_dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3350,7 +3355,11 @@ class MyThread(threading.Thread):
             self.win2_dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.win2_dm.LeftClick()
-        chushou = self.waitFor_team2("一键出售", self.gameBottomLocation, 5)
+        chushou = self.waitFor_team2(
+            self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),
+            self.gameBottomLocation,
+            5,
+        )
         if chushou:
             self.win2_dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3428,7 +3437,7 @@ class MyThread(threading.Thread):
             self.dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.dm.LeftClick()
-        chushou = self.waitFor("一键出售", self.gameBottomLocation, 5)
+        chushou = self.waitFor(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"), self.gameBottomLocation, 5)
         if chushou:
             self.dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3508,7 +3517,7 @@ class MyThread(threading.Thread):
             self.dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.dm.LeftClick()
-        chushou = self.waitFor("一键出售", self.gameBottomLocation, 5)
+        chushou = self.waitFor(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),  self.gameBottomLocation, 5)
         if chushou:
             self.dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3588,7 +3597,7 @@ class MyThread(threading.Thread):
             self.win1_dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.win1_dm.LeftClick()
-        chushou = self.waitFor_team1("一键出售", self.gameBottomLocation, 5)
+        chushou = self.waitFor_team1(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),  self.gameBottomLocation, 5)
         if chushou:
             self.win1_dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3665,7 +3674,7 @@ class MyThread(threading.Thread):
             self.win2_dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.win2_dm.LeftClick()
-        chushou = self.waitFor_team2("一键出售", self.gameBottomLocation, 5)
+        chushou = self.waitFor_team2(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"), self.gameBottomLocation, 5)
         if chushou:
             self.win2_dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -14813,7 +14822,7 @@ class MyThread(threading.Thread):
 class MyFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, title="梦幻三国脚本", size=(370, 420),
-                          style=wx.DEFAULT_FRAME_STYLE | wx.FRAME_TOOL_WINDOW)
+                          style=wx.DEFAULT_FRAME_STYLE)
         self.SetIcon(
             wx.Icon(
                 self.get_resource_path("serveAssets/images/script.ico"),
@@ -15047,7 +15056,7 @@ class MyFrame(wx.Frame):
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                # "测试",
+                "测试",
             ],
         )
         self.free_choices = (
