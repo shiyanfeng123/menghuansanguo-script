@@ -232,6 +232,7 @@ class MyThread(threading.Thread):
         self.addBloudFlag = False
         self.combat_auto_flag = False
         self.enablePersistentLiubei = True
+        self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.stoped = False
         self.zdzdPath = self.get_resource_path("serveAssets/images/zdzd.bmp")
         self.BisClick = False
@@ -315,6 +316,7 @@ class MyThread(threading.Thread):
                 self.combat_auto_instance.enable_main_heal = True  # 主角自动加血
                 self.combat_auto_instance.enable_main_summon = True  # 主角自动召唤
                 self.combat_auto_instance.enable_persistent_liubei = self.frame.enablePersistentLiubei  # 刘备是否常驻
+                self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}  # 各账号刘备数量
 
                 # 注意：account_dm会自动从self.dm, self.win1_dm, self.win2_dm获取，无需手动设置
                 # 【关键修复】不要在这里提前调用 init_combat_tracking()
@@ -322,7 +324,7 @@ class MyThread(threading.Thread):
                 print(
                     "战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
             else:
-                # 【关键修复】如果实例已存在但窗口已关闭，重置标志并重新创建窗口
+                self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
                 if hasattr(self.combat_auto_instance,
                            "_dialog_closed") and self.combat_auto_instance._dialog_closed:
                     print("检测到窗口已关闭，重置标志并重新创建战斗播报窗口")
@@ -2719,9 +2721,23 @@ class MyThread(threading.Thread):
         app.MainLoop()
 
     def _run_user_script(self):
-        """运行用户脚本（由脚本工厂生成）"""
-        import importlib.util
+        """运行用户脚本：优先使用配置驱动引擎，回退到script.py"""
         script_name = self.scriptName.replace("📝 ", "")
+
+        from ScriptEngine import ScriptEngine
+        config = ScriptEngine.load_config(script_name)
+        if config:
+            try:
+                engine = ScriptEngine(self, config)
+                engine.run()
+                return
+            except Exception as e:
+                print(f"配置驱动脚本执行失败: {e}")
+                import traceback
+                traceback.print_exc()
+                return
+
+        import importlib.util
         script_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "user_scripts", script_name, "script.py"
@@ -14890,10 +14906,10 @@ class MyFrame(wx.Frame):
             )
         )
         self.SetPosition(wx.Point(10, 30))
-        self.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.SetBackgroundColour(wx.Colour(243, 244, 248))
 
         self.panel = wx.Panel(self)
-        self.panel.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.panel.SetBackgroundColour(wx.Colour(243, 244, 248))
 
         # 初始化变量
         self.scriptName = ""
@@ -14919,22 +14935,22 @@ class MyFrame(wx.Frame):
         row_top = wx.BoxSizer(wx.HORIZONTAL)
         self.dropdown = None
         lbl = wx.StaticText(self.panel, label="脚本")
-        lbl.SetForegroundColour(wx.Colour(200, 170, 90))
+        lbl.SetForegroundColour(wx.Colour(50, 80, 140))
         lbl.SetMinSize((36, -1))
         lbl.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         row_top.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
 
         self.btn_settings = wx.Button(self.panel, size=(30, 30), style=wx.BORDER_NONE)
         self.btn_settings.SetBitmap(self._load_icon("btn_settings.png", 16))
-        self.btn_settings.SetBackgroundColour(wx.Colour(38, 38, 44))
-        self.btn_settings.SetForegroundColour(wx.Colour(200, 170, 90))
+        self.btn_settings.SetBackgroundColour(wx.Colour(215, 218, 226))
+        self.btn_settings.SetForegroundColour(wx.Colour(50, 80, 140))
         self.btn_settings.Bind(wx.EVT_BUTTON, self.on_button_click)
         row_top.Add(self.btn_settings, 0, wx.ALIGN_CENTER_VERTICAL)
 
         self.btn_factory = wx.Button(self.panel, label="🏭 脚本工厂", size=(90, 30),
                                       style=wx.BORDER_NONE)
-        self.btn_factory.SetBackgroundColour(wx.Colour(230, 200, 110))
-        self.btn_factory.SetForegroundColour(wx.Colour(18, 18, 22))
+        self.btn_factory.SetBackgroundColour(wx.Colour(41, 128, 185))
+        self.btn_factory.SetForegroundColour(wx.Colour(255, 255, 255))
         self.btn_factory.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         self.btn_factory.Bind(wx.EVT_BUTTON, self.on_factory_click)
         row_top.Add(self.btn_factory, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
@@ -14952,25 +14968,25 @@ class MyFrame(wx.Frame):
             btn.SetBackgroundColour(bg)
             vs.Add(btn, 0, wx.ALIGN_CENTER)
             lb = wx.StaticText(self.panel, label=hotkey, style=wx.ALIGN_CENTER)
-            lb.SetForegroundColour(wx.Colour(150, 150, 160))
+            lb.SetForegroundColour(wx.Colour(100, 105, 115))
             lb.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
             vs.Add(lb, 0, wx.ALIGN_CENTER | wx.TOP, 2)
             return vs, btn
 
         bar = wx.BoxSizer(wx.HORIZONTAL)
-        vs1, self.button_start = _ctrl_btn("btn_start.png", wx.Colour(180, 140, 50), "F1")
+        vs1, self.button_start = _ctrl_btn("btn_start.png", wx.Colour(39, 174, 96), "F1")
         self.Bind(wx.EVT_BUTTON, self.button_start_click, self.button_start)
         bar.Add(vs1, 0, wx.ALIGN_CENTER_VERTICAL)
         bar.AddStretchSpacer()
-        vs2, self.button_pause = _ctrl_btn("btn_pause.png", wx.Colour(180, 50, 40), "F2")
+        vs2, self.button_pause = _ctrl_btn("btn_pause.png", wx.Colour(192, 57, 43), "F2")
         self.Bind(wx.EVT_BUTTON, self.button_pause_click, self.button_pause)
         bar.Add(vs2, 0, wx.ALIGN_CENTER_VERTICAL)
         bar.AddStretchSpacer()
-        vs3, self.button_resume = _ctrl_btn("btn_resume.png", wx.Colour(50, 120, 70), "F3")
+        vs3, self.button_resume = _ctrl_btn("btn_resume.png", wx.Colour(41, 128, 185), "F3")
         self.Bind(wx.EVT_BUTTON, self.button_resume_click, self.button_resume)
         bar.Add(vs3, 0, wx.ALIGN_CENTER_VERTICAL)
         bar.AddStretchSpacer()
-        vs4, self.button_stop = _ctrl_btn("btn_reset.png", wx.Colour(60, 60, 66), "F4")
+        vs4, self.button_stop = _ctrl_btn("btn_reset.png", wx.Colour(215, 218, 226), "F4")
         self.Bind(wx.EVT_BUTTON, self.button_stop_click, self.button_stop)
         bar.Add(vs4, 0, wx.ALIGN_CENTER_VERTICAL)
         main_sizer.Add(bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
@@ -14978,17 +14994,17 @@ class MyFrame(wx.Frame):
 
         # ── 日志 ──
         log_card = wx.Panel(self.panel)
-        log_card.SetBackgroundColour(wx.Colour(26, 26, 32))
+        log_card.SetBackgroundColour(wx.Colour(240, 242, 246))
         lcs = wx.BoxSizer(wx.VERTICAL)
 
         log_header = wx.BoxSizer(wx.HORIZONTAL)
         log_lbl = wx.StaticText(log_card, label="● 运行日志")
-        log_lbl.SetForegroundColour(wx.Colour(200, 170, 90))
+        log_lbl.SetForegroundColour(wx.Colour(50, 80, 140))
         log_lbl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         log_header.Add(log_lbl, 0, wx.ALIGN_CENTER_VERTICAL)
         log_header.AddStretchSpacer()
         log_ts = wx.StaticText(log_card, label=datetime.now().strftime("%H:%M"))
-        log_ts.SetForegroundColour(wx.Colour(100, 100, 110))
+        log_ts.SetForegroundColour(wx.Colour(140, 145, 155))
         log_ts.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         log_header.Add(log_ts, 0, wx.ALIGN_CENTER_VERTICAL)
 
@@ -14996,8 +15012,8 @@ class MyFrame(wx.Frame):
         lcs.AddSpacer(2)
 
         self.text_ctrl = wx.TextCtrl(log_card, size=(-1, 140), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
-        self.text_ctrl.SetBackgroundColour(wx.Colour(20, 20, 26))
-        self.text_ctrl.SetForegroundColour(wx.Colour(170, 180, 190))
+        self.text_ctrl.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.text_ctrl.SetForegroundColour(wx.Colour(40, 42, 50))
         self.text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         lcs.Add(self.text_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         log_card.SetSizer(lcs)
@@ -15007,19 +15023,19 @@ class MyFrame(wx.Frame):
 
         # ── 底部 ──
         btm = wx.BoxSizer(wx.HORIZONTAL)
-        link_color = wx.Colour(200, 170, 90)
+        link_color = wx.Colour(50, 80, 140)
 
         self.help_link = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
         self.help_link.SetBitmap(self._load_icon("btn_help.png", 14))
-        self.help_link.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.help_link.SetBackgroundColour(wx.Colour(243, 244, 248))
         self.help_link.Bind(wx.EVT_BUTTON, self.on_help_link_click)
 
         self.contact = wx.StaticText(self.panel, label="群 955753707")
-        self.contact.SetForegroundColour(wx.Colour(110, 110, 120))
+        self.contact.SetForegroundColour(wx.Colour(100, 105, 115))
         self.contact.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
 
         self.update_notify_panel = wx.Panel(self.panel, size=(8, 8))
-        self.update_notify_panel.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.update_notify_panel.SetBackgroundColour(wx.Colour(243, 244, 248))
         self.update_notify_panel.Hide()
         self.update_notify_panel.Bind(wx.EVT_PAINT, self.on_update_notify_paint)
         self.update_notify_panel.SetToolTip("有新版本可用")
@@ -15166,8 +15182,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
         self.dropdown.SetHint("选择执行脚本")
         row_top.Insert(1, self.dropdown, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        self.dropdown.SetBackgroundColour(wx.Colour(26, 26, 32))
-        self.dropdown.SetForegroundColour(wx.Colour(200, 200, 210))
+        self.dropdown.SetBackgroundColour(wx.Colour(240, 242, 246))
+        self.dropdown.SetForegroundColour(wx.Colour(40, 42, 50))
         self.dropdown.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
 
     def _load_icon(self, name, size):
@@ -15783,12 +15799,12 @@ class MyFrame(wx.Frame):
 
 
 class MyDialog(wx.Dialog):
-    C_BG = wx.Colour(18, 18, 22)
-    C_SURFACE = wx.Colour(26, 26, 32)
-    C_GOLD = wx.Colour(230, 200, 110)
-    C_TEXT = wx.Colour(230, 230, 238)
-    C_MUTED = wx.Colour(180, 180, 190)
-    C_INPUT_BG = wx.Colour(22, 22, 28)
+    C_BG = wx.Colour(243, 244, 248)
+    C_SURFACE = wx.Colour(240, 242, 246)
+    C_GOLD = wx.Colour(50, 80, 140)
+    C_TEXT = wx.Colour(40, 42, 50)
+    C_MUTED = wx.Colour(70, 75, 85)
+    C_INPUT_BG = wx.Colour(255, 255, 255)
 
     def __init__(self, parent, has_script):
         super().__init__(parent, title="游戏设置", size=(570, 610), pos=(200, 20))
@@ -15876,6 +15892,24 @@ class MyDialog(wx.Dialog):
             tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
         main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
+        liubei_row = wx.BoxSizer(wx.HORIZONTAL)
+        liubei_row_label = wx.StaticText(panel, label="刘备:")
+        liubei_row_label.SetForegroundColour(self.C_MUTED)
+        liubei_row_label.SetMinSize((40, -1))
+        liubei_row.Add(liubei_row_label, 0, wx.ALIGN_CENTER_VERTICAL)
+        self.liubeiCountInputs = {}
+        for idx, lbl in [(0, "队长"), (1, "队友1"), (2, "队友2")]:
+            lb = wx.StaticText(panel, label=f"{lbl}:")
+            lb.SetForegroundColour(self.C_MUTED)
+            liubei_row.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
+            tc = wx.TextCtrl(panel, size=(32, 24), validator=NumberValidator())
+            tc.SetValue("1" if idx == 0 else "0")
+            tc.SetBackgroundColour(self.C_INPUT_BG)
+            tc.SetForegroundColour(self.C_TEXT)
+            self.liubeiCountInputs[idx] = tc
+            liubei_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
+        main_sizer.Add(liubei_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+
         # 开关行
         sw_row = wx.BoxSizer(wx.HORIZONTAL)
         self.persistentLiubeiCB = wx.CheckBox(panel, label="刘备常驻")
@@ -15892,7 +15926,7 @@ class MyDialog(wx.Dialog):
         self.addBloudBtn.SetForegroundColour(self.C_MUTED)
         self.addBloudBtn.Bind(wx.EVT_BUTTON, self.addBloudFun)
         self.closeBloudBtn = wx.Button(btn_container, label="🟢 自动战斗 开", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
-        self.closeBloudBtn.SetBackgroundColour(wx.Colour(50, 120, 70))
+        self.closeBloudBtn.SetBackgroundColour(wx.Colour(34, 153, 84))
         self.closeBloudBtn.SetForegroundColour(wx.Colour(255, 255, 255))
         self.closeBloudBtn.Bind(wx.EVT_BUTTON, self.closeBloudFun)
         self.closeBloudBtn.Hide()
@@ -16051,7 +16085,7 @@ class MyDialog(wx.Dialog):
         # ── 确定按钮 ──
         self.button = wx.Button(panel, label="✓ 确定", size=(-1, 36), style=wx.BORDER_NONE)
         self.button.SetBackgroundColour(self.C_GOLD)
-        self.button.SetForegroundColour(wx.Colour(18, 18, 22))
+        self.button.SetForegroundColour(wx.Colour(255, 255, 255))
         self.button.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         self.button.Bind(wx.EVT_BUTTON, self.on_button_click)
         self.button.Disable()
@@ -16079,14 +16113,14 @@ class MyDialog(wx.Dialog):
 
     def _section_header(self, sizer, panel, text):
         l = wx.StaticText(panel, label=f"▸ {text}")
-        l.SetForegroundColour(wx.Colour(200, 170, 90))
+        l.SetForegroundColour(wx.Colour(50, 80, 140))
         l.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         sizer.Add(l, 0, wx.LEFT | wx.RIGHT, 12)
         sizer.AddSpacer(4)
 
     def _make_card(self, panel):
         c = wx.Panel(panel)
-        c.SetBackgroundColour(wx.Colour(26, 26, 32))
+        c.SetBackgroundColour(wx.Colour(240, 242, 246))
         return c
 
     def _dialog_icon(self, name, size):
@@ -16352,6 +16386,7 @@ class MyDialog(wx.Dialog):
             "shihun_count": self.shihun_count.GetValue(),
             "shihun_floor": self.choiceShiHunCeng.GetValue(),
             "persistent_liubei": self.persistentLiubeiCB.GetValue(),
+            "liubei_counts": {idx: self.liubeiCountInputs[idx].GetValue() for idx in self.liubeiCountInputs},
         }
 
     def apply_settings(self, settings):
@@ -16380,6 +16415,11 @@ class MyDialog(wx.Dialog):
         self.shihun_count.SetValue(settings.get("shihun_count", ""))
         self.choiceShiHunCeng.SetValue(settings.get("shihun_floor", ""))
         self.persistentLiubeiCB.SetValue(settings.get("persistent_liubei", True))
+        liubei_counts = settings.get("liubei_counts", {"0": "1", "1": "0", "2": "0"})
+        for idx in self.liubeiCountInputs:
+            key = str(idx)
+            default_val = "1" if idx == 0 else "0"
+            self.liubeiCountInputs[idx].SetValue(str(liubei_counts.get(key, default_val)))
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -16491,6 +16531,10 @@ class MyDialog(wx.Dialog):
         else:
             parent.addBloudFlag = True
         parent.enablePersistentLiubei = self.persistentLiubeiCB.GetValue()
+        parent.liubeiCounts = {}
+        for idx in self.liubeiCountInputs:
+            val = self.liubeiCountInputs[idx].GetValue()
+            parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
         # parent.selections = selections
         # 关闭对话框
         self.EndModal(wx.ID_OK)
@@ -16526,11 +16570,11 @@ class NumberValidator(wx.Validator):
 
 
 class HelpDialog(wx.Dialog):
-    C_BG = wx.Colour(18, 18, 22)
-    C_SURFACE = wx.Colour(26, 26, 32)
-    C_GOLD = wx.Colour(230, 200, 110)
-    C_TEXT = wx.Colour(230, 230, 238)
-    C_MUTED = wx.Colour(180, 180, 190)
+    C_BG = wx.Colour(243, 244, 248)
+    C_SURFACE = wx.Colour(240, 242, 246)
+    C_GOLD = wx.Colour(50, 80, 140)
+    C_TEXT = wx.Colour(40, 42, 50)
+    C_MUTED = wx.Colour(70, 75, 85)
 
     def __init__(self, parent, title, content, images):
         super(HelpDialog, self).__init__(
@@ -16616,11 +16660,11 @@ class HelpDialog(wx.Dialog):
 
 
 class UpdateDialog(wx.Dialog):
-    C_BG = wx.Colour(18, 18, 22)
-    C_SURFACE = wx.Colour(26, 26, 32)
-    C_GOLD = wx.Colour(230, 200, 110)
-    C_TEXT = wx.Colour(230, 230, 238)
-    C_MUTED = wx.Colour(180, 180, 190)
+    C_BG = wx.Colour(243, 244, 248)
+    C_SURFACE = wx.Colour(240, 242, 246)
+    C_GOLD = wx.Colour(50, 80, 140)
+    C_TEXT = wx.Colour(40, 42, 50)
+    C_MUTED = wx.Colour(70, 75, 85)
 
     def __init__(self, parent, remote_info):
         super().__init__(parent, title="检查更新", size=(550, 450), pos=(260, 30),
@@ -16638,7 +16682,7 @@ class UpdateDialog(wx.Dialog):
         if self.current_version != self.latest_version:
             self.update_button.Show()
             self.status_label.SetLabel("发现新版本！")
-            self.status_label.SetForegroundColour(wx.Colour(80, 220, 100))
+            self.status_label.SetForegroundColour(wx.Colour(34, 153, 84))
         else:
             self.update_button.Hide()
             self.status_label.SetLabel("已是最新版本")
@@ -16712,7 +16756,7 @@ class UpdateDialog(wx.Dialog):
         changelog_sizer.Add(changelog_title, 0, wx.ALL, 8)
 
         self.changelog_text = wx.TextCtrl(changelog_panel, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 120))
-        self.changelog_text.SetBackgroundColour(wx.Colour(22, 22, 28))
+        self.changelog_text.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.changelog_text.SetForegroundColour(self.C_TEXT)
         changelog_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
         self.changelog_text.SetFont(changelog_font)
@@ -16726,7 +16770,7 @@ class UpdateDialog(wx.Dialog):
 
         self.update_button = wx.Button(button_panel, label="立即更新", size=(110, 32), style=wx.BORDER_NONE)
         self.update_button.SetFont(button_font)
-        self.update_button.SetBackgroundColour(wx.Colour(50, 140, 70))
+        self.update_button.SetBackgroundColour(wx.Colour(39, 174, 96))
         self.update_button.SetForegroundColour(wx.Colour(255, 255, 255))
         self.update_button.Bind(wx.EVT_BUTTON, self.on_update)
 

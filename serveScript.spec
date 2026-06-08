@@ -5,9 +5,10 @@ a = Analysis(
     ['serveScript.py'],
     pathex=[],
     binaries=[],
-    datas=[('serveAssets', 'serveAssets'),('version_info.txt', 'version_info.txt')],
+    datas=[('serveAssets', 'serveAssets'),('user_scripts', 'user_scripts'),('version_info.txt', 'version_info.txt')],
     hiddenimports=[
         'Kanloong_combat_script_copy',
+        'ScriptEngine',
         'wx.lib.scrolledpanel',
         'wx.lib.scrolledpanel.scrolled',
     ],

@@ -393,7 +393,8 @@ class CombatAutoScript:
         # 三个账号是否有武将
         self.has_general = {0: True, 1: True, 2: True}
         # 三个账号是否有刘备
-        self.has_liubei = {0: True, 1: True, 2: True}
+        self.liubei_counts = {0: 1, 1: 0, 2: 0}
+        self.has_liubei = {0: True, 1: False, 2: False}
         # 刘备被动回合
         self.beidong_huihe = 0
         # 召唤刘备的账号index
@@ -1304,10 +1305,15 @@ class CombatAutoScript:
                         f"账号{account_index} 刘备释放{skill_name}，目标位置: {target_pos}", "action"
                     )
                 elif skill_name == "清除状态":
-                    # 清除状态技能：使用需要清除的敌军固定点位
                     if self.enemies_need_clear.get(account_index):
-                        # 这个地方需要换成if self.keep_support_general==False:enemy_info = self.enemies_need_clear[account_index][account_index]
-                        enemy_info = self.enemies_need_clear[account_index][0]
+                        clear_list = self.enemies_need_clear[account_index]
+                        enemy_info = None
+                        for e in clear_list:
+                            if e.get("enemy_name") == "诸葛亮":
+                                enemy_info = e
+                                break
+                        if enemy_info is None:
+                            enemy_info = clear_list[0]
                         target_pos = enemy_info.get("position") or (104, 344)
                         self.click_position(account_index, target_pos[0], target_pos[1])
                         # 从所有账号的需要清除列表中移除（因为敌军是全局的，一个账号清除后，其他账号就不需要再清除了）
@@ -1323,6 +1329,8 @@ class CombatAutoScript:
                         # 重置播报标记，允许下次检测到时重新播报
                         if enemy_name in self.enemy_status_reported:
                             del self.enemy_status_reported[enemy_name]
+                        if enemy_name == "诸葛亮":
+                            self.clear_zhugeliang = False
                         self.report_battle_info(
                             f"账号{account_index} 刘备释放{skill_name}清除{enemy_name}状态，目标位置: {target_pos}（已从所有账号清除列表中移除）",
                             "action",
@@ -1349,6 +1357,15 @@ class CombatAutoScript:
 
             if skill_name == "加攻击" and skill_type == "support":
                 self.attack_buff_tracker[account_index] = 3
+
+            if skill_name == "清除状态" and skill_type == "support":
+                if account_index not in self.liubei_skill_cd:
+                    self.liubei_skill_cd[account_index] = {}
+                self.liubei_skill_cd[account_index]["清除状态"] = self.current_turn
+                self.report_battle_info(
+                    f"账号{account_index} 刘备清除状态技能已使用，CD{self.skill_cd_config.get('清除状态', 4)}回合（当前回合: {self.current_turn}）",
+                    "system",
+                )
 
             time.sleep(CombatConstants.ACTION_DELAY)
             return True
@@ -1451,8 +1468,14 @@ class CombatAutoScript:
         with self._state_lock:
             for dead_gen in self.global_dead_units["generals"][:]:
                 if dead_gen.get("account_index") == account_index:
-                    # 移除该账号的所有武将记录（因为召唤成功意味着可以替换阵亡的武将）
                     self.global_dead_units["generals"].remove(dead_gen)
+
+        if general_name == "刘备":
+            self.liubei_skill_cd[account_index] = {}
+            self.report_battle_info(
+                f"账号{account_index} 召唤新刘备，技能CD已重置",
+                "system",
+            )
 
         self.report_battle_info(
             f"账号{account_index} 召唤{general_name}成功（状态：复活中，武将数量不变: {char_info.get('general_count', 2)}）",
@@ -1569,6 +1592,7 @@ class CombatAutoScript:
             )
             self.liubei_skill_index[i] = 0  # 初始化刘备技能索引
             self.liubei_skill_cd[i] = {}  # 初始化刘备技能冷却记录
+            self.has_liubei[i] = self.liubei_counts.get(i, 0) > 0
             self.low_hp_units[i] = []  # 初始化血量低的单位列表
             self.zhugeliang_found[i] = False  # 初始化诸葛亮单位标记
             self.zhugeliang_status1_missing_count[i] = 0  # 初始化诸葛亮状态1缺失计数
@@ -2246,8 +2270,16 @@ class CombatAutoScript:
         # 多敌军并行清除：按存活账号分配清除任务
         self._distribute_enemies_to_accounts()
 
+    def _get_liubei_clear_cd_remaining(self, account_index):
+        """获取指定账号刘备清除状态技能的CD剩余回合数"""
+        cd_info = self.liubei_skill_cd.get(account_index, {})
+        last_use = cd_info.get("清除状态", -999)
+        cd_total = self.skill_cd_config.get("清除状态", 4)
+        remaining = cd_total - (self.current_turn - last_use)
+        return max(0, remaining)
+
     def _distribute_enemies_to_accounts(self):
-        """将需要清除的敌军按存活账号平均分配，实现多刘备并行清除"""
+        """将需要清除的敌军按存活账号分配，支持CD感知和多刘备并行清除"""
         all_enemies = []
         seen = set()
         for i in [0, 1, 2]:
@@ -2258,36 +2290,93 @@ class CombatAutoScript:
                         seen.add(name)
                         all_enemies.append(e)
 
-        if len(all_enemies) <= 1:
+        if not all_enemies:
             return
 
-        available = []
-        for i in [0, 1, 2]:
-            if i in self.unit_info:
-                char = self.unit_info[i]["main_char"]
-                if char.get("alive", False) and self.has_liubei.get(i, False):
-                    available.append(i)
+        available_no_cd = []
+        available_with_cd = []
+        summon_candidates = []
 
-        if not available:
-            self.enemies_need_clear[0] = list(all_enemies)
-            for i in [1, 2]:
+        for i in [0, 1, 2]:
+            if i not in self.unit_info:
+                continue
+            char = self.unit_info[i]["main_char"]
+            if not char.get("alive", False):
+                continue
+
+            has_liubei_field = False
+            for gen in char.get("generals", []):
+                if gen.get("name") == "刘备" and gen.get("alive", True):
+                    has_liubei_field = True
+                    break
+
+            if has_liubei_field:
+                cd_remaining = self._get_liubei_clear_cd_remaining(i)
+                if cd_remaining <= 0:
+                    available_no_cd.append(i)
+                else:
+                    available_with_cd.append((i, cd_remaining))
+            elif self.has_liubei.get(i, False) and self.has_general.get(i, False):
+                summon_candidates.append(i)
+
+        if available_no_cd:
+            for i in [0, 1, 2]:
                 self.enemies_need_clear[i] = []
+            for idx, enemy in enumerate(all_enemies):
+                account = available_no_cd[idx % len(available_no_cd)]
+                self.enemies_need_clear[account].append(enemy)
+            self.report_battle_info(
+                f"敌军清除任务已分配(无CD): " + ", ".join(
+                    f"账号{i}: {[e['enemy_name'] for e in self.enemies_need_clear[i]]}"
+                    for i in available_no_cd
+                ),
+                "system",
+            )
             return
 
-        for i in [0, 1, 2]:
+        if available_with_cd:
+            min_cd_account, min_cd_remaining = min(available_with_cd, key=lambda x: x[1])
+            if min_cd_remaining <= 1:
+                self.enemies_need_clear[min_cd_account] = list(all_enemies)
+                for i in [0, 1, 2]:
+                    if i != min_cd_account:
+                        self.enemies_need_clear[i] = []
+                self.report_battle_info(
+                    f"敌军清除任务分配给账号{min_cd_account}（CD剩余{min_cd_remaining}回合，等CD更优）",
+                    "system",
+                )
+                return
+
+        if summon_candidates:
+            for i in [0, 1, 2]:
+                self.enemies_need_clear[i] = []
+            for idx, enemy in enumerate(all_enemies):
+                account = summon_candidates[idx % len(summon_candidates)]
+                self.enemies_need_clear[account].append(enemy)
+            self.report_battle_info(
+                f"敌军清除任务已分配(需召唤刘备): " + ", ".join(
+                    f"账号{i}: {[e['enemy_name'] for e in self.enemies_need_clear[i]]}"
+                    for i in summon_candidates
+                ),
+                "system",
+            )
+            return
+
+        if available_with_cd:
+            min_cd_account, min_cd_remaining = min(available_with_cd, key=lambda x: x[1])
+            self.enemies_need_clear[min_cd_account] = list(all_enemies)
+            for i in [0, 1, 2]:
+                if i != min_cd_account:
+                    self.enemies_need_clear[i] = []
+            self.report_battle_info(
+                f"敌军清除任务分配给账号{min_cd_account}（CD剩余{min_cd_remaining}回合，无其他可用账号）",
+                "system",
+            )
+            return
+
+        self.enemies_need_clear[0] = list(all_enemies)
+        for i in [1, 2]:
             self.enemies_need_clear[i] = []
-
-        for idx, enemy in enumerate(all_enemies):
-            account = available[idx % len(available)]
-            self.enemies_need_clear[account].append(enemy)
-
-        self.report_battle_info(
-            f"敌军清除任务已分配: " + ", ".join(
-                f"账号{i}: {[e['enemy_name'] for e in self.enemies_need_clear[i]]}"
-                for i in available
-            ),
-            "system",
-        )
 
     # 更新单位信息(根据墓碑检测结果)
     def update_unit_info_from_tombstones(self, dead_list):
@@ -3670,6 +3759,33 @@ class CombatAutoScript:
                         time.sleep(0.1)
                         return True
                     self.has_liubei[account_index] = False
+                    if self.enemies_need_clear.get(account_index):
+                        failed_tasks = self.enemies_need_clear[account_index][:]
+                        self.enemies_need_clear[account_index] = []
+                        self.report_battle_info(
+                            f"账号{account_index} 召唤刘备失败，将清除任务重新分配",
+                            "warning",
+                        )
+                        reassigned = False
+                        for other_idx in [0, 1, 2]:
+                            if other_idx != account_index and self.has_liubei.get(other_idx, False):
+                                self.enemies_need_clear[other_idx] = failed_tasks
+                                reassigned = True
+                                break
+                        if not reassigned:
+                            for other_idx in [0, 1, 2]:
+                                if other_idx != account_index:
+                                    other_char = self.unit_info.get(other_idx, {}).get("main_char", {})
+                                    has_field_liubei = any(
+                                        g.get("name") == "刘备" and g.get("alive", True)
+                                        for g in other_char.get("generals", [])
+                                    )
+                                    if has_field_liubei or self.has_liubei.get(other_idx, False):
+                                        self.enemies_need_clear[other_idx] = failed_tasks
+                                        reassigned = True
+                                        break
+                        if not reassigned:
+                            self.enemies_need_clear[0] = failed_tasks
                     if self.beidong_huihe >= 5 and self.zhaohuan_index == account_index:
                         if self.zhaohuan_index < 2:
                             self.zhaohuan_index += 1
@@ -4363,7 +4479,7 @@ class CombatAutoScript:
                 self._target_positions_detected_this_round = False
 
                 self.has_general = {0: True, 1: True, 2: True}
-                self.has_liubei = {0: True, 1: True, 2: True}
+                self.has_liubei = {i: self.liubei_counts.get(i, 0) > 0 for i in range(3)}
                 self.beidong_huihe = 0
                 self.zhaohuan_index = 0
                 self.clear_zhugeliang = False
