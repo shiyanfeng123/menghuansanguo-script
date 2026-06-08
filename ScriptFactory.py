@@ -935,9 +935,13 @@ LOOP_MODES = ["🔄 一直打（无限循环）", "🔢 跑几轮就停"]
 
 class ScriptFactoryDialog(wx.Frame):
     def __init__(self, parent_frame):
-        super().__init__(None, title="脚本工厂 V7.0 — 选模板 · 填配置 · 一键保存", size=(1100, 750),
+        super().__init__(None, title="脚本工厂", size=(1100, 750),
                          pos=(70, 30), style=wx.DEFAULT_FRAME_STYLE)
         self.SetBackgroundColour(wx.Colour(243, 244, 248))
+        icon_path = os.path.join(SERVE_ASSETS, "images", "menu_factory.png")
+        if os.path.exists(icon_path):
+            icon = wx.Icon(wx.Bitmap(wx.Image(icon_path).Scale(32, 32, wx.IMAGE_QUALITY_HIGH)))
+            self.SetIcon(icon)
         self.parent_frame = parent_frame
         self.dm = getattr(parent_frame, "dm", None)
         self.selected_stage_index = -1

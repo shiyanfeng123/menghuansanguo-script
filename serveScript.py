@@ -14947,11 +14947,11 @@ class MyFrame(wx.Frame):
         self.btn_settings.Bind(wx.EVT_BUTTON, self.on_button_click)
         row_top.Add(self.btn_settings, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        self.btn_factory = wx.Button(self.panel, label="🏭 脚本工厂", size=(90, 30),
-                                      style=wx.BORDER_NONE)
-        self.btn_factory.SetBackgroundColour(wx.Colour(41, 128, 185))
-        self.btn_factory.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.btn_factory.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        self.btn_factory = wx.Button(self.panel, size=(30, 30), style=wx.BORDER_NONE)
+        factory_bmp = wx.Bitmap(wx.Image(self.get_resource_path("serveAssets/images/menu_factory.png")).Scale(20, 20, wx.IMAGE_QUALITY_HIGH))
+        self.btn_factory.SetBitmap(factory_bmp)
+        self.btn_factory.SetBackgroundColour(wx.Colour(215, 218, 226))
+        self.btn_factory.SetToolTip("ScriptFactory")
         self.btn_factory.Bind(wx.EVT_BUTTON, self.on_factory_click)
         row_top.Add(self.btn_factory, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
 
@@ -15040,11 +15040,13 @@ class MyFrame(wx.Frame):
         self.update_notify_panel.Bind(wx.EVT_PAINT, self.on_update_notify_paint)
         self.update_notify_panel.SetToolTip("有新版本可用")
 
-        self.updateVersion = wx.StaticText(self.panel, label="更新")
-        self.updateVersion.SetForegroundColour(link_color)
-        self.updateVersion.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        self.updateVersion = wx.Button(self.panel, size=(22, 22), style=wx.BORDER_NONE)
+        update_bmp = wx.Bitmap(wx.Image(self.get_resource_path("serveAssets/images/check_update.png")).Scale(18, 18, wx.IMAGE_QUALITY_HIGH))
+        self.updateVersion.SetBitmap(update_bmp)
+        self.updateVersion.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.updateVersion.SetToolTip("CheckUpdate")
         self.updateVersion.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.updateVersion.Bind(wx.EVT_LEFT_DOWN, self.on_update_link_click)
+        self.updateVersion.Bind(wx.EVT_BUTTON, self.on_update_link_click)
 
         btm.Add(self.help_link, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 12)
         btm.AddStretchSpacer()
