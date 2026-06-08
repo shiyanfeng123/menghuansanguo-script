@@ -9,6 +9,7 @@ a = Analysis(
     hiddenimports=[
         'Kanloong_combat_script_copy',
         'ScriptEngine',
+        'ScriptFactory',
         'wx.lib.scrolledpanel',
         'wx.lib.scrolledpanel.scrolled',
     ],
