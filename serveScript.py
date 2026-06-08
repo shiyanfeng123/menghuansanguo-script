@@ -16175,8 +16175,8 @@ class MyDialog(wx.Dialog):
         lianyu_count = self.lianyu_count.GetValue()
         qingyuan_count = self.qingyuan_count.GetValue()
         zhanhun_count = self.zhanhun_count.GetValue()
-        shihun_count = self.shihun_count.GetCalue()
-        shihun_floor = self.choiceShiHunCeng.GetCalue()
+        shihun_count = self.shihun_count.GetValue()
+        shihun_floor = self.choiceShiHunCeng.GetValue()
 
         # 保存数据到文件
         self.save_to_file(
@@ -16448,6 +16448,13 @@ class MyDialog(wx.Dialog):
                 wx.MessageBox("方案名称不能为空", "错误", wx.OK | wx.ICON_ERROR)
                 return
 
+            if scheme_name in self.schemes:
+                confirm = wx.MessageBox(
+                    f"方案「{scheme_name}」已存在，是否覆盖？",
+                    "确认覆盖", wx.YES_NO | wx.ICON_QUESTION)
+                if confirm != wx.YES:
+                    return
+
             settings = self.collect_settings()
             self.schemes[scheme_name] = settings
             self.current_scheme = scheme_name
@@ -16462,8 +16469,13 @@ class MyDialog(wx.Dialog):
         dlg.Destroy()
 
     def on_update(self, event):
-        print(self.scheme_choice.GetValue())
-        scheme_name = self.scheme_choice.GetValue()
+        scheme_name = self.scheme_choice.GetValue().strip()
+        if not scheme_name:
+            wx.MessageBox("请先选择一个方案", "提示", wx.OK | wx.ICON_WARNING)
+            return
+        if scheme_name not in self.schemes:
+            wx.MessageBox(f"方案「{scheme_name}」不存在，请先保存为新方案", "提示", wx.OK | wx.ICON_WARNING)
+            return
         settings = self.collect_settings()
         self.schemes[scheme_name] = settings
         self.current_scheme = scheme_name
@@ -16484,13 +16496,15 @@ class MyDialog(wx.Dialog):
         if confirm == wx.YES:
             del self.schemes[scheme_name]
 
-            # 更新下拉框
             choices = list(self.schemes.keys())
             self.scheme_choice.SetItems(choices)
             self.scheme_choice.SetValue(choices[0] if choices else "")
 
             if self.current_scheme == scheme_name:
                 self.current_scheme = choices[0] if choices else ""
+
+            if self.current_scheme and self.current_scheme in self.schemes:
+                self.apply_settings(self.schemes[self.current_scheme])
 
             self.save_config()
             wx.MessageBox("方案已删除", "成功", wx.OK | wx.ICON_INFORMATION)
@@ -16552,13 +16566,12 @@ class NumberValidator(wx.Validator):
         value = text_ctrl.GetValue()
         if not value.isdigit():
             wx.MessageBox("请输入数字", "错误", wx.OK | wx.ICON_ERROR)
-            text_ctrl.SetBackgroundColour("pink")
+            text_ctrl.SetBackgroundColour(wx.Colour(255, 230, 230))
             text_ctrl.SetFocus()
             text_ctrl.Refresh()
             return False
         else:
-            text_ctrl.SetBackgroundColour(
-                wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
+            text_ctrl.SetBackgroundColour(wx.Colour(255, 255, 255))
             text_ctrl.Refresh()
             return True
 
