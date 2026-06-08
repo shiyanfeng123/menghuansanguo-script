@@ -1,1143 +1,712 @@
 # -*- coding: utf-8 -*-
 """
-梦幻三国 - 可视化脚本工厂
-功能: 录制/编排/生成用户自定义脚本
+梦幻三国 - 脚本工厂 (v4.0: PopupWindow检索 + 滚动编辑器)
 """
 
-import os
-import json
-import time
-import threading
-import datetime
+import os, json, time, threading, datetime, re
 import wx
 import wx.lib.scrolledpanel as scrolled
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SERVE_SCRIPT = os.path.join(SCRIPT_DIR, "serveScript.py")
 USER_SCRIPTS_DIR = os.path.join(SCRIPT_DIR, "user_scripts")
 REGISTRY_FILE = os.path.join(USER_SCRIPTS_DIR, "registry.json")
+SERVE_ASSETS = os.path.join(SCRIPT_DIR, "serveAssets")
+os.makedirs(USER_SCRIPTS_DIR, exist_ok=True)
 
-if not os.path.exists(USER_SCRIPTS_DIR):
-    os.makedirs(USER_SCRIPTS_DIR)
+TAG_DISPATCH_START = "        # === AUTO_SCRIPTS_DISPATCH_START ==="
+TAG_DISPATCH_END = "        # === AUTO_SCRIPTS_DISPATCH_END ==="
+TAG_METHODS_START = "    # === AUTO_SCRIPTS_METHODS_START ==="
+TAG_METHODS_END = "    # === AUTO_SCRIPTS_METHODS_END ==="
+
+# ============================================================
+# 资源索引
+# ============================================================
+_resource_index = None
+
+def _build_resource_index():
+    global _resource_index
+    if _resource_index is not None:
+        return _resource_index
+    _resource_index = {"images": [], "fonts": []}
+    img_dir = os.path.join(SERVE_ASSETS, "images")
+    if os.path.exists(img_dir):
+        for root, dirs, files in os.walk(img_dir):
+            for f in files:
+                if f.lower().endswith(('.bmp', '.png', '.jpg')):
+                    full = os.path.join(root, f)
+                    rel = os.path.relpath(full, SCRIPT_DIR).replace('\\', '/')
+                    _resource_index["images"].append({
+                        "name": f, "path": rel,
+                        "folder": os.path.basename(os.path.dirname(full)),
+                    })
+    _resource_index["images"].sort(key=lambda x: x["name"])
+    return _resource_index
+
+
+def search_resources(query):
+    if not query: return []
+    idx = _build_resource_index()
+    q = query.lower()
+    results = []
+    for img in idx["images"]:
+        if q in img["name"].lower() or q in img["folder"].lower():
+            results.append({"label": f"{img['name']}  [{img['folder']}]",
+                            "value": img["path"],
+                            "name": img["name"], "folder": img["folder"]})
+    results.sort(key=lambda r: r["name"])
+    return results[:20]
+
+
+KNOWN_CITIES = ["洛阳", "襄阳", "涿郡", "许昌", "官渡", "徐州"]
+KNOWN_AREAS = ["gameBottomLocation (下半屏)", "gameLeftLocation (左半屏)",
+               "gameRightLocation (右半屏)", "dituLocation (地图区域)",
+               "gameLocation (全屏)"]
+KNOWN_KEYS = ["tab", "A", "D", "W", "S", "1", "2", "3"]
+FB_NAMES = ["副本曹操", "副本老仙", "副本南华老人", "副本分身", "副本猎鼠人",
+            "副本挑战赛", "副本魔镜使者", "副本典韦", "副本龙天啸"]
 
 
 # ============================================================
-#  区域预设
+# 浮动下拉面板 (PopupWindow - 浏览器风格搜索建议)
 # ============================================================
-REGION_PRESETS = {
-    "全屏": (0, 0, 900, 580),
-    "左半屏": (0, 0, 450, 580),
-    "右半屏": (450, 0, 900, 580),
-    "上半屏": (0, 0, 900, 290),
-    "下半屏": (0, 290, 900, 580),
-    "左侧三分之一": (0, 0, 300, 580),
-    "右侧三分之一": (600, 0, 900, 580),
-    "中间区域": (150, 100, 750, 480),
-    "左上角": (0, 0, 300, 200),
-    "右上角": (600, 0, 900, 200),
-    "底部": (0, 400, 900, 580),
-    "自定义框选...": None,
-}
+class SearchPopup(wx.PopupWindow):
+    """悬停在输入框下方的搜索结果列表"""
+    def __init__(self, parent, owner_txt, on_select_callback):
+        super().__init__(parent, wx.BORDER_SIMPLE)
+        self.owner_txt = owner_txt
+        self.on_select_callback = on_select_callback
+        self._results = []
+        self._build()
 
-COLOR_PRESETS = {
-    "通用游戏字体(白绿黄青红黑底)":
-        "ffffff-000000|00ff00-000000|ffff00-000000|0ff000-000000|"
-        "ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|"
-        "ff1c13-000000|00ef0b-000000",
-    "白色字体": "ffffff-000000",
-    "金色字体": "ffff00-000000|ffcc00-000000",
-    "绿色字体": "00ff00-000000",
-    "红色字体": "ff0000-000000",
-}
+    def _build(self):
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(wx.Colour(28, 28, 36))
+        self.lb = wx.ListBox(panel, size=(380, 200), style=wx.LB_SINGLE | wx.NO_BORDER)
+        self.lb.SetBackgroundColour(wx.Colour(28, 28, 36))
+        self.lb.SetForegroundColour(wx.Colour(200, 220, 230))
+        self.lb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL,
+                                faceName="微软雅黑"))
+        self.lb.Bind(wx.EVT_LISTBOX, self._on_select)
+        self.lb.Bind(wx.EVT_KEY_DOWN, self._on_key)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.lb, 1, wx.EXPAND)
+        panel.SetSizer(sizer)
 
-MAP_LIST = [
-    "洛阳", "襄阳", "官渡", "涿郡", "徐州", "龙岛", "许昌", "长安", "邺城",
-    "五层", "城西", "野外西", "虎牢关外", "洛阳大道"
-]
+    def show_results(self, results):
+        self._results = results
+        self.lb.Clear()
+        if not results:
+            self.Hide()
+            return
+        for r in results:
+            self.lb.Append(r["label"])
+        self.lb.SetSelection(0)
+        tw, th = self.owner_txt.GetSize()
+        tx, ty = self.owner_txt.ClientToScreen(0, th)
+        self.SetPosition((tx, ty))
+        self.SetSize((max(380, tw), min(200, len(results) * 22 + 4)))
+        self.Show()
 
-BUILTIN_TEMPLATES = {
-    "刷活动副本(通用)": {
-        "description": "飞到活动地图→等入口图标→点击入口→等待确认图→循环(点击Boss→等待战斗结束)",
-        "steps": 5,
-    },
-    "官渡刷曹操(完整版)": {
-        "description": "飞官渡→点击曹操进大帐→进曹袁战场→循环打河北军→循环打曹操→打Boss",
-        "steps": 8,
-    },
-    "魔镜刷狮王(完整版)": {
-        "description": "飞城西→魔镜使者→进镜像地层→打吃人妖→小绿人→进遗迹镜像→打狮王→打张辽",
-        "steps": 7,
-    },
-    "战魂塔(完整版)": {
-        "description": "飞洛阳→点击战魂挑战→等待战魂地图→循环(点击指定层图标→等待战斗结束)",
-        "steps": 5,
-    },
-    "黑风山寨(完整版)": {
-        "description": "飞五层→巴山虎→进黑风山寨→循环(找刀贼→点刀贼→等战斗结束)",
-        "steps": 5,
-    },
-    "龙岛(完整版)": {
-        "description": "飞城西→帮派传送→进龙岛→打守门人→挑战龙族→循环(点龙子/龙孙→等结束)",
-        "steps": 7,
-    },
-    "打红/虎牢关(完整版)": {
-        "description": "飞虎牢关外→小白人→小绿人→进军营→循环(点红Boss→等战斗结束)",
-        "steps": 6,
-    },
-    "五行圣殿(完整版)": {
-        "description": "飞野外西→点老板→进五行→挂机打怪→等待返回",
-        "steps": 5,
-    },
-    "刷精英怪(通用)": {
-        "description": "飞指定地图→循环(找精英怪图标→点击→等自动战斗→等结束)",
-        "steps": 3,
-    },
-    "日常循环(组合)": {
-        "description": "飞到地图→循环跑图找怪→打怪→等结束→包满卖东西→继续",
-        "steps": 6,
-    },
-}
+    def _on_select(self, e):
+        sel = self.lb.GetSelection()
+        if 0 <= sel < len(self._results):
+            self.on_select_callback(self._results[sel]["value"])
+        self.Hide()
+
+    def _on_key(self, e):
+        key = e.GetKeyCode()
+        if key == wx.WXK_ESCAPE:
+            self.Hide()
+            self.owner_txt.SetFocus()
+        elif key == wx.WXK_RETURN:
+            self._on_select(None)
+        elif key == wx.WXK_UP and self.lb.GetSelection() > 0:
+            self.lb.SetSelection(self.lb.GetSelection() - 1)
+        elif key == wx.WXK_DOWN:
+            sel = self.lb.GetSelection()
+            if sel < self.lb.GetCount() - 1:
+                self.lb.SetSelection(sel + 1)
+        else:
+            self.owner_txt.SetFocus()
+            self.owner_txt.EmulateKeyPress(wx.KeyEvent(wx.wxEVT_KEY_DOWN, key))
 
 
 # ============================================================
-#  脚本注册表
+# 搜索输入框控件 (轻量, 仅 TextCtrl)
+# ============================================================
+class SearchInput(wx.TextCtrl):
+    """输入时弹出 SearchPopup 进行图片检索"""
+    def __init__(self, parent, value="", hint="输入关键词搜索图片..."):
+        super().__init__(parent, size=(-1, 28), style=0)
+        self.SetValue(str(value))
+        self.SetHint(hint)
+        self.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.SetForegroundColour(wx.Colour(230, 230, 238))
+        self._popup = None
+        self._results = []
+        self.Bind(wx.EVT_TEXT, self._on_text)
+        self.Bind(wx.EVT_KEY_DOWN, self._on_key)
+        self.Bind(wx.EVT_KILL_FOCUS, self._on_focus_lost)
+
+    def _ensure_popup(self):
+        if self._popup is None:
+            self._popup = SearchPopup(self.GetTopLevelParent(), self, self._on_popup_select)
+
+    def _on_text(self, e):
+        e.Skip()
+        q = self.GetValue().strip()
+        if len(q) < 1:
+            if self._popup:
+                self._popup.Hide()
+            return
+        self._ensure_popup()
+        self._results = search_resources(q)
+        self._popup.show_results(self._results)
+
+    def _on_key(self, e):
+        key = e.GetKeyCode()
+        if key == wx.WXK_ESCAPE:
+            if self._popup and self._popup.IsShown():
+                self._popup.Hide()
+                return
+        elif key == wx.WXK_DOWN:
+            if self._popup and self._popup.IsShown():
+                self._popup._on_key(e)
+                return
+        elif key == wx.WXK_RETURN:
+            if self._popup and self._popup.IsShown():
+                self._popup._on_key(e)
+                return
+        e.Skip()
+
+    def _on_focus_lost(self, e):
+        wx.CallLater(150, self._delayed_hide)
+        e.Skip()
+
+    def _delayed_hide(self):
+        if self._popup and self._popup.IsShown():
+            fw = wx.Window.FindFocus()
+            if fw != self._popup.lb and fw != self and fw != self._popup:
+                self._popup.Hide()
+
+    def _on_popup_select(self, value):
+        self.SetValue(value)
+        evt = wx.CommandEvent(wx.wxEVT_TEXT, self.GetId())
+        wx.PostEvent(self, evt)
+
+
+# ============================================================
+# 代码生成器 + 注入器
+# ============================================================
+class CodeInjector:
+    def __init__(self, name, config):
+        self.name = name
+        self.cfg = config
+        self.safe = re.sub(r'[^\w]', '_', name).rstrip('_') or "custom"
+
+    def generate_methods(self):
+        lines = []; ind = "    "
+        entry = self.cfg.get("entry", {})
+        city = entry.get("city", "洛阳")
+        yizhan = entry.get("yizhan", "驿站城西")
+        npc_img = entry.get("npc_image", "")
+        fb_name = entry.get("fb_name", "")
+
+        map_img = "serveAssets/images/zhengdian/luoyang.bmp"
+        if "涿郡" in city: map_img = "serveAssets/images/zhengdian/zhuojun.bmp"
+        elif "襄阳" in city: map_img = "serveAssets/images/zhengdian/xiangyang.bmp"
+        elif "许昌" in city: map_img = "serveAssets/images/zhengdian/xuchang.bmp"
+
+        lines.append(f'{ind}def _auto_{self.safe}_entry(self):')
+        lines.append(f'{ind}    """自动生成: {self.name} - 入口"""')
+        lines.append(f'{ind}    if not self.find_str({repr(city)}, self.dituLocation, 0):')
+        lines.append(f'{ind}        self.go_in_ditu(')
+        lines.append(f'{ind}            f"地图{city}",')
+        lines.append(f'{ind}            self.get_resource_path({repr(map_img)}),')
+        lines.append(f'{ind}            {repr(city)}, "", {repr(yizhan) if yizhan else ""}, True)')
+
+        if fb_name:
+            lines.append(f'{ind}    self.feiFb({repr(fb_name)}, True)')
+            lines.append(f'{ind}    time.sleep(1)')
+        elif npc_img:
+            lines.append(f'{ind}    self.findAndClickPic(')
+            lines.append(f'{ind}        {repr(city)},')
+            lines.append(f'{ind}        self.get_resource_path({repr(npc_img)}),')
+            lines.append(f'{ind}        self.get_resource_path({repr(npc_img)}),')
+            lines.append(f'{ind}        self.gameBottomLocation,')
+            lines.append(f'{ind}        "进入", self.gameBottomLocation,')
+            lines.append(f'{ind}        "0.1,0.1", "tab")')
+
+        lines.append(f'{ind}    return True')
+        lines.append("")
+
+        lines.append(f'{ind}def _auto_{self.safe}_loop(self):')
+        lines.append(f'{ind}    """自动生成: {self.name} - 主循环"""')
+        lines.append(f'{ind}    if self.check_stop_or_over(): return')
+        lines.append(f'{ind}    with condition:')
+        lines.append(f'{ind}        if self.stoped: condition.wait()')
+        lines.append("")
+
+        for si, stage in enumerate(self.cfg.get("stages", [])):
+            map_name = stage.get("map_name", f"地图{si+1}")
+            lines.append(f'{ind}    # ── 第{si+1}层: {map_name} ──')
+            for m in stage.get("monsters", []):
+                lines.extend(self._gen_monster(ind, map_name, m))
+            trans = stage.get("transition", {})
+            if trans and si < len(self.cfg["stages"]) - 1:
+                click = trans.get("click_map_name", "")
+                if click:
+                    lines.append(f'{ind}    self.waitForAAndClickB1(')
+                    lines.append(f'{ind}        {repr(click)}, {repr(click)},')
+                    lines.append(f'{ind}        self.dituLocation, self.gameLeftLocation)')
+                    lines.append("")
+            lines.append("")
+        return "\n".join(lines)
+
+    def _gen_monster(self, ind, map_name, m):
+        name = m.get("name", "?")
+        images = m.get("images", "")
+        region = m.get("region", "gameBottomLocation")
+        if not region.startswith("self."): region = f"self.{region}"
+        battle_end = m.get("battle_end", "serveAssets/images/zdzd.bmp|serveAssets/images/zdzd111.bmp")
+        repeat = max(1, int(m.get("repeat", 3)))
+        move_region = m.get("move_region", "0.1,0.12")
+        move_key = m.get("move_key", "tab")
+
+        if images:
+            parts = [p.strip() for p in images.split("|") if p.strip()]
+            if len(parts) > 1:
+                img_code = "f\"" + "|".join(f"{{self.get_resource_path('{p}')}}" for p in parts) + "\""
+            else:
+                img_code = f"self.get_resource_path('{images}')"
+        else:
+            img_code = repr(name)
+
+        be_parts = [p.strip() for p in battle_end.split("|") if p.strip()]
+        if len(be_parts) > 1:
+            be_code = "f\"" + "|".join(f"{{self.get_resource_path('{p}')}}" for p in be_parts) + "\""
+        else:
+            be_code = f"self.get_resource_path('{battle_end}')"
+
+        lines = []
+        for _ in range(repeat):
+            lines.append(f"{ind}    self.findAndClickPic(")
+            lines.append(f"{ind}        {repr(map_name)},")
+            lines.append(f"{ind}        {repr(name)},")
+            lines.append(f"{ind}        {img_code},")
+            lines.append(f"{ind}        {region},")
+            lines.append(f"{ind}        {be_code},")
+            lines.append(f"{ind}        self.gameBottomLocation,")
+            lines.append(f"{ind}        {repr(move_region)},")
+            lines.append(f"{ind}        {repr(move_key)})")
+        return lines
+
+    def generate_dispatch(self, loop_mode):
+        loop = self.cfg.get("loop", {})
+        mode = loop.get("mode", "infinite")
+        count = loop.get("count", 1)
+        clear_every = loop.get("clear_bag_every", 0)
+
+        lines = [f"        elif self.scriptName == {repr(self.name)}:",
+                 f"            if not self._auto_{self.safe}_entry(): return"]
+        if mode == "infinite":
+            lines.append(f"            count = 0")
+            lines.append(f"            while True:")
+            lines.append(f"                if self.check_stop_or_over(): return")
+            lines.append(f"                self._auto_{self.safe}_loop()")
+            if clear_every:
+                lines.append(f"                count += 1")
+                lines.append(f"                if count % {clear_every} == 0:")
+                lines.append(f"                    self.clearBag()")
+        else:
+            lines.append(f"            for _i in range({count}):")
+            lines.append(f"                if self.check_stop_or_over(): return")
+            lines.append(f"                self._auto_{self.safe}_loop()")
+        lines.append("")
+        return "\n".join(lines)
+
+    def inject(self, loop_mode):
+        with open(SERVE_SCRIPT, "r", encoding="utf-8") as f: content = f.read()
+        content = _replace_between(content, TAG_METHODS_START, TAG_METHODS_END, self.generate_methods())
+        content = _replace_between(content, TAG_DISPATCH_START, TAG_DISPATCH_END, self.generate_dispatch(loop_mode))
+        backup = SERVE_SCRIPT + ".bak"
+        if not os.path.exists(backup):
+            with open(backup, "w", encoding="utf-8") as f:
+                f.write(open(SERVE_SCRIPT, "r", encoding="utf-8").read())
+        with open(SERVE_SCRIPT, "w", encoding="utf-8") as f: f.write(content)
+        return True
+
+    def remove(self):
+        with open(SERVE_SCRIPT, "r", encoding="utf-8") as f: content = f.read()
+        content = _replace_between(content, TAG_METHODS_START, TAG_METHODS_END, "")
+        content = _replace_between(content, TAG_DISPATCH_START, TAG_DISPATCH_END, "")
+        with open(SERVE_SCRIPT, "w", encoding="utf-8") as f: f.write(content)
+
+def _replace_between(content, start_tag, end_tag, new_content):
+    i0 = content.find(start_tag); i1 = content.find(end_tag)
+    if i0 < 0 or i1 < 0: return content
+    return content[:i0 + len(start_tag)] + "\n" + new_content + "\n" + content[i1:]
+
+
+# ============================================================
+# 注册表
 # ============================================================
 class ScriptRegistry:
     @staticmethod
     def load():
-        if not os.path.exists(REGISTRY_FILE):
-            return {}
-        with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-
+        if not os.path.exists(REGISTRY_FILE): return {}
+        with open(REGISTRY_FILE, "r", encoding="utf-8") as f: return json.load(f)
     @staticmethod
-    def save(registry):
-        with open(REGISTRY_FILE, "w", encoding="utf-8") as f:
-            json.dump(registry, f, ensure_ascii=False, indent=2)
-
+    def save(reg):
+        with open(REGISTRY_FILE, "w", encoding="utf-8") as f: json.dump(reg, f, ensure_ascii=False, indent=2)
     @staticmethod
-    def add(name, script_data):
-        registry = ScriptRegistry.load()
-        registry[name] = {
-            "created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "steps": len(script_data.get("steps", [])),
-            "script_path": os.path.join(USER_SCRIPTS_DIR, name, "script.py"),
-        }
-        ScriptRegistry.save(registry)
-
+    def add(name, config):
+        reg = ScriptRegistry.load()
+        reg[name] = {"created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "config": config}
+        ScriptRegistry.save(reg)
     @staticmethod
     def remove(name):
-        registry = ScriptRegistry.load()
-        if name in registry:
-            del registry[name]
-            ScriptRegistry.save(registry)
-
+        reg = ScriptRegistry.load(); reg.pop(name, None); ScriptRegistry.save(reg)
     @staticmethod
     def list_names():
         return list(ScriptRegistry.load().keys())
 
 
 # ============================================================
-#  代码生成器
+# GUI
 # ============================================================
-class CodeGenerator:
-    def __init__(self, steps, script_name):
-        self.steps = steps
-        self.script_name = script_name
-        self.material_dir = f"user_scripts/{script_name}"
+LOOP_MODES = ["🔄 无限循环", "🔢 指定次数"]
 
-    def generate(self):
-        lines = [
-            "# -*- coding: utf-8 -*-",
-            f"# 自动生成脚本: {self.script_name}",
-            f"# 生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            f"# 总步骤: {len(self.steps)}",
-            "",
-            "import time",
-            "",
-            "",
-            f"class Script_{self._safe_name()}:",
-            "    def __init__(self, thread):",
-            "        self.thread = thread",
-            "        self.dm = thread.dm",
-            f"        self.base = '{self.material_dir}'",
-            "",
-            "    def run(self):",
-            f"        print('[{self.script_name}] 开始执行')",
-            "",
-        ]
-
-        for i, step in enumerate(self.steps):
-            step_id = i + 1
-            stype = step.get("type", "")
-            label = step.get("label", f"步骤{step_id}")
-            lines.append(f"        # === {label} ===")
-            code = self._gen_step(step_id, step)
-            if code:
-                lines.append(code)
-            lines.append("")
-
-        lines.extend([
-            f"        print('[{self.script_name}] 执行完成')",
-        ])
-        return "\n".join(lines)
-
-    def _safe_name(self):
-        safe = ""
-        for c in self.script_name:
-            if c.isalnum() or c == "_":
-                safe += c
-            else:
-                safe += "_"
-        return safe or "UserScript"
-
-    def _gen_step(self, sid, step):
-        stype = step.get("type", "")
-        params = step.get("params", {})
-
-        if stype == "click_image":
-            img = params.get("image", f"s{sid}.png")
-            region = params.get("region", "全屏")
-            conf = params.get("confidence", 0.8)
-            account = params.get("account", "dm")
-            offset = params.get("offset", "center")
-            wait = params.get("wait_after", 2.0)
-            return self._gen_click_image(sid, img, region, conf, account, offset, wait)
-
-        elif stype == "find_and_click":
-            img = params.get("image", f"s{sid}.png")
-            region = params.get("region", "全屏")
-            wait = params.get("wait_after", 2.0)
-            confirm = params.get("confirm_image")
-            conf_region = params.get("confirm_region", "全屏")
-            timeout = params.get("confirm_timeout", 30)
-            return self._gen_find_and_click(sid, img, region, wait, confirm,
-                                            conf_region, timeout)
-
-        elif stype == "click_text":
-            text = params.get("text", "")
-            region = params.get("region", "全屏")
-            color = params.get("color", "ffffff-000000")
-            conf = params.get("confidence", 0.9)
-            account = params.get("account", "dm")
-            wait = params.get("wait_after", 2.0)
-            return self._gen_click_text(sid, text, region, color, conf, account, wait)
-
-        elif stype == "wait_image":
-            img = params.get("image", f"s{sid}.png")
-            region = params.get("region", "全屏")
-            timeout = params.get("timeout", 30)
-            return self._gen_wait_image(sid, img, region, timeout)
-
-        elif stype == "go_ditu":
-            city = params.get("city", "洛阳")
-            return self._gen_go_ditu(city)
-
-        elif stype == "loop":
-            count = params.get("count", 5)
-            children = params.get("children", [])
-            return self._gen_loop(count, children)
-
-        elif stype == "delay":
-            seconds = params.get("seconds", 3.0)
-            return f"        time.sleep({seconds})"
-
-        return ""
-
-    def _gen_click_image(self, sid, img, region, conf, account, offset, wait):
-        reg = self._region_code(region)
-        dm = self._dm_code(account)
-        return (
-            f"        path = self.thread.get_resource_path("
-            f"f'{{self.base}}/{img}')\n"
-            f"        pos = {dm}.FindPicE({reg[0]},{reg[1]},{reg[2]},{reg[3]},"
-            f"path, '000000', {conf}, 0)\n"
-            f"        if pos[0] >= 0:\n"
-            f"            {dm}.MoveTo(int(pos[1]) + {offset}, int(pos[2]) + {offset})\n"
-            f"            time.sleep(0.3)\n"
-            f"            {dm}.LeftClick()\n"
-            f"            time.sleep({wait})\n"
-            f"            print('点击成功')\n"
-            f"        else:\n"
-            f"            print('未找到目标图片, 跳过')"
-        )
-
-    def _gen_find_and_click(self, sid, img, region, wait, confirm_img, conf_region, timeout):
-        reg = self._region_code(region)
-        cfg = self._region_code(conf_region)
-        return (
-            f"        target = self.thread.get_resource_path("
-            f"f'{{self.base}}/{img}')\n"
-            f"        confirm = self.thread.get_resource_path("
-            f"f'{{self.base}}/{confirm_img}')\n"
-            f"        # 找目标并点击\n"
-            f"        tpos = self.dm.FindPicE({reg[0]},{reg[1]},{reg[2]},{reg[3]},"
-            f"target, '000000', 0.8, 0)\n"
-            f"        if tpos[0] < 0:\n"
-            f"            print('未找到目标')\n"
-            f"            return\n"
-            f"        self.dm.MoveTo(int(tpos[1])+15, int(tpos[2])+15)\n"
-            f"        time.sleep(0.3)\n"
-            f"        self.dm.LeftClick()\n"
-            f"        time.sleep({wait})\n"
-            f"        # 等待确认图出现\n"
-            f"        import time as _t\n"
-            f"        _start = _t.time()\n"
-            f"        while _t.time() - _start < {timeout}:\n"
-            f"            cpos = self.dm.FindPicE({cfg[0]},{cfg[1]},"
-            f"{cfg[2]},{cfg[3]}, confirm, '000000', 0.8, 0)\n"
-            f"            if cpos[0] >= 0:\n"
-            f"                print('确认成功')\n"
-            f"                return\n"
-            f"            _t.sleep(0.5)\n"
-            f"        print('等待确认超时')"
-        )
-
-    def _gen_click_text(self, sid, text, region, color, conf, account, wait):
-        reg = self._region_code(region)
-        dm = self._dm_code(account)
-        return (
-            f"        result = {dm}.FindStrFastE({reg[0]},{reg[1]},"
-            f"{reg[2]},{reg[3]}, '{text}', '{color}', {conf})\n"
-            f"        parts = result.split('|')\n"
-            f"        if int(parts[0]) >= 0:\n"
-            f"            {dm}.MoveTo(int(parts[1])+15, int(parts[2])+15)\n"
-            f"            time.sleep(0.3)\n"
-            f"            {dm}.LeftClick()\n"
-            f"            time.sleep({wait})\n"
-            f"            print(f'点击文字\\'{text}\\'成功')\n"
-            f"        else:\n"
-            f"            print(f'未找到文字\\'{text}\\', 跳过')"
-        )
-
-    def _gen_wait_image(self, sid, img, region, timeout):
-        reg = self._region_code(region)
-        return (
-            f"        path = self.thread.get_resource_path("
-            f"f'{{self.base}}/{img}')\n"
-            f"        result = self.thread.waitFor(path, "
-            f"({reg[0]},{reg[1]},{reg[2]},{reg[3]}), timeout={timeout})"
-            f"\n        if not result:\n"
-            f"            print('等待超时, 跳过')"
-        )
-
-    def _gen_go_ditu(self, city):
-        return f"        print('飞往{city}...')\n" \
-               f"        # TODO: 调用 go_in_ditu"
-
-    def _gen_loop(self, count, children):
-        lines = [f"        for _i in range({count}):"]
-        for child in children:
-            child_code = self._gen_step(0, child)
-            if child_code:
-                for cl in child_code.split("\n"):
-                    lines.append(f"            {cl}")
-        return "\n".join(lines)
-
-    def _region_code(self, region_name):
-        if isinstance(region_name, (list, tuple)) and len(region_name) == 4:
-            return region_name
-        preset = REGION_PRESETS.get(region_name, REGION_PRESETS["全屏"])
-        if preset:
-            return preset
-        return (0, 0, 900, 580)
-
-    def _dm_code(self, account):
-        if account in ("队友1", "win1"):
-            return "self.thread.win1_dm"
-        elif account in ("队友2", "win2"):
-            return "self.thread.win2_dm"
-        return "self.dm"
-
-
-# ============================================================
-#  脚本工厂主窗口
-# ============================================================
 class ScriptFactoryDialog(wx.Frame):
-    """脚本工厂 - 可视化脚本编排器"""
-
     def __init__(self, parent_frame):
-        super().__init__(None, title="脚本工厂", size=(900, 650),
-                         pos=(100, 50),
-                         style=wx.DEFAULT_FRAME_STYLE)
-        self.parent_frame = parent_frame
+        super().__init__(None, title="脚本工厂 V4.0 — Popup检索 · 滚动编辑器", size=(1100, 750),
+                         pos=(70, 30), style=wx.DEFAULT_FRAME_STYLE)
         self.SetBackgroundColour(wx.Colour(18, 18, 22))
+        self.selected_stage_index = -1
+        self.selected_monster_index = -1
+        self.config = {
+            "entry": {"city": "洛阳", "yizhan": "驿站城西", "npc_image": "", "fb_name": ""},
+            "loop": {"mode": "infinite", "count": 1, "clear_bag_every": 15},
+            "stages": [],
+        }
+        self._build()
 
-        self.script_name = ""
-        self.steps = []
-        self.selected_step_index = -1
-        self.recording = False
-        self.recorder = None
-
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(18, 18, 22))
-        main_sizer = wx.BoxSizer(wx.VERTICAL)
+    def _build(self):
+        panel = wx.Panel(self); panel.SetBackgroundColour(wx.Colour(18, 18, 22))
+        ms = wx.BoxSizer(wx.VERTICAL)
 
         # ── 标题栏 ──
-        hdr = wx.Panel(panel, size=(-1, 36))
-        hdr.SetBackgroundColour(wx.Colour(26, 26, 32))
+        hdr = wx.Panel(panel, size=(-1, 36)); hdr.SetBackgroundColour(wx.Colour(26, 26, 32))
         hs = wx.BoxSizer(wx.HORIZONTAL)
-        t = wx.StaticText(hdr, label="脚本工厂 - 可视化脚本编排器")
+        t = wx.StaticText(hdr, label="脚本工厂 — 填写配置 → 注入代码到 serveScript.py")
         t.SetForegroundColour(wx.Colour(230, 200, 110))
-        t.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                          wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        t.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
         hs.Add(t, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 12)
         hs.AddStretchSpacer()
+        self.btn_inject = wx.Button(hdr, label="💉 注入到 serveScript.py", size=(160, 28), style=wx.BORDER_NONE)
+        self.btn_inject.SetBackgroundColour(wx.Colour(192, 57, 43))
+        self.btn_inject.SetForegroundColour(wx.Colour(255, 255, 255))
+        self.btn_inject.Bind(wx.EVT_BUTTON, self._on_inject)
+        hs.Add(self.btn_inject, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        hdr.SetSizer(hs); ms.Add(hdr, 0, wx.EXPAND)
 
-        self.btn_record = wx.Button(hdr, label="⏺ 录制", size=(70, 28),
-                                    style=wx.BORDER_NONE)
-        self.btn_record.SetBackgroundColour(wx.Colour(180, 50, 40))
-        self.btn_record.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.btn_record.Bind(wx.EVT_BUTTON, self._on_record)
-        hs.Add(self.btn_record, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-
-        self.btn_generate = wx.Button(hdr, label="📋 生成脚本", size=(80, 28),
-                                      style=wx.BORDER_NONE)
-        self.btn_generate.SetBackgroundColour(wx.Colour(230, 200, 110))
-        self.btn_generate.SetForegroundColour(wx.Colour(18, 18, 22))
-        self.btn_generate.Bind(wx.EVT_BUTTON, self._on_generate)
-        hs.Add(self.btn_generate, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-
-        hdr.SetSizer(hs)
-        main_sizer.Add(hdr, 0, wx.EXPAND)
-
-        # ── 主体: 三栏布局 ──
+        # ── 主体: 左树 + 右编辑器(可滚动) ──
         body = wx.BoxSizer(wx.HORIZONTAL)
+        left = wx.Panel(panel, size=(300, -1)); left.SetBackgroundColour(wx.Colour(22, 22, 28))
+        self._build_tree(left); body.Add(left, 0, wx.EXPAND | wx.RIGHT, 2)
 
-        # 左栏: 积木面板(可滚动)
-        self.left_panel = wx.Panel(panel, size=(160, -1))
-        self.left_panel.SetBackgroundColour(wx.Colour(22, 22, 28))
-        self._build_block_palette(self.left_panel)
-        left_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        left_sizer.Add(self.palette_panel, 1, wx.EXPAND)
-        self.left_panel.SetSizer(left_sizer)
-        body.Add(self.left_panel, 0, wx.EXPAND | wx.RIGHT, 2)
+        self.editor_panel = scrolled.ScrolledPanel(panel, -1)
+        self.editor_panel.SetBackgroundColour(wx.Colour(22, 22, 28))
+        self.editor_panel.SetupScrolling(scroll_y=True, rate_y=20)
+        self.editor_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.editor_panel.SetSizer(self.editor_sizer)
+        body.Add(self.editor_panel, 1, wx.EXPAND)
+        ms.Add(body, 1, wx.EXPAND | wx.ALL, 4)
 
-        # 中栏: 步骤列表
-        mid_panel = wx.Panel(panel)
-        mid_panel.SetBackgroundColour(wx.Colour(18, 18, 22))
-        self._build_step_list(mid_panel)
-        body.Add(mid_panel, 1, wx.EXPAND | wx.RIGHT, 2)
-
-        # 右栏: 属性面板
-        right_panel = wx.Panel(panel, size=(280, -1))
-        right_panel.SetBackgroundColour(wx.Colour(22, 22, 28))
-        self._build_props_panel(right_panel)
-        body.Add(right_panel, 0, wx.EXPAND)
-
-        main_sizer.Add(body, 1, wx.EXPAND | wx.ALL, 4)
-
-        # ── 底部 ──
-        btm = wx.Panel(panel, size=(-1, 36))
-        btm.SetBackgroundColour(wx.Colour(26, 26, 32))
+        # ── 底部栏 ──
+        btm = wx.Panel(panel, size=(-1, 36)); btm.SetBackgroundColour(wx.Colour(26, 26, 32))
         bs = wx.BoxSizer(wx.HORIZONTAL)
-
-        lb_name = wx.StaticText(btm, label="脚本名称:")
-        lb_name.SetForegroundColour(wx.Colour(180, 180, 190))
-        bs.Add(lb_name, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
-
-        self.txt_name = wx.TextCtrl(btm, size=(160, 26))
-        self.txt_name.SetBackgroundColour(wx.Colour(18, 18, 22))
-        self.txt_name.SetForegroundColour(wx.Colour(230, 230, 238))
-        self.txt_name.SetHint("输入脚本名称")
+        bs.Add(wx.StaticText(btm, label="脚本名称:"), 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
+        self.txt_name = wx.TextCtrl(btm, size=(120, 26)); self.txt_name.SetHint("如: 觉醒")
         bs.Add(self.txt_name, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
-
         bs.AddStretchSpacer()
+        for lbl, hdl in [("💾 保存配置", self._on_save_json), ("🗑 移除注入", self._on_remove)]:
+            btn = wx.Button(btm, label=lbl, size=(90, 28), style=wx.BORDER_NONE)
+            btn.SetBackgroundColour(wx.Colour(32, 32, 40)); btn.SetForegroundColour(wx.Colour(200, 210, 220))
+            btn.Bind(wx.EVT_BUTTON, hdl); bs.Add(btn, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+        btm.SetSizer(bs); ms.Add(btm, 0, wx.EXPAND)
+        panel.SetSizer(ms); self._refresh_all()
 
-        self.btn_save = wx.Button(btm, label="💾 保存", size=(70, 28),
-                                  style=wx.BORDER_NONE)
-        self.btn_save.SetBackgroundColour(wx.Colour(50, 140, 70))
-        self.btn_save.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.btn_save.Bind(wx.EVT_BUTTON, self._on_save)
-        bs.Add(self.btn_save, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-
-        self.btn_run = wx.Button(btm, label="▶ 运行", size=(60, 28),
-                                 style=wx.BORDER_NONE)
-        self.btn_run.SetBackgroundColour(wx.Colour(0, 150, 136))
-        self.btn_run.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.btn_run.Bind(wx.EVT_BUTTON, self._on_run)
-        bs.Add(self.btn_run, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-
-        btm.SetSizer(bs)
-        main_sizer.Add(btm, 0, wx.EXPAND)
-
-        panel.SetSizer(main_sizer)
-        self._refresh_step_list()
-
-    # ============================================================
-    #  积木面板 (左侧)
-    # ============================================================
-    def _build_block_palette(self, parent):
-        self.palette_panel = scrolled.ScrolledPanel(parent, -1)
-        self.palette_panel.SetBackgroundColour(wx.Colour(22, 22, 28))
-        self.palette_panel.SetupScrolling(scroll_y=True, rate_y=20)
-
+    # ========== 左侧流程树 ==========
+    def _build_tree(self, parent):
         sz = wx.BoxSizer(wx.VERTICAL)
-
-        title = wx.StaticText(self.palette_panel, label="🧩 操作积木")
-        title.SetForegroundColour(wx.Colour(230, 200, 110))
-        title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                              wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        sz.Add(title, 0, wx.ALL, 8)
-
-        blocks = [
-            ("📷 点击此图", "click_image", "框选一个图标 → 自动找图并点击"),
-            ("📷 点击并确认", "find_and_click",
-             "框选目标+确认图 → 点击后等待确认 ⭐"),
-            ("📝 点击此字", "click_text", "输入要查找的文字 → 自动找字并点击"),
-            ("⏳ 等待出现", "wait_image", "框选图标 → 等到它出现为止"),
-            ("🗺️ 飞到这里", "go_ditu", "选目的地 → 自动传送并等待到达"),
-            ("⏱️ 纯等待", "delay", "等待指定秒数"),
-            ("🔁 重复N次", "loop", "将子步骤重复执行"),
-        ]
-
-        for label, btype, tip in blocks:
-            btn = wx.Button(self.palette_panel, label=label, size=(140, 33),
-                            style=wx.BORDER_NONE)
-            btn.SetBackgroundColour(wx.Colour(32, 32, 40))
-            btn.SetForegroundColour(wx.Colour(200, 200, 210))
-            btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                                wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            btn.SetToolTip(tip)
-            btn.Bind(wx.EVT_BUTTON, lambda e, t=btype: self._add_step(t))
-            sz.Add(btn, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
-
-        sz.AddSpacer(12)
-
-        title2 = wx.StaticText(self.palette_panel, label="📋 模板")
-        title2.SetForegroundColour(wx.Colour(230, 200, 110))
-        title2.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                               wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        sz.Add(title2, 0, wx.ALL, 8)
-
-        for tname in BUILTIN_TEMPLATES:
-            btn = wx.Button(self.palette_panel, label=f"📄 {tname}", size=(140, 33),
-                            style=wx.BORDER_NONE)
-            btn.SetBackgroundColour(wx.Colour(32, 32, 40))
-            btn.SetForegroundColour(wx.Colour(200, 200, 210))
-            btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                                wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            btn.Bind(wx.EVT_BUTTON, lambda e, tn=tname: self._use_template(tn))
-            sz.Add(btn, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
-
-        self.palette_panel.SetSizer(sz)
-
-    # ============================================================
-    #  步骤列表 (中间)
-    # ============================================================
-    def _build_step_list(self, parent):
-        self.mid_panel = parent
-        sz = wx.BoxSizer(wx.VERTICAL)
-
-        hrow = wx.BoxSizer(wx.HORIZONTAL)
-        title = wx.StaticText(parent, label="📐 流程步骤")
-        title.SetForegroundColour(wx.Colour(230, 200, 110))
-        title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                              wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        hrow.Add(title, 0, wx.ALIGN_CENTER_VERTICAL)
-        hrow.AddStretchSpacer()
-        hint = wx.StaticText(parent, label="点击步骤可查看/编辑参数")
-        hint.SetForegroundColour(wx.Colour(120, 120, 130))
-        hint.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                             wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        hrow.Add(hint, 0, wx.ALIGN_CENTER_VERTICAL)
-        sz.Add(hrow, 0, wx.EXPAND | wx.ALL, 8)
-
-        self.step_list_panel = scrolled.ScrolledPanel(parent, -1)
-        self.step_list_panel.SetBackgroundColour(wx.Colour(18, 18, 22))
-        self.step_list_panel.SetupScrolling(scroll_y=True, rate_y=20)
-        self.step_list_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.step_list_panel.SetSizer(self.step_list_sizer)
-        sz.Add(self.step_list_panel, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
-
+        l = wx.StaticText(parent, label="📐 脚本结构")
+        l.SetForegroundColour(wx.Colour(230, 200, 110))
+        l.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        sz.Add(l, 0, wx.ALL, 8)
+        btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        for lbl, h in [("+ 加楼层", self._add_stage), ("🗑 删楼层", self._del_stage)]:
+            b = wx.Button(parent, label=lbl, size=(75, 28), style=wx.BORDER_NONE)
+            b.SetBackgroundColour(wx.Colour(32, 32, 40)); b.SetForegroundColour(wx.Colour(200, 210, 220))
+            b.Bind(wx.EVT_BUTTON, h); btn_row.Add(b, 0, wx.LEFT | wx.RIGHT, 2)
+        sz.Add(btn_row, 0, wx.LEFT | wx.BOTTOM, 6)
+        self.tp = scrolled.ScrolledPanel(parent, -1)
+        self.tp.SetBackgroundColour(wx.Colour(22, 22, 28)); self.tp.SetupScrolling(scroll_y=True, rate_y=20)
+        self.ts = wx.BoxSizer(wx.VERTICAL); self.tp.SetSizer(self.ts); sz.Add(self.tp, 1, wx.EXPAND)
         parent.SetSizer(sz)
 
-    def _refresh_step_list(self):
-        self.step_list_sizer.Clear(True)
-        icons = {
-            "click_image": "📷", "find_and_click": "📷✅",
-            "click_text": "📝", "wait_image": "⏳",
-            "go_ditu": "🗺️", "delay": "⏱️", "loop": "🔁",
-        }
-
-        if not self.steps:
-            empty = wx.StaticText(self.step_list_panel,
-                                  label="还没有步骤\n\n点击左侧积木添加\n或点 ⏺ 录制")
-            empty.SetForegroundColour(wx.Colour(100, 100, 110))
-            empty.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                                  wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            self.step_list_sizer.Add(empty, 0, wx.ALL | wx.ALIGN_CENTER, 60)
+    def _refresh_tree(self):
+        self.ts.Clear(True)
+        e = self.config["entry"]
+        city = e.get("city","?"); fb = e.get("fb_name",""); npc = e.get("npc_image","")
+        el = f"📍 入口: {city} → "
+        if fb:
+            el += f"{fb}"
+        elif npc:
+            el += os.path.basename(npc)
         else:
-            for i, step in enumerate(self.steps):
-                self._add_step_card(i, step, icons)
+            el += e.get("yizhan", "?")
+        self.ts.Add(self._card(el, (41,128,185)), 0, wx.EXPAND | wx.BOTTOM, 3)
+        for i, s in enumerate(self.config["stages"]):
+            sel = (i == self.selected_stage_index)
+            bg = (231,76,60) if sel else (41,128,185)
+            c = wx.Panel(self.tp, size=(-1,-1)); c.SetBackgroundColour((18,18,22))
+            sv = wx.BoxSizer(wx.VERTICAL)
+            h = wx.Panel(c, size=(-1,26)); h.SetBackgroundColour(bg)
+            hs2 = wx.BoxSizer(wx.HORIZONTAL)
+            hl = wx.StaticText(h, label=f"🗺️ {s.get('map_name',f'第{i+1}层')}")
+            hl.SetForegroundColour((255,255,255)); hl.SetFont(wx.Font(9, wx.DEFAULT, wx.NORMAL, wx.BOLD))
+            hs2.Add(hl, 1, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8); h.SetSizer(hs2)
+            h.Bind(wx.EVT_LEFT_DOWN, lambda e,si=i: self._select_stage(si)); sv.Add(h, 0, wx.EXPAND)
+            for mi, m in enumerate(s.get("monsters",[])):
+                mc = wx.Panel(c, size=(-1,22)); mc.SetBackgroundColour((26,26,32))
+                ms2 = wx.BoxSizer(wx.HORIZONTAL)
+                ml = wx.StaticText(mc, label=f"  🎯 {m.get('name','?')} ×{m.get('repeat',1)}")
+                ml.SetForegroundColour((230,126,34)); ml.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
+                ms2.Add(ml, 1, wx.ALIGN_CENTER_VERTICAL); mc.SetSizer(ms2)
+                mc.Bind(wx.EVT_LEFT_DOWN, lambda e,si=i,mi2=mi: self._select_monster(si,mi2))
+                sv.Add(mc, 0, wx.EXPAND | wx.LEFT, 16)
+            trans = s.get("transition",{})
+            if trans:
+                tc = wx.Panel(c, size=(-1,20)); tc.SetBackgroundColour((22,22,28))
+                tt = wx.StaticText(tc, label=f"  ◆ 换图→{trans.get('click_map_name','?')}")
+                tt.SetForegroundColour((149,165,166)); tt.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
+                tc_s = wx.BoxSizer(wx.HORIZONTAL); tc_s.Add(tt, 1, wx.ALIGN_CENTER_VERTICAL)
+                tc.SetSizer(tc_s); sv.Add(tc, 0, wx.EXPAND | wx.LEFT, 16)
+            sv.AddSpacer(2); c.SetSizer(sv); self.ts.Add(c, 0, wx.EXPAND | wx.BOTTOM, 2)
+        loop = self.config["loop"]
+        ll = f"🏁 {loop.get('mode','?')}"
+        if loop.get("clear_bag_every"): ll += f" | 清包每{loop['clear_bag_every']}次"
+        self.ts.Add(self._card(ll, (39,174,96)), 0, wx.EXPAND | wx.BOTTOM, 3)
+        self.ts.Layout(); self.tp.SetupScrolling(scroll_y=True, rate_y=20); self.tp.Refresh()
 
-        self.step_list_sizer.Layout()
-        self.step_list_panel.SetupScrolling(scroll_y=True, rate_y=20)
-        if hasattr(self, "step_list_panel"):
-            self.step_list_panel.Refresh()
+    def _card(self, text, color):
+        c = wx.Panel(self.tp, size=(-1,28)); c.SetBackgroundColour(color)
+        s = wx.BoxSizer(wx.HORIZONTAL)
+        l = wx.StaticText(c, label=text); l.SetForegroundColour((255,255,255))
+        l.SetFont(wx.Font(9, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
+        s.Add(l, 1, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8); c.SetSizer(s); return c
 
-    def _add_step_card(self, index, step, icons):
-        stype = step.get("type", "click_image")
-        label = step.get("label", f"步骤{index + 1}")
-        icon = icons.get(stype, "📷")
+    # ========== 右侧编辑器 (ScrolledPanel) ==========
+    def _refresh_editor(self):
+        self.editor_sizer.Clear(True)
+        self.editor_panel.Freeze()
+        if self.selected_stage_index < 0: self._render_entry()
+        elif self.selected_monster_index >= 0: self._render_monster()
+        else: self._render_stage()
+        self.editor_sizer.Layout()
+        self.editor_panel.SetupScrolling(scroll_y=True, rate_y=20)
+        self.editor_panel.Thaw()
+        self.editor_panel.Refresh()
 
-        card = wx.Panel(self.step_list_panel, size=(-1, 38))
-        bg = wx.Colour(26, 26, 32) if index != self.selected_step_index \
-            else wx.Colour(40, 40, 50)
-        card.SetBackgroundColour(bg)
+    def _title(self, text):
+        l = wx.StaticText(self.editor_panel, label=text)
+        l.SetForegroundColour(wx.Colour(230, 200, 110))
+        l.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        self.editor_sizer.Add(l, 0, wx.ALL, 8)
 
-        rs = wx.BoxSizer(wx.HORIZONTAL)
+    def _lbl(self, text, tip=""):
+        label_text = text if not tip else f"{text}  (💡 {tip})"
+        l = wx.StaticText(self.editor_panel, label=label_text)
+        l.SetForegroundColour(wx.Colour(150, 160, 170))
+        l.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        self.editor_sizer.Add(l, 0, wx.LEFT | wx.TOP, 8)
 
-        num = wx.StaticText(card, label=f"{icon} {index + 1}. {label}")
-        num.SetForegroundColour(wx.Colour(200, 200, 210)
-                                if index != self.selected_step_index
-                                else wx.Colour(230, 200, 110))
-        num.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                            wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        rs.Add(num, 1, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
+    def _txt(self, value="", hint=""):
+        t = wx.TextCtrl(self.editor_panel, size=(-1, 28))
+        t.SetValue(str(value)); t.SetBackgroundColour(wx.Colour(18, 18, 22)); t.SetForegroundColour(wx.Colour(230, 230, 238))
+        if hint: t.SetHint(hint)
+        self.editor_sizer.Add(t, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
+        return t
 
-        if stype == "loop":
-            children = step.get("params", {}).get("children", [])
-            cnt = step.get("params", {}).get("count", 1)
-            info = wx.StaticText(card, label=f"循环{cnt}次, {len(children)}子步骤")
-            info.SetForegroundColour(wx.Colour(140, 140, 150))
-            info.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                                 wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            rs.Add(info, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+    def _combo(self, choices, value=""):
+        c = wx.ComboBox(self.editor_panel, size=(-1, 28), choices=choices, style=wx.CB_DROPDOWN)
+        c.SetValue(str(value)); c.SetBackgroundColour(wx.Colour(18, 18, 22)); c.SetForegroundColour(wx.Colour(230, 230, 238))
+        self.editor_sizer.Add(c, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
+        return c
 
-        # 操作按钮
-        for action, act_label in [("▲", "上移"), ("▼", "下移"), ("✕", "删除")]:
-            a_btn = wx.Button(card, label=action, size=(26, 26),
-                              style=wx.BORDER_NONE)
-            a_btn.SetBackgroundColour(wx.Colour(40, 40, 46))
-            a_btn.SetForegroundColour(wx.Colour(180, 180, 190))
-            a_btn.SetToolTip(act_label)
-            a_btn.Bind(wx.EVT_BUTTON,
-                       lambda e, idx=index, act=action: self._step_action(idx, act))
-            rs.Add(a_btn, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 2)
+    def _search(self, value="", hint="输入关键词搜索图片..."):
+        si = SearchInput(self.editor_panel, value=value, hint=hint)
+        self.editor_sizer.Add(si, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
+        return si
 
-        card.SetSizer(rs)
-        card.Bind(wx.EVT_LEFT_DOWN, lambda e, idx=index: self._select_step(idx))
-        self.step_list_sizer.Add(card, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 2)
+    def _render_entry(self):
+        e = self.config["entry"]
+        self._title("📍 入口配置")
+        self._lbl("城市名, 如: 洛阳")
+        c1 = self._combo(KNOWN_CITIES, e.get("city", "洛阳"))
+        c1.Bind(wx.EVT_TEXT, lambda ev: self._set_entry("city", ev.GetString()))
+        self._lbl("驿站名 (从哪个驿站出发)")
+        t2 = self._txt(e.get("yizhan", ""), "必填, 如: 驿站城西")
+        t2.Bind(wx.EVT_TEXT, lambda ev: self._set_entry("yizhan", ev.GetString()))
+        self._lbl("副本名 (直接飞副本, 填此项可不填NPC图)", "如: 副本曹操")
+        c3 = self._combo(FB_NAMES, e.get("fb_name", ""))
+        c3.Bind(wx.EVT_TEXT, lambda ev: self._set_entry("fb_name", ev.GetString()))
+        self._lbl("或 NPC入口图片 (不飞副本时用)", "输入关键词搜索, 如 'caocao'")
+        s4 = self._search(e.get("npc_image", ""), "搜图片: caocao / xiao / hbj ...")
+        s4.Bind(wx.EVT_TEXT, lambda ev: self._set_entry("npc_image", s4.GetValue()))
 
-    # ============================================================
-    #  属性面板 (右侧)
-    # ============================================================
-    def _build_props_panel(self, parent):
-        self.props_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._title("⚙️ 循环与清包")
+        loop = self.config["loop"]
+        cbo = wx.ComboBox(self.editor_panel, size=(-1, 28), choices=LOOP_MODES, style=wx.CB_READONLY)
+        cbo.SetValue(LOOP_MODES[0] if loop.get("mode", "infinite") == "infinite" else LOOP_MODES[1])
+        cbo.SetBackgroundColour(wx.Colour(18, 18, 22)); cbo.SetForegroundColour(wx.Colour(230, 230, 238))
+        cbo.Bind(wx.EVT_COMBOBOX, lambda e: self._set_loop_mode(cbo.GetSelection()))
+        self.editor_sizer.Add(cbo, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
+        if loop.get("mode") != "infinite":
+            self._lbl("循环次数")
+            t5 = self._txt(str(loop.get("count", 1)))
+            t5.Bind(wx.EVT_TEXT, lambda ev: self._set_loop("count", int(ev.GetString() or "1")))
+        self._lbl("每运行多少次清一次包 (0=不清)")
+        t6 = self._txt(str(loop.get("clear_bag_every", 15)))
+        t6.Bind(wx.EVT_TEXT, lambda ev: self._set_loop("clear_bag_every", int(ev.GetString() or "0")))
 
-        title = wx.StaticText(parent, label="⚙ 步骤属性")
-        title.SetForegroundColour(wx.Colour(230, 200, 110))
-        title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                              wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        self.props_sizer.Add(title, 0, wx.ALL, 8)
+    def _render_stage(self):
+        s = self.config["stages"][self.selected_stage_index]
+        self._title(f"🗺️ 第{self.selected_stage_index+1}层配置")
+        self._lbl("本地图名字 (屏幕上显示的, 用于判断是否到达)")
+        t1 = self._txt(s.get("map_name", ""), "如: 曹操大帐")
+        t1.Bind(wx.EVT_TEXT, lambda e: self._set_stage("map_name", e.GetString()))
 
-        hint = wx.StaticText(parent,
-                             label="点击左侧步骤查看/编辑参数\n\n"
-                                   "🎯 = 在游戏画面上框选区域")
-        hint.SetForegroundColour(wx.Colour(120, 120, 130))
-        hint.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                             wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        self.props_sizer.Add(hint, 0, wx.ALL, 8)
+        self._title("🎯 怪物列表")
+        for mi, m in enumerate(s.get("monsters", [])):
+            c = wx.Panel(self.editor_panel, size=(-1, 28)); c.SetBackgroundColour(wx.Colour(26, 26, 32))
+            cs = wx.BoxSizer(wx.HORIZONTAL)
+            label_text = f"  {m.get('name','?')} ×{m.get('repeat',1)}  [{m.get('region','gameBottomLocation')}]"
+            cl = wx.StaticText(c, label=label_text)
+            cl.SetForegroundColour(wx.Colour(230, 126, 34))
+            cl.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            cs.Add(cl, 1, wx.ALIGN_CENTER_VERTICAL)
+            db = wx.Button(c, label="✕", size=(22, 22), style=wx.BORDER_NONE)
+            db.SetBackgroundColour(wx.Colour(40, 40, 46)); db.SetForegroundColour(wx.Colour(180, 180, 190))
+            db.Bind(wx.EVT_BUTTON, lambda e, mi2=mi: self._del_monster(mi2))
+            cs.Add(db, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4); c.SetSizer(cs)
+            c.Bind(wx.EVT_LEFT_DOWN, lambda e, mi3=mi: self._select_monster(self.selected_stage_index, mi3))
+            self.editor_sizer.Add(c, 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 2)
+        ab = wx.Button(self.editor_panel, label="+ 添加怪物", size=(-1, 28), style=wx.BORDER_NONE)
+        ab.SetBackgroundColour(wx.Colour(32, 32, 40)); ab.SetForegroundColour(wx.Colour(200, 210, 220))
+        ab.Bind(wx.EVT_BUTTON, lambda e: self._add_monster())
+        self.editor_sizer.Add(ab, 0, wx.EXPAND | wx.TOP, 4)
 
-        parent.SetSizer(self.props_sizer)
-        self.props_parent = parent
+        self._title("◆ 打完换图")
+        trans = s.get("transition", {})
+        self._lbl("换图时点击的目标文字/地图名")
+        t2 = self._txt(trans.get("click_map_name", ""), "如: 曹袁战场")
+        t2.Bind(wx.EVT_TEXT, lambda e: self._set_transition("click_map_name", e.GetString()))
+        self._lbl("点击坐标比例 (屏幕百分比)")
+        t3 = self._txt(trans.get("click_region_proportion", "0.1,0.12"), "如: 0.078,0.127")
+        t3.Bind(wx.EVT_TEXT, lambda e: self._set_transition("click_region_proportion", e.GetString()))
 
-    def _refresh_props_panel(self):
-        self.props_sizer.Clear(True)
+    def _render_monster(self):
+        m = self.config["stages"][self.selected_stage_index]["monsters"][self.selected_monster_index]
+        self._title(f"🎯 怪物配置: {m.get('name','?')}")
 
-        if self.selected_step_index < 0 or self.selected_step_index >= len(
-                self.steps):
-            hint = wx.StaticText(self.props_parent,
-                                 label="点击左侧步骤\n查看/编辑参数")
-            hint.SetForegroundColour(wx.Colour(120, 120, 130))
-            hint.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT,
-                                 wx.FONTSTYLE_NORMAL,
-                                 wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            self.props_sizer.Add(hint, 0, wx.ALL, 20)
-            self.props_sizer.Layout()
-            return
+        self._lbl("怪物名字 (屏幕上找字用)")
+        t1 = self._txt(m.get("name", ""))
+        t1.Bind(wx.EVT_TEXT, lambda e: self._set_monster("name", e.GetString()))
 
-        step = self.steps[self.selected_step_index]
-        stype = step.get("type", "click_image")
-        params = step.get("params", {})
+        self._lbl("怪物图片 (用于找图, 多图用|分隔)", "输入关键词搜索 → 选择 → 自动填入")
+        s2 = self._search(m.get("images", ""), "搜图片: hbj / dao / boss / caocao ...")
+        s2.Bind(wx.EVT_TEXT, lambda ev: self._set_monster("images", s2.GetValue()))
 
-        title = wx.StaticText(self.props_parent,
-                              label=f"步骤{self.selected_step_index + 1}属性")
-        title.SetForegroundColour(wx.Colour(230, 200, 110))
-        title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                              wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        self.props_sizer.Add(title, 0, wx.ALL, 8)
+        self._lbl("战斗结束判断图 (多图用|分隔)")
+        bt_end = self._search(m.get("battle_end", "serveAssets/images/zdzd.bmp|serveAssets/images/zdzd111.bmp"),
+                              "搜: zdzd / battle ...")
+        bt_end.Bind(wx.EVT_TEXT, lambda ev: self._set_monster("battle_end", bt_end.GetValue()))
 
-        # 步骤标签
-        self._add_prop_label("步骤名称")
-        txt_label = wx.TextCtrl(self.props_parent, size=(-1, 26))
-        txt_label.SetValue(step.get("label", ""))
-        txt_label.SetBackgroundColour(wx.Colour(18, 18, 22))
-        txt_label.SetForegroundColour(wx.Colour(230, 230, 238))
-        txt_label.Bind(wx.EVT_TEXT, lambda e: self._update_param("label",
-                                                                 e.GetString()))
-        self.props_sizer.Add(txt_label, 0, wx.EXPAND | wx.ALL, 4)
+        self._lbl("搜索区域 (在屏幕哪块找怪)")
+        c4 = self._combo(KNOWN_AREAS, m.get("region", "gameBottomLocation"))
+        c4.Bind(wx.EVT_TEXT, lambda e: self._set_monster("region", e.GetString().split(" ")[0]))
 
-        # 类型特定参数
-        if stype == "click_image":
-            self._add_prop_label("目标图片 (🎯框选)")
-            img = params.get("image", "")
-            txt_img = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_img.SetValue(img)
-            txt_img.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_img.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_img.SetHint("素材文件名.png")
-            txt_img.Bind(wx.EVT_TEXT, lambda e: self._update_param("image",
-                                                                   e.GetString()))
-            self.props_sizer.Add(txt_img, 0, wx.EXPAND | wx.ALL, 4)
+        self._lbl("打几次")
+        t5 = self._txt(str(m.get("repeat", 3)), "1 / 2 / 3 ...")
+        t5.Bind(wx.EVT_TEXT, lambda e: self._set_monster("repeat", int(e.GetString() or "3")))
 
-            self._add_region_selector(params.get("region", "全屏"))
+        self._lbl("走路键 (tab清怪/A左走/D右走)")
+        c6 = self._combo(KNOWN_KEYS, m.get("move_key", "tab"))
+        c6.Bind(wx.EVT_TEXT, lambda e: self._set_monster("move_key", e.GetString()))
 
-            self._add_prop_label("匹配精度")
-            txt_conf = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_conf.SetValue(str(params.get("confidence", 0.8)))
-            txt_conf.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_conf.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_conf.Bind(wx.EVT_TEXT, lambda e: self._update_param("confidence",
-                                                                    float(
-                                                                        e.GetString() or "0.8")))
-            self.props_sizer.Add(txt_conf, 0, wx.EXPAND | wx.ALL, 4)
+        self._lbl("走路时点击坐标比例 (屏幕百分比)")
+        t7 = self._txt(m.get("move_region", "0.1,0.12"), "如: 0.165,0.124")
+        t7.Bind(wx.EVT_TEXT, lambda e: self._set_monster("move_region", e.GetString()))
 
-            self._add_prop_label("点击后等待(秒)")
-            txt_wait = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_wait.SetValue(str(params.get("wait_after", 2.0)))
-            txt_wait.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_wait.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_wait.Bind(wx.EVT_TEXT, lambda e: self._update_param("wait_after",
-                                                                    float(
-                                                                        e.GetString() or "2")))
-            self.props_sizer.Add(txt_wait, 0, wx.EXPAND | wx.ALL, 4)
+    # ========== 数据操作 ==========
+    def _set_entry(self, k, v): self.config["entry"][k] = v
+    def _set_loop(self, k, v): self.config["loop"][k] = v
+    def _set_stage(self, k, v): self.config["stages"][self.selected_stage_index][k] = v
+    def _set_transition(self, k, v): self.config["stages"][self.selected_stage_index].setdefault("transition", {})[k] = v
+    def _set_monster(self, k, v): self.config["stages"][self.selected_stage_index]["monsters"][self.selected_monster_index][k] = v
+    def _set_loop_mode(self, s): self.config["loop"]["mode"] = ["infinite", "custom_count"][min(s, 1)]; self._refresh_editor()
+    def _select_stage(self, i): self.selected_stage_index = i; self.selected_monster_index = -1; self._refresh_all()
+    def _select_monster(self, si, mi): self.selected_stage_index = si; self.selected_monster_index = mi; self._refresh_editor()
+    def _add_stage(self, e=None):
+        self.config["stages"].append({"map_name": f"地图{len(self.config['stages'])+1}", "monsters": [], "transition": {}})
+        self.selected_stage_index = len(self.config["stages"]) - 1; self.selected_monster_index = -1; self._refresh_all()
+    def _del_stage(self, e=None):
+        if self.selected_stage_index >= 0: del self.config["stages"][self.selected_stage_index]; self.selected_stage_index = -1; self._refresh_all()
+    def _add_monster(self):
+        if self.selected_stage_index < 0: return
+        self.config["stages"][self.selected_stage_index]["monsters"].append(
+            {"name": "新怪物", "images": "", "battle_end": "serveAssets/images/zdzd.bmp|serveAssets/images/zdzd111.bmp",
+             "region": "gameBottomLocation", "repeat": 3, "move_key": "tab", "move_region": "0.1,0.12"})
+        self.selected_monster_index = len(self.config["stages"][self.selected_stage_index]["monsters"]) - 1; self._refresh_all()
+    def _del_monster(self, mi):
+        del self.config["stages"][self.selected_stage_index]["monsters"][mi]; self.selected_monster_index = -1; self._refresh_all()
+    def _refresh_all(self): self._refresh_tree(); self._refresh_editor()
 
-        elif stype == "find_and_click":
-            self._add_prop_label("目标图片 (🎯框选)")
-            txt_img = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_img.SetValue(params.get("image", ""))
-            txt_img.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_img.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_img.Bind(wx.EVT_TEXT, lambda e: self._update_param("image",
-                                                                   e.GetString()))
-            self.props_sizer.Add(txt_img, 0, wx.EXPAND | wx.ALL, 4)
-
-            self._add_prop_label("确认图片 (🎯框选)")
-            txt_conf = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_conf.SetValue(params.get("confirm_image", ""))
-            txt_conf.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_conf.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_conf.Bind(wx.EVT_TEXT, lambda e: self._update_param("confirm_image",
-                                                                    e.GetString()))
-            self.props_sizer.Add(txt_conf, 0, wx.EXPAND | wx.ALL, 4)
-
-            self._add_prop_label("确认超时(秒)")
-            txt_to = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_to.SetValue(str(params.get("confirm_timeout", 30)))
-            txt_to.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_to.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_to.Bind(wx.EVT_TEXT, lambda e: self._update_param("confirm_timeout",
-                                                                  float(
-                                                                      e.GetString() or "30")))
-            self.props_sizer.Add(txt_to, 0, wx.EXPAND | wx.ALL, 4)
-
-        elif stype == "click_text":
-            self._add_prop_label("查找文字")
-            txt_text = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_text.SetValue(params.get("text", ""))
-            txt_text.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_text.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_text.SetHint("如: 一键恢复")
-            txt_text.Bind(wx.EVT_TEXT, lambda e: self._update_param("text",
-                                                                    e.GetString()))
-            self.props_sizer.Add(txt_text, 0, wx.EXPAND | wx.ALL, 4)
-
-            self._add_region_selector(params.get("region", "全屏"))
-
-        elif stype == "wait_image":
-            self._add_prop_label("等待图片 (🎯框选)")
-            txt_img = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_img.SetValue(params.get("image", ""))
-            txt_img.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_img.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_img.Bind(wx.EVT_TEXT, lambda e: self._update_param("image",
-                                                                   e.GetString()))
-            self.props_sizer.Add(txt_img, 0, wx.EXPAND | wx.ALL, 4)
-
-            self._add_prop_label("超时(秒)")
-            txt_to = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt_to.SetValue(str(params.get("timeout", 30)))
-            txt_to.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt_to.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt_to.Bind(wx.EVT_TEXT, lambda e: self._update_param("timeout",
-                                                                  float(
-                                                                      e.GetString() or "30")))
-            self.props_sizer.Add(txt_to, 0, wx.EXPAND | wx.ALL, 4)
-
-        elif stype == "go_ditu":
-            self._add_prop_label("目的地")
-            cbo = wx.ComboBox(self.props_parent, size=(-1, 28),
-                              choices=MAP_LIST, style=wx.CB_READONLY)
-            cbo.SetValue(params.get("city", "洛阳"))
-            cbo.SetBackgroundColour(wx.Colour(18, 18, 22))
-            cbo.SetForegroundColour(wx.Colour(230, 230, 238))
-            cbo.Bind(wx.EVT_COMBOBOX, lambda e: self._update_param("city",
-                                                                   e.GetString()))
-            self.props_sizer.Add(cbo, 0, wx.EXPAND | wx.ALL, 4)
-
-        elif stype == "delay":
-            self._add_prop_label("等待秒数")
-            txt = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt.SetValue(str(params.get("seconds", 3.0)))
-            txt.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt.Bind(wx.EVT_TEXT, lambda e: self._update_param("seconds",
-                                                               float(
-                                                                   e.GetString() or "3")))
-            self.props_sizer.Add(txt, 0, wx.EXPAND | wx.ALL, 4)
-
-        elif stype == "loop":
-            self._add_prop_label("循环次数")
-            txt = wx.TextCtrl(self.props_parent, size=(-1, 26))
-            txt.SetValue(str(params.get("count", 5)))
-            txt.SetBackgroundColour(wx.Colour(18, 18, 22))
-            txt.SetForegroundColour(wx.Colour(230, 230, 238))
-            txt.Bind(wx.EVT_TEXT, lambda e: self._update_param("count",
-                                                               int(e.GetString() or "5")))
-            self.props_sizer.Add(txt, 0, wx.EXPAND | wx.ALL, 4)
-
-            self._add_prop_label("子步骤")
-            children = params.get("children", [])
-            child_text = "、".join(
-                [c.get("label", "?") for c in children]) if children else "(空)"
-            info = wx.StaticText(self.props_parent,
-                                 label=f"包含: {child_text}\n\n添加子步骤: 选中循环→再点积木")
-            info.SetForegroundColour(wx.Colour(140, 140, 150))
-            info.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                                 wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            self.props_sizer.Add(info, 0, wx.ALL, 8)
-
-        # 通用参数: 账号
-        self._add_prop_label("操作账号")
-        acc = wx.ComboBox(self.props_parent, size=(-1, 28),
-                          choices=["队长", "队友1", "队友2"],
-                          style=wx.CB_READONLY)
-        acc.SetValue(params.get("account", "队长"))
-        acc.SetBackgroundColour(wx.Colour(18, 18, 22))
-        acc.SetForegroundColour(wx.Colour(230, 230, 238))
-        acc.Bind(wx.EVT_COMBOBOX, lambda e: self._update_param("account",
-                                                               e.GetString()))
-        self.props_sizer.Add(acc, 0, wx.EXPAND | wx.ALL, 4)
-
-        self.props_sizer.Layout()
-
-    def _add_prop_label(self, text):
-        lb = wx.StaticText(self.props_parent, label=text)
-        lb.SetForegroundColour(wx.Colour(160, 160, 170))
-        lb.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
-                           wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        self.props_sizer.Add(lb, 0, wx.LEFT | wx.TOP, 6)
-
-    def _add_region_selector(self, current):
-        self._add_prop_label("搜索区域")
-        cbo = wx.ComboBox(self.props_parent, size=(-1, 28),
-                          choices=list(REGION_PRESETS.keys()),
-                          style=wx.CB_READONLY)
-        cbo.SetValue(current if current in REGION_PRESETS else "全屏")
-        cbo.SetBackgroundColour(wx.Colour(18, 18, 22))
-        cbo.SetForegroundColour(wx.Colour(230, 230, 238))
-        cbo.Bind(wx.EVT_COMBOBOX, lambda e: self._update_param("region",
-                                                               e.GetString()))
-        self.props_sizer.Add(cbo, 0, wx.EXPAND | wx.ALL, 4)
-
-    # ============================================================
-    #  事件处理
-    # ============================================================
-    def _add_step(self, step_type, parent_loop=False):
-        if self.selected_step_index >= 0 and not parent_loop:
-            step = self.steps[self.selected_step_index]
-            if step.get("type") == "loop":
-                parent_loop = True
-
-        defaults = {
-            "click_image": {"label": "点击图片", "image": "",
-                            "region": "全屏", "confidence": 0.8,
-                            "wait_after": 2.0, "account": "队长",
-                            "offset": "center"},
-            "find_and_click": {"label": "点击并确认", "image": "",
-                               "confirm_image": "", "region": "全屏",
-                               "confirm_region": "全屏",
-                               "wait_after": 2.0, "confirm_timeout": 30,
-                               "account": "队长"},
-            "click_text": {"label": "点击文字", "text": "",
-                           "region": "全屏", "confidence": 0.9,
-                           "color": "通用游戏字体(白绿黄青红黑底)",
-                           "wait_after": 2.0, "account": "队长"},
-            "wait_image": {"label": "等待出现", "image": "",
-                           "region": "全屏", "timeout": 30},
-            "go_ditu": {"label": "传送到地图", "city": "洛阳"},
-            "delay": {"label": "等待", "seconds": 3.0},
-            "loop": {"label": "循环", "count": 5, "children": []},
-        }
-
-        new_step = {"type": step_type,
-                    "label": defaults.get(step_type, {}).get("label", "新步骤"),
-                    "params": defaults.get(step_type, {})}
-
-        if parent_loop:
-            self.steps[self.selected_step_index]["params"].setdefault("children",
-                                                                      []).append(
-                new_step)
-        else:
-            insert_at = self.selected_step_index + 1 if self.selected_step_index >= 0 else len(
-                self.steps)
-            self.steps.insert(insert_at, new_step)
-            self.selected_step_index = insert_at
-
-        self._refresh_step_list()
-        self._refresh_props_panel()
-
-    def _select_step(self, index):
-        self.selected_step_index = index
-        self._refresh_step_list()
-        self._refresh_props_panel()
-
-    def _step_action(self, index, action):
-        if action == "✕":
-            del self.steps[index]
-            if self.selected_step_index >= len(self.steps):
-                self.selected_step_index = len(self.steps) - 1
-            self._refresh_step_list()
-            self._refresh_props_panel()
-        elif action == "▲" and index > 0:
-            self.steps[index], self.steps[index - 1] = \
-                self.steps[index - 1], self.steps[index]
-            if self.selected_step_index == index:
-                self.selected_step_index = index - 1
-            self._refresh_step_list()
-        elif action == "▼" and index < len(self.steps) - 1:
-            self.steps[index], self.steps[index + 1] = \
-                self.steps[index + 1], self.steps[index]
-            if self.selected_step_index == index:
-                self.selected_step_index = index + 1
-            self._refresh_step_list()
-
-    def _update_param(self, key, value):
-        if self.selected_step_index >= 0:
-            self.steps[self.selected_step_index]["params"][key] = value
-
-    def _use_template(self, tname):
-        import copy
-        templates = self._get_template_steps()
-        steps = templates.get(tname, [])
-        if not steps:
-            wx.MessageBox("模板数据缺失", "错误", wx.OK | wx.ICON_ERROR)
-            return
-        self.steps = copy.deepcopy(steps)
-        self.selected_step_index = -1
-        self._refresh_step_list()
-        self._refresh_props_panel()
-
-    def _get_template_steps(self):
-        A = "自动战斗.png"
-        return {
-            "刷活动副本(通用)": [
-                {"type": "go_ditu", "label": "飞往活动地图", "params": {"city": "洛阳"}},
-                {"type": "wait_image", "label": "等待活动入口出现",
-                 "params": {"image": "活动入口.png", "region": "全屏", "timeout": 15}},
-                {"type": "find_and_click", "label": "点击活动入口",
-                 "params": {"image": "活动入口.png", "confirm_image": "活动地图名.png",
-                            "region": "全屏", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "loop", "label": "循环打怪", "params": {"count": 5, "children": [
-                    {"type": "find_and_click", "label": "点Boss", "params": {"image": "Boss.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 120}},
-                ]}},
-            ],
-            "官渡刷曹操(完整版)": [
-                {"type": "go_ditu", "label": "飞往官渡", "params": {"city": "官渡"}},
-                {"type": "find_and_click", "label": "点曹操进大帐(图标1)",
-                 "params": {"image": "曹操图标1.bmp", "confirm_image": "进入.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点进入曹操大帐",
-                 "params": {"image": "进入.png", "confirm_image": "曹操大帐.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 15}},
-                {"type": "find_and_click", "label": "点曹袁战场",
-                 "params": {"image": "曹袁战场.png", "confirm_image": "曹袁战场.png", "region": "地图区域", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "loop", "label": "打河北军(3轮)", "params": {"count": 3, "children": [
-                    {"type": "find_and_click", "label": "点河北军(位1)", "params": {"image": "河北军1.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
-                    {"type": "find_and_click", "label": "点河北军(位2)", "params": {"image": "河北军2.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
-                    {"type": "find_and_click", "label": "点河北军(位3)", "params": {"image": "河北军3.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
-                ]}},
-                {"type": "loop", "label": "打曹操(循环)", "params": {"count": 9999, "children": [
-                    {"type": "find_and_click", "label": "点曹操", "params": {"image": "曹操.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-                    {"type": "wait_image", "label": "等曹操死亡", "params": {"image": A, "region": "底部", "timeout": 120}},
-                ]}},
-            ],
-            "魔镜刷狮王(完整版)": [
-                {"type": "go_ditu", "label": "飞往城西", "params": {"city": "城西"}},
-                {"type": "find_and_click", "label": "点魔镜使者",
-                 "params": {"image": "魔镜使者.bmp", "confirm_image": "镜像地层.png", "region": "全屏", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "打吃人妖(第一层)",
-                 "params": {"image": "吃人妖.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-                {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 60}},
-                {"type": "find_and_click", "label": "点小绿人进遗迹镜像",
-                 "params": {"image": "小绿人.bmp", "confirm_image": "遗迹镜像.png", "region": "全屏", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "打狮王",
-                 "params": {"image": "狮王.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 120}},
-                {"type": "wait_image", "label": "等狮王死亡", "params": {"image": A, "region": "底部", "timeout": 120}},
-            ],
-            "战魂塔(完整版)": [
-                {"type": "go_ditu", "label": "飞往洛阳", "params": {"city": "洛阳"}},
-                {"type": "find_and_click", "label": "点战魂挑战",
-                 "params": {"image": "战魂挑战.bmp", "confirm_image": "进精英.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点进精英进入战魂",
-                 "params": {"image": "进精英.png", "confirm_image": "战魂地图.bmp", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 15}},
-                {"type": "loop", "label": "打战魂层(循环)", "params": {"count": 6, "children": [
-                    {"type": "find_and_click", "label": "点战魂层图标", "params": {"image": "战魂层图标.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 60}},
-                ]}},
-            ],
-            "黑风山寨(完整版)": [
-                {"type": "go_ditu", "label": "飞往五层", "params": {"city": "五层"}},
-                {"type": "find_and_click", "label": "点巴山虎进黑风",
-                 "params": {"image": "巴山虎.bmp", "confirm_image": "黑风山寨.png", "region": "左半屏", "confirm_region": "左半屏", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点黑风山寨文字进入",
-                 "params": {"image": "黑风山寨.png", "confirm_image": "黑风山寨地图.png", "region": "地图区域", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "loop", "label": "打刀贼(3轮)", "params": {"count": 3, "children": [
-                    {"type": "find_and_click", "label": "点刀贼(位置1)", "params": {"image": "刀贼.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
-                    {"type": "find_and_click", "label": "点刀贼(位置2)", "params": {"image": "刀贼.bmp", "confirm_image": A, "region": "右半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
-                ]}},
-            ],
-            "龙岛(完整版)": [
-                {"type": "go_ditu", "label": "飞往城西", "params": {"city": "城西"}},
-                {"type": "find_and_click", "label": "点帮派传送",
-                 "params": {"image": "帮派传送.bmp", "confirm_image": "进龙岛.png", "region": "底部", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点进龙岛",
-                 "params": {"image": "进龙岛.png", "confirm_image": "龙岛地图.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点小绿人打守门人",
-                 "params": {"image": "小绿人.bmp", "confirm_image": "挑战龙族.png", "region": "地图区域", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "wait_image", "label": "等守门人结束", "params": {"image": A, "region": "底部", "timeout": 60}},
-                {"type": "find_and_click", "label": "点挑战龙族",
-                 "params": {"image": "挑战龙族.png", "confirm_image": "龙岛地图.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "loop", "label": "打龙子龙孙(循环)", "params": {"count": 5, "children": [
-                    {"type": "find_and_click", "label": "点龙子/龙孙", "params": {"image": "龙子龙孙.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-                    {"type": "find_and_click", "label": "点进入下一层", "params": {"image": "进入.png", "confirm_image": "龙岛地图.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
-                ]}},
-            ],
-            "打红/虎牢关(完整版)": [
-                {"type": "go_ditu", "label": "飞往虎牢关外", "params": {"city": "虎牢关外"}},
-                {"type": "find_and_click", "label": "点小白人进红点",
-                 "params": {"image": "小白人.bmp", "confirm_image": "虎牢关.png", "region": "左上角", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点小绿人",
-                 "params": {"image": "小绿人.bmp", "confirm_image": "进入.png", "region": "右上角", "confirm_region": "底部", "wait_after": 1.0, "confirm_timeout": 8}},
-                {"type": "find_and_click", "label": "点进入军营",
-                 "params": {"image": "进入.png", "confirm_image": "军营.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "loop", "label": "打红Boss(循环)", "params": {"count": 10, "children": [
-                    {"type": "find_and_click", "label": "点Boss", "params": {"image": "红Boss.bmp", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 60}},
-                    {"type": "wait_image", "label": "等Boss死亡", "params": {"image": A, "region": "底部", "timeout": 120}},
-                ]}},
-            ],
-            "五行圣殿(完整版)": [
-                {"type": "go_ditu", "label": "飞往野外西", "params": {"city": "野外西"}},
-                {"type": "find_and_click", "label": "点老板进五行",
-                 "params": {"image": "老板.bmp", "confirm_image": "进五行.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点进五行按钮",
-                 "params": {"image": "进五行.png", "confirm_image": "五行圣殿.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 10}},
-                {"type": "find_and_click", "label": "点挂机自动打怪",
-                 "params": {"image": "挂机.bmp", "confirm_image": "野外西.png", "region": "底部", "confirm_region": "地图区域", "wait_after": 2.0, "confirm_timeout": 300}},
-                {"type": "wait_image", "label": "等挂机结束回野外西", "params": {"image": "野外西.png", "region": "地图区域", "timeout": 360}},
-            ],
-            "刷精英怪(通用)": [
-                {"type": "go_ditu", "label": "飞往目标地图", "params": {"city": "洛阳"}},
-                {"type": "loop", "label": "打精英怪(循环)", "params": {"count": 10, "children": [
-                    {"type": "find_and_click", "label": "点精英怪", "params": {"image": "精英怪.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
-                ]}},
-            ],
-            "日常循环(组合)": [
-                {"type": "go_ditu", "label": "飞往任务地图", "params": {"city": "洛阳"}},
-                {"type": "loop", "label": "循环打怪", "params": {"count": 10, "children": [
-                    {"type": "find_and_click", "label": "点目标怪", "params": {"image": "目标怪.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-                    {"type": "wait_image", "label": "等战斗结束", "params": {"image": A, "region": "底部", "timeout": 90}},
-                ]}},
-                {"type": "find_and_click", "label": "背包满了点卖出",
-                 "params": {"image": "背包满.png", "confirm_image": "卖出.png", "region": "全屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-                {"type": "wait_image", "label": "等贩卖完成", "params": {"image": "地图.png", "region": "地图区域", "timeout": 15}},
-                {"type": "find_and_click", "label": "继续找怪",
-                 "params": {"image": "目标怪.png", "confirm_image": A, "region": "左半屏", "confirm_region": "底部", "wait_after": 2.0, "confirm_timeout": 30}},
-            ],
-        }
-
-    def _on_record(self, event):
-        if self.recording:
-            self.recording = False
-            self.btn_record.SetLabel("⏺ 录制")
-            self.btn_record.SetBackgroundColour(wx.Colour(180, 50, 40))
-            wx.MessageBox("录制已停止", "提示", wx.OK)
-        else:
-            self.recording = True
-            self.btn_record.SetLabel("⏹ 停止")
-            self.btn_record.SetBackgroundColour(wx.Colour(200, 50, 40))
-            wx.MessageBox(
-                "录制已启动\n请在游戏窗口中操作\n完成后点⏹停止",
-                "录制中", wx.OK)
-            # TODO: 启动hook监听
-
-    def _on_generate(self, event):
+    # ========== 注入 ==========
+    def _on_inject(self, e=None):
         name = self.txt_name.GetValue().strip()
-        if not name:
-            wx.MessageBox("请先输入脚本名称", "提示", wx.OK | wx.ICON_WARNING)
-            return
-        if not self.steps:
-            wx.MessageBox("请先添加至少一个步骤", "提示", wx.OK | wx.ICON_WARNING)
-            return
+        if not name: wx.MessageBox("请输入脚本名称"); return
+        if not self.config["stages"]: wx.MessageBox("请至少添加一个楼层"); return
+        try:
+            CodeInjector(name, self.config).inject(self.config["loop"].get("mode", "infinite"))
+            ScriptRegistry.add(name, self.config)
+            wx.MessageBox(f"✅ 已注入 serveScript.py!\n\n脚本: {name}\n重启主程序, 下拉框选 '{name}' 运行\n\n已自动备份 serveScript.py.bak", "注入成功")
+        except Exception as ex:
+            wx.MessageBox(f"注入失败: {ex}", "错误")
 
-        gen = CodeGenerator(self.steps, name)
-        code = gen.generate()
-
-        script_dir = os.path.join(USER_SCRIPTS_DIR, name)
-        if not os.path.exists(script_dir):
-            os.makedirs(script_dir)
-
-        script_path = os.path.join(script_dir, "script.py")
-        with open(script_path, "w", encoding="utf-8") as f:
-            f.write(code)
-
-        ScriptRegistry.add(name,
-                           {"steps": self.steps, "code": code})
-
-        self.script_name = name
-        wx.MessageBox(
-            f"脚本已生成!\n\n📁 {script_path}\n\n"
-            f"请在主窗口下拉框中选择 \"📝 {name}\" 运行",
-            "生成成功", wx.OK | wx.ICON_INFORMATION)
-
-    def _on_save(self, event):
+    def _on_save_json(self, e=None):
         name = self.txt_name.GetValue().strip()
-        if not name:
-            wx.MessageBox("请先输入脚本名称", "提示", wx.OK | wx.ICON_WARNING)
-            return
-        if not self.steps:
-            wx.MessageBox("请先添加至少一个步骤", "提示", wx.OK | wx.ICON_WARNING)
-            return
+        if not name: return
+        sd = os.path.join(USER_SCRIPTS_DIR, name); os.makedirs(sd, exist_ok=True)
+        with open(os.path.join(sd, "config.json"), "w", encoding="utf-8") as f:
+            json.dump(self.config, f, ensure_ascii=False, indent=2)
+        ScriptRegistry.add(name, self.config)
+        wx.MessageBox(f"已保存: {sd}/config.json", "OK")
 
-        self._on_generate(None)
+    def _on_remove(self, e=None):
+        name = self.txt_name.GetValue().strip()
+        if not name: return
+        if wx.MessageBox(f"移除 {name} 注入的代码?", "确认", wx.YES_NO) == wx.YES:
+            CodeInjector(name, self.config).remove()
+            ScriptRegistry.remove(name)
+            wx.MessageBox(f"已移除 {name}。重启主程序生效。", "OK")
 
-    def _on_run(self, event):
-        wx.MessageBox(
-            "请在主窗口下拉框选择脚本后点▶开始运行\n\n"
-            "脚本工厂仅用于制作脚本，运行通过主窗口。",
-            "提示", wx.OK | wx.ICON_INFORMATION)
 
-
-# ============================================================
-#  集成到主窗口
-# ============================================================
 def get_user_script_choices():
-    """获取用户脚本列表，用于主窗口下拉框"""
-    names = ScriptRegistry.list_names()
-    return [f"📝 {n}" for n in names]
+    return [f"📝 {n}" for n in ScriptRegistry.list_names()]
+
+if __name__ == "__main__":
+    app = wx.App(); frame = ScriptFactoryDialog(None); frame.Show(); app.MainLoop()

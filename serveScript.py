@@ -1021,6 +1021,10 @@ class MyThread(threading.Thread):
                     rw_name = "帮派声誉"
                 self.bangpaiRW(rw_name)
 
+        # === AUTO_SCRIPTS_DISPATCH_START ===
+        # 由 ScriptFactory 自动生成的脚本分发代码
+        # === AUTO_SCRIPTS_DISPATCH_END ===
+
     def is_user_valid(self):
         if self.overed:
             return
@@ -6219,6 +6223,8 @@ class MyThread(threading.Thread):
             exclude_zones = []
         find_left_flag = False
         attacked_set = set()
+        xiaolvren_bmp = self.get_resource_path(
+            "serveAssets/images/zhengdian/xiaolvren.bmp")
         while True:
             if self.overed:
                 return
@@ -6253,6 +6259,12 @@ class MyThread(threading.Thread):
                         break
                 if any_success:
                     continue
+            # ---- 小绿人双重判断: 每轮检查小地图是否还有小绿人 ----
+            if not self._has_xiaolvren_on_ditu():
+                print(f"小地图没有小绿人了, {find_sx}已清完")
+                self.confidenceNum = 0.9
+                break
+            # ---- 左右走路 ----
             left_x = random.randint(738, 748)
             rand_y = 80
             right_x = random.randint(861, 871)
@@ -6284,6 +6296,33 @@ class MyThread(threading.Thread):
                     self.dm.LeftClick()
             self.confidenceNum = 0.9
             time.sleep(0.6)
+
+    def _has_xiaolvren_on_ditu(self):
+        """检查小地图(dituLocation)是否有小绿人"""
+        try:
+            xiaolvren_bmp = self.get_resource_path(
+                "serveAssets/images/zhengdian/xiaolvren.bmp")
+            dx, dy, dw, dh = self.dituLocation
+            result = self.dm.FindPicEx(dx, dy, dw, dh, xiaolvren_bmp, "", 0.9, 0)
+            return bool(result)
+        except:
+            return True  # 出错时不中断流程
+
+    @staticmethod
+    def _is_long_she_hour():
+        """当前整点是否有龙/蛇 (龙3/7/11/15/19/23, 蛇2/6/10/14/18/22)"""
+        hour = __import__("datetime").datetime.now().hour
+        return hour in (2, 3, 6, 7, 10, 11, 14, 15, 18, 19, 22, 23)
+
+    @staticmethod
+    def _is_long_hour():
+        hour = __import__("datetime").datetime.now().hour
+        return hour in (3, 7, 11, 15, 19, 23)
+
+    @staticmethod
+    def _is_she_hour():
+        hour = __import__("datetime").datetime.now().hour
+        return hour in (2, 6, 10, 14, 18, 22)
 
     def zhengdian_by_xiaolvren_v2(self, base_image, search_config):
         exclude_zones = search_config.get("exclude", [])
@@ -6325,7 +6364,10 @@ class MyThread(threading.Thread):
                     self.dm.MoveTo(dot_x, dot_y)
                     time.sleep(0.001)
                     self.dm.LeftClick()
-                    time.sleep(0.3)
+                    # 等待角色移动到小绿人位置 (最多8秒)
+                    arrived = self._wait_arrive_zhengdian(search_text, search_images, 8)
+                    if not arrived:
+                        continue
                     found_any = self._scan_and_attack_in_view(
                         search_text, search_images, base_image,
                         attacked_set, exclude_zones
@@ -6341,6 +6383,20 @@ class MyThread(threading.Thread):
             )
             if not found_any:
                 break
+
+    def _wait_arrive_zhengdian(self, search_text, search_images, max_wait):
+        """点击小绿人后等待角色到达附近 - 通过检查搜索文字/图片是否出现"""
+        t0 = time.time()
+        while time.time() - t0 < max_wait:
+            if self.check_stop_or_over():
+                return False
+            if search_text:
+                if self.find_str(search_text, self.gameBottomLocation, 0.5):
+                    return True
+            if search_images:
+                if self.find_pic(search_images, self.gameBottomLocation, 0.5):
+                    return True
+        return False  # 超时未到达
 
     def _filter_green_dots(self, green_dots, pic_w, pic_h, green_color,
                             attacked_set, exclude_zones):
@@ -14808,6 +14864,10 @@ class MyThread(threading.Thread):
         current_time = datetime.now()
         current_minute = current_time.minute
         return 58 - current_minute
+
+    # === AUTO_SCRIPTS_METHODS_START ===
+    # 由 ScriptFactory 自动生成的脚本方法
+    # === AUTO_SCRIPTS_METHODS_END ===
 
 
 class MyFrame(wx.Frame):
