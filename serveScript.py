@@ -296,49 +296,32 @@ class MyThread(threading.Thread):
         else:
             print("Selected voice index is out of range.")
 
-    def _start_combat_auto(self, clear_enemy_keys=[]):
-        """
-        启动战斗自动操作（优化版）
-        """
+    def _start_combat_auto(self, clear_enemy_keys=None):
         try:
             if self.combat_auto_running:
                 return
             print("启动战斗自动操作")
             self.combat_auto_running = True
 
-            # 初始化战斗自动操作实例（如果还没有创建）
             if not self.combat_auto_instance:
-                self.combat_auto_instance = CombatAutoScript(self,
-                                                             clear_enemy_keys)
-
-                # 设置配置（根据你的需求调整）
-                self.combat_auto_instance.keep_support_general = False  # 是否保证辅助武将在场
-                self.combat_auto_instance.enable_main_heal = True  # 主角自动加血
-                self.combat_auto_instance.enable_main_summon = True  # 主角自动召唤
-                self.combat_auto_instance.enable_persistent_liubei = self.frame.enablePersistentLiubei  # 刘备是否常驻
-                self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}  # 各账号刘备数量
-
-                # 注意：account_dm会自动从self.dm, self.win1_dm, self.win2_dm获取，无需手动设置
-                # 【关键修复】不要在这里提前调用 init_combat_tracking()
-                # run_combat_loop() 会在检测到战斗页面时自动调用 init_combat_tracking()
-                print(
-                    "战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
-            else:
+                self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
+                self.combat_auto_instance.keep_support_general = False
+                self.combat_auto_instance.enable_main_heal = True
+                self.combat_auto_instance.enable_main_summon = True
+                self.combat_auto_instance.enable_persistent_liubei = self.frame.enablePersistentLiubei
                 self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
-                if hasattr(self.combat_auto_instance,
-                           "_dialog_closed") and self.combat_auto_instance._dialog_closed:
-                    print("检测到窗口已关闭，重置标志并重新创建战斗播报窗口")
-                    self.combat_auto_instance._dialog_closed = False
-                    self.combat_auto_instance._battle_dialog_retry_count = 0
-                    # 重新创建窗口
-                    timer = threading.Timer(0.3,
-                                            self.combat_auto_instance._create_battle_report_dialog)
-                    if hasattr(self.combat_auto_instance, "_timer_refs"):
-                        self.combat_auto_instance._timer_refs.append(timer)
-                    timer.start()
+                print("战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
+            else:
+                self.combat_auto_instance.reconfigure(
+                    enemy_keys_to_detect=clear_enemy_keys,
+                    liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
+                    enable_persistent_liubei=self.frame.enablePersistentLiubei,
+                )
+                print("战斗自动操作实例已重置并重新配置")
 
-            # 使用内置的run_combat_loop方法（推荐方式）
-            # 这个方法会自动处理所有账号的战斗操作
+            if self.combat_auto_instance.battle_report_dialog:
+                self.combat_auto_instance.battle_report_dialog.set_running(True)
+
             self.combat_auto_thread = threading.Thread(
                 target=self.combat_auto_instance.run_combat_loop, daemon=True)
             self.combat_auto_thread.start()
@@ -347,31 +330,24 @@ class MyThread(threading.Thread):
         except Exception as e:
             print(f"启动战斗自动操作失败: {e}")
             import traceback
-
             traceback.print_exc()
             self.combat_auto_running = False
 
     def _stop_combat_auto(self):
-        """
-        停止战斗自动操作（优化版）
-        """
         try:
             if not self.combat_auto_running:
                 return
             print("停止战斗自动操作")
             self.combat_auto_running = False
 
-            # 清理战斗脚本资源（如果使用了内置的run_combat_loop）
             if self.combat_auto_instance:
+                if self.combat_auto_instance.battle_report_dialog:
+                    self.combat_auto_instance.battle_report_dialog.set_running(False)
                 try:
-                    self.combat_auto_instance.cleanup()
+                    self.combat_auto_instance.reset_state()
                 except Exception as e:
-                    print(f"清理战斗脚本资源时出错: {e}")
-                finally:
-                    # 【关键修复】清除实例引用，确保下次启动时创建新实例
-                    self.combat_auto_instance = None
+                    print(f"重置战斗脚本状态时出错: {e}")
 
-            # 等待线程结束（最多等待3秒）
             if self.combat_auto_thread and self.combat_auto_thread.is_alive():
                 self.combat_auto_thread.join(timeout=3)
             self.combat_auto_thread = None
@@ -379,7 +355,6 @@ class MyThread(threading.Thread):
         except Exception as e:
             print(f"停止战斗自动操作失败: {e}")
             import traceback
-
             traceback.print_exc()
 
     def print_and_speak(self, text):
@@ -753,7 +728,7 @@ class MyThread(threading.Thread):
         # self.guajiAndzhengdianScript(f"{self.get_resource_path('serveAssets/images/guaji/bishuishuxue.bmp')}|{self.get_resource_path('serveAssets/images/guaji/bishuishuxue1.bmp')}")
         elif self.scriptName == "老鼠":
             if self.zhengdianFloor not in ["全打", "走路", "龙+全打", "蛇+全打",
-                                           '走路应急', "全打应急"]:
+                                           "49整点", "49蛇+全打", "49龙+全打"]:
                 self.show_error_message("请选择整点！")
                 return
             self.guajiAndzhengdianScript(
@@ -852,19 +827,11 @@ class MyThread(threading.Thread):
             self.guanduWhile()
         elif self.scriptName == "整点":
             time.sleep(1)
-            if self.zhengdianFloor == "全打":
-                self.new_zhengdian()
-            elif self.zhengdianFloor == "全打应急":
-                self.new_zhengdian()
-            elif self.zhengdianFloor == "龙+全打":
-                self.new_zhengdian()
-            elif self.zhengdianFloor == "蛇+全打":
+            if self.zhengdianFloor in ["全打", "龙+全打", "蛇+全打"]:
                 self.new_zhengdian()
             elif self.zhengdianFloor == "走路":
                 self.go_zhengdian()
-            elif self.zhengdianFloor == "走路应急":
-                self.go_zhengdian()
-            elif self.zhengdianFloor == "49整点":
+            elif self.zhengdianFloor in ["49整点", "49蛇+全打", "49龙+全打"]:
                 self.go_zhengdian49()
         elif self.scriptName == "魔镜":
             self.mojingWhile()
@@ -4302,6 +4269,7 @@ class MyThread(threading.Thread):
             ):
                 break
             time.sleep(1)  # 每秒钟检查一次
+        # 蛇+全打：蛇时辰(1,2,9,13,15,21点)走路搜索蛇
         if self.zhengdianFloor == "蛇+全打" and int(
                 time.localtime().tm_hour) in [
             1,
@@ -4326,7 +4294,10 @@ class MyThread(threading.Thread):
                     True,
                 )
                 if is_fei1:
-                    self.find_zd_in_view(last_item1["findAddress"], "蛇", [("serveAssets/images/zhengdian/sheshengxiao1.bmp", "serveAssets/images/zhengdian/sheshengxiao2.bmp")], "蛇")
+                    npc_count1 = len(last_item1["delX"])
+                    npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
+                    self.find_zd_walk_v3(last_item1["findAddress"], "蛇", [("serveAssets/images/zhengdian/sheshengxiao1.bmp", "serveAssets/images/zhengdian/sheshengxiao2.bmp")], "蛇", npc_count1, npc_zones1)
+        # 蛇+全打 / 龙+全打：龙时辰(2,6,10,14,18,22点)走路搜索龙
         if self.zhengdianFloor in ["龙+全打", "蛇+全打"] and int(
                 time.localtime().tm_hour) in [
             2,
@@ -4351,7 +4322,9 @@ class MyThread(threading.Thread):
                     True,
                 )
                 if is_fei1:
-                    self.find_zd_in_view(last_item1["findAddress"], "龙生肖红", [("serveAssets/images/zhengdian/newlong.bmp", "serveAssets/images/zhengdian/newlong2.bmp")])
+                    npc_count1 = len(last_item1["delX"])
+                    npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
+                    self.find_zd_walk_v3(last_item1["findAddress"], "龙生肖红", [("serveAssets/images/zhengdian/newlong.bmp", "serveAssets/images/zhengdian/newlong2.bmp")], None, npc_count1, npc_zones1)
             # print('打龙')
             # self.addBloud()
             # time.sleep(2)
@@ -4866,10 +4839,8 @@ class MyThread(threading.Thread):
         #     time.sleep(0.5)
         # elif self.has_script == 'free':
         #     return self.go_zhengdian()
-        if self.zhengdianFloor == "全打应急":
-            self.zhengdian_all()
-        else:
-            self.zhengdian_all_new()
+        # 全打：小绿人模式搜索普通整点
+        self.zhengdian_all_v3()
         time.sleep(0.5)
         self.zhengdian_flag = False
         if self.scriptName == "抢龙":
@@ -5104,6 +5075,28 @@ class MyThread(threading.Thread):
             return None
         return None
 
+    def zhengdian_all_v3(self):
+        print("开始整点！")
+        self.clear_info()
+        shuffled = self.zdList.copy()
+        random.shuffle(shuffled)
+        for i in range(14):
+            last_item = shuffled[-1]
+            shuffled = shuffled[:-1]
+            print(f"飞{last_item['ditu']}")
+            is_fei = self.go_in_ditu(
+                last_item["ditu"],
+                last_item["city"],
+                last_item["findAddress"],
+                "",
+                "",
+                True,
+            )
+            if is_fei:
+                npc_count = len(last_item["delX"])
+                npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
+                self.find_zd_xiaolvren_v3(last_item["findAddress"], npc_count, npc_zones)
+
     def zhengdian_all_new(self):
         print("开始整点！")
         self.clear_info()
@@ -5230,24 +5223,11 @@ class MyThread(threading.Thread):
         )
         # 打老虎
         time.sleep(1)
+        # 走路模式：小绿人预检+走路搜索；非走路模式：小绿人导航
         if self.zhengdianFloor == "走路":
-            self.find_zd_in_view("九黎族祭坛","单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝")
+            self.find_zd_walk_v3("九黎族祭坛", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, 0, [])
         else:
-            self.zhengdian_by_xiaolvren("九黎族祭坛", 0, [], [], 1)
-            is_in_bibotan = self.waitFor("九黎族祭坛", self.dituLocation, 5)
-            if is_in_bibotan:
-                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-                time.sleep(0.5)
-                self.zhengdian_by_xiaolvren("九黎族祭坛", 0, [], [], 1)
-                is_in_bibotan = self.waitFor("九黎族祭坛", self.dituLocation, 5)
-                if is_in_bibotan:
-                    self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
-                    time.sleep(0.001)
-                    self.dm.LeftClick()
-                    time.sleep(0.5)
-                    self.zhengdian_by_xiaolvren("九黎族祭坛", 0, [], [], 1)
+            self.find_zd_xiaolvren_v3("九黎族祭坛", 0, [])
         time.sleep(0.5)
         # 去魔魂山
         self.go_in_ditu(
@@ -5259,18 +5239,9 @@ class MyThread(threading.Thread):
             "",
         )
         if self.zhengdianFloor == "走路":
-            self.find_zd_in_view("魔魂山",
-                                      "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝")
+            self.find_zd_walk_v3("魔魂山", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, 0, [])
         else:
-            self.zhengdian_by_xiaolvren("魔魂山", 2, [], [], 1)
-            time.sleep(0.5)
-            is_in_bibotan = self.waitFor("魔魂山", self.dituLocation, 5)
-            if is_in_bibotan:
-                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-                time.sleep(1)
-                self.zhengdian_by_xiaolvren("魔魂山", 2, [], [], 1)
+            self.find_zd_xiaolvren_v3("魔魂山", 0, [])
         # 去魔谷西
         self.go_in_ditu(
             "地图羊",
@@ -5282,45 +5253,11 @@ class MyThread(threading.Thread):
         )
         # 打羊
         time.sleep(1)
+        # 魔谷西有2个NPC，需传入npc_count和npc_zones
         if self.zhengdianFloor == "走路":
-            self.find_zd_in_view("魔谷西",
-                                      "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝")
+            self.find_zd_walk_v3("魔谷西", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))])
         else:
-            # 856 46/50
-            self.zhengdian_by_xiaolvren(
-                "魔谷西",
-                2,
-                [int(856 + self.locationX), int(857 + self.locationX)],
-                [int(46 + self.locationY)],
-                1,
-            )
-            time.sleep(0.5)
-            is_in_bibotan = self.waitFor("魔谷西", self.dituLocation, 5)
-            if is_in_bibotan:
-                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
-                time.sleep(0.001)
-                self.dm.LeftClick()
-                time.sleep(1)
-                self.zhengdian_by_xiaolvren(
-                    "魔谷西",
-                    2,
-                    [int(856 + self.locationX), int(857 + self.locationX)],
-                    [int(46 + self.locationY)],
-                    1,
-                )
-                is_in_bibotan = self.waitFor("魔谷西", self.dituLocation, 5)
-                if is_in_bibotan:
-                    self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
-                    time.sleep(0.001)
-                    self.dm.LeftClick()
-                    time.sleep(1)
-                    self.zhengdian_by_xiaolvren(
-                        "魔谷西",
-                        2,
-                        [int(856 + self.locationX), int(857 + self.locationX)],
-                        [int(46 + self.locationY)],
-                        1,
-                    )
+            self.find_zd_xiaolvren_v3("魔谷西", 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))])
         time.sleep(0.5)
         self.zhengdian_flag = False
         gc.collect()
@@ -5573,7 +5510,50 @@ class MyThread(threading.Thread):
                     current_time.tm_min == 59 and current_time.tm_sec == 59
             ):
                 break
-            time.sleep(1)  # 每秒钟检查一次
+            time.sleep(1)
+        # 49蛇+全打：蛇时辰(1,2,9,13,15,21点)走路搜索蛇
+        if self.zhengdianFloor == "49蛇+全打" and int(
+                time.localtime().tm_hour) in [1, 2, 9, 13, 15, 21]:
+            shuffled_she = self.zd49List.copy()
+            random.shuffle(shuffled_she)
+            for i in range(8):
+                last_item = shuffled_she[-1]
+                shuffled_she = shuffled_she[:-1]
+                print(f"飞{last_item['ditu']}")
+                is_fei = self.go_in_ditu(
+                    last_item["ditu"],
+                    last_item["city"],
+                    last_item["findAddress"],
+                    "",
+                    "",
+                    True,
+                )
+                if is_fei:
+                    npc_count = len(last_item["delX"])
+                    npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
+                    self.find_zd_walk_v3(last_item["findAddress"], "蛇", [("serveAssets/images/zhengdian/sheshengxiao1.bmp", "serveAssets/images/zhengdian/sheshengxiao2.bmp")], "蛇", npc_count, npc_zones)
+        # 49蛇+全打 / 49龙+全打：龙时辰(2,6,10,14,18,22点)走路搜索龙
+        if self.zhengdianFloor in ["49蛇+全打", "49龙+全打"] and int(
+                time.localtime().tm_hour) in [2, 6, 10, 14, 18, 22]:
+            shuffled_long = self.zd49List.copy()
+            random.shuffle(shuffled_long)
+            for i in range(8):
+                last_item = shuffled_long[-1]
+                shuffled_long = shuffled_long[:-1]
+                print(f"飞{last_item['ditu']}")
+                is_fei = self.go_in_ditu(
+                    last_item["ditu"],
+                    last_item["city"],
+                    last_item["findAddress"],
+                    "",
+                    "",
+                    True,
+                )
+                if is_fei:
+                    npc_count = len(last_item["delX"])
+                    npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
+                    self.find_zd_walk_v3(last_item["findAddress"], "龙生肖红", [("serveAssets/images/zhengdian/newlong.bmp", "serveAssets/images/zhengdian/newlong2.bmp")], None, npc_count, npc_zones)
+        # 全部选项：走路搜索普通整点
         for i in range(8):
             last_item = shuffled[-1]
             shuffled = shuffled[:-1]
@@ -5587,9 +5567,9 @@ class MyThread(threading.Thread):
                 True,
             )
             if is_fei:
-                self.find_zd_in_view(
-                    last_item["findAddress"], "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝"
-                )
+                npc_count = len(last_item["delX"])
+                npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
+                self.find_zd_walk_v3(last_item["findAddress"], "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, npc_count, npc_zones)
         self.zhengdian_flag = False
         gc.collect()
         if int(time.localtime().tm_hour) == 0:
@@ -6488,6 +6468,244 @@ class MyThread(threading.Thread):
                 print(f"打了第{self.daZhengDianCount}个整点")
                 return True
         return False
+
+    # V3辅助方法：统计小地图上小绿人数量
+    def _count_xiaolvren(self):
+        try:
+            xiaolvren_bmp = self.get_resource_path(
+                "serveAssets/images/zhengdian/xiaolvren.bmp")
+            dx, dy, dw, dh = self.dituLocation
+            result = self.dm.FindPicEx(dx, dy, dw, dh, xiaolvren_bmp, "", 0.9, 0)
+            if not result:
+                return 0
+            return len(result.split("|"))
+        except:
+            return 0
+
+    # V3辅助方法：将delX/delY转换为NPC坐标列表（用于模糊排除）
+    def _get_npc_zones_from_delxy(self, delX, delY):
+        zones = []
+        for i in range(len(delX)):
+            x = delX[i]
+            y = delY[i] if i < len(delY) else delY[-1]
+            zones.append((x, y))
+        return zones
+
+    # V3辅助方法：判断坐标是否在NPC区域附近（模糊匹配，阈值threshold像素）
+    def _is_near_npc_zone(self, x, y, npc_zones, threshold=10):
+        for zx, zy in npc_zones:
+            if abs(x - zx) <= threshold and abs(y - zy) <= threshold:
+                return True
+        return False
+
+    # V3辅助方法：走路一步，返回(新方向flag, 是否到达右边界)
+    def _walk_one_step(self, find_left_flag):
+        left_x = random.randint(738, 748)
+        rand_y = 80
+        right_x = random.randint(861, 871)
+        reached_edge = False
+        self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+        self.confidenceNum = 0.6
+        if not find_left_flag:
+            if self.find_pic_or_str(
+                    self.get_resource_path(
+                        "serveAssets/images/zhengdian/xiaobairen.bmp"),
+                    (725, 46, 751, 94), 0):
+                self.dm.MoveTo(right_x, rand_y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                new_flag = True
+            else:
+                self.dm.MoveTo(left_x, rand_y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                new_flag = False
+        else:
+            if self.find_pic_or_str(
+                    self.get_resource_path(
+                        "serveAssets/images/zhengdian/xiaobairen.bmp"),
+                    (861, 41, 881, 96), 0):
+                reached_edge = True
+                new_flag = find_left_flag
+            else:
+                self.dm.MoveTo(right_x, rand_y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                new_flag = find_left_flag
+        self.confidenceNum = 0.9
+        time.sleep(0.6)
+        return new_flag, reached_edge
+
+    # V3走路模式：小绿人计数预检+走路搜索，用于龙蛇整点和走路模式
+    # 不点击小绿人（避免弹窗遮挡），纯走路+视野搜索文字/图片
+    # npc_count：该地图固定NPC数量，小绿人<=npc_count时判定无整点
+    # npc_zones：NPC坐标列表，用于模糊排除
+    def find_zd_walk_v3(self, base_image, find_sx, backup_images=None,
+                         auto_combat_key=None, npc_count=0, npc_zones=None):
+        if npc_zones is None:
+            npc_zones = []
+        find_left_flag = False
+        attacked_set = set()
+        walk_rounds = 0
+        max_walk_rounds = 60
+        while True:
+            if self.overed or self.check_stop_or_over():
+                return
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            green_count = self._count_xiaolvren()
+            if green_count <= npc_count:
+                if walk_rounds == 0:
+                    find_left_flag, _ = self._walk_one_step(find_left_flag)
+                    time.sleep(0.3)
+                    green_count2 = self._count_xiaolvren()
+                    if green_count2 <= npc_count:
+                        print(f"{base_image}: 小绿人数量({green_count2})<=NPC数量({npc_count})，无整点")
+                        self.confidenceNum = 0.9
+                        return
+                else:
+                    print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
+                    self.confidenceNum = 0.9
+                    return
+            self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+            self.confidenceNum = 0.6
+            all_positions = []
+            str_positions = self._find_all_str(find_sx, self.gameBottomLocation)
+            all_positions.extend(str_positions)
+            if backup_images:
+                for pair in backup_images:
+                    pic_path = "|".join(
+                        self.get_resource_path(p) for p in pair)
+                    pic_positions = self._find_all_pic(pic_path,
+                                                        self.gameBottomLocation)
+                    all_positions.extend(pic_positions)
+            candidates = self._merge_deduplicate_sort(
+                all_positions, attacked_set, []
+            )
+            self.confidenceNum = 0.9
+            if candidates:
+                for target in candidates:
+                    attacked_set.add((target.x, target.y))
+                    success = self._try_attack_zd(
+                        target, base_image, auto_combat_key
+                    )
+                    if success:
+                        self.daZhengDianCount += 1
+                        print(f"打了{find_sx}，第{self.daZhengDianCount}个整点")
+                        attacked_set.clear()
+                        break
+                continue
+            find_left_flag, reached_edge = self._walk_one_step(find_left_flag)
+            walk_rounds += 1
+            if reached_edge:
+                print(f"{base_image}: 走完一圈未找到{find_sx}")
+                self.confidenceNum = 0.9
+                return
+            if walk_rounds >= max_walk_rounds:
+                print(f"{base_image}: 走路超过{max_walk_rounds}轮，安全退出")
+                self.confidenceNum = 0.9
+                return
+
+    # V3小绿人模式：小绿人计数预检+导航+攻击确认，用于普通整点
+    # 点击小绿人导航到整点位置，等"打就打1"按钮确认可攻击（避免误打Boss）
+    # npc_count：该地图固定NPC数量，小绿人<=npc_count时判定无整点
+    # npc_zones：NPC坐标列表，用于模糊排除（左上角坐标）
+    def find_zd_xiaolvren_v3(self, base_image, npc_count=0, npc_zones=None,
+                              auto_combat_key=None):
+        if npc_zones is None:
+            npc_zones = []
+        self.confidenceNum = 0.6
+        base_image_res = self.waitFor(base_image, self.dituLocation, 3)
+        if not base_image_res:
+            return
+        attacked_set = set()
+        x, y, w, h = self.dituLocation
+        xiaolvren = self.get_resource_path(
+            "serveAssets/images/zhengdian/xiaolvren.bmp")
+        pic_size = self.dm.GetPicSize(xiaolvren).split(",")
+        pic_w, pic_h = int(pic_size[0]), int(pic_size[1])
+        no_progress_rounds = 0
+        max_no_progress = 3
+        while True:
+            if self.overed or self.check_stop_or_over():
+                return
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            green_count = self._count_xiaolvren()
+            if green_count <= npc_count:
+                print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
+                self.confidenceNum = 0.9
+                return
+            green_result = self.dm.FindPicEx(
+                int(x), int(y), int(w), int(h), xiaolvren, "", 0.9, 0
+            )
+            target_dots = []
+            if green_result:
+                all_dots = green_result.split("|")
+                for item in all_dots:
+                    parts = item.split(",")
+                    tl_x = int(parts[1])
+                    tl_y = int(parts[2])
+                    if self._is_near_npc_zone(tl_x, tl_y, npc_zones, threshold=10):
+                        continue
+                    skip = False
+                    for ax, ay in attacked_set:
+                        if abs(tl_x - ax) <= 20 and abs(tl_y - ay) <= 20:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                    click_x = tl_x + pic_w // 2
+                    click_y = tl_y + pic_h // 2
+                    target_dots.append((click_x, click_y, tl_x, tl_y))
+            if not target_dots:
+                no_progress_rounds += 1
+                if no_progress_rounds >= max_no_progress:
+                    print(f"{base_image}: 连续{max_no_progress}轮无目标小绿人，退出")
+                    self.confidenceNum = 0.9
+                    return
+                time.sleep(0.5)
+                continue
+            no_progress_rounds = 0
+            screen_cx = self.locationX + 400
+            screen_cy = self.locationY + 300
+            target_dots.sort(
+                key=lambda d: (d[0] - screen_cx) ** 2 + (d[1] - screen_cy) ** 2)
+            hit_any = False
+            for click_x, click_y, tl_x, tl_y in target_dots:
+                self.dm.MoveTo(click_x, click_y)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                self.color_format = "b@ffff00-000000|fff200-000000"
+                zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 8)
+                self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+                if not zhengdian_btn:
+                    self.dm.KeyPressChar("esc")
+                    time.sleep(0.3)
+                    attacked_set.add((tl_x, tl_y))
+                    continue
+                self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                if auto_combat_key is not None and self.combat_auto_flag:
+                    self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
+                combat_ok = self._wait_combat_result(base_image, auto_combat_key)
+                if auto_combat_key is not None and self.combat_auto_flag:
+                    self._stop_combat_auto()
+                if combat_ok:
+                    self.daZhengDianCount += 1
+                    print(f"打了第{self.daZhengDianCount}个整点")
+                    attacked_set.clear()
+                    hit_any = True
+                    break
+                else:
+                    attacked_set.add((tl_x, tl_y))
+            if not hit_any:
+                print(f"{base_image}: 所有小绿人已尝试但未找到可打整点，退出")
+                self.confidenceNum = 0.9
+                return
 
     # 攻城开始
     def go_gongcheng(self):
@@ -7800,21 +8018,19 @@ class MyThread(threading.Thread):
                     return
                 if (
                         self.zhengdianFloor in ["龙+全打", "蛇+全打", "全打",
-                                                "牛+虎+兔", "全打应急"]
+                                                "牛+虎+兔"]
                         and self.scriptName in self.zhengdianFb
                 ):
                     # 打整点
                     self.zhengdian_flag = True
                     self.outScript(A)
                     time.sleep(2)
-                    if self.zhengdianFloor in ["全打", "龙+全打", "蛇+全打",
-                                               "全打应急"]:
+                    if self.zhengdianFloor in ["全打", "龙+全打", "蛇+全打"]:
                         self.new_zhengdian()
                     else:
                         self.new_zhengdian1()
                     return
-                elif self.zhengdianFloor in ["走路",
-                                             '走路应急'] and self.scriptName in [
+                elif self.zhengdianFloor == "走路" and self.scriptName in [
                     "官渡",
                     "魔镜",
                     "龙珠",
@@ -7828,7 +8044,7 @@ class MyThread(threading.Thread):
                     time.sleep(2)
                     self.go_zhengdian()
                     return
-                elif self.zhengdianFloor == "49整点" and self.scriptName in [
+                elif self.zhengdianFloor in ["49整点", "49蛇+全打", "49龙+全打"] and self.scriptName in [
                     "魔镜",
                     "黑风",
                     "官渡",
@@ -14263,7 +14479,7 @@ class MyThread(threading.Thread):
         time.sleep(1)
         self.outScript()
         time.sleep(2)
-        if self.zhengdianFloor in ["全打", "龙+全打", "蛇+全打", "全打应急"]:
+        if self.zhengdianFloor in ["全打", "龙+全打", "蛇+全打"]:
             # 打整点
             self.zhengdian_flag = True
             self.new_zhengdian()
@@ -14273,12 +14489,12 @@ class MyThread(threading.Thread):
             self.zhengdian_flag = True
             self.zhengDian()
             return
-        elif self.zhengdianFloor in ["走路", '走路应急']:
+        elif self.zhengdianFloor == "走路":
             # 打整点
             self.zhengdian_flag = True
             self.go_zhengdian()
             return
-        elif self.zhengdianFloor == "49整点":
+        elif self.zhengdianFloor in ["49整点", "49蛇+全打", "49龙+全打"]:
             # 打整点
             self.zhengdian_flag = True
             self.go_zhengdian49()
@@ -14446,18 +14662,17 @@ class MyThread(threading.Thread):
             result_item = self.find_optimal_item(remaining_minutes)
             if not result_item and not self.richangIsOver():
                 print("打整点")
-                if self.zhengdianFloor in ["龙+全打", "全打", "蛇+全打",
-                                           '全打应急']:
+                if self.zhengdianFloor in ["龙+全打", "全打", "蛇+全打"]:
                     # 打整点
                     self.zhengdian_flag = True
                     time.sleep(2)
                     self.new_zhengdian()
-                elif self.zhengdianFloor in ["走路", '走路应急']:
+                elif self.zhengdianFloor == "走路":
                     # 打整点
                     self.zhengdian_flag = True
                     time.sleep(2)
                     self.go_zhengdian()
-                elif self.zhengdianFloor == "49整点":
+                elif self.zhengdianFloor in ["49整点", "49蛇+全打", "49龙+全打"]:
                     # 打整点
                     self.zhengdian_flag = True
                     time.sleep(2)
@@ -15079,41 +15294,15 @@ class MyFrame(wx.Frame):
         self.richangSelection = []
         self.mac_address = ""
         self.mac_address1 = ""
-        self.has_script = None
-        self.user_name = ""
-        self.end_time = ""
-        self.remote_info = self.check_gitee_update()
-        # 检查是否有新版本，如果有则显示闪烁提示
-        self.current_version = self.get_current_version()  # 从本地文件读取当前版本
-        self.update_notify_timer = None  # 闪烁定时器
-        self.update_notify_visible = True  # 闪烁状态标志
-        # 检查版本并决定是否显示闪烁提示
-        self.check_and_update_notify_status()
-        if self.remote_info:
-            self.userData = self.remote_info.get("userData", {})
-        else:
-            self.userData = {}
-        self.mac_address = self.get_mac_address()
-        self.mac_address1 = ":".join(
-            ["{:02x}".format((uuid.getnode() >> elements) & 0xFF) for elements
-             in range(0, 8 * 6, 8)][::-1]
-        )
-        is_pass = self.is_user_valid()
-        if not is_pass:
-            self.user_name = "免费用户"
-            self.end_time = "2199-12-30 23:59:59"
-            self.has_script = "free"
-            # self.show_error_message("免费用户!")
-            # return
-        print(
-            f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
-        if self.is_virtual_machine() and self.user_name not in [
-            "关服就离开",
-            "RInoicc",
-            "钞能力",
-        ]:
-            print("虚拟机")
-            return
+        self.has_script = "free"
+        self.user_name = "免费用户"
+        self.end_time = "2199-12-30 23:59:59"
+        self.remote_info = None
+        self.current_version = self.get_current_version()
+        self.update_notify_timer = None
+        self.update_notify_visible = True
+        self.userData = {}
+        self._init_done = False
 
         self.has_choices = (
             [
@@ -15138,7 +15327,7 @@ class MyFrame(wx.Frame):
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                "测试",
+                # "测试",
             ],
         )
         self.free_choices = (
@@ -15168,15 +15357,6 @@ class MyFrame(wx.Frame):
             ],
         )
         has_choices = self.has_choices[0]
-        # if self.has_script not in ["all", "free"]:
-        #     for index, item in enumerate(self.has_choices[0]):
-        #         if item in self.has_script:
-        #             has_choices.append(item)
-        # elif self.has_script == "all":
-        #     has_choices = self.has_choices[0]
-        # elif self.has_script == "free":
-        #     has_choices = self.free_choices[0]
-        # 追加用户脚本
         try:
             from ScriptFactory import get_user_script_choices
             user_scripts = get_user_script_choices()
@@ -15191,6 +15371,33 @@ class MyFrame(wx.Frame):
         self.dropdown.SetBackgroundColour(wx.Colour(240, 242, 246))
         self.dropdown.SetForegroundColour(wx.Colour(40, 42, 50))
         self.dropdown.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+
+    def _init_async(self):
+        self.remote_info = self.check_gitee_update()
+        if self.remote_info:
+            self.userData = self.remote_info.get("userData", {})
+        self.mac_address = self.get_mac_address()
+        self.mac_address1 = ":".join(
+            ["{:02x}".format((uuid.getnode() >> elements) & 0xFF) for elements
+             in range(0, 8 * 6, 8)][::-1]
+        )
+        is_pass = self.is_user_valid()
+        if not is_pass:
+            self.user_name = "免费用户"
+            self.end_time = "2199-12-30 23:59:59"
+            self.has_script = "free"
+        print(
+            f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
+        if self.is_virtual_machine() and self.user_name not in [
+            "关服就离开",
+            "RInoicc",
+            "钞能力",
+        ]:
+            print("虚拟机")
+            wx.CallAfter(self.Close)
+            return
+        wx.CallAfter(self.check_and_update_notify_status)
+        self._init_done = True
 
     def _load_icon(self, name, size):
         path = self.get_resource_path("serveAssets/images/" + name)
@@ -16041,7 +16248,7 @@ class MyDialog(wx.Dialog):
         t3.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         fs3.Add(t3, 0, wx.ALL, 6)
 
-        zdc = ["蛇+全打", "龙+全打", "全打", "走路", "49整点"] if has_script == "all" or "整点" in has_script else ["蛇+全打", "龙+全打", "全打", "走路", "49整点"]
+        zdc = ["蛇+全打", "龙+全打", "全打", "走路", "49整点", "49蛇+全打", "49龙+全打"]
         self.choiceZhengdian = wx.ComboBox(f3, size=(-1, 28), choices=zdc)
         self.choiceZhengdian.SetHint("整点")
         self.choiceZhengdian.SetBackgroundColour(self.C_INPUT_BG)
@@ -17122,4 +17329,5 @@ if __name__ == "__main__":
     app = wx.App()
     frame = MyFrame()
     frame.Show()
+    threading.Thread(target=frame._init_async, daemon=True).start()
     app.MainLoop()

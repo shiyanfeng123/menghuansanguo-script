@@ -81,169 +81,322 @@ class ResXy:
 
 
 class BattleReportDialog(wx.Frame):
-    """战斗实时播报窗口"""
+    """战斗实时播报窗口（状态面板 + 彩色日志）"""
 
-    # 初始化战斗播报窗口
-    # :param parent: 父窗口，默认为None
+    C_BG = wx.Colour(243, 244, 248)
+    C_SURFACE = wx.Colour(240, 242, 246)
+    C_TITLE_BG = wx.Colour(50, 80, 140)
+    C_TEXT = wx.Colour(40, 42, 50)
+    C_MUTED = wx.Colour(100, 105, 115)
+    C_WHITE = wx.Colour(255, 255, 255)
+    C_GREEN = wx.Colour(39, 174, 96)
+    C_RED = wx.Colour(192, 57, 43)
+    C_BLUE = wx.Colour(41, 128, 185)
+    C_ORANGE = wx.Colour(230, 160, 50)
+    C_LOG_BG = wx.Colour(250, 250, 255)
+    C_DIVIDER = wx.Colour(215, 218, 226)
+    C_ACCENT = wx.Colour(50, 80, 140)
+
     def __init__(self, parent=None):
         super().__init__(
-            parent, title="战斗实时播报", size=(500, 350), pos=(450, 50), style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+            parent, title="战斗实时播报", size=(520, 500), pos=(450, 50),
+            style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
         )
-        self.SetBackgroundColour(wx.Colour(245, 245, 250))
-
-        # 创建主面板
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(255, 255, 255))
-
-        # 创建布局
-        vbox = wx.BoxSizer(wx.VERTICAL)
-
-        # 标题区域
-        title_panel = wx.Panel(panel)
-        title_panel.SetBackgroundColour(wx.Colour(20, 180, 168))
-        title_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        title_text = wx.StaticText(title_panel, label="战斗实时播报", style=wx.ALIGN_CENTER)
-        title_font = wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
-        title_text.SetFont(title_font)
-        title_text.SetForegroundColour(wx.Colour(255, 255, 255))
-
-        title_sizer.Add(title_text, 1, wx.ALIGN_CENTER | wx.ALL, 5)
-        title_panel.SetSizer(title_sizer)
-        vbox.Add(title_panel, 0, wx.EXPAND)
-
-        # 创建滚动面板（先创建滚动面板）
-        scroll_panel = scrolled.ScrolledPanel(panel, -1)
-        scroll_panel.SetupScrolling()
-
-        # 在滚动面板中创建文本区域（父窗口必须是scroll_panel）
-        self.log_text = wx.TextCtrl(
-            scroll_panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2, size=(-1, -1)  # 父窗口改为scroll_panel
-        )
-        # 设置字体
-        log_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-        self.log_text.SetFont(log_font)
-        self.log_text.SetBackgroundColour(wx.Colour(250, 250, 255))
-
-        # 设置滚动面板的布局
-        scroll_sizer = wx.BoxSizer(wx.VERTICAL)
-        scroll_sizer.Add(self.log_text, 1, wx.EXPAND | wx.ALL, 3)
-        scroll_panel.SetSizer(scroll_sizer)
-
-        vbox.Add(scroll_panel, 1, wx.EXPAND | wx.ALL, 3)
-
-        # 底部按钮区域
-        button_panel = wx.Panel(panel)
-        button_panel.SetBackgroundColour(wx.Colour(245, 245, 250))
-        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.clear_button = wx.Button(button_panel, label="清空日志", size=(80, 28))
-        self.clear_button.SetFont(log_font)
-        self.clear_button.SetBackgroundColour(wx.Colour(144, 144, 153))
-        self.clear_button.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.clear_button.Bind(wx.EVT_BUTTON, self.on_clear)
-
-        self.export_button = wx.Button(button_panel, label="生成txt", size=(80, 28))
-        self.export_button.SetFont(log_font)
-        self.export_button.SetBackgroundColour(wx.Colour(20, 180, 168))
-        self.export_button.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.export_button.Bind(wx.EVT_BUTTON, self.on_export_txt)
-
-        button_sizer.AddStretchSpacer()
-        button_sizer.Add(self.export_button, 0, wx.ALL, 3)
-        button_sizer.Add(self.clear_button, 0, wx.ALL, 3)
-        button_panel.SetSizer(button_sizer)
-
-        vbox.Add(button_panel, 0, wx.EXPAND)
-
-        panel.SetSizer(vbox)
-
-        # 日志锁（线程安全）
+        self.SetBackgroundColour(self.C_BG)
+        self._start_time = None
+        self._timer = None
         self.log_lock = threading.Lock()
+        self._log_line_count = 0
+        self._max_log_lines = 500
+        self._trim_keep_lines = 300
 
-        # 初始化消息
-        self.add_log("=" * 40, wx.Colour(100, 100, 100))
-        self.add_log("战斗播报系统已启动", wx.Colour(20, 180, 168))
-        self.add_log(f"启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", wx.Colour(100, 100, 100))
-        self.add_log("=" * 40, wx.Colour(100, 100, 100))
-        self.add_log("")
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(self.C_BG)
+        root = wx.BoxSizer(wx.VERTICAL)
 
-    # 添加日志消息（线程安全）
+        title_bar = wx.Panel(panel)
+        title_bar.SetBackgroundColour(self.C_TITLE_BG)
+        ts = wx.BoxSizer(wx.HORIZONTAL)
+        title_lbl = wx.StaticText(title_bar, label="  战斗实时播报", style=wx.ALIGN_LEFT)
+        title_lbl.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        title_lbl.SetForegroundColour(self.C_WHITE)
+        ts.Add(title_lbl, 1, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
+        self._status_dot = wx.StaticText(title_bar, label="  \u25cf 就绪  ", style=wx.ALIGN_RIGHT)
+        self._status_dot.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        self._status_dot.SetForegroundColour(wx.Colour(180, 180, 190))
+        ts.Add(self._status_dot, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        title_bar.SetSizer(ts)
+        root.Add(title_bar, 0, wx.EXPAND)
+
+        summary_bar = wx.Panel(panel)
+        summary_bar.SetBackgroundColour(self.C_SURFACE)
+        ss = wx.BoxSizer(wx.HORIZONTAL)
+        self._lbl_turn = self._make_summary_label(summary_bar, "回合: 0")
+        self._lbl_time = self._make_summary_label(summary_bar, "运行: --:--")
+        self._lbl_state = self._make_summary_label(summary_bar, "状态: 等待中")
+        ss.Add(self._lbl_turn, 1, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
+        ss.Add(self._lbl_time, 1, wx.ALIGN_CENTER_VERTICAL)
+        ss.Add(self._lbl_state, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        summary_bar.SetSizer(ss)
+        root.Add(summary_bar, 0, wx.EXPAND | wx.TOP, 1)
+
+        status_card = wx.Panel(panel)
+        status_card.SetBackgroundColour(self.C_WHITE)
+        status_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self._account_panels = {}
+        for idx, name in [(0, "中排"), (1, "上排"), (2, "下排")]:
+            ap = self._create_account_panel(status_card, idx, name)
+            status_sizer.Add(ap, 1, wx.EXPAND | wx.ALL, 3)
+        status_card.SetSizer(status_sizer)
+        root.Add(status_card, 0, wx.EXPAND | wx.TOP, 1)
+
+        log_panel = wx.Panel(panel)
+        log_panel.SetBackgroundColour(self.C_LOG_BG)
+        ls = wx.BoxSizer(wx.VERTICAL)
+        self.log_text = wx.TextCtrl(
+            log_panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2
+        )
+        self.log_text.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        self.log_text.SetBackgroundColour(self.C_LOG_BG)
+        ls.Add(self.log_text, 1, wx.EXPAND | wx.ALL, 2)
+        log_panel.SetSizer(ls)
+        root.Add(log_panel, 1, wx.EXPAND | wx.TOP, 1)
+
+        btn_bar = wx.Panel(panel)
+        btn_bar.SetBackgroundColour(self.C_SURFACE)
+        bs = wx.BoxSizer(wx.HORIZONTAL)
+        btn_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+        self.export_button = wx.Button(btn_bar, label="导出日志", size=(80, 26))
+        self.export_button.SetFont(btn_font)
+        self.export_button.SetBackgroundColour(self.C_ACCENT)
+        self.export_button.SetForegroundColour(self.C_WHITE)
+        self.export_button.Bind(wx.EVT_BUTTON, self.on_export_txt)
+        self.clear_button = wx.Button(btn_bar, label="清空日志", size=(80, 26))
+        self.clear_button.SetFont(btn_font)
+        self.clear_button.SetBackgroundColour(self.C_DIVIDER)
+        self.clear_button.SetForegroundColour(self.C_MUTED)
+        self.clear_button.Bind(wx.EVT_BUTTON, self.on_clear)
+        bs.AddStretchSpacer()
+        bs.Add(self.export_button, 0, wx.ALL, 3)
+        bs.Add(self.clear_button, 0, wx.ALL, 3)
+        btn_bar.SetSizer(bs)
+        root.Add(btn_bar, 0, wx.EXPAND)
+
+        panel.SetSizer(root)
+        self.add_log("战斗播报系统已启动", "system")
+        self.add_log(f"启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", "action")
+
+    def _make_summary_label(self, parent, text):
+        lbl = wx.StaticText(parent, label=text)
+        lbl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        lbl.SetForegroundColour(self.C_MUTED)
+        return lbl
+
+    def _create_account_panel(self, parent, idx, name):
+        panel = wx.Panel(parent)
+        panel.SetBackgroundColour(self.C_SURFACE)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        header = wx.StaticText(panel, label=f"账号{idx}({name})")
+        header.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        header.SetForegroundColour(self.C_ACCENT)
+        sizer.Add(header, 0, wx.ALIGN_CENTER | wx.TOP, 4)
+        lbl_main = wx.StaticText(panel, label="主角: --")
+        lbl_main.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        lbl_main.SetForegroundColour(self.C_TEXT)
+        sizer.Add(lbl_main, 0, wx.LEFT, 8)
+        lbl_gen = wx.StaticText(panel, label="武将: --")
+        lbl_gen.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        lbl_gen.SetForegroundColour(self.C_TEXT)
+        sizer.Add(lbl_gen, 0, wx.LEFT, 8)
+        lbl_lb = wx.StaticText(panel, label="刘备: --")
+        lbl_lb.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        lbl_lb.SetForegroundColour(self.C_TEXT)
+        sizer.Add(lbl_lb, 0, wx.LEFT | wx.BOTTOM, 4)
+        panel.SetSizer(sizer)
+        self._account_panels[idx] = {
+            "panel": panel, "main": lbl_main, "general": lbl_gen, "liubei": lbl_lb
+        }
+        return panel
+
+    def set_running(self, running=True):
+        def _update():
+            try:
+                if running:
+                    self._status_dot.SetLabel("  \u25cf 战斗中  ")
+                    self._status_dot.SetForegroundColour(self.C_GREEN)
+                    self._lbl_state.SetLabel("状态: 战斗中")
+                    self._start_time = datetime.now()
+                    self._ensure_timer()
+                else:
+                    self._status_dot.SetLabel("  \u25cf 已停止  ")
+                    self._status_dot.SetForegroundColour(self.C_RED)
+                    self._lbl_state.SetLabel("状态: 已停止")
+                    self._stop_timer()
+            except Exception:
+                pass
+        self._safe_call_after(_update)
+
+    def _ensure_timer(self):
+        self._stop_timer()
+        self._timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self._on_tick, self._timer)
+        self._timer.Start(1000)
+
+    def _stop_timer(self):
+        if self._timer:
+            try:
+                self._timer.Stop()
+            except Exception:
+                pass
+            self._timer = None
+
+    def _on_tick(self, event):
+        if self._start_time:
+            elapsed = datetime.now() - self._start_time
+            mins, secs = divmod(int(elapsed.total_seconds()), 60)
+            hrs, mins = divmod(mins, 60)
+            if hrs > 0:
+                self._lbl_time.SetLabel(f"运行: {hrs}:{mins:02d}:{secs:02d}")
+            else:
+                self._lbl_time.SetLabel(f"运行: {mins}:{secs:02d}")
+
+    def update_turn(self, turn_num):
+        def _update():
+            try:
+                self._lbl_turn.SetLabel(f"回合: {turn_num}")
+            except Exception:
+                pass
+        self._safe_call_after(_update)
+
+    def update_account_status(self, idx, main_alive=True, main_status="正常",
+                               general_alive=0, general_total=2, has_liubei=False):
+        def _update():
+            try:
+                if idx not in self._account_panels:
+                    return
+                ap = self._account_panels[idx]
+                if main_alive:
+                    color = self.C_GREEN if main_status == "正常" else self.C_ORANGE
+                    ap["main"].SetLabel(f"主角: \u25cf {main_status}")
+                    ap["main"].SetForegroundColour(color)
+                else:
+                    ap["main"].SetLabel("主角: \u25cb 阵亡")
+                    ap["main"].SetForegroundColour(self.C_RED)
+                if general_alive < 0:
+                    ap["general"].SetLabel("武将: --")
+                    ap["general"].SetForegroundColour(self.C_MUTED)
+                else:
+                    gc = self.C_GREEN if general_alive == general_total else (self.C_ORANGE if general_alive > 0 else self.C_RED)
+                    ap["general"].SetLabel(f"武将: {general_alive}/{general_total}")
+                    ap["general"].SetForegroundColour(gc)
+                if has_liubei:
+                    ap["liubei"].SetLabel("刘备: \u25cf 在场")
+                    ap["liubei"].SetForegroundColour(self.C_GREEN)
+                else:
+                    ap["liubei"].SetLabel("刘备: -")
+                    ap["liubei"].SetForegroundColour(self.C_MUTED)
+            except Exception:
+                pass
+        self._safe_call_after(_update)
+
+    def reset_status(self):
+        def _update():
+            try:
+                self._lbl_turn.SetLabel("回合: 0")
+                self._lbl_time.SetLabel("运行: --:--")
+                self._lbl_state.SetLabel("状态: 等待中")
+                self._status_dot.SetLabel("  \u25cf 就绪  ")
+                self._status_dot.SetForegroundColour(wx.Colour(180, 180, 190))
+                self._start_time = None
+                for idx in self._account_panels:
+                    ap = self._account_panels[idx]
+                    ap["main"].SetLabel("主角: --")
+                    ap["main"].SetForegroundColour(self.C_TEXT)
+                    ap["general"].SetLabel("武将: --")
+                    ap["general"].SetForegroundColour(self.C_TEXT)
+                    ap["liubei"].SetLabel("刘备: --")
+                    ap["liubei"].SetForegroundColour(self.C_TEXT)
+            except Exception:
+                pass
+        self._safe_call_after(_update)
+
     def add_log(self, message, color=None):
-        # 确保color有默认值
         if color is None:
-            color = wx.Colour(0, 0, 0)  # 默认黑色
+            color = "info"
+        if isinstance(color, str):
+            color_map = {
+                "info": self.C_TEXT,
+                "success": self.C_GREEN,
+                "warning": self.C_ORANGE,
+                "error": self.C_RED,
+                "system": self.C_ACCENT,
+                "turn": self.C_BLUE,
+                "action": self.C_MUTED,
+            }
+            color = color_map.get(color, self.C_TEXT)
 
-        # 内部函数：在主线程中添加日志消息
         def _add_log():
             try:
                 if not self or not hasattr(self, "log_text") or not self.log_text:
-                    print(f"警告：无法添加日志，log_text不存在 - {message[:50]}")
                     return
-
                 with self.log_lock:
-                    # 添加时间戳
+                    self._log_line_count += 1
+                    if self._log_line_count > self._max_log_lines:
+                        self._trim_log()
                     timestamp = datetime.now().strftime("%H:%M:%S")
                     full_message = f"[{timestamp}] {message}\n"
-
-                    # 设置文本颜色并追加
                     self.log_text.SetDefaultStyle(wx.TextAttr(color))
                     self.log_text.AppendText(full_message)
-
-                    # 自动滚动到底部
                     try:
                         self.log_text.ShowPosition(self.log_text.GetLastPosition())
                         self.log_text.Refresh()
-                    except (AttributeError, RuntimeError) as e:
-                        # 忽略窗口已关闭或对象已销毁的错误
+                    except (AttributeError, RuntimeError):
                         pass
-            except Exception as e:
-                # 打印错误以便调试
-                print(f"添加日志时出错: {e}, 消息: {message[:50]}")
+            except Exception:
+                pass
+        self._safe_call_after(_add_log)
 
-        # 确保在主线程中执行GUI操作
+    def _trim_log(self):
+        try:
+            content = self.log_text.GetValue()
+            lines = content.split("\n")
+            if len(lines) > self._trim_keep_lines:
+                keep = lines[-self._trim_keep_lines:]
+                self.log_text.SetValue("\n".join(keep))
+                self._log_line_count = len(keep)
+        except Exception:
+            pass
+
+    def _safe_call_after(self, func):
         try:
             if threading.current_thread() == threading.main_thread():
-                _add_log()
+                func()
             else:
-                # 如果在其他线程，使用CallAfter确保在主线程执行
                 if hasattr(wx, "CallAfter"):
-                    wx.CallAfter(_add_log)
+                    wx.CallAfter(func)
                 else:
-                    # 如果wx未初始化，直接尝试在主线程执行
-                    _add_log()
-        except Exception as e:
-            # 打印错误以便调试
-            print(f"CallAfter调用时出错: {e}")
+                    func()
+        except Exception:
+            pass
 
-    # 清空日志
     def on_clear(self, event):
         self.log_text.Clear()
-        self.add_log("日志已清空", wx.Colour(100, 100, 100))
+        self._log_line_count = 0
+        self.add_log("日志已清空", "action")
 
-    # 导出日志到txt文件
     def on_export_txt(self, event):
-        """导出所有日志内容到txt文件"""
         try:
-            # 创建文件保存对话框
             with wx.FileDialog(
-                self, "保存日志文件", wildcard="文本文件 (*.txt)|*.txt", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
+                self, "保存日志文件", wildcard="文本文件 (*.txt)|*.txt",
+                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
             ) as fileDialog:
-                # 设置默认文件名（包含时间戳）
                 default_filename = f"战斗播报_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                 fileDialog.SetFilename(default_filename)
-
                 if fileDialog.ShowModal() == wx.ID_CANCEL:
-                    return  # 用户取消了保存
-
-                # 获取用户选择的文件路径
+                    return
                 filepath = fileDialog.GetPath()
-
-                # 获取所有日志内容
                 with self.log_lock:
                     log_content = self.log_text.GetValue()
-
-                # 写入文件
                 try:
                     with open(filepath, "w", encoding="utf-8") as f:
                         f.write("=" * 60 + "\n")
@@ -251,43 +404,28 @@ class BattleReportDialog(wx.Frame):
                         f.write(f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                         f.write("=" * 60 + "\n\n")
                         f.write(log_content)
-
-                    # 显示成功消息
                     wx.MessageBox(f"日志已成功导出到:\n{filepath}", "导出成功", wx.OK | wx.ICON_INFORMATION)
-                    self.add_log(f"日志已导出到: {filepath}", wx.Colour(20, 180, 168))
+                    self.add_log(f"日志已导出到: {filepath}", "system")
                 except Exception as e:
-                    # 显示错误消息
                     wx.MessageBox(f"导出日志时出错:\n{str(e)}", "导出失败", wx.OK | wx.ICON_ERROR)
-                    self.add_log(f"导出日志失败: {str(e)}", wx.Colour(255, 0, 0))
+                    self.add_log(f"导出日志失败: {str(e)}", "error")
         except Exception as e:
-            # 处理异常
             print(f"导出日志时发生异常: {e}")
-            try:
-                wx.MessageBox(f"导出日志时发生异常:\n{str(e)}", "错误", wx.OK | wx.ICON_ERROR)
-            except:
-                pass
 
-    # 安全关闭窗口
     def close_safely(self):
-        """安全关闭窗口，确保窗口立即关闭"""
         try:
             if not self:
                 return
-
-            # 定义关闭函数
             def _close_window():
                 try:
+                    self._stop_timer()
                     if self and hasattr(self, "IsBeingDeleted") and not self.IsBeingDeleted():
-                        # 使用Destroy()而不是Close()，确保窗口立即销毁
                         self.Destroy()
                 except Exception as e:
                     print(f"关闭战斗播报窗口时出错: {e}")
-
-            # 确保在主线程中执行
             if threading.current_thread() == threading.main_thread():
                 _close_window()
             else:
-                # 如果不在主线程，使用CallAfter
                 if hasattr(wx, "CallAfter"):
                     wx.CallAfter(_close_window)
                 else:
@@ -518,17 +656,7 @@ class CombatAutoScript:
 
         if self.battle_report_dialog:
             try:
-                color_map = {
-                    "info": wx.Colour(0, 0, 0),  # 黑色 - 普通信息
-                    "success": wx.Colour(103, 194, 58),  # 绿色 - 成功操作
-                    "warning": wx.Colour(226, 96, 95),  # 红色 - 警告
-                    "error": wx.Colour(255, 0, 0),  # 深红 - 错误
-                    "system": wx.Colour(20, 180, 168),  # 青色 - 系统消息
-                    "turn": wx.Colour(0, 102, 204),  # 蓝色 - 回合信息
-                    "action": wx.Colour(144, 144, 153),  # 灰色 - 动作信息
-                }
-                color = color_map.get(msg_type, wx.Colour(0, 0, 0))
-                self.battle_report_dialog.add_log(message, color)
+                self.battle_report_dialog.add_log(message, msg_type)
             except Exception as e:
                 print(f"report_battle_info出错: {e}, 消息: {message[:50]}")
         # else:
@@ -808,14 +936,14 @@ class CombatAutoScript:
                 "status_region": (61, 257, 145, 312),
                 "cast_position": (112, 372),
             },
-            "人参娃": {
+            "龙/羊人参娃": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
                 },
                 "status_region": (174, 382, 224, 426),
                 "cast_position": (222, 472),
             },
-            "上龙": {
+            "龙上龙": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
                 },
@@ -3311,22 +3439,22 @@ class CombatAutoScript:
                     still_in_dead_list = True
                     break
 
-                # 第二步：在锁外进行状态判断
-                # 如果主角已经存活或正在待验证复活，不能复活
-                if alive or revive_pending:
-                    self.report_battle_info(
-                        f"账号{account_index} 尝试复活账号{target_dead_account_idx}的主角，但主角状态：alive={alive}, revive_pending={revive_pending}，跳过",
-                        "warning",
-                    )
-                    return False
+            # 第二步：在锁外进行状态判断
+            # 如果主角已经存活或正在待验证复活，不能复活
+            if alive or revive_pending:
+                self.report_battle_info(
+                    f"账号{account_index} 尝试复活账号{target_dead_account_idx}的主角，但主角状态：alive={alive}, revive_pending={revive_pending}，跳过",
+                    "warning",
+                )
+                return False
 
-                # 如果已经在复活中，说明其他线程正在处理，不能重复执行
-                if reviving:
-                    self.report_battle_info(
-                        f"账号{account_index} 尝试复活账号{target_dead_account_idx}的主角，但主角已在复活中（reviving=True），跳过",
-                        "warning",
-                    )
-                    return False
+            # 如果已经在复活中，说明其他线程正在处理，不能重复执行
+            if reviving:
+                self.report_battle_info(
+                    f"账号{account_index} 尝试复活账号{target_dead_account_idx}的主角，但主角已在复活中（reviving=True），跳过",
+                    "warning",
+                )
+                return False
 
             # 如果不在全局阵亡记录中，说明已经被其他线程复活了
             if not still_in_dead_list:
@@ -4259,6 +4387,8 @@ class CombatAutoScript:
                                 if self.attack_buff_tracker[acct] <= 0:
                                     del self.attack_buff_tracker[acct]
 
+                        self.update_status_panel()
+
                         # 操作完成后，短暂延迟
                         time.sleep(0.1)
 
@@ -4495,6 +4625,153 @@ class CombatAutoScript:
             import traceback
             traceback.print_exc()
 
+    def reset_state(self):
+        try:
+            self.polling_running = False
+            try:
+                if hasattr(self, "stop_event") and isinstance(getattr(self, "stop_event"), threading.Event):
+                    self.stop_event.set()
+            except Exception:
+                pass
+
+            try:
+                for timer in list(self._timer_refs):
+                    try:
+                        timer.cancel()
+                    except Exception:
+                        pass
+                self._timer_refs.clear()
+            except Exception:
+                pass
+
+            try:
+                if getattr(self, "account_threads", None):
+                    for acct_idx, th in list(self.account_threads.items()):
+                        try:
+                            if isinstance(th, threading.Thread) and th.is_alive():
+                                th.join(timeout=2.0)
+                        except Exception:
+                            pass
+                    self.account_threads.clear()
+            except Exception:
+                pass
+
+            try:
+                if getattr(self, "polling_thread", None) and isinstance(self.polling_thread, threading.Thread):
+                    if self.polling_thread.is_alive():
+                        self.polling_thread.join(timeout=2.0)
+                    self.polling_thread = None
+            except Exception:
+                pass
+
+            self.turn_timeout = CombatConstants.TURN_TIMEOUT
+            self.turn_start_time = None
+            self.account_error_count = {}
+            self._battle_dialog_retry_count = 0
+
+            self.unit_info = {}
+            self.dead_units = {}
+            self.global_dead_units = {"main_chars": [], "generals": []}
+            self.enemies_need_clear = {}
+            self.enemy_status_reported = {}
+            self.current_turn = 0
+            self.skill_cd = {}
+            self.pending_liubei_summon = {}
+            self.has_liubei_on_field = True
+            self.liubei_missing_count = 0
+            self.low_hp_units = {}
+            self.zhugeliang_found = {}
+            self.zhugeliang_status1_missing_count = {}
+            self.zhugeliang_status2_missing_count = {}
+            self.lantiao_missing_rounds = {}
+
+            self.liubei_skill_sequence = ["控制", "加攻击", "加血"]
+            self.liubei_skill_index = {}
+            self.liubei_skill_cd = {}
+
+            self.revive_assignments = {}
+
+            self.enemy_target_position = None
+            self.ally_support_target_position = None
+            self.target_positions_detected = False
+            self._target_positions_detected_this_round = False
+
+            self.has_general = {0: True, 1: True, 2: True}
+            self.has_liubei = {i: self.liubei_counts.get(i, 0) > 0 for i in range(3)}
+            self.beidong_huihe = 0
+            self.zhaohuan_index = 0
+            self.clear_zhugeliang = False
+            self.attack_buff_tracker = {}
+            self.low_hp_accounts = {}
+
+            if self.battle_report_dialog:
+                try:
+                    self.battle_report_dialog.reset_status()
+                    self.battle_report_dialog.add_log("── 新一轮战斗 ──", "system")
+                except Exception:
+                    pass
+
+            print("reset_state: 状态已重置，窗口已保留")
+        except Exception as e:
+            print(f"reset_state 出错: {e}")
+
+    def reconfigure(self, enemy_keys_to_detect=None, keep_support_general=None,
+                    enable_main_heal=None, enable_main_summon=None,
+                    enable_persistent_liubei=None, liubei_counts=None):
+        try:
+            if enemy_keys_to_detect is not None:
+                self.enemy_keys_to_detect = enemy_keys_to_detect if enemy_keys_to_detect else []
+            if keep_support_general is not None:
+                self.keep_support_general = keep_support_general
+            if enable_main_heal is not None:
+                self.enable_main_heal = enable_main_heal
+            if enable_main_summon is not None:
+                self.enable_main_summon = enable_main_summon
+            if enable_persistent_liubei is not None:
+                self.enable_persistent_liubei = enable_persistent_liubei
+            if liubei_counts is not None:
+                self.liubei_counts = liubei_counts
+            self._dialog_closed = False
+            self._battle_dialog_retry_count = 0
+            if self.battle_report_dialog:
+                try:
+                    self.battle_report_dialog.Show()
+                    self.battle_report_dialog.Raise()
+                except Exception:
+                    pass
+            print("reconfigure: 配置已更新")
+        except Exception as e:
+            print(f"reconfigure 出错: {e}")
+
+    def update_status_panel(self):
+        try:
+            if not self.battle_report_dialog:
+                return
+            dlg = self.battle_report_dialog
+            dlg.update_turn(self.current_turn)
+            for i in range(3):
+                main_alive = True
+                main_status = "正常"
+                general_alive = -1
+                general_total = 2
+                has_lb = self.has_liubei.get(i, False)
+                if i in self.unit_info:
+                    mc = self.unit_info[i].get("main_char", {})
+                    main_alive = mc.get("alive", True)
+                    if not main_alive:
+                        main_status = "阵亡"
+                    elif mc.get("need_revive", False) or mc.get("reviving", False):
+                        main_status = "复活中"
+                    elif i in self.low_hp_units and self.low_hp_units[i]:
+                        main_status = "低血"
+                    generals = self.unit_info[i].get("generals", [])
+                    general_alive = sum(1 for g in generals if g.get("alive", True))
+                    general_total = max(len(generals), 2)
+                dlg.update_account_status(i, main_alive, main_status,
+                                          general_alive, general_total, has_lb)
+        except Exception:
+            pass
+
 
 # 示例使用
 if __name__ == "__main__":
@@ -4504,4 +4781,4 @@ if __name__ == "__main__":
     # 2. 在 MyThread.run() 方法中添加对应的脚本执行分支
     # 3. 调用 CombatAutoScript 的功能
 
-    print("战斗自动操作脚本已加载")
+    print("战斗自动操作脚本已就绪")
