@@ -625,6 +625,41 @@ class MyThread(threading.Thread):
                 "delY": [],
             },
         ]
+        self.normal_zd_images = [
+            ("serveAssets/images/zhengdian/hu-head-1.bmp", "serveAssets/images/zhengdian/hu-head-2.bmp"),
+            ("serveAssets/images/zhengdian/hu-body-1.bmp", "serveAssets/images/zhengdian/hu-body-2.bmp"),
+            ("serveAssets/images/zhengdian/hu-foot-1.bmp", "serveAssets/images/zhengdian/hu-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/niu-head-1.bmp", "serveAssets/images/zhengdian/niu-head-2.bmp"),
+            ("serveAssets/images/zhengdian/niu-body-1.bmp", "serveAssets/images/zhengdian/niu-body-2.bmp"),
+            ("serveAssets/images/zhengdian/niu-foot-1.bmp", "serveAssets/images/zhengdian/niu-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/tu-head-1.bmp", "serveAssets/images/zhengdian/tu-head-2.bmp"),
+            ("serveAssets/images/zhengdian/tu-body-1.bmp", "serveAssets/images/zhengdian/tu-body-2.bmp"),
+            ("serveAssets/images/zhengdian/tu-foot-1.bmp", "serveAssets/images/zhengdian/tu-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/hou-head-1.bmp", "serveAssets/images/zhengdian/hou-head-2.bmp"),
+            ("serveAssets/images/zhengdian/hou-body-1.bmp", "serveAssets/images/zhengdian/hou-body-2.bmp"),
+            ("serveAssets/images/zhengdian/hou-foot-1.bmp", "serveAssets/images/zhengdian/hou-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/yang-head-1.bmp", "serveAssets/images/zhengdian/yang-head-2.bmp"),
+            ("serveAssets/images/zhengdian/yang-body-1.bmp", "serveAssets/images/zhengdian/yang-body-2.bmp"),
+            ("serveAssets/images/zhengdian/yang-foot-1.bmp", "serveAssets/images/zhengdian/yang-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/huoyan-head-1.bmp", "serveAssets/images/zhengdian/huoyan-head-2.bmp"),
+            ("serveAssets/images/zhengdian/huoyan-body-1.bmp", "serveAssets/images/zhengdian/huoyan-body-2.bmp"),
+            ("serveAssets/images/zhengdian/huoyan-foot-1.bmp", "serveAssets/images/zhengdian/huoyan-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/hanbin-head-1.bmp", "serveAssets/images/zhengdian/hanbin-head-2.bmp"),
+            ("serveAssets/images/zhengdian/hanbin-body-1.bmp", "serveAssets/images/zhengdian/hanbin-body-2.bmp"),
+            ("serveAssets/images/zhengdian/hanbin-foot-1.bmp", "serveAssets/images/zhengdian/hanbin-foot-2.bmp"),
+        ]
+        self.she_images = [
+            ("serveAssets/images/zhengdian/sheshengxiao1.bmp", "serveAssets/images/zhengdian/sheshengxiao2.bmp"),
+            ("serveAssets/images/zhengdian/she-head-1.bmp", "serveAssets/images/zhengdian/she-head-2.bmp"),
+            ("serveAssets/images/zhengdian/she-body-1.bmp", "serveAssets/images/zhengdian/she-body-2.bmp"),
+            ("serveAssets/images/zhengdian/she-foot-1.bmp", "serveAssets/images/zhengdian/she-foot-2.bmp"),
+        ]
+        self.long_images = [
+            ("serveAssets/images/zhengdian/newlong.bmp", "serveAssets/images/zhengdian/newlong2.bmp"),
+            ("serveAssets/images/zhengdian/long-head-1.bmp", "serveAssets/images/zhengdian/long-head-2.bmp"),
+            ("serveAssets/images/zhengdian/long-body-1.bmp", "serveAssets/images/zhengdian/long-body-2.bmp"),
+            ("serveAssets/images/zhengdian/long-foot-1.bmp", "serveAssets/images/zhengdian/long-foot-2.bmp"),
+        ]
         self.beginFun()
         # 用户脚本: 📝 开头
         if self.scriptName.startswith("📝 "):
@@ -643,89 +678,6 @@ class MyThread(threading.Thread):
                 self._stop_combat_auto()
         elif self.scriptName == "测试":
             self.clearBag()
-            # self.huifu_yijian(self.dm)
-            # self.find_zd_in_view_easy("九黎族祭坛"
-            #     , '蛇生肖')
-            # self.go_in_ditu(
-            #     "地图落日峰",
-            #     self.get_resource_path(
-            #         "serveAssets/images/zhengdian/zhuojun.bmp"),
-            #     self.get_resource_path(
-            #         "serveAssets/images/zhengdian/luorifeng.bmp"),
-            #     "",
-            #     "",
-            #     True,
-            # )
-            # self.new_zhengdian()
-            # self.go_zhengdian()
-            # self.check_line('三线')
-            # self.zhengDian()
-            # self.zhengdian_all()
-            # print(111)
-            # return
-            # self.bangpaiRW()
-            # shuffled = self.zdList.copy()
-            # random.shuffle(shuffled)
-            # for i in range(10):
-            #     last_item = shuffled[-1]
-            #     shuffled = shuffled[:-1]
-            #     print(f"飞{last_item['ditu']}")
-            #     is_fei = self.go_in_ditu(
-            #         last_item['ditu'],
-            #         last_item['city'],
-            #         last_item['findAddress'],
-            #         '', '', True)
-            #     if is_fei:
-            #         self.find_zd_in_view(
-            #             last_item['findAddress'],
-            #             '龙生肖红')
-            # is_in_bibotan = self.waitFor(
-            #     last_item['findAddress'],
-            #     self.dituLocation,
-            #     5)
-        # for i in range(5):
-        # 	startTime = time.time()
-        # 	self.waitFor(
-        # 		f"{self.get_resource_path('serveAssets/images/zhengdian/bibotan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/huanggongdongyuan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xuzhou.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/mohunshan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jitan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/moguxi.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/milin.bmp')}",
-        # 		self.dituLocation
-        # 	)
-        # 	print(f"耗时{time.time() - startTime}")
-        # for i in range(5):
-        # 	startTime = time.time()
-        # 	self.waitFor(
-        # 		'魔魂山|九黎族祭坛|徐州|幽暗密林|魔谷西|碧波潭|皇宫东院', self.dituLocation
-        # 	)
-        # 	print(f"耗时{time.time() - startTime}")
-        # while True:
-        # 	self.go_zhengdian()
-        # self.go_in_ditu('地图官渡', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '官渡', '', '')
-        # openTalkXY = self.waitFor(
-        # 	f"{self.get_resource_path('serveAssets/images/openTalk.bmp')}|{self.get_resource_path('serveAssets/images/openTalk1.bmp')}",
-        # 	self.talkLocation, 5
-        # )
-        # if openTalkXY:
-        # 	self.dm.MoveTo(openTalkXY.x, openTalkXY.y)
-        # 	for i in range(4):
-        # 		time.sleep(0.2)
-        # 		self.dm.LeftClick()
-        # time.sleep(0.5)
-        # if not self.downTalkLocation:
-        # 	self.downTalkLocation = self.waitFor(
-        # 		'下箭头',
-        # 		self.talkLocation,
-        # 		10
-        # 	)
-        # 	if not self.downTalkLocation:
-        # 		self.downTalkLocation = ResXy(int(self.locationX + 329), int(self.locationY + 511))
-        # time.sleep(0.5)
-        # zhengdian_res = self.feiZhengDian(
-        # 	'龙生肖',
-        # 	'魔魂山|九黎族祭坛|徐州|幽暗密林|魔谷西|碧波潭|皇宫东院',
-        # 	True,
-        # )
-        # print(zhengdian_res)
-        # self.clear_hide_map()
-        # self.guajiAndzhengdianScript(f"{self.get_resource_path('serveAssets/images/guaji/bishuishuxue.bmp')}|{self.get_resource_path('serveAssets/images/guaji/bishuishuxue1.bmp')}")
         elif self.scriptName == "老鼠":
             if self.zhengdianFloor not in ["全打", "走路", "龙+全打", "蛇+全打",
                                            "49整点", "49蛇+全打", "49龙+全打"]:
@@ -742,12 +694,6 @@ class MyThread(threading.Thread):
                 f"{self.get_resource_path('serveAssets/images/guaji/wokou.bmp')}|{self.get_resource_path('serveAssets/images/guaji/wokou1.bmp')}"
             )
         elif self.scriptName == "龙珠":
-            # while True:
-            # 	if self.overed:
-            # 		return
-            # 	haslongzhu = self.longzhuScript()
-            # 	if not haslongzhu:
-            # 		return
             self.guajiAndzhengdianScript(
                 f"{self.get_resource_path('serveAssets/images/guaji/longchao.bmp')}|{self.get_resource_path('serveAssets/images/guaji/longchao1.bmp')}"
             )
@@ -4269,16 +4215,8 @@ class MyThread(threading.Thread):
             ):
                 break
             time.sleep(1)  # 每秒钟检查一次
-        # 蛇+全打：蛇时辰(1,2,9,13,15,21点)走路搜索蛇
-        if self.zhengdianFloor == "蛇+全打" and int(
-                time.localtime().tm_hour) in [
-            1,
-            2,
-            9,
-            13,
-            15,
-            21,
-        ]:
+        # 蛇+全打/全打：蛇时辰走路搜索蛇
+        if self.zhengdianFloor in ["蛇+全打", "全打"] and self._is_snake_hour():
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
             for i in range(14):
@@ -4296,17 +4234,9 @@ class MyThread(threading.Thread):
                 if is_fei1:
                     npc_count1 = len(last_item1["delX"])
                     npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
-                    self.find_zd_walk_v3(last_item1["findAddress"], "蛇", [("serveAssets/images/zhengdian/sheshengxiao1.bmp", "serveAssets/images/zhengdian/sheshengxiao2.bmp")], "蛇", npc_count1, npc_zones1)
-        # 蛇+全打 / 龙+全打：龙时辰(2,6,10,14,18,22点)走路搜索龙
-        if self.zhengdianFloor in ["龙+全打", "蛇+全打"] and int(
-                time.localtime().tm_hour) in [
-            2,
-            6,
-            10,
-            14,
-            18,
-            22,
-        ]:
+                    self.find_zd_walk_v3(last_item1["findAddress"], "蛇", self._get_she_images(), "蛇", npc_count1, npc_zones1)
+        # 龙+全打/蛇+全打/全打：龙时辰走路搜索龙
+        if self.zhengdianFloor in ["龙+全打", "蛇+全打", "全打"] and self._is_dragon_hour():
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
             for i in range(14):
@@ -4324,7 +4254,7 @@ class MyThread(threading.Thread):
                 if is_fei1:
                     npc_count1 = len(last_item1["delX"])
                     npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
-                    self.find_zd_walk_v3(last_item1["findAddress"], "龙生肖红", [("serveAssets/images/zhengdian/newlong.bmp", "serveAssets/images/zhengdian/newlong2.bmp")], None, npc_count1, npc_zones1)
+                    self.find_zd_walk_v3(last_item1["findAddress"], "龙生肖红", self._get_long_images(), None, npc_count1, npc_zones1)
             # print('打龙')
             # self.addBloud()
             # time.sleep(2)
@@ -4839,8 +4769,11 @@ class MyThread(threading.Thread):
         #     time.sleep(0.5)
         # elif self.has_script == 'free':
         #     return self.go_zhengdian()
-        # 全打：小绿人模式搜索普通整点
-        self.zhengdian_all_v3()
+        # 龙/蛇时辰：走路搜索普通整点，避免小绿人误打龙/蛇
+        if self._is_dragon_hour() or self._is_snake_hour():
+            self.zhengdian_all_walk()
+        else:
+            self.zhengdian_all_v3()
         time.sleep(0.5)
         self.zhengdian_flag = False
         if self.scriptName == "抢龙":
@@ -5097,6 +5030,28 @@ class MyThread(threading.Thread):
                 npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
                 self.find_zd_xiaolvren_v3(last_item["findAddress"], npc_count, npc_zones)
 
+    def zhengdian_all_walk(self):
+        print("开始整点(走路搜索)！")
+        self.clear_info()
+        shuffled = self.zdList.copy()
+        random.shuffle(shuffled)
+        for i in range(14):
+            last_item = shuffled[-1]
+            shuffled = shuffled[:-1]
+            print(f"飞{last_item['ditu']}")
+            is_fei = self.go_in_ditu(
+                last_item["ditu"],
+                last_item["city"],
+                last_item["findAddress"],
+                "",
+                "",
+                True,
+            )
+            if is_fei:
+                npc_count = len(last_item["delX"])
+                npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
+                self.find_zd_walk_v3(last_item["findAddress"], "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, npc_count, npc_zones)
+
     def zhengdian_all_new(self):
         print("开始整点！")
         self.clear_info()
@@ -5225,7 +5180,7 @@ class MyThread(threading.Thread):
         time.sleep(1)
         # 走路模式：小绿人预检+走路搜索；非走路模式：小绿人导航
         if self.zhengdianFloor == "走路":
-            self.find_zd_walk_v3("九黎族祭坛", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, 0, [])
+            self.find_zd_walk_v3("九黎族祭坛", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, 0, [])
         else:
             self.find_zd_xiaolvren_v3("九黎族祭坛", 0, [])
         time.sleep(0.5)
@@ -5239,7 +5194,7 @@ class MyThread(threading.Thread):
             "",
         )
         if self.zhengdianFloor == "走路":
-            self.find_zd_walk_v3("魔魂山", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, 0, [])
+            self.find_zd_walk_v3("魔魂山", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, 0, [])
         else:
             self.find_zd_xiaolvren_v3("魔魂山", 0, [])
         # 去魔谷西
@@ -5255,7 +5210,7 @@ class MyThread(threading.Thread):
         time.sleep(1)
         # 魔谷西有2个NPC，需传入npc_count和npc_zones
         if self.zhengdianFloor == "走路":
-            self.find_zd_walk_v3("魔谷西", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))])
+            self.find_zd_walk_v3("魔谷西", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))])
         else:
             self.find_zd_xiaolvren_v3("魔谷西", 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))])
         time.sleep(0.5)
@@ -5511,9 +5466,8 @@ class MyThread(threading.Thread):
             ):
                 break
             time.sleep(1)
-        # 49蛇+全打：蛇时辰(1,2,9,13,15,21点)走路搜索蛇
-        if self.zhengdianFloor == "49蛇+全打" and int(
-                time.localtime().tm_hour) in [1, 2, 9, 13, 15, 21]:
+        # 49蛇+全打/49整点/49龙+全打：蛇时辰走路搜索蛇
+        if self.zhengdianFloor in ["49蛇+全打", "49整点", "49龙+全打"] and self._is_snake_hour():
             shuffled_she = self.zd49List.copy()
             random.shuffle(shuffled_she)
             for i in range(8):
@@ -5531,10 +5485,9 @@ class MyThread(threading.Thread):
                 if is_fei:
                     npc_count = len(last_item["delX"])
                     npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
-                    self.find_zd_walk_v3(last_item["findAddress"], "蛇", [("serveAssets/images/zhengdian/sheshengxiao1.bmp", "serveAssets/images/zhengdian/sheshengxiao2.bmp")], "蛇", npc_count, npc_zones)
-        # 49蛇+全打 / 49龙+全打：龙时辰(2,6,10,14,18,22点)走路搜索龙
-        if self.zhengdianFloor in ["49蛇+全打", "49龙+全打"] and int(
-                time.localtime().tm_hour) in [2, 6, 10, 14, 18, 22]:
+                    self.find_zd_walk_v3(last_item["findAddress"], "蛇", self._get_she_images(), "蛇", npc_count, npc_zones)
+        # 49蛇+全打/49龙+全打/49整点：龙时辰走路搜索龙
+        if self.zhengdianFloor in ["49蛇+全打", "49龙+全打", "49整点"] and self._is_dragon_hour():
             shuffled_long = self.zd49List.copy()
             random.shuffle(shuffled_long)
             for i in range(8):
@@ -5552,7 +5505,7 @@ class MyThread(threading.Thread):
                 if is_fei:
                     npc_count = len(last_item["delX"])
                     npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
-                    self.find_zd_walk_v3(last_item["findAddress"], "龙生肖红", [("serveAssets/images/zhengdian/newlong.bmp", "serveAssets/images/zhengdian/newlong2.bmp")], None, npc_count, npc_zones)
+                    self.find_zd_walk_v3(last_item["findAddress"], "龙生肖红", self._get_long_images(), None, npc_count, npc_zones)
         # 全部选项：走路搜索普通整点
         for i in range(8):
             last_item = shuffled[-1]
@@ -5569,7 +5522,7 @@ class MyThread(threading.Thread):
             if is_fei:
                 npc_count = len(last_item["delX"])
                 npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
-                self.find_zd_walk_v3(last_item["findAddress"], "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", None, None, npc_count, npc_zones)
+                self.find_zd_walk_v3(last_item["findAddress"], "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, npc_count, npc_zones)
         self.zhengdian_flag = False
         gc.collect()
         if int(time.localtime().tm_hour) == 0:
@@ -6468,6 +6421,21 @@ class MyThread(threading.Thread):
                 print(f"打了第{self.daZhengDianCount}个整点")
                 return True
         return False
+
+    def _is_dragon_hour(self):
+        return int(time.localtime().tm_hour) in [2, 6, 10, 14, 18, 22]
+
+    def _is_snake_hour(self):
+        return int(time.localtime().tm_hour) in [1, 2, 9, 13, 15, 21]
+
+    def _get_normal_zd_images(self):
+        return self.normal_zd_images
+
+    def _get_long_images(self):
+        return self.long_images
+
+    def _get_she_images(self):
+        return self.she_images
 
     # V3辅助方法：统计小地图上小绿人数量
     def _count_xiaolvren(self):
@@ -11558,19 +11526,8 @@ class MyThread(threading.Thread):
             return False
         time.sleep(0.5)
         self.dm.KeyPressChar("g")
-        # self.waitFor("退出挂机|城西", self.gameLocation)
         self.waitFor("城西", self.dituLocation)
         return True
-        # self.findAndClickPic(
-        #     "名战殿",
-        #     "离开",
-        #     "名将使者",
-        #     self.gameLocation,
-        #     "城西",
-        #     self.dituLocation,
-        #     "0.112,0.112",
-        # )
-        # return True
 
     # 帮派任务
     def bangpaiRW(self, rw_name):
@@ -13409,7 +13366,7 @@ class MyThread(threading.Thread):
                 return
             self.mojingWhile()
         else:
-            if self.has_script != "all" and not "整点" in self.has_script:
+            if self.has_script != "vip" and not "整点" in self.has_script:
                 return
             print("开始整点")
             self.scriptName = "49整点"
@@ -14644,7 +14601,7 @@ class MyThread(threading.Thread):
         if not self.zhengdianFloor:
             self.show_error_message("请选择整点再启动!")
             return
-        if self.has_script != "all" and not "整点" in self.has_script:
+        if self.has_script != "vip" and not "整点" in self.has_script:
             self.show_error_message("没有整点脚本!")
             return
         self.riChangList = (
@@ -15243,12 +15200,6 @@ class MyFrame(wx.Frame):
         btm = wx.BoxSizer(wx.HORIZONTAL)
         link_color = wx.Colour(50, 80, 140)
 
-        self.help_link = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
-        self.help_link.SetBitmap(self._load_icon("btn_help.png", 14))
-        self.help_link.SetBackgroundColour(wx.Colour(243, 244, 248))
-        self.help_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.help_link.Bind(wx.EVT_BUTTON, self.on_help_link_click)
-
         self.contact = wx.StaticText(self.panel, label="群 955753707")
         self.contact.SetForegroundColour(wx.Colour(100, 105, 115))
         self.contact.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
@@ -15259,7 +15210,7 @@ class MyFrame(wx.Frame):
         self.update_notify_panel.Bind(wx.EVT_PAINT, self.on_update_notify_paint)
         self.update_notify_panel.SetToolTip("有新版本可用")
 
-        self.updateVersion = wx.Button(self.panel, size=(22, 22), style=wx.BORDER_NONE)
+        self.updateVersion = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
         update_bmp = wx.Bitmap(wx.Image(self.get_resource_path("serveAssets/images/check_update.png")).Scale(18, 18, wx.IMAGE_QUALITY_HIGH))
         self.updateVersion.SetBitmap(update_bmp)
         self.updateVersion.SetBackgroundColour(wx.Colour(243, 244, 248))
@@ -15267,10 +15218,32 @@ class MyFrame(wx.Frame):
         self.updateVersion.SetCursor(wx.Cursor(wx.CURSOR_HAND))
         self.updateVersion.Bind(wx.EVT_BUTTON, self.on_update_link_click)
 
-        btm.Add(self.help_link, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 12)
+        btm.Add(self.contact, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 12)
         btm.AddStretchSpacer()
-        btm.Add(self.contact, 0, wx.ALIGN_CENTER_VERTICAL)
-        btm.AddStretchSpacer()
+
+        self.help_link = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
+        self.help_link.SetBitmap(self._load_icon("btn_help.png", 18))
+        self.help_link.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.help_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.help_link.Bind(wx.EVT_BUTTON, self.on_help_link_click)
+        btm.Add(self.help_link, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
+
+        self.changepw_btn = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
+        self.changepw_btn.SetBitmap(self._load_icon("btn_changepw.png", 18))
+        self.changepw_btn.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.changepw_btn.SetToolTip("修改密码")
+        self.changepw_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.changepw_btn.Bind(wx.EVT_BUTTON, self.on_change_password)
+        btm.Add(self.changepw_btn, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 4)
+
+        self.logout_btn = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
+        self.logout_btn.SetBitmap(self._load_icon("btn_logout.png", 18))
+        self.logout_btn.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.logout_btn.SetToolTip("退出登录")
+        self.logout_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.logout_btn.Bind(wx.EVT_BUTTON, self.on_logout)
+        btm.Add(self.logout_btn, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 4)
+
         btm.Add(self.update_notify_panel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 3)
         btm.Add(self.updateVersion, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
 
@@ -15298,6 +15271,7 @@ class MyFrame(wx.Frame):
         self.user_name = "免费用户"
         self.end_time = "2199-12-30 23:59:59"
         self.remote_info = None
+        self.BASE_URL = "https://p01--script-serve--5yyh9pxyhqq4.code.run"
         self.current_version = self.get_current_version()
         self.update_notify_timer = None
         self.update_notify_visible = True
@@ -15373,19 +15347,19 @@ class MyFrame(wx.Frame):
         self.dropdown.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
 
     def _init_async(self):
-        self.remote_info = self.check_gitee_update()
-        if self.remote_info:
-            self.userData = self.remote_info.get("userData", {})
+        self.remote_info = self.check_server_update()
         self.mac_address = self.get_mac_address()
         self.mac_address1 = ":".join(
             ["{:02x}".format((uuid.getnode() >> elements) & 0xFF) for elements
              in range(0, 8 * 6, 8)][::-1]
         )
-        is_pass = self.is_user_valid()
-        if not is_pass:
-            self.user_name = "免费用户"
-            self.end_time = "2199-12-30 23:59:59"
-            self.has_script = "free"
+        app = wx.GetApp()
+        self.user_name = app.user_info.get("username", "免费用户")
+        self.has_script = app.user_info.get("has_script", "free")
+        self.end_time = app.user_info.get("end_time", "2199-12-30 23:59:59")
+        self.token = app.user_info.get("token", "")
+
+        self._update_user_display()
         print(
             f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
         if self.is_virtual_machine() and self.user_name not in [
@@ -15399,15 +15373,58 @@ class MyFrame(wx.Frame):
         wx.CallAfter(self.check_and_update_notify_status)
         self._init_done = True
 
+    def _update_user_display(self):
+        pass
+
+    def on_change_password(self, event):
+        app = wx.GetApp()
+        dlg = ChangePasswordDialog(app)
+        if dlg.ShowModal() == wx.ID_OK:
+            dlg.Destroy()
+            self._restart_to_login()
+        else:
+            dlg.Destroy()
+
+    def on_logout(self, event):
+        app = wx.GetApp()
+        dlg = wx.MessageDialog(self, "退出登录将重置正在运行的脚本，是否继续？", "退出登录",
+                               wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+        if dlg.ShowModal() != wx.ID_YES:
+            dlg.Destroy()
+            return
+        dlg.Destroy()
+        app.logout()
+        self._restart_to_login()
+
+    def _restart_to_login(self):
+        try:
+            keyboard.remove_all_hotkeys()
+        except:
+            pass
+        if self.thread and self.thread.is_alive():
+            self.thread.stoped = True
+            time.sleep(0.3)
+        self.Close()
+        app = wx.GetApp()
+        login = LoginWindow(app, skip_auto=True)
+        result = login.ShowModal()
+        login.Destroy()
+        if result != wx.ID_OK:
+            app.Exit()
+            import sys
+            sys.exit(0)
+        frame = MyFrame()
+        frame.Show()
+        threading.Thread(target=frame._init_async, daemon=True).start()
+
     def _load_icon(self, name, size):
         path = self.get_resource_path("serveAssets/images/" + name)
         img = wx.Image(path).Scale(size, size, wx.IMAGE_QUALITY_HIGH)
         return wx.Bitmap(img)
 
-    def check_gitee_update(self):
-        """检查Gitee上的版本信息"""
+    def check_server_update(self):
         try:
-            url = "https://gitee.com/syf0910/mhsg-script-update/raw/master/version.json"
+            url = f"{wx.GetApp().BASE_URL}/api/version"
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 return response.json()
@@ -16011,6 +16028,518 @@ class MyFrame(wx.Frame):
         app.MainLoop()
 
 
+class App(wx.App):
+    BASE_URL = "https://p01--script-serve--5yyh9pxyhqq4.code.run"
+
+    def __init__(self):
+        super().__init__()
+        self.user_info = {"username": "", "has_script": "free", "end_time": "2199-12-30 23:59:59", "token": ""}
+
+    def _load_cached(self):
+        try:
+            data = self._dpapi_load("mhsg_login")
+            if data:
+                return json.loads(data)
+        except:
+            pass
+        return {}
+
+    def _save_cached(self, username, password, auto_login):
+        try:
+            self._dpapi_save("mhsg_login", json.dumps({"username": username, "password": password, "auto_login": auto_login}))
+        except:
+            pass
+
+    @staticmethod
+    def _dpapi_save(name, plain):
+        import winreg
+        try:
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\MHSG")
+            winreg.SetValueEx(key, name, 0, winreg.REG_SZ, plain)
+            winreg.CloseKey(key)
+        except:
+            pass
+
+    @staticmethod
+    def _dpapi_load(name):
+        import winreg
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\MHSG")
+            value, _ = winreg.QueryValueEx(key, name)
+            winreg.CloseKey(key)
+            return value
+        except:
+            return None
+
+    def _get_mac(self):
+        try:
+            import uuid
+            return ":".join(["{:02x}".format((uuid.getnode() >> e) & 0xFF) for e in range(0, 8 * 6, 8)][::-1])
+        except:
+            return ""
+    mac_address = property(_get_mac)
+
+    def _api(self, path, body=None):
+        headers = {}
+        if self.user_info.get("token"):
+            headers["Authorization"] = f"Bearer {self.user_info['token']}"
+        try:
+            url = f"{self.BASE_URL}{path}"
+            if body is None:
+                response = requests.get(url, timeout=10)
+            else:
+                response = requests.post(url, json=body, timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            try:
+                return response.json()
+            except:
+                return None
+        except:
+            return None
+    def do_login(self, username, password, remember):
+        resp = self._api("/api/login", {"username": username, "password": password, "device_mac": self.mac_address})
+        if resp and resp.get("token"):
+            self.user_info = {
+                "username": resp.get("user_name", username),
+                "has_script": resp.get("has_script", "free"),
+                "end_time": resp.get("end_time", "2199-12-30 23:59:59"),
+                "token": resp["token"],
+                "schemes": resp.get("schemes", {}),
+            }
+            if remember:
+                self._save_cached(username, password, True)
+            return {"success": True}
+        return {"success": False, "error": resp.get("error", "登录失败") if resp else "网络错误"}
+
+    def do_register(self, username, password, remember):
+        resp = self._api("/api/register-free", {"username": username, "password": password, "device_mac": self.mac_address})
+        if resp and resp.get("token"):
+            self.user_info = {
+                "username": resp.get("user_name", username),
+                "has_script": "free",
+                "end_time": resp.get("end_time", "2199-12-30 23:59:59"),
+                "token": resp["token"],
+                "schemes": {},
+            }
+            if remember:
+                self._save_cached(username, password, True)
+            return {"success": True}
+        return {"success": False, "error": resp.get("error", "注册失败") if resp else "网络错误"}
+
+    def do_activate(self, username, password, invite_code, remember):
+        resp = self._api("/api/activate", {"username": username, "password": password, "invite_code": invite_code, "device_mac": self.mac_address})
+        if resp and resp.get("token"):
+            self.user_info = {
+                "username": resp.get("user_name", username),
+                "has_script": resp.get("has_script", "vip"),
+                "end_time": resp.get("end_time", "2199-12-30 23:59:59"),
+                "token": resp["token"],
+                "schemes": resp.get("schemes", {}),
+            }
+            if remember:
+                self._save_cached(username, password, True)
+            return {"success": True}
+        return {"success": False, "error": resp.get("error", "激活失败") if resp else "网络错误"}
+
+    def logout(self):
+        self.user_info = {"username": "", "has_script": "free", "end_time": "2199-12-30 23:59:59", "token": ""}
+
+
+class LoginWindow(wx.Dialog):
+    def __init__(self, app, skip_auto=False):
+        super().__init__(None, title="梦幻三国脚本", size=(360, 340), pos=(200, 60),
+                         style=wx.DEFAULT_DIALOG_STYLE)
+        self.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.app = app
+        self._cancelled = False
+        self._skip_auto = skip_auto
+
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.panel = panel
+        vs = wx.BoxSizer(wx.VERTICAL)
+
+        title = wx.StaticText(panel, label="梦幻三国脚本")
+        title.SetForegroundColour(wx.Colour(50, 80, 140))
+        title.SetFont(wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        vs.Add(title, 0, wx.ALIGN_CENTER | wx.ALL, 16)
+
+        # ── Loading 遮罩 ──
+        self.loading_panel = wx.Panel(panel, size=(300, 60))
+        self.loading_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        lds = wx.BoxSizer(wx.HORIZONTAL)
+        self.loading_text = wx.StaticText(self.loading_panel, label="正在自动登录...")
+        self.loading_text.SetForegroundColour(wx.Colour(100, 105, 115))
+        self.loading_text.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        lds.Add(self.loading_text, 1, wx.ALIGN_CENTER | wx.ALL, 12)
+
+        self.cancel_btn = wx.Button(self.loading_panel, size=(80, 28), style=wx.BORDER_NONE, label="取消")
+        self.cancel_btn.SetBackgroundColour(wx.Colour(192, 57, 43))
+        self.cancel_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+        self.cancel_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.cancel_btn.Bind(wx.EVT_BUTTON, self.on_cancel_auto)
+        lds.Add(self.cancel_btn, 0, wx.ALIGN_CENTER | wx.ALL, 12)
+        self.loading_panel.SetSizer(lds)
+        vs.Add(self.loading_panel, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
+        self.loading_panel.Hide()
+
+        # ── 常规输入界面 ──
+        self.main_section = wx.Panel(panel)
+        self.main_section.SetBackgroundColour(wx.Colour(243, 244, 248))
+        mvs = wx.BoxSizer(wx.VERTICAL)
+
+        input_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+        self.user_input = wx.TextCtrl(self.main_section, size=(290, 34))
+        self.user_input.SetHint("账号")
+        self.user_input.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.user_input.SetFont(input_font)
+        mvs.Add(self.user_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.pass_input = wx.TextCtrl(self.main_section, size=(290, 34), style=wx.TE_PASSWORD)
+        self.pass_input.SetHint("密码")
+        self.pass_input.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.pass_input.SetFont(input_font)
+        mvs.Add(self.pass_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
+        btn_bar = wx.BoxSizer(wx.HORIZONTAL)
+        self.login_btn = wx.Button(self.main_section, size=(141, 38), style=wx.BORDER_NONE, label="登录")
+        self.login_btn.SetBackgroundColour(wx.Colour(39, 174, 96))
+        self.login_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+        self.login_btn.SetFont(btn_font)
+        self.login_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.login_btn.Bind(wx.EVT_BUTTON, self.on_login)
+        btn_bar.Add(self.login_btn, 0, wx.RIGHT, 8)
+
+        self.skip_btn = wx.Button(self.main_section, size=(141, 38), style=wx.BORDER_NONE, label="直接使用")
+        self.skip_btn.SetBackgroundColour(wx.Colour(240, 242, 246))
+        self.skip_btn.SetForegroundColour(wx.Colour(100, 105, 115))
+        self.skip_btn.SetFont(btn_font)
+        self.skip_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.skip_btn.Bind(wx.EVT_BUTTON, self.on_skip)
+        btn_bar.Add(self.skip_btn, 0)
+        mvs.Add(btn_bar, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
+
+        bottom_bar = wx.BoxSizer(wx.HORIZONTAL)
+        self.remember_cb = wx.CheckBox(self.main_section, label="记住密码，自动登录")
+        self.remember_cb.SetValue(False)
+        self.remember_cb.SetForegroundColour(wx.Colour(100, 105, 115))
+        self.remember_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        bottom_bar.Add(self.remember_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+        bottom_bar.AddStretchSpacer()
+
+        self.activate_link = wx.StaticText(self.main_section, label="激活账号 →")
+        self.activate_link.SetForegroundColour(wx.Colour(50, 80, 140))
+        self.activate_link.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        self.activate_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.activate_link.Bind(wx.EVT_LEFT_DOWN, self.on_open_activate)
+        bottom_bar.Add(self.activate_link, 0, wx.ALIGN_CENTER_VERTICAL)
+        mvs.Add(bottom_bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+
+        self.error_label = wx.StaticText(self.main_section, label="")
+        self.error_label.SetForegroundColour(wx.Colour(192, 57, 43))
+        self.error_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        mvs.Add(self.error_label, 0, wx.ALIGN_CENTER | wx.BOTTOM, 4)
+
+        self.main_section.SetSizer(mvs)
+        vs.Add(self.main_section, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 26)
+
+        panel.SetSizer(vs)
+        ds = wx.BoxSizer(wx.VERTICAL)
+        ds.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(ds)
+
+        self.Bind(wx.EVT_CHAR_HOOK, self.on_key_down)
+
+        self._show_loading()
+        wx.CallAfter(self._start_auto_login)
+
+    def _show_loading(self):
+        self.main_section.Hide()
+        self.loading_panel.Show()
+        self.Layout()
+        self.Fit()
+
+    def _show_login(self):
+        self.loading_panel.Hide()
+        self.main_section.Show()
+        cached = self.app._load_cached()
+        if cached.get("username"):
+            self.user_input.SetValue(cached.get("username", ""))
+            self.pass_input.SetValue(cached.get("password", ""))
+        self.remember_cb.SetValue(cached.get("auto_login", False))
+        self.Layout()
+        self.Fit()
+
+    def on_cancel_auto(self, event):
+        self._cancelled = True
+
+    def _end_modal(self, result):
+        try:
+            self.EndModal(result)
+        except:
+            wx.CallAfter(self._end_modal, result)
+
+    def _start_auto_login(self):
+        self._cancelled = False
+        if self._skip_auto:
+            wx.CallAfter(self._show_login)
+            return
+
+        cached = self.app._load_cached()
+
+        if not cached or not cached.get("auto_login"):
+            wx.CallAfter(self._show_login)
+            return
+
+        if not cached.get("username") or not cached.get("password"):
+            self.app.user_info = {"username": "", "has_script": "free", "end_time": "2199-12-30 23:59:59", "token": ""}
+            self._end_modal(wx.ID_OK)
+            return
+
+        def do_login():
+            return self.app.do_login(cached["username"], cached["password"], True)
+
+        def on_result(result):
+            if self._cancelled:
+                self._show_login()
+                return
+            if result["success"]:
+                self.EndModal(wx.ID_OK)
+            else:
+                self._show_login()
+
+        t = threading.Thread(target=lambda: wx.CallAfter(on_result, do_login()), daemon=True)
+        t.start()
+
+    def on_login(self, event):
+        username = self.user_input.GetValue().strip()
+        password = self.pass_input.GetValue().strip()
+        if not username or not password:
+            self.error_label.SetLabel("请输入账号和密码")
+            return
+        result = self.app.do_login(username, password, self.remember_cb.GetValue())
+        if result["success"]:
+            self.EndModal(wx.ID_OK)
+        else:
+            self.error_label.SetLabel(result["error"])
+
+    def on_skip(self, event):
+        self.app._save_cached("", "", self.remember_cb.GetValue())
+        self.EndModal(wx.ID_OK)
+
+    def on_open_activate(self, event):
+        dlg = ActivateDialog(self.app, self.user_input.GetValue(), self.pass_input.GetValue(), self.remember_cb.GetValue())
+        if dlg.ShowModal() == wx.ID_OK:
+            self.EndModal(wx.ID_OK)
+        else:
+            self.user_input.SetValue(dlg.user_input.GetValue())
+            self.pass_input.SetValue(dlg.pass_input.GetValue())
+            self.remember_cb.SetValue(dlg.remember_cb.GetValue())
+        dlg.Destroy()
+
+    def on_key_down(self, event):
+        if event.GetKeyCode() == wx.WXK_RETURN:
+            self.on_login(None)
+        else:
+            event.Skip()
+
+
+class ActivateDialog(wx.Dialog):
+    def __init__(self, app, seed_user="", seed_pass="", seed_remember=False):
+        super().__init__(None, title="激活账号", size=(360, 340), pos=(200, 60),
+                         style=wx.DEFAULT_DIALOG_STYLE)
+        self.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.app = app
+
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(wx.Colour(243, 244, 248))
+        vs = wx.BoxSizer(wx.VERTICAL)
+
+        header = wx.BoxSizer(wx.HORIZONTAL)
+        back_btn = wx.Button(panel, size=(60, 26), style=wx.BORDER_NONE, label="← 返回")
+        back_btn.SetBackgroundColour(wx.Colour(240, 242, 246))
+        back_btn.SetForegroundColour(wx.Colour(100, 105, 115))
+        back_btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        back_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        back_btn.Bind(wx.EVT_BUTTON, self.on_back)
+        header.Add(back_btn, 0, wx.ALIGN_CENTER_VERTICAL)
+
+        header.AddStretchSpacer()
+
+        title = wx.StaticText(panel, label="激活/注册账号")
+        title.SetForegroundColour(wx.Colour(50, 80, 140))
+        title.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        header.Add(title, 0, wx.ALIGN_CENTER_VERTICAL)
+        vs.Add(header, 0, wx.EXPAND | wx.ALL, 12)
+
+        input_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+
+        self.invite_input = wx.TextCtrl(panel, size=(290, 34))
+        self.invite_input.SetHint("激活码 (选填，不填则注册免费账号)")
+        self.invite_input.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.invite_input.SetFont(input_font)
+        vs.Add(self.invite_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.user_input = wx.TextCtrl(panel, size=(290, 34))
+        self.user_input.SetHint("账号")
+        self.user_input.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.user_input.SetFont(input_font)
+        vs.Add(self.user_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.pass_input = wx.TextCtrl(panel, size=(290, 34), style=wx.TE_PASSWORD)
+        self.pass_input.SetHint("密码")
+        self.pass_input.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.pass_input.SetFont(input_font)
+        vs.Add(self.pass_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.user_input.SetValue(seed_user)
+        self.pass_input.SetValue(seed_pass)
+
+        self.remember_cb = wx.CheckBox(panel, label="记住密码，自动登录")
+        self.remember_cb.SetValue(seed_remember)
+        self.remember_cb.SetForegroundColour(wx.Colour(100, 105, 115))
+        self.remember_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        vs.Add(self.remember_cb, 0, wx.ALIGN_CENTER | wx.BOTTOM, 6)
+
+        btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
+        self.action_btn = wx.Button(panel, size=(290, 38), style=wx.BORDER_NONE, label="激活/注册")
+        self.action_btn.SetBackgroundColour(wx.Colour(50, 80, 140))
+        self.action_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+        self.action_btn.SetFont(btn_font)
+        self.action_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.action_btn.Bind(wx.EVT_BUTTON, self.on_action)
+        vs.Add(self.action_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.error_label = wx.StaticText(panel, label="")
+        self.error_label.SetForegroundColour(wx.Colour(192, 57, 43))
+        self.error_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        vs.Add(self.error_label, 0, wx.ALIGN_CENTER | wx.BOTTOM, 4)
+
+        panel.SetSizer(vs)
+        ds = wx.BoxSizer(wx.VERTICAL)
+        ds.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(ds)
+
+    def on_back(self, event):
+        self.EndModal(wx.ID_CANCEL)
+
+    def on_action(self, event):
+        username = self.user_input.GetValue().strip()
+        password = self.pass_input.GetValue().strip()
+        invite = self.invite_input.GetValue().strip()
+
+        if not username or not password:
+            self.error_label.SetLabel("请输入账号和密码")
+            return
+        if len(username) < 3 or len(password) < 6:
+            self.error_label.SetLabel("账号至少3位，密码至少6位")
+            return
+
+        remember = self.remember_cb.GetValue()
+
+        if invite:
+            result = self.app.do_activate(username, password, invite, remember)
+        else:
+            result = self.app.do_register(username, password, remember)
+
+        if result["success"]:
+            self.EndModal(wx.ID_OK)
+        else:
+            self.error_label.SetLabel(result["error"])
+
+
+class ChangePasswordDialog(wx.Dialog):
+    def __init__(self, app):
+        super().__init__(None, title="修改密码", size=(340, 310), pos=(250, 80),
+                         style=wx.DEFAULT_DIALOG_STYLE)
+        self.SetBackgroundColour(wx.Colour(243, 244, 248))
+        self.app = app
+
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(wx.Colour(243, 244, 248))
+        vs = wx.BoxSizer(wx.VERTICAL)
+
+        title = wx.StaticText(panel, label="修改密码")
+        title.SetForegroundColour(wx.Colour(50, 80, 140))
+        title.SetFont(wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        vs.Add(title, 0, wx.ALIGN_CENTER | wx.ALL, 16)
+
+        input_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+
+        self.user_input = wx.TextCtrl(panel, size=(260, 34))
+        self.user_input.SetHint("账号")
+        self.user_input.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.user_input.SetFont(input_font)
+        vs.Add(self.user_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.old_pass = wx.TextCtrl(panel, size=(260, 34), style=wx.TE_PASSWORD)
+        self.old_pass.SetHint("旧密码")
+        self.old_pass.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.old_pass.SetFont(input_font)
+        vs.Add(self.old_pass, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.new_pass = wx.TextCtrl(panel, size=(260, 34), style=wx.TE_PASSWORD)
+        self.new_pass.SetHint("新密码")
+        self.new_pass.SetBackgroundColour(wx.Colour(255, 255, 255))
+        self.new_pass.SetFont(input_font)
+        vs.Add(self.new_pass, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
+
+        btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
+        action_btn = wx.Button(panel, size=(260, 36), style=wx.BORDER_NONE, label="修改密码")
+        action_btn.SetBackgroundColour(wx.Colour(50, 80, 140))
+        action_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+        action_btn.SetFont(btn_font)
+        action_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        action_btn.Bind(wx.EVT_BUTTON, self.on_change)
+        vs.Add(action_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+
+        self.error_label = wx.StaticText(panel, label="")
+        self.error_label.SetForegroundColour(wx.Colour(192, 57, 43))
+        self.error_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        vs.Add(self.error_label, 0, wx.ALIGN_CENTER | wx.BOTTOM, 4)
+
+        panel.SetSizer(vs)
+        ds = wx.BoxSizer(wx.VERTICAL)
+        ds.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(ds)
+
+    def on_change(self, event):
+        username = self.user_input.GetValue().strip()
+        old = self.old_pass.GetValue().strip()
+        new = self.new_pass.GetValue().strip()
+        if not username or not old or not new:
+            self.error_label.SetLabel("请填写所有字段")
+            return
+        if len(new) < 6:
+            self.error_label.SetLabel("新密码至少6位")
+            return
+        result = self._api("/api/change-password", {"username": username, "old_password": old, "new_password": new})
+        if result.get("message"):
+            self.app._save_cached(username, "", True)
+            self.EndModal(wx.ID_OK)
+        else:
+            self.error_label.SetLabel(result.get("error", "修改失败"))
+
+    def _api(self, path, body):
+        headers = {}
+        token = self.app.user_info.get("token", "")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        try:
+            url = f"{self.app.BASE_URL}{path}"
+            r = requests.post(url, json=body, headers=headers, timeout=10)
+            if r.status_code == 200:
+                return r.json()
+            try:
+                return r.json()
+            except:
+                return {"error": "服务器错误"}
+        except:
+            return {"error": "网络错误"}
+
+
 class MyDialog(wx.Dialog):
     C_BG = wx.Colour(243, 244, 248)
     C_SURFACE = wx.Colour(240, 242, 246)
@@ -16106,31 +16635,34 @@ class MyDialog(wx.Dialog):
             tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
         main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
-        liubei_row = wx.BoxSizer(wx.HORIZONTAL)
-        liubei_row_label = wx.StaticText(panel, label="刘备:")
-        liubei_row_label.SetForegroundColour(self.C_MUTED)
-        liubei_row_label.SetMinSize((40, -1))
-        liubei_row.Add(liubei_row_label, 0, wx.ALIGN_CENTER_VERTICAL)
-        self.liubeiCountInputs = {}
-        for idx, lbl in [(0, "队长"), (1, "队友1"), (2, "队友2")]:
-            lb = wx.StaticText(panel, label=f"{lbl}:")
-            lb.SetForegroundColour(self.C_MUTED)
-            liubei_row.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
-            tc = wx.TextCtrl(panel, size=(32, 24), validator=NumberValidator())
-            tc.SetValue("1" if idx == 0 else "0")
-            tc.SetBackgroundColour(self.C_INPUT_BG)
-            tc.SetForegroundColour(self.C_TEXT)
-            self.liubeiCountInputs[idx] = tc
-            liubei_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
-        main_sizer.Add(liubei_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        if has_script != "free":
+            liubei_row = wx.BoxSizer(wx.HORIZONTAL)
+            liubei_row_label = wx.StaticText(panel, label="刘备:")
+            liubei_row_label.SetForegroundColour(self.C_MUTED)
+            liubei_row_label.SetMinSize((40, -1))
+            liubei_row.Add(liubei_row_label, 0, wx.ALIGN_CENTER_VERTICAL)
+            self.liubeiCountInputs = {}
+            for idx, lbl in [(0, "队长"), (1, "队友1"), (2, "队友2")]:
+                lb = wx.StaticText(panel, label=f"{lbl}:")
+                lb.SetForegroundColour(self.C_MUTED)
+                liubei_row.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
+                tc = wx.TextCtrl(panel, size=(32, 24), validator=NumberValidator())
+                tc.SetValue("1" if idx == 0 else "0")
+                tc.SetBackgroundColour(self.C_INPUT_BG)
+                tc.SetForegroundColour(self.C_TEXT)
+                self.liubeiCountInputs[idx] = tc
+                liubei_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
+            main_sizer.Add(liubei_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        else:
+            self.liubeiCountInputs = {0: 1, 1: 0, 2: 0}
 
-        # 开关行
         sw_row = wx.BoxSizer(wx.HORIZONTAL)
-        self.persistentLiubeiCB = wx.CheckBox(panel, label="刘备常驻")
-        self.persistentLiubeiCB.SetValue(True)
-        self.persistentLiubeiCB.SetForegroundColour(self.C_MUTED)
-        self.persistentLiubeiCB.Bind(wx.EVT_CHECKBOX, self.on_persistent_liubei_change)
-        sw_row.Add(self.persistentLiubeiCB, 0, wx.ALIGN_CENTER_VERTICAL)
+        if has_script != "free":
+            self.persistentLiubeiCB = wx.CheckBox(panel, label="刘备常驻")
+            self.persistentLiubeiCB.SetValue(True)
+            self.persistentLiubeiCB.SetForegroundColour(self.C_MUTED)
+            self.persistentLiubeiCB.Bind(wx.EVT_CHECKBOX, self.on_persistent_liubei_change)
+            sw_row.Add(self.persistentLiubeiCB, 0, wx.ALIGN_CENTER_VERTICAL)
         sw_row.AddStretchSpacer()
 
         btn_container = wx.Panel(panel, size=(132, 32))
@@ -16149,6 +16681,10 @@ class MyDialog(wx.Dialog):
         sw_row.Add(btn_container, 0, wx.ALIGN_CENTER_VERTICAL)
         main_sizer.Add(sw_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         main_sizer.AddSpacer(8)
+
+        if has_script == "free":
+            self.addBloudBtn.Hide()
+            self.closeBloudBtn.Hide()
 
         # ── 三栏：副本 | 战魂 | 整点 ──
         cols = wx.BoxSizer(wx.HORIZONTAL)
@@ -16283,8 +16819,8 @@ class MyDialog(wx.Dialog):
         self.check_boxes = []
         opts = ["战", "镇", "噬", "溶", "丹", "五", "云", "名", "八", "鼠", "英", "庐", "红", "渊", "帮", "官", "镜", "卖", "V", "整", "全"]
         for opt in opts:
-            # if opt == "整" and has_script == "free":
-            #     continue
+            if opt == "整" and has_script == "free":
+                continue
             cb = wx.CheckBox(day_panel, label=opt)
             cb.SetForegroundColour(self.C_MUTED)
             cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
@@ -17035,10 +17571,9 @@ class UpdateDialog(wx.Dialog):
         # webbrowser.open(self.download_url)
         self.Close()
 
-    def check_gitee_update(self):
-        """检查Gitee上的版本信息"""
+    def check_server_update(self):
         try:
-            url = "https://gitee.com/syf0910/mhsg-script-update/raw/master/version.json"
+            url = f"{self.BASE_URL}/api/version"
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 return response.json()
@@ -17049,7 +17584,7 @@ class UpdateDialog(wx.Dialog):
 
     @staticmethod
     def get_current_version():
-        return "26.1.2"  # 默认版本
+        return "26.1.2"
 
     def download_update(self):
         """
@@ -17060,23 +17595,14 @@ class UpdateDialog(wx.Dialog):
         import urllib.request, urllib.parse, http.cookiejar, time, os, \
             webbrowser, threading, sys
 
-        try:
-            import browser_cookie3
-        except Exception:
-            browser_cookie3 = None
-
         download_url = getattr(self, "download_url", None)
         if not download_url:
             return False
+        if download_url.startswith("/"):
+            download_url = self.BASE_URL + download_url
 
-        referer = "https://gitee.com/syf0910/mhsg-script-update/releases"
+        referer = self.BASE_URL
         cj = http.cookiejar.CookieJar()
-        if browser_cookie3:
-            try:
-                bcj = browser_cookie3.load(domain_name="gitee.com")
-                cj = bcj
-            except Exception:
-                pass
 
         opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(cj))
@@ -17305,15 +17831,15 @@ class UpdateDialog(wx.Dialog):
             # 完成弹窗提示（在 wx 环境下弹窗），并在被判定限速时追加提示
             if use_wx:
                 try:
-                    dst = state.get("dst") or os.path.basename(
-                        urllib.parse.unquote(
-                            urllib.parse.urlparse(download_url).path)
-                    )
-                    msg = f"下载完成：{dst}"
+                    dst = state.get("dst")
+                    msg = f"下载完成：{os.path.basename(dst) if dst else ''}\n是否立即安装更新？"
                     if limited:
                         msg += "\n注意：下载速率较低，可能被限速。"
-                    wx.CallAfter(lambda: wx.MessageBox(msg, "下载完成",
-                                                       wx.OK | wx.ICON_INFORMATION))
+                    dlg = wx.MessageDialog(None, msg, "下载完成", wx.YES_NO | wx.ICON_INFORMATION)
+                    dlg_result = dlg.ShowModal()
+                    dlg.Destroy()
+                    if dlg_result == wx.ID_YES and dst and state["ok"]:
+                        self._install_update(dst)
                 except Exception:
                     pass
 
@@ -17324,10 +17850,56 @@ class UpdateDialog(wx.Dialog):
             except Exception:
                 pass
 
+    @staticmethod
+    def _install_update(zip_path):
+        import zipfile, shutil, subprocess, sys
+        try:
+            extract_dir = os.path.join(os.getcwd(), "_update_tmp")
+            if os.path.exists(extract_dir):
+                shutil.rmtree(extract_dir, ignore_errors=True)
+            os.makedirs(extract_dir, exist_ok=True)
+
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(extract_dir)
+
+            for root, dirs, files in os.walk(extract_dir):
+                for f in files:
+                    src = os.path.join(root, f)
+                    rel = os.path.relpath(src, extract_dir)
+                    dest = os.path.join(os.getcwd(), rel)
+                    os.makedirs(os.path.dirname(dest), exist_ok=True)
+                    try:
+                        shutil.copy2(src, dest)
+                    except:
+                        pass
+
+            shutil.rmtree(extract_dir, ignore_errors=True)
+            try:
+                os.remove(zip_path)
+            except:
+                pass
+
+            wx.MessageBox("更新安装完成，点击确定后将重启应用。", "安装完成", wx.OK | wx.ICON_INFORMATION)
+            exe = sys.executable
+            script = sys.argv[0]
+            subprocess.Popen([exe, script], close_fds=True)
+            os._exit(0)
+        except Exception as e:
+            wx.MessageBox(f"安装更新失败: {e}", "错误", wx.OK | wx.ICON_ERROR)
+
 
 if __name__ == "__main__":
-    app = wx.App()
+    application = App()
+
+    login = LoginWindow(application)
+    result = login.ShowModal()
+    login.Destroy()
+    if result != wx.ID_OK:
+        application.Exit()
+        import sys
+        sys.exit(0)
+
     frame = MyFrame()
     frame.Show()
     threading.Thread(target=frame._init_async, daemon=True).start()
-    app.MainLoop()
+    application.MainLoop()

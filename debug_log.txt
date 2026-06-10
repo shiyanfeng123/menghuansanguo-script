@@ -1,8 +1,0 @@
-Python exe: E:\project\python\.venv\Scripts\python.exe
-Pip exe: E:\project\python\.venv\Scripts\pip.exe
-
-pip --version:
-pip 25.0.1 from E:\project\python\.venv\lib\site-packages\pip (python 3.9)
-
-
-
