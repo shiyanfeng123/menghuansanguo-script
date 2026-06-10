@@ -196,9 +196,9 @@ class MyThread(threading.Thread):
         self.heifengFloor = ""
         self.guajiLocation = None
         # 创建子线程
-        self.child_thread = threading.Thread(target=self.child_task)
-        self.win1_thread = threading.Thread(target=self.find_and_bing_windows1)
-        self.win2_thread = threading.Thread(target=self.find_and_bing_windows2)
+        self.child_thread = threading.Thread(target=self.child_task, daemon=True)
+        self.win1_thread = threading.Thread(target=self.find_and_bing_windows1, daemon=True)
+        self.win2_thread = threading.Thread(target=self.find_and_bing_windows2, daemon=True)
         self.guanDuCount = 0
         self.hasZhengDianCount = 0
         self.daZhengDianCount = 0
@@ -15776,6 +15776,7 @@ class MyFrame(wx.Frame):
         # 创建新线程（每次都是全新的）
         scriptName = self.scriptName
         self.thread = MyThread(scriptName, self.userData)
+        self.thread.daemon = True
         self.thread.frame = self
         self.thread.overed = False
         self.thread.stoped = False
@@ -15947,16 +15948,13 @@ class MyFrame(wx.Frame):
         """处理窗口关闭事件"""
         print("正在关闭窗口...")
         try:
-            # 停止脚本
             if self.thread is not None:
                 self.thread.stoped = True
                 self.thread.overed = True
 
-                # 通知所有等待的线程
                 with condition:
                     condition.notify_all()
 
-                # 尝试解绑窗口
                 try:
                     if hasattr(self.thread, "dm") and self.thread.dm:
                         self.thread.dm.UnBindWindow()
@@ -15973,26 +15971,22 @@ class MyFrame(wx.Frame):
                 except:
                     pass
 
-            # 清理键盘快捷键
             try:
                 keyboard.unhook_all()
             except:
                 pass
-
-            # 销毁窗口并退出
-            self.Destroy()
-            wx.GetApp().ExitMainLoop()
         except Exception as e:
             print(f"关闭窗口时发生错误: {e}")
-            # 如果正常关闭失败，强制退出
+        finally:
             try:
                 self.Destroy()
             except:
                 pass
             try:
-                os._exit(0)
+                wx.GetApp().ExitMainLoop()
             except:
                 pass
+            os._exit(0)
 
     def on_select_script(self, event):
         self.scriptName = self.dropdown.GetValue()
