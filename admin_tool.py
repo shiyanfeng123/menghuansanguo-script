@@ -260,7 +260,11 @@ class AdminFrame(wx.Frame):
 
         self.add_script_choice = wx.ComboBox(right_panel, size=(60, 28), choices=["vip", "free"], value="vip")
         self.add_script_choice.SetFont(input_font)
-        add_row.Add(self.add_script_choice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+        add_row.Add(self.add_script_choice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+
+        self.add_role_choice = wx.ComboBox(right_panel, size=(60, 28), choices=["user", "admin"], value="user")
+        self.add_role_choice.SetFont(input_font)
+        add_row.Add(self.add_role_choice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
 
         self.add_btn = wx.Button(right_panel, size=(60, 28), style=wx.BORDER_NONE, label="添加")
         self.add_btn.SetBackgroundColour(wx.Colour(39, 174, 96))
@@ -449,8 +453,9 @@ class AdminFrame(wx.Frame):
         self._show_status("添加中...")
 
         def do_add():
+            role = self.add_role_choice.GetValue()
             return self.app._api_sync("/api/users/add", {
-                "username": username, "password": password, "has_script": hs, "days": days,
+                "username": username, "password": password, "has_script": hs, "days": days, "role": role,
             })
 
         def on_result(resp):
