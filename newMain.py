@@ -21,7 +21,7 @@ import sys
 from collections import OrderedDict
 
 # 导入战斗自动操作脚本
-from Kanloong_combat_script_copy import CombatAutoScript
+from Kanloong_combat_script import CombatAutoScript
 
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --hidden-import Kanloong_combat_script_copy --icon=serveAssets\images\script.ico .\newMain.py
 # pyinstaller   newMain.spec

@@ -22,9 +22,9 @@ import sys
 from collections import OrderedDict
 
 # 导入战斗自动操作脚本``
-from Kanloong_combat_script_copy import CombatAutoScript
+from Kanloong_combat_script import CombatAutoScript
 
-# 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --add-data "user_scripts;user_scripts" --hidden-import Kanloong_combat_script_copy --hidden-import ScriptEngine --hidden-import ScriptFactory --icon=serveAssets\images\script.ico .\serveScript.py
+# 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --add-data "user_scripts;user_scripts" --hidden-import Kanloong_combat_script --hidden-import ScriptEngine --hidden-import ScriptFactory --icon=serveAssets\images\script.ico .\serveScript.py
 # pyinstaller serveScript.spec
 condition = threading.Condition()
 

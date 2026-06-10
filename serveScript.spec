@@ -7,7 +7,7 @@ a = Analysis(
     binaries=[],
     datas=[('serveAssets', 'serveAssets'),('user_scripts', 'user_scripts'),('version_info.txt', 'version_info.txt')],
     hiddenimports=[
-        'Kanloong_combat_script_copy',
+        'Kanloong_combat_script',
         'ScriptEngine',
         'ScriptFactory',
         'wx.lib.scrolledpanel',
