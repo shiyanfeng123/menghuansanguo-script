@@ -15257,6 +15257,7 @@ class MyFrame(wx.Frame):
         # font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
         # self.contact.SetFont(font)
         self.Bind(wx.EVT_CLOSE, self.on_close)
+        self._closing_soft = False
         self.game_name = ""
         self.teammate1_name = ""
         self.teammate2_name = ""
@@ -15404,6 +15405,7 @@ class MyFrame(wx.Frame):
         if self.thread and self.thread.is_alive():
             self.thread.stoped = True
             time.sleep(0.3)
+        self._closing_soft = True
         self.Close()
         app = wx.GetApp()
         login = LoginWindow(app, skip_auto=True)
@@ -15982,11 +15984,12 @@ class MyFrame(wx.Frame):
                 self.Destroy()
             except:
                 pass
-            try:
-                wx.GetApp().ExitMainLoop()
-            except:
-                pass
-            os._exit(0)
+            if not self._closing_soft:
+                try:
+                    wx.GetApp().ExitMainLoop()
+                except:
+                    pass
+                os._exit(0)
 
     def on_select_script(self, event):
         self.scriptName = self.dropdown.GetValue()
