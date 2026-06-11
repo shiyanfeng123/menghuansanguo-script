@@ -1,6 +1,6 @@
+# 大漠插件
 import random
 import time
-import webbrowser
 import keyboard
 import threading
 import wx
@@ -6175,97 +6175,6 @@ class MyThread(threading.Thread):
                 return False
             self.confidenceNum = 0.9
 
-    def find_zd_in_view_v2(self, base_image, find_sx, backup_images=None,
-                            auto_combat_key=None, exclude_zones=None):
-        if exclude_zones is None:
-            exclude_zones = []
-        find_left_flag = False
-        attacked_set = set()
-        xiaolvren_bmp = self.get_resource_path(
-            "serveAssets/images/zhengdian/xiaolvren.bmp")
-        while True:
-            if self.overed:
-                return
-            if self.check_stop_or_over():
-                return
-            with condition:
-                if self.stoped:
-                    condition.wait()
-            all_positions = []
-            str_positions = self._find_all_str(find_sx, self.gameBottomLocation)
-            all_positions.extend(str_positions)
-            if backup_images:
-                for pair in backup_images:
-                    pic_path = "|".join(
-                        self.get_resource_path(p) for p in pair)
-                    pic_positions = self._find_all_pic(pic_path,
-                                                        self.gameBottomLocation)
-                    all_positions.extend(pic_positions)
-            candidates = self._merge_deduplicate_sort(
-                all_positions, attacked_set, exclude_zones
-            )
-            if candidates:
-                any_success = False
-                for target in candidates:
-                    attacked_set.add((target.x, target.y))
-                    success = self._try_attack_zd(
-                        target, base_image, auto_combat_key
-                    )
-                    if success:
-                        print(f"打了{find_sx}")
-                        any_success = True
-                        break
-                if any_success:
-                    continue
-            # ---- 小绿人双重判断: 每轮检查小地图是否还有小绿人 ----
-            if not self._has_xiaolvren_on_ditu():
-                print(f"小地图没有小绿人了, {find_sx}已清完")
-                self.confidenceNum = 0.9
-                break
-            # ---- 左右走路 ----
-            left_x = random.randint(738, 748)
-            rand_y = 80
-            right_x = random.randint(861, 871)
-            self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-            self.confidenceNum = 0.6
-            if not find_left_flag:
-                if self.find_pic_or_str(
-                        self.get_resource_path(
-                            "serveAssets/images/zhengdian/xiaobairen.bmp"),
-                        (725, 46, 751, 94), 0):
-                    self.dm.MoveTo(right_x, rand_y)
-                    time.sleep(0.001)
-                    self.dm.LeftClick()
-                    find_left_flag = True
-                else:
-                    self.dm.MoveTo(left_x, rand_y)
-                    time.sleep(0.001)
-                    self.dm.LeftClick()
-            else:
-                if self.find_pic_or_str(
-                        self.get_resource_path(
-                            "serveAssets/images/zhengdian/xiaobairen.bmp"),
-                        (861, 41, 881, 96), 0):
-                    self.confidenceNum = 0.9
-                    break
-                else:
-                    self.dm.MoveTo(right_x, rand_y)
-                    time.sleep(0.001)
-                    self.dm.LeftClick()
-            self.confidenceNum = 0.9
-            time.sleep(0.6)
-
-    def _has_xiaolvren_on_ditu(self):
-        """检查小地图(dituLocation)是否有小绿人"""
-        try:
-            xiaolvren_bmp = self.get_resource_path(
-                "serveAssets/images/zhengdian/xiaolvren.bmp")
-            dx, dy, dw, dh = self.dituLocation
-            result = self.dm.FindPicEx(dx, dy, dw, dh, xiaolvren_bmp, "", 0.9, 0)
-            return bool(result)
-        except:
-            return True  # 出错时不中断流程
-
     @staticmethod
     def _is_long_she_hour():
         """当前整点是否有龙/蛇 (龙3/7/11/15/19/23, 蛇2/6/10/14/18/22)"""
@@ -6281,66 +6190,6 @@ class MyThread(threading.Thread):
     def _is_she_hour():
         hour = __import__("datetime").datetime.now().hour
         return hour in (2, 6, 10, 14, 18, 22)
-
-    def zhengdian_by_xiaolvren_v2(self, base_image, search_config):
-        exclude_zones = search_config.get("exclude", [])
-        search_text = search_config.get("text", "")
-        search_images = search_config.get("images", "")
-        self.confidenceNum = 0.6
-        base_image_res = self.waitFor(base_image, self.dituLocation, 3)
-        if not base_image_res:
-            return
-        attacked_set = set()
-        x, y, w, h = self.dituLocation
-        xiaolvren = self.get_resource_path(
-            "serveAssets/images/zhengdian/xiaolvren.bmp")
-        pic_size = self.dm.GetPicSize(xiaolvren).split(",")
-        pic_w, pic_h = int(pic_size[0]), int(pic_size[1])
-        xiaolvren_color = "07d307"
-        while True:
-            if self.overed or self.check_stop_or_over():
-                return
-            with condition:
-                if self.stoped:
-                    condition.wait()
-            hit_any = False
-            green_result = self.dm.FindPicEx(
-                int(x), int(y), int(w), int(h), xiaolvren, "", 0.9, 0
-            )
-            if green_result:
-                green_dots = green_result.split("|")
-                green_dots = self._filter_green_dots(
-                    green_dots, pic_w, pic_h, xiaolvren_color,
-                    attacked_set, exclude_zones
-                )
-                screen_cx = self.locationX + 400
-                screen_cy = self.locationY + 300
-                green_dots.sort(
-                    key=lambda d: (d[0] - screen_cx) ** 2 + (
-                                d[1] - screen_cy) ** 2)
-                for dot_x, dot_y in green_dots:
-                    self.dm.MoveTo(dot_x, dot_y)
-                    time.sleep(0.001)
-                    self.dm.LeftClick()
-                    # 等待角色移动到小绿人位置 (最多8秒)
-                    arrived = self._wait_arrive_zhengdian(search_text, search_images, 8)
-                    if not arrived:
-                        continue
-                    found_any = self._scan_and_attack_in_view(
-                        search_text, search_images, base_image,
-                        attacked_set, exclude_zones
-                    )
-                    if found_any:
-                        hit_any = True
-                        break
-            if hit_any:
-                continue
-            found_any = self._scan_and_attack_in_view(
-                search_text, search_images, base_image,
-                attacked_set, exclude_zones
-            )
-            if not found_any:
-                break
 
     def _wait_arrive_zhengdian(self, search_text, search_images, max_wait):
         """点击小绿人后等待角色到达附近 - 通过检查搜索文字/图片是否出现"""
@@ -17135,8 +16984,8 @@ class MyDialog(wx.Dialog):
             "zhanhun_count": self.zhanhun_count.GetValue(),
             "shihun_count": self.shihun_count.GetValue(),
             "shihun_floor": self.choiceShiHunCeng.GetValue(),
-            "persistent_liubei": self.persistentLiubeiCB.GetValue(),
-            "liubei_counts": {idx: self.liubeiCountInputs[idx].GetValue() for idx in self.liubeiCountInputs},
+            "persistent_liubei": self.persistentLiubeiCB.GetValue() if hasattr(self, "persistentLiubeiCB") else True,
+            "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
         }
 
     def apply_settings(self, settings):
@@ -17164,12 +17013,14 @@ class MyDialog(wx.Dialog):
         self.zhanhun_count.SetValue(settings.get("zhanhun_count", ""))
         self.shihun_count.SetValue(settings.get("shihun_count", ""))
         self.choiceShiHunCeng.SetValue(settings.get("shihun_floor", ""))
-        self.persistentLiubeiCB.SetValue(settings.get("persistent_liubei", True))
+        if hasattr(self, "persistentLiubeiCB"):
+            self.persistentLiubeiCB.SetValue(settings.get("persistent_liubei", True))
         liubei_counts = settings.get("liubei_counts", {"0": "1", "1": "0", "2": "0"})
         for idx in self.liubeiCountInputs:
             key = str(idx)
             default_val = "1" if idx == 0 else "0"
-            self.liubeiCountInputs[idx].SetValue(str(liubei_counts.get(key, default_val)))
+            if not isinstance(self.liubeiCountInputs[idx], int):
+                self.liubeiCountInputs[idx].SetValue(str(liubei_counts.get(key, default_val)))
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -17294,11 +17145,15 @@ class MyDialog(wx.Dialog):
             parent.addBloudFlag = False
         else:
             parent.addBloudFlag = True
-        parent.enablePersistentLiubei = self.persistentLiubeiCB.GetValue()
+        parent.enablePersistentLiubei = self.persistentLiubeiCB.GetValue() if hasattr(self, "persistentLiubeiCB") else True
         parent.liubeiCounts = {}
         for idx in self.liubeiCountInputs:
-            val = self.liubeiCountInputs[idx].GetValue()
-            parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
+            item = self.liubeiCountInputs[idx]
+            if isinstance(item, int):
+                parent.liubeiCounts[idx] = item
+            else:
+                val = item.GetValue()
+                parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
         # parent.selections = selections
         # 关闭对话框
         self.EndModal(wx.ID_OK)

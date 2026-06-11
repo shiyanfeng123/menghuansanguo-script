@@ -1,4 +1,5 @@
 # from datetime import time
+# 前台版本
 # import uuid
 import pyautogui
 import random
