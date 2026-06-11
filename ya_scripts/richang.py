@@ -17,7 +17,7 @@ def richang(engine):
         zhengdian(engine)
 
     if "战" in sel:
-        if not engine.find_str("洛阳", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("洛阳", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图洛阳大道",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -31,7 +31,7 @@ def richang(engine):
             zhanhun(engine)
 
     if "镇" in sel:
-        if not engine.find_str("洛阳", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("洛阳", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图洛阳大道",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -45,7 +45,7 @@ def richang(engine):
             zhanhun(engine)
 
     if "噬" in sel:
-        if not engine.find_str("洛阳", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("洛阳", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图洛阳大道",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -62,7 +62,7 @@ def richang(engine):
         return
 
     if "溶" in sel:
-        if not engine.find_str("绿林路", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("绿林路", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图绿林路",
                 "ya_assets/images/zhengdian/zhuojun.bmp",
@@ -80,7 +80,7 @@ def richang(engine):
         return
 
     if "丹" in sel:
-        if not engine.find_str("五指峡谷", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("五指峡谷", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图五指峡谷",
                 "ya_assets/images/zhengdian/zhuojun.bmp",
@@ -97,7 +97,7 @@ def richang(engine):
         return
 
     if "五" in sel:
-        if not engine.find_str("野外西", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("野外西", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图野外西",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -115,7 +115,7 @@ def richang(engine):
         return
 
     if "云" in sel:
-        if not engine.find_str("嵩山", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("嵩山", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图嵩山",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -127,7 +127,7 @@ def richang(engine):
         time.sleep(1)
 
     if "名" in sel:
-        if not engine.find_str("洛阳", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("洛阳", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图洛阳大道",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -150,7 +150,7 @@ def richang(engine):
         return
 
     if "八" in sel:
-        if not engine.find_str("许昌", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("许昌", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图许昌城",
                 "ya_assets/images/zhengdian/xuchang.bmp",
@@ -162,7 +162,7 @@ def richang(engine):
         time.sleep(1)
 
     if "鼠" in sel:
-        if not engine.find_str("碧水地穴", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("碧水地穴", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图碧水地穴",
                 "ya_assets/images/zhengdian/xiangyang.bmp",
@@ -213,7 +213,7 @@ def richang(engine):
         return
 
     if "红" in sel:
-        if not engine.find_str("虎牢关外", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("虎牢关外", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图虎牢关外",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -227,7 +227,7 @@ def richang(engine):
             hong(engine)
 
     if "渊" in sel:
-        if not engine.find_str("虎牢关外", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("虎牢关外", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图虎牢关外",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -241,7 +241,7 @@ def richang(engine):
             qingyuan(engine)
 
     if "帮" in sel:
-        if not engine.find_str("城西", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("城西", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图城西",
                 "ya_assets/images/zhengdian/luoyang.bmp",
@@ -264,7 +264,7 @@ def richang(engine):
         return
 
     if "官" in sel:
-        if not engine.find_str("官渡", engine.dituLocation, 0):
+        if not engine.find_pic_or_str("官渡", engine.dituLocation, 0):
             engine.go_in_ditu(
                 "地图官渡",
                 "ya_assets/images/zhengdian/xuchang.bmp",

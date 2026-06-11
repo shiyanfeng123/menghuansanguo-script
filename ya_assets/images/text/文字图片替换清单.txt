@@ -1,202 +1,618 @@
-# 文字目标 → 图片替换完整清单（基于serveScript + Kanloong_combat_script）
+# 文字目标 → 图片替换完整清单（全量版 — 已校对 ya_engine.py + ya_scripts/*.py）
+#
+# 说明
+# 以 serveScript.py、Kanloong_combat_script.py 以及 ya_engine.py、ya_scripts/ 中实际调用的文字为目标。
+# 文件名全部使用拼音，存放于 ya_assets/images/text/ 目录。
+#
+# 【查找机制】 TEXT_TO_IMAGE_MAP 查表 → 图片存在则用图像匹配(30-50ms) → 不存在则回退 RapidOCR(300-500ms)
+# 【使用的方法】 waitFor / waitForAAndClickB / waitForTwo / find_pic_or_str / find_str / findAndClickPic
 
-## 说明
-以 `serveScript.py` 和 `Kanloong_combat_script.py` 中实际调用的文字为目标。
-**文件名全部使用拼音**，存放于 `ya_assets/images/text/` 目录。
+################################################################################
+# 一、高优先级（每次脚本必用，最先截图）12个
+################################################################################
 
----
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 进入 | jinru.bmp | NPC对话框底部 | gameBottomLocation | waitFor / find_str |
+| 点击 | dianji.bmp | 游戏底部提示栏 | gameBottomLocation | find_str |
+| 攻城 | gongcheng.bmp | 攻城活动界面底部 | gameBottomLocation | waitFor / find_str |
+| 打就打1 | dajiuda1.bmp | 野外遇敌界面底部 | gameBottomLocation | waitFor / find_str |
+| 被挑战 | beitiaoozhan.bmp | 被其他玩家挑战提示 | gameBottomLocation | find_str |
+| 挑战 | tiaozhan.bmp | NPC对话/野外怪物 | gameBottomLocation | waitFor |
+| 挂机中 | guajizhong.bmp | 挂机状态底部 | gameBottomLocation | find_pic_or_str |
+| 退出挂机 | tuichuguaji.bmp | 挂机界面 | gameLocation | waitFor |
+| 城西 | chengxi.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 洛阳 | luoyang.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 官渡 | guandu.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 五层 | wuceng.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
 
-## 一、高优先级（每次脚本必用，最先截图）
+以上 12个，截图后找图速度即可从 300-500ms 降至 30-50ms。
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 进入 | jinru.bmp | NPC对话框底部 | gameBottomLocation | 黄色"进入"按钮，与NPC对话后出现 |
-| 点击 | dianji.bmp | 游戏底部提示栏 | gameBottomLocation | 黄色"点击"提示文字 |
-| 攻城 | gongcheng.bmp | 攻城活动界面底部 | gameBottomLocation | 黄色"攻城"按钮 |
-| 打就打1 | dajiuda1.bmp | 野外遇敌界面底部 | gameBottomLocation | 黄色"打就打"战斗按钮 |
-| 被挑战 | beitiaoozhan.bmp | 被其他玩家挑战提示 | gameBottomLocation | 黄色"被挑战"文字 |
-| 挑战 | tiaozhan.bmp | NPC对话/野外怪物 | gameBottomLocation | 黄色"挑战"按钮 |
-| 挂机中 | guajizhong.bmp | 挂机状态底部 | gameBottomLocation | "挂机中"状态文字 |
-| 退出挂机 | tuichuguaji.bmp | 挂机界面 | gameLocation | "退出挂机"按钮文字 |
-| 城西 | chengxi.bmp | 右上角小地图 | dituLocation | 洛阳城西区域，白色地名 |
-| 洛阳 | luoyang.bmp | 右上角小地图 | dituLocation | 洛阳主城，白色地名 |
-| 官渡 | guandu.bmp | 右上角小地图 | dituLocation | 官渡战场，白色地名 |
-| 五层 | wuceng.bmp | 右上角小地图 | dituLocation | 黑风五层，白色地名 |
+################################################################################
+# 二、中优先级（副本脚本用）
+################################################################################
 
-以上 **12个**，截图后找图速度即可从 2-5秒 降至 30-50ms。
+## 2.1 副本入口NPC（feiFb 飞行列表中的文字）11个
+# 使用的方法: feiFb → find_str / fing_fei_in_image_or_str → find_pic_or_str
 
----
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 副本曹操 | fuben_caocao.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本魔镜使者 | fuben_mojingshizhe.bmp | 普通副本飞行列表 | gameLocation | feiFb |
+| 副本南华老人 | fuben_nanhualaoren.bmp | 普通副本飞行列表 | gameLocation | feiFb |
+| 副本分身 | fuben_fenshen.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本仙人 | fuben_xianren.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本猎鼠人 | fuben_lieshuren.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本挑战赛 | fuben_tiaozhansai.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本典韦 | fuben_dianwei.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本老仙 | fuben_laoxian.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本龙天啸 | fuben_longtianxiao.bmp | 精英副本飞行列表 | gameLocation | feiFb |
+| 副本老板 | fuben_laoban.bmp | 精英副本飞行列表 | gameLocation | feiFb |
 
-## 二、中优先级（副本脚本用）
+## 2.2 副本退出目标（outScript / 地图确认用）16个
+# 右上角小地图白色地名
 
-### 2.1 副本入口NPC（feiFb 飞行列表中的文字）
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 鸟巢粮仓 | niaochaoliangcang.bmp | 右上角小地图 | dituLocation | waitFor / outScript |
+| 战魂 | zhanhun.bmp | 右上角小地图 | dituLocation | waitFor |
+| 噬魂 | shihun.bmp | 右上角小地图 | dituLocation | waitFor |
+| 镜像地层 | jingxiangdiceng.bmp | 右上角小地图 | dituLocation | waitFor |
+| 迷幻境 | mihuanjing.bmp | 右上角小地图 | dituLocation | waitFor |
+| 狱境 | yujing.bmp | 右上角小地图 | dituLocation | waitFor |
+| 炎冰境 | yanbingjing.bmp | 右上角小地图 | dituLocation | waitFor |
+| 印魔殿 | yinmodian.bmp | 右上角小地图 | dituLocation | waitFor |
+| 岩石洞 | yanshidong.bmp | 右上角小地图 | dituLocation | waitFor |
+| 龙巢 | longchao.bmp | 右上角小地图 | dituLocation | waitFor |
+| 山寨内堂 | shanzaineitang.bmp | 右上角小地图 | dituLocation | waitFor |
+| 炼丹房 | danlianfang.bmp | 右上角小地图 | dituLocation | waitFor / clearBag |
+| 远古溶洞 | yuanguongdong.bmp | 右上角小地图 | dituLocation | waitFor |
+| 粮仓 | liangcang.bmp | 右上角小地图 | dituLocation | waitFor |
+| 云端 | yunduan.bmp | 右上角小地图 | dituLocation | waitFor |
+| 鼠殿 | shudian.bmp | 右上角小地图 | dituLocation | waitFor |
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 副本曹操 | fuben_caocao.bmp | 精英副本飞行列表 | gameLocation | 精英副本列表中的"曹操"入口文字 |
-| 副本魔镜使者 | fuben_mojingshizhe.bmp | 普通副本飞行列表 | gameLocation | 普通副本列表中的"魔镜使者"入口文字 |
-| 副本南华老人 | fuben_nanhualaoren.bmp | 普通副本飞行列表 | gameLocation | 普通副本列表中的"南华老人"入口文字 |
-| 副本分身 | fuben_fenshen.bmp | 精英副本飞行列表 | gameLocation | 精英副本列表中的"分身"入口文字 |
-| 副本仙人 | fuben_xianren.bmp | 精英副本飞行列表 | gameLocation | 精英副本列表中的"仙人"入口文字 |
-| 副本猎鼠人 | fuben_lieshuren.bmp | 精英副本飞行列表 | gameLocation | 精英副本列表中的"猎鼠人"入口文字 |
-| 副本挑战赛 | fuben_tiaozhansai.bmp | 精英副本飞行列表 | gameLocation | 精英副本列表中的"挑战赛"入口文字 |
-| 副本典韦 | fuben_dianwei.bmp | 精英副本飞行列表 | gameLocation | 精英副本列表中的"典韦"入口文字 |
-| 副本老仙 | fuben_laoxian.bmp | 精英副本飞行列表 | gameLocation | 精英副本列表中的"老仙"入口文字 |
-| 副本龙天啸 | fuben_longtianxiao.bmp | 精英副本飞行列表(注释) | gameLocation | 精英副本列表中的"龙天啸"入口文字 |
-| 副本老板 | fuben_laoban.bmp | 精英副本飞行列表(注释) | gameLocation | 精英副本列表中的"老板"入口文字 |
+## 2.3 副本入口 — 按钮/传送门交互文字
+# 精英/普通副本进入时点击的确认按钮
 
-### 2.2 副本退出目标（outScript 退出副本用，右上角小地图文字）
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 进精英 | jinjingying.bmp | 副本入口界面 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 知道了 | zhidaole.bmp | NPC对话确认 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 鸟巢粮仓 | niaochaoliangcang.bmp | 右上角小地图 | dituLocation | 战魂副本出口，白色地名 |
-| 战魂 | zhanhun.bmp | 右上角小地图 | dituLocation | 战魂副本大地，白色地名 |
-| 噬魂 | shihun.bmp | 右上角小地图 | dituLocation | 噬魂副本，白色地名 |
-| 镜像地层 | jingxiangdiceng.bmp | 右上角小地图 | dituLocation | 魔镜副本一层，白色地名 |
-| 迷幻境 | mihuanjing.bmp | 右上角小地图 | dituLocation | 魔镜副本三层，白色地名 |
-| 狱境 | yujing.bmp | 右上角小地图 | dituLocation | 魔镜副本四层，白色地名 |
-| 炎冰境 | yanbingjing.bmp | 右上角小地图 | dituLocation | 魔镜副本五层，白色地名 |
-| 印魔殿 | yinmodian.bmp | 右上角小地图 | dituLocation | 魔镜副本六层，白色地名 |
-| 岩石洞 | yanshidong.bmp | 右上角小地图 | dituLocation | 岩石洞副本出口，白色地名 |
-| 龙巢 | longchao.bmp | 右上角小地图 | dituLocation | 龙巢副本出口，白色地名 |
-| 山寨内堂 | shanzaineitang.bmp | 右上角小地图 | dituLocation | 黑风山寨内堂，白色地名 |
-| 炼丹房 | danlianfang.bmp | 右上角小地图 | dituLocation | 炼丹房，白色地名 |
-| 远古溶洞 | yuanguongdong.bmp | 右上角小地图 | dituLocation | 远古溶洞，白色地名 |
-| 粮仓 | liangcang.bmp | 右上角小地图 | dituLocation | 战魂粮仓，白色地名 |
-| 云端 | yunduan.bmp | 右上角小地图 | dituLocation | 云端，白色地名 |
-| 鼠殿 | shudian.bmp | 右上角小地图 | dituLocation | 鼠殿，白色地名 |
+以上 29个 副本入口/退出/交互相关。
 
-以上 **27个** 副本相关。
+################################################################################
+# 三、低优先级（日常/整点脚本用）
+################################################################################
 
----
+## 3.1 日常飞行地点（右上角小地图）9个
+# 使用的方法: richang.py 中 find_pic_or_str / waitFor
 
-## 三、低优先级（日常/整点脚本用）
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 绿林路 | lvlinlu.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 五指峡谷 | wuzhixiagu.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 野外西 | yewaixi.bmp | 右上角小地图 | dituLocation | find_pic_or_str / waitFor |
+| 野外北 | yewaibei.bmp | 右上角小地图 | dituLocation | find_pic_or_str / waitFor |
+| 嵩山 | songshan.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 许昌 | xuchang.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 碧水地穴 | bishuidixue.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 虎牢关外 | hulaoguanwai.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
+| 涿郡野外 | zhuojunyewai.bmp | 右上角小地图 | dituLocation | find_pic_or_str |
 
-### 3.1 日常飞行地点（右上角小地图）
+## 3.2 活动/NPC交互文字 9个
+# 使用的方法: waitFor / find_str / find_pic_or_str
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 绿林路 | lvlinlu.bmp | 右上角小地图 | dituLocation | 绿林路，白色地名 |
-| 五指峡谷 | wuzhixiagu.bmp | 右上角小地图 | dituLocation | 五指峡谷，白色地名 |
-| 野外西 | yewaixi.bmp | 右上角小地图 | dituLocation | 野外西，白色地名 |
-| 野外北 | yewaibei.bmp | 右上角小地图 | dituLocation | 野外北，白色地名 |
-| 嵩山 | songshan.bmp | 右上角小地图 | dituLocation | 嵩山，白色地名 |
-| 许昌 | xuchang.bmp | 右上角小地图 | dituLocation | 许昌城，白色地名 |
-| 碧水地穴 | bishuidixue.bmp | 右上角小地图 | dituLocation | 碧水地穴，白色地名 |
-| 虎牢关外 | hulaoguanwai.bmp | 右上角小地图 | dituLocation | 虎牢关外，白色地名 |
-| 涿郡野外 | zhuojunyewai.bmp | 右上角小地图 | dituLocation | 涿郡野外，白色地名 |
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 帮派 | bangpai.bmp | NPC对话菜单 | talkLocation | waitFor |
+| 活动 | huodong.bmp | NPC对话菜单 | talkLocation | waitFor |
+| 下箭头 | xiajiantou.bmp | NPC对话滚动 | talkLocation | waitFor |
+| 帮派大本营 | bangpaidabenyin.bmp | 帮派界面 | gameBottomLocation | waitFor |
+| 帮派大本营1 | bangpaidabenyin1.bmp | 帮派界面 | (0,100,900,580) | waitFor |
+| 完成 | wancheng.bmp | 帮派任务界面 | gameBottomLocation | waitFor |
+| 进龙王令 | jinlongwangling.bmp | 活动入口 | gameBottomLocation | waitFor |
+| 一键恢复 | yijianhuifu.bmp | 设置界面 | (0,0,900,580) | FindStrFastE / find_str |
+| 修罗级 | xiuluoji.bmp | 副本难度选择 | gameBottomLocation | waitForAAndClickB |
 
-### 3.2 活动/NPC交互文字
+## 3.3 背包/UI文字 3个
+# 使用的方法: clearBag → waitFor
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 帮派 | bangpai.bmp | NPC对话菜单 | talkLocation | 帮派选项文字 |
-| 活动 | huodong.bmp | NPC对话菜单 | talkLocation | 活动选项文字 |
-| 下箭头 | xiajiantou.bmp | NPC对话滚动 | talkLocation | 对话菜单底部"▼" |
-| 帮派大本营 | bangpaidabenyin.bmp | 帮派界面 | gameBottomLocation | 帮派大本营入口文字 |
-| 帮派大本营1 | bangpaidabenyin1.bmp | 帮派界面 | (0,100,900,580) | 帮派大本营入口文字 |
-| 完成 | wancheng.bmp | 帮派任务界面 | gameBottomLocation | "完成"按钮文字 |
-| 进龙王令 | jinlongwangling.bmp | 活动入口 | gameBottomLocation | "进龙王令"按钮文字 |
-| 一键恢复 | yijianhuifu.bmp | 设置界面 | (0,0,900,580) | "一键恢复"按钮文字 |
-| 修罗级 | xiuluoji.bmp | 副本难度选择 | gameBottomLocation | "修罗级"难度文字 |
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 获得铜币 | huodetongbi.bmp | 战斗结算 | gameLeftLocation | waitFor |
+| 紫色 | zise.bmp | 背包界面 | gameBottomLocation | waitFor |
+| 藏宝图 | cangbaotu.bmp | 背包界面 | gameBottomLocation | waitFor |
 
-### 3.3 背包/UI文字
+以上 21个 日常/活动/UI相关。
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 获得铜币 | huodetongbi.bmp | 战斗结算 | gameLeftLocation | "获得铜币"提示文字 |
-| 紫色 | zise.bmp | 背包界面 | gameBottomLocation | "紫色"筛选按钮 |
-| 藏宝图 | cangbaotu.bmp | 背包界面 | gameBottomLocation | "藏宝图"物品文字 |
+################################################################################
+# 四、按需截图（整点打怪相关）
+################################################################################
 
-以上 **21个** 日常/活动相关。
+## 4.1 整点飞行地点（右上角小地图）23个
+# 使用的方法: zhengdian_by_xiaolvren → waitFor / feiZhengDian → waitFor
 
----
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 碧波潭 | bibotan.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 皇宫东院 | huanggongdongyuan.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 徐州 | xuzhou.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 魔魂山 | mohunshan.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 魔谷西 | moguxi.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 幽暗密林 | youanmilin.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 万花谷 | wanhuagu.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 九黎族祭坛 | jiulizujitan.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 军营 | junying.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 军粮营 | junliangying.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 训兵营 | xunbingying.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 南天门 | nantianmen.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 五行圣殿 | wuxingshengdian.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 遗忘之林 | yiwangzhilin.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 魔岛入口 | modaorukou.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 大帐 | dazhang.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 魂殿 | hundian.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 东海之极 | donghaizhiji.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 武神殿 | wushengdian.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 名战殿 | mingzhandian.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 龙岛 | longdao.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 鼠穴入口 | shuxuerukou.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
+| 鼠巢内 | shuchaonei.bmp | 右上角小地图 | dituLocation | waitFor / feiZhengDian |
 
-## 四、按需截图（整点打怪相关）
+## 4.2 地图前缀地点（feiFb / go_in_ditu 大地图中使用的文字）14个
+# 使用的方法: go_in_ditu → waitFor / find_pic_or_str
 
-### 4.1 整点飞行地点（右上角小地图）
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 地图老虎 | ditu_laohu.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图牛 | ditu_niu.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图羊 | ditu_yang.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图新野 | ditu_xinye.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图徐州 | ditu_xuzhou.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图碧波潭 | ditu_bibotan.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图皇宫东院 | ditu_huanggongdongyuan.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图乱葬岗 | ditu_luanzanggang.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图落日峰 | ditu_luorifeng.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图荒村 | ditu_huangcun.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图明镜湖 | ditu_mingjinghu.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图恶龙洞 | ditu_elongdong.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图祭坛 | ditu_jitan.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
+| 地图山洞三层 | ditu_shandongsanceng.bmp | 大地图飞行列表 | gameBottomLocation | go_in_ditu |
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 碧波潭 | bibotan.bmp | 右上角小地图 | dituLocation | 碧波潭，白色地名 |
-| 皇宫东院 | huanggongdongyuan.bmp | 右上角小地图 | dituLocation | 皇宫东院，白色地名 |
-| 徐州 | xuzhou.bmp | 右上角小地图 | dituLocation | 徐州，白色地名 |
-| 魔魂山 | mohunshan.bmp | 右上角小地图 | dituLocation | 魔魂山，白色地名 |
-| 魔谷西 | moguxi.bmp | 右上角小地图 | dituLocation | 魔谷西，白色地名 |
-| 幽暗密林 | youanmilin.bmp | 右上角小地图 | dituLocation | 幽暗密林，白色地名 |
-| 万花谷 | wanhuagu.bmp | 右上角小地图 | dituLocation | 万花谷，白色地名 |
-| 九黎族祭坛 | jiulizujitan.bmp | 右上角小地图 | dituLocation | 九黎族祭坛，白色地名 |
-| 军营 | junying.bmp | 右上角小地图 | dituLocation | 军营，白色地名 |
-| 军粮营 | junliangying.bmp | 右上角小地图 | dituLocation | 军粮营，白色地名 |
-| 训兵营 | xunbingying.bmp | 右上角小地图 | dituLocation | 训兵营，白色地名 |
-| 南天门 | nantianmen.bmp | 右上角小地图 | dituLocation | 南天门，白色地名 |
-| 五行圣殿 | wuxingshengdian.bmp | 右上角小地图 | dituLocation | 五行圣殿，白色地名 |
-| 遗忘之林 | yiwangzhilin.bmp | 右上角小地图 | dituLocation | 遗忘之林，白色地名 |
-| 魔岛入口 | modaorukou.bmp | 右上角小地图 | dituLocation | 魔岛入口，白色地名 |
-| 大帐 | dazhang.bmp | 右上角小地图 | dituLocation | 战魂大帐，白色地名 |
-| 魂殿 | hundian.bmp | 右上角小地图 | dituLocation | 战魂魂殿，白色地名 |
-| 东海之极 | donghaizhiji.bmp | 右上角小地图 | dituLocation | 东海之极，白色地名 |
-| 武神殿 | wushengdian.bmp | 右上角小地图 | dituLocation | 武神殿，白色地名 |
-| 名战殿 | mingzhandian.bmp | 右上角小地图 | dituLocation | 名战殿，白色地名 |
-| 龙岛 | longdao.bmp | 右上角小地图 | dituLocation | 龙岛，白色地名 |
-| 鼠穴入口 | shuxuerukou.bmp | 右上角小地图 | dituLocation | 鼠穴入口，白色地名 |
-| 鼠巢内 | shuchaonei.bmp | 右上角小地图 | dituLocation | 鼠巢内，白色地名 |
+## 4.3 生肖/整点怪物名称 12个
+# 使用的方法: feiZhengDian / find_zd_walk_v3 / zhengdian_by_xiaolvren → find_str / waitFor
 
-### 4.2 地图前缀地点（feiFb 大地图中使用的文字）
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 虎 | hu.bmp | NPC对话菜单 | talkLocation | feiZhengDian |
+| 牛 | niu.bmp | NPC对话菜单 | talkLocation | feiZhengDian |
+| 兔 | tu.bmp | NPC对话菜单 | talkLocation | feiZhengDian |
+| 猴 | hou.bmp | NPC对话菜单 | talkLocation | feiZhengDian |
+| 蛇 | she.bmp | NPC对话菜单 | talkLocation | feiZhengDian |
+| 龙生肖红 | longshengxiaohong.bmp | NPC对话菜单 | talkLocation | feiZhengDian |
+| 火焰帝红 | huoyandihong.bmp | 整点怪物 | gameBottomLocation | find_zd_walk_v3 |
+| 寒冰帝 | hanbingdi.bmp | 整点怪物 | gameBottomLocation | find_zd_walk_v3 |
+| 单猴 | danhou.bmp | 整点生肖 | gameBottomLocation | find_zd_walk_v3 |
+| 单羊 | danyang.bmp | 整点生肖 | gameBottomLocation | find_zd_walk_v3 |
+| 单虎 | danhu.bmp | 整点生肖 | gameBottomLocation | find_zd_walk_v3 |
+| 单兔 | dantu.bmp | 整点生肖 | gameBottomLocation | find_zd_walk_v3 |
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 地图老虎 | ditu_laohu.bmp | 大地图飞行列表 | dituLocation | 大地图中的"老虎"入口 |
-| 地图牛 | ditu_niu.bmp | 大地图飞行列表 | dituLocation | 大地图中的"牛"入口 |
-| 地图羊 | ditu_yang.bmp | 大地图飞行列表 | dituLocation | 大地图中的"羊"入口 |
-| 地图新野 | ditu_xinye.bmp | 大地图飞行列表 | dituLocation | 大地图中的"新野"入口 |
-| 地图徐州 | ditu_xuzhou.bmp | 大地图飞行列表 | dituLocation | 大地图中的"徐州"入口 |
-| 地图碧波潭 | ditu_bibotan.bmp | 大地图飞行列表 | dituLocation | 大地图中的"碧波潭"入口 |
-| 地图皇宫东院 | ditu_huanggongdongyuan.bmp | 大地图飞行列表 | dituLocation | 大地图中的"皇宫东院"入口 |
-| 地图乱葬岗 | ditu_luanzanggang.bmp | 大地图飞行列表 | dituLocation | 大地图中的"乱葬岗"入口 |
-| 地图落日峰 | ditu_luorifeng.bmp | 大地图飞行列表 | dituLocation | 大地图中的"落日峰"入口 |
-| 地图荒村 | ditu_huangcun.bmp | 大地图飞行列表 | dituLocation | 大地图中的"荒村"入口 |
-| 地图明镜湖 | ditu_mingjinghu.bmp | 大地图飞行列表 | dituLocation | 大地图中的"明镜湖"入口 |
-| 地图恶龙洞 | ditu_elongdong.bmp | 大地图飞行列表 | dituLocation | 大地图中的"恶龙洞"入口 |
-| 地图祭坛 | ditu_jitan.bmp | 大地图飞行列表 | dituLocation | 大地图中的"祭坛"入口 |
-| 地图山洞三层 | ditu_shandongsanceng.bmp | 大地图飞行列表 | dituLocation | 大地图中的"山洞三层"入口 |
+以上 49个 整点/地图飞行相关。
 
-### 4.3 生肖/整点怪物名称（feiZhengDian / find_zd_walk_v3 用）
+################################################################################
+# 五、副本内部 — 子地图/区域名（findAndClickPic area / waitForAAndClickB target_a）
+# 用于副本内各楼层之间的地图切换确认
+################################################################################
 
-| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 说明 |
-|----------|-----------|---------|---------|------|
-| 虎 | hu.bmp | NPC对话菜单 | talkLocation | 虎生肖飞鞋入口 |
-| 牛 | niu.bmp | NPC对话菜单 | talkLocation | 牛生肖飞鞋入口 |
-| 兔 | tu.bmp | NPC对话菜单 | talkLocation | 兔生肖飞鞋入口 |
-| 猴 | hou.bmp | NPC对话菜单 | talkLocation | 猴生肖飞鞋入口 |
-| 蛇 | she.bmp | NPC对话菜单 | talkLocation | 蛇生肖飞鞋入口(用于组合词"蛇") |
-| 龙生肖红 | longshengxiaohong.bmp | NPC对话菜单 | talkLocation | 红色龙生肖文字 |
-| 火焰帝红 | huoyandihong.bmp | 整点怪物 | gameBottomLocation | 红色"火焰帝"文字 |
-| 寒冰帝 | hanbingdi.bmp | 整点怪物 | gameBottomLocation | "寒冰帝"文字 |
-| 单猴 | danhou.bmp | 整点生肖 | gameBottomLocation | "单猴"类型文字 |
-| 单羊 | danyang.bmp | 整点生肖 | gameBottomLocation | "单羊"类型文字 |
-| 单虎 | danhu.bmp | 整点生肖 | gameBottomLocation | "单虎"类型文字 |
-| 单兔 | dantu.bmp | 整点生肖 | gameBottomLocation | "单兔"类型文字 |
+## 5.1 官渡副本内部
+# 文件: ya_scripts/dungeon.py → guandu() / guandu_jy()
 
----
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 曹操大帐 | caocaodazhang.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 曹袁战场 | caoyuanzhanchang.bmp | 右上角小地图 | dituLocation | findAndClickPic area |
+| 进官渡1 | jinguandu1.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB target_b |
+| 战场 | zhanchang.bmp | 副本内部小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
 
-## 统计
+## 5.2 嗜血战场(红)副本内部
+# 文件: ya_scripts/dungeon.py → hong()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 帐篷 | zhangpeng.bmp | 副本内部小地图 | dituLocation | findAndClickPic area / target |
+
+## 5.3 魔镜副本内部子地图
+# 文件: ya_scripts/dungeon.py → mojing()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 遗迹镜像 | yijijingxiang.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 北境 | beijing.bmp | 右上角小地图 | dituLocation | findAndClickPic area / target |
+| 西境 | xijing.bmp | 右上角小地图 | dituLocation | findAndClickPic area / target |
+| 南境 | nanjing.bmp | 右上角小地图 | dituLocation | findAndClickPic area / target |
+| 东境 | dongjing.bmp | 右上角小地图 | dituLocation | findAndClickPic area / target |
+
+## 5.4 炼丹副本内部
+# 文件: ya_scripts/dungeon.py → liandan()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 天宫小道 | tiangongxiaodao.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / waitFor |
+
+## 5.5 八门(80精英)副本内部
+# 文件: ya_scripts/dungeon.py → bamen()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 凶 | xiong.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 地牢 | dilao.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 地牢二层 | dilaoerceng.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 魔岛枢纽 | modaoshuniu.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+
+## 5.6 官渡精英副本内部
+# 文件: ya_scripts/dungeon.py → guandu_jy()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+
+## 5.7 云游精英副本内部
+# 文件: ya_scripts/dungeon.py → yunyou_jy()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 鬼气林 | guiqilin.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / waitFor |
+| 天梯 | tianti.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 进天梯 | jintianti.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB target_b |
+| 天界 | tianjie.bmp | 右上角小地图 | dituLocation | findAndClickPic target |
+| 天界精英 | tianjiejingying.bmp | 右上角小地图 | dituLocation | findAndClickPic area |
+| 地狱 | diyu.bmp | 右上角小地图 | dituLocation | findAndClickPic area |
+| 人界 | renjie.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+
+## 5.8 老鼠精英(100精英)副本内部
+# 文件: ya_scripts/dungeon.py → laoshu_jy()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 鼠穴 | shuxue.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 鼠大厅 | shudating.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+
+## 5.9 黑风山寨副本内部
+# 文件: ya_scripts/dungeon.py → heifeng()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 黑风山寨 | heifengshanzhai.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / waitFor |
+| 山寨本营 | shanzhaibenying.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / waitFor |
+
+## 5.10 英魂秘境副本内部
+# 文件: ya_scripts/dungeon.py → yinghun()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 魂息平原 | hunxipingyuan.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / waitFor |
+
+## 5.11 名将闯关/挑战赛副本内部
+# 文件: ya_scripts/dungeon.py → mingjiang_cg() / mingjiang_tz()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 天外天 | tianwaitian.bmp | 右上角小地图/副本地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 进天外 | jintianwai.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB target_b |
+| 进名将挑战 | jinmingjiangtiaozhan.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+
+## 5.12 矿产副本内部
+# 文件: ya_scripts/dungeon.py → kuangchan()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 破旧矿产 | pojiukuangchan.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 矿场洞窟 | kuangchangdongku.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+| 矿场内 | kuangchangnei.bmp | 右上角小地图 | dituLocation | waitForAAndClickB / findAndClickPic |
+
+## 5.13 龙岛副本内部
+# 文件: ya_scripts/dungeon.py → longdao()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 进龙岛 | jinlongdao.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 密洞 | midong.bmp | 右上角小地图 | dituLocation | findAndClickPic area / target |
+
+## 5.14 龙珠/孙策副本内部
+# 文件: ya_scripts/dungeon.py → longzhu() / shuasunce()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+
+## 5.15 战魂楼/炼狱战魂楼 子地图
+# 文件: ya_scripts/dungeon.py → zhanhun_new() / zhanhun49()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 镇魂 | zhenhun_ditu.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 战魂楼 | zhanhunlou.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 魂 | hun_danzi.bmp | 右上角小地图 | dituLocation | waitForTwo / findAndClickPic area |
+
+以上 42个 副本内部子地图/区域。
+
+################################################################################
+# 六、副本内部 — 怪物/NPC/Boss名称（findAndClickPic target1/target2）
+################################################################################
+
+## 6.1 官渡副本 怪物
+# 文件: ya_scripts/dungeon.py → guandu()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 河北军 | hebeijun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 官渡文丑 | guanduwenchou.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 文丑之魂 | wenchouzhihun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 淳于琼 | chunyuqiong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 官渡袁绍 | guanduyuanshao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.2 嗜血战场(红) 怪物
+# 文件: ya_scripts/dungeon.py → hong()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 弓兵 | gongbing.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 护卫兵 | huweibing.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 护粮将领 | huliangjiangling.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 骑兵 | qibing.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 训兵将领 | xunbingjiangling.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 控魂巫师 | konghunwushi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.3 魔镜副本 怪物
+# 文件: ya_scripts/dungeon.py → mojing()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 吃人妖 | chirenyao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 狮王魂 | shiwanghun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 虚 | xu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 实 | shi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 黑无常之魂 | heiwuchangzhihun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 白无常之魂 | baiwuchangzhihun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 冰魔 | bingmo.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 炎魔 | yanmo.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 炎兄 | yanxiong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 四神 | sishen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 魔将 | mojiang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.4 炼丹副本 怪物
+# 文件: ya_scripts/dungeon.py → liandan()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 左门 | zuomen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 右门 | youmen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 炼丹童 | liandantong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.5 五行副本 怪物
+# 文件: ya_scripts/dungeon.py → wuxing()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 神火系 | shenhuoxi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 神金系 | shenjinxi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 神木系 | shenmuxi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 张辽 | zhangliao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 进五行 | jinwuxing.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+
+## 6.6 溶洞副本 怪物
+# 文件: ya_scripts/dungeon.py → rongdong()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 远古干尸 | yuanguanganshi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 暴力熊 | baolixiong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 永恒之火 | yonghengzhihuo.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.7 八门(80精英) 怪物
+# 文件: ya_scripts/dungeon.py → bamen()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 妖族 | yaozu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 穷奇 | qiongqi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 妖化 | yaohua.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 妖化郭嘉 | yaohuaguojia.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.8 官渡精英 怪物
+# 文件: ya_scripts/dungeon.py → guandu_jy()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 董卓 | dongzhuo.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.9 云游精英 怪物
+# 文件: ya_scripts/dungeon.py → yunyou_jy()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 黑无常 | heiwuchang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 天界分身 | tianjiefenshen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 地狱分 | diyufen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 人界分身 | renjiefenshen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 巨灵神 | julingshen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.10 老鼠精英(100精英) 怪物
+# 文件: ya_scripts/dungeon.py → laoshu_jy()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 妖鼠头领 | yaoshutouling.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 暗杀鼠 | anshashu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 鼠长老 | shuzhanglao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 碧水鼠王 | bishuishuwang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.11 黑风山寨 怪物
+# 文件: ya_scripts/dungeon.py → heifeng()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 头目 | toumu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 当家 | dangjia.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 拳师 | quanshi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.12 青渊 / 英魂秘境 / 三顾茅庐 怪物
+# 文件: ya_scripts/dungeon.py → qingyuan() / yinghun() / sangumaolu()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 孙坚 | sunjian.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 龙守卫 | longshouwei.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 冰龙王 | binglongwang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 青龙圣兽 | qinglongshengshou.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 怨灵 | yuanling.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 英魂之火 | yinghunzhihuo.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 秘境英魂 | mijingyinghun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 吕布英魂 | lvbuyinghun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 前往茅庐 | qianwangmaolu.bmp | NPC对话框 | gameBottomLocation | findAndClickPic target |
+| 进入阵法 | jinruxhenfa.bmp | NPC对话框 | gameBottomLocation | findAndClickPic target |
+| 再次前往茅庐 | zaiciqianwangmaolu.bmp | NPC对话框 | gameBottomLocation | findAndClickPic target |
+| 七星灯 | qixingdeng.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 占卜币 | zhanbubi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 巨石阵兽 | jushizhenshou.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 八卦阵灵 | baguazhenling.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 孔明 | kongming.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.13 名将闯关 怪物
+# 文件: ya_scripts/dungeon.py → mingjiang_cg()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 名将使者 | mingjiangshizhe.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.14 矿产 怪物
+# 文件: ya_scripts/dungeon.py → kuangchan()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 矿工凶灵 | kuanggongxiongling.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 吃矿小鬼 | chikuangxiaogui.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 炼矿小鬼 | liankuangxiaogui.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 炎魔神 | yanmoshen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.15 龙岛 怪物
+# 文件: ya_scripts/dungeon.py → longdao()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 挑战龙族 | tiaozhanlongzu.bmp | 副本战斗地图 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 金龙王 | jinlongwang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.16 龙珠 怪物
+# 文件: ya_scripts/dungeon.py → longzhu()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 龙孙 | longsun.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target(管道组合) |
+| 龙孙一 | longsunyi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target(管道组合) |
+| 龙子 | longzi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target(管道组合) |
+| 龙子一 | longziyi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target(管道组合) |
+| 地狱炎龙 | diyuyanlong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 五爪金龙 | wuzhaojinlong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 寻宝者 | xunbaozhe.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 挖宝人 | wabaoren.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.17 刷孙策 怪物
+# 文件: ya_scripts/dungeon.py → shuasunce()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 战场一 | zhanchangyi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.18 战魂楼 各层BOSS（zhanhun / zhanhun_new / zhanhun49 共用）
+# 文件: ya_scripts/dungeon.py → zhanhun() / zhanhun_new() / zhanhun49()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 张宝 | zhangbao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 张梁 | zhangliang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 张角 | zhangjiao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 文丑 | wenchou.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 颜良 | yanliang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 华雄 | huaxiong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 孙策 | sunce.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 典韦 | dianwei.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 郭嘉 | guojia.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 刘备 | liubei.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 曹操 | caocao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 袁绍 | yuanshao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 张飞 | zhangfei.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 大乔 | daqiao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 关羽 | guanyu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 吕布 | lvbu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 魔化吕布 | mohualvbu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 人参娃 | renshenwa.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 周瑜 | zhouyu.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 马超 | machao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 诸葛亮 | zhugeliang.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.19 活动事件 怪物/文字
+# 文件: ya_scripts/event.py → longwangling() / yinmofu() / chuansongfu() / gongcheng()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 魔军 | mojun.bmp | 攻城活动界面 | gameBottomLocation | find_pic_or_str |
+| 挑战龙 | tiaozhanlong_shijian.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 摘星楼 | zhaixinglou.bmp | 活动副本内部 | dituLocation | waitForTwo / findAndClickPic |
+| 离开 | likai.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB target_b |
+| 使用 | shiyong.bmp | 背包界面 | gameLocation | press_keys_until_image_found |
+| 出现 | chuxian.bmp | 传送符界面 | gameBottomLocation | waitForTwo target1 |
+| 运气太烂 | yunqitailan.bmp | 传送符界面 | gameBottomLocation | waitForTwo target2 |
+| 地穴蟾蜍 | dixuechanchu.bmp | 引魔符副本地图 | gameBottomLocation | findAndClickPic target |
+
+## 6.20 整点脚本 地图名
+# 文件: ya_scripts/zhengdian.py → zhengdian()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 密林 | milin.bmp | 右上角小地图 | dituLocation | zhengdian_by_xiaolvren → feiCity |
+| 九黎族遗迹 | jiulizuyiji.bmp | 右上角小地图 | dituLocation | findAndClickPic area |
+
+## 6.21 日常脚本 go_in_ditu 驿站名
+# 文件: ya_scripts/richang.py → richang()
+
+| 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
+|----------|-----------|---------|---------|-----------|
+| 驿站五指峡谷 | yizhanwuzhixiagu.bmp | 大地图驿站列表 | gameBottomLocation | go_in_ditu yizhan |
+| 驿站城西 | yizhanchengxi.bmp | 大地图驿站列表 | gameBottomLocation | go_in_ditu yizhan |
+| 驿站许昌 | yizhanxuchang.bmp | 大地图驿站列表 | gameBottomLocation | go_in_ditu yizhan |
+| 驿站襄阳 | yizhanxiangyang.bmp | 大地图驿站列表 | gameBottomLocation | go_in_ditu yizhan |
+
+以上 99个 副本怪物/NPC/Boss/事件文字。
+
+################################################################################
+# 七、管道组合搜索（进入|知道了 / 进入|进精英 / 秘境英魂|英魂之火|怨灵）
+# 由 | 分隔的多个文字各自查找，需要为每个组件截独立的图
+################################################################################
+# 以下组件已在上方各节中分别列出，此处汇总管道组合以方便对照：
+#   "进入|知道了"        → jinru.bmp + zhidaole.bmp
+#   "进入|进精英"        → jinru.bmp + jinjingying.bmp
+#   "秘境英魂|英魂之火|怨灵" → mijingyinghun.bmp + yinghunzhihuo.bmp + yuanling.bmp
+#   "龙孙|龙孙一|龙子|龙子一" → longsun.bmp + longsunyi.bmp + longzi.bmp + longziyi.bmp
+
+################################################################################
+# 统计
+################################################################################
 
 | 分类 | 数量 |
 |------|------|
-| 高优先级（每次脚本必用） | 12 |
-| 中优先级（副本脚本用） | 27 |
-| 低优先级（日常/活动/UI） | 21 |
-| 按需（整点飞行地点） | 23 |
-| 按需（地图前缀地点） | 14 |
-| 按需（生肖/整点怪物） | 12 |
-| **合计** | **约109** |
+| 一、高优先级（每次脚本必用） | 12 |
+| 二、中优先级（副本入口/退出/交互） | 29 |
+| 三、低优先级（日常/活动/UI） | 21 |
+| 四、按需（整点飞行/地图前缀/生肖） | 49 |
+| 五、副本内部子地图/区域 | 42 |
+| 六、副本内部怪物/Boss/事件文字 | 99 |
+| **合计** | **约252** |
 
----
-
-## 截图方法
-
-1. 打开游戏，导航到目标文字出现的画面（参见"游戏场景"栏）
-2. 用截图工具（如 Snipaste）精确保存**文字区域**，包含少量背景即可
-3. 保存到 `ya_assets/images/text/` 目录，文件名见上表（拼音.bmp）
-4. 注意：部分文字颜色不同（黄色/白色/红色），需分别截图
+################################################################################
+# 截图方法
+################################################################################
+# 1. 打开游戏，导航到目标文字出现的画面（参见"游戏场景"栏）
+# 2. 用截图工具（如 Snipaste）精确保存文字区域，包含少量背景即可
+# 3. 保存到 ya_assets/images/text/ 目录，文件名见上表（拼音.bmp）
+# 4. 注意：部分文字颜色不同（黄色/白色/红色），需分别截图
+# 5. 确认图片保存后，TEXT_TO_IMAGE_MAP 会自动使用图像匹配(30-50ms)，
+#    无需修改任何代码

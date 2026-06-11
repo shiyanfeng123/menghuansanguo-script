@@ -3,11 +3,13 @@ from .dungeon import (
     bamen, guandu_jy, yunyou_jy, laoshu_jy, heifeng,
     qingyuan, yinghun, sangumaolu, mingjiang_tz, mingjiang_cg,
     bangpai, kuangchan, longdao, longzhu, shuasunce,
+    zhanhun_new, zhanhun49,
 )
 from .zhengdian import zhengdian
 from .richang import richang, richang49, level49_all
 from .guaji import bishuishuxue, wokou, longchao, senluodian
 from .event import xigua, gongcheng, longwangling, yinmofu, chuansongfu
+from .combined import guandu_hong_zd, mojing_hong_zd
 from .combat import zidongzhandou
 
 SCRIPT_REGISTRY = {
@@ -33,11 +35,16 @@ SCRIPT_REGISTRY = {
     "龙岛": (longdao, "dungeon", False),
     "龙珠": (longzhu, "dungeon", False),
     "刷孙策": (shuasunce, "dungeon", False),
+    "炼狱战魂楼": (zhanhun_new, "dungeon", True),
+    "49战魂": (zhanhun49, "dungeon", False),
     "整点": (zhengdian, "zhengdian", True),
     "抢龙": (zhengdian, "zhengdian", False),
+    "49整点": (zhengdian, "zhengdian", False),
     "日常": (richang, "daily", False),
     "49日常": (richang49, "daily", False),
     "49一键": (level49_all, "daily", False),
+    "战魂+红+整点": (guandu_hong_zd, "combined", False),
+    "战魂+红+魔镜+整点": (mojing_hong_zd, "combined", False),
     "挂机+整点": (bishuishuxue, "guaji", True),
     "老鼠": (bishuishuxue, "guaji", False),
     "倭寇": (wokou, "guaji", False),

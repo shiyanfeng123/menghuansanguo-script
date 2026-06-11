@@ -6165,12 +6165,16 @@ class MyThread(threading.Thread):
                 return True
             if self.find_pic(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/beitiaozhan.bmp')}",
-                    self.gameBottomLocation, 0):
+                    self.gameBottomLocation, 0) or self.find_str("挑战小字",
+                                                         self.gameBottomLocation,
+                                                         0):
                 self.confidenceNum = 0.9
                 return False
             if self.find_pic(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/bucunzai.bmp')}",
-                    self.gameBottomLocation, 0):
+                    self.gameBottomLocation, 0) or self.find_str("不存在小字",
+                                                         self.gameBottomLocation,
+                                                         0):
                 self.confidenceNum = 0.9
                 return False
             self.confidenceNum = 0.9

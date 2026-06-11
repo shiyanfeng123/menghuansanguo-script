@@ -676,14 +676,15 @@ class GameCaptureDialog(wx.Dialog):
         fname = f"capture_{ts}.bmp"
         fpath = os.path.join(img_dir, fname)
         rel_path = f"serveAssets/images/custom/{fname}"
-        try:
-            ret = self.dm.Capture(x1, y1, x2, y2, fpath)
-            if ret == 1 or os.path.exists(fpath):
-                self.result = {"type": "image", "path": rel_path, "abs_path": fpath}
-            else:
-                self._fallback_capture(x1, y1, x2, y2, fpath, rel_path)
-        except Exception:
-            self._fallback_capture(x1, y1, x2, y2, fpath, rel_path)
+        if self.dm:
+            try:
+                ret = self.dm.Capture(x1, y1, x2, y2, fpath)
+                if ret == 1 or os.path.exists(fpath):
+                    self.result = {"type": "image", "path": rel_path, "abs_path": fpath}
+                    return
+            except Exception:
+                pass
+        self._fallback_capture(x1, y1, x2, y2, fpath, rel_path)
 
     def _fallback_capture(self, x1, y1, x2, y2, fpath, rel_path):
         try:
@@ -1292,9 +1293,6 @@ class ScriptFactoryDialog(wx.Frame):
 
     def _do_game_capture(self, mode, callback):
         dm = self._get_dm()
-        if not dm:
-            wx.MessageBox("未连接到游戏窗口，请先启动游戏并绑定窗口", "提示")
-            return
         try:
             dlg = GameCaptureDialog(self, dm, self.parent_frame, mode=mode)
             result = None

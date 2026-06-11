@@ -1776,3 +1776,232 @@ def _shuasunce_once():
         if _e.stopped:
             _e.condition.wait()
     _e.outScript("ya_assets/images/guaji/zhanchang.bmp")
+
+
+def zhanhun_new(engine):
+    """炼狱战魂楼 - 镇魂(26-27) + 噬魂(28-29)"""
+    global _e
+    _e = engine
+    engine.beginFun()
+    count = engine.lianyuCount if engine.lianyuCount > 0 else 1
+    engine.run_loop(_zhanhun_new_once, loop_mode="count", count=count, fallback="guandu")
+
+
+def _zhanhun_new_once():
+    outFbLocation = _e.find_pic_or_str(
+        "ya_assets/images/outFb.bmp|ya_assets/images/outFb1.bmp", _e.gameLocation, 0
+    )
+    if outFbLocation:
+        _e.click(outFbLocation.x, outFbLocation.y)
+        _e.click(outFbLocation.x, outFbLocation.y)
+        time.sleep(2)
+    if _e.overed:
+        return
+
+    isIn = _e.waitFor("ya_assets/images/zhanhun/luoyang.bmp", timeout=5)
+    if not isIn:
+        _e.feiFb("地图洛阳大道", is_elite=True)
+
+    if _e.zhanhunFloorNew:
+        _zhanhun_zhenhun()
+    elif _e.shihunFloor:
+        _zhanhun_shihun()
+    else:
+        _zhanhun_zhenhun()
+
+
+def _zhanhun_zhenhun():
+    _e.findAndClickPic(
+        "ya_assets/images/zhanhun/luoyang.bmp",
+        "ya_assets/images/zhanhun/zhanhuntiaozhan.bmp", "ya_assets/images/zhanhun/zhanhuntiaozhan1.bmp",
+        "镇魂", "镇魂",
+        "0.067,0.132", ""
+    )
+    _e.waitForAAndClickB("战魂", "镇魂")
+    isIn = _e.waitFor("战魂", timeout=15)
+    if not isIn:
+        print("战魂没次数了")
+        return False
+
+    _e.findAndClickPic(
+        "战魂", "人参娃", "人参娃",
+        "ya_assets/images/zdzd.bmp", "ya_assets/images/zdzd.bmp",
+        "0.098,0.113", ""
+    )
+    _e.waitFor("ya_assets/images/xiulian.bmp", timeout=30)
+    _e.addBloud()
+    res = _e.waitForTwo("战魂", "洛阳", timeout=10)
+    if res == "second":
+        print("26层没打过")
+        return True
+
+    if _e.zhanhunFloorNew == "26层":
+        _e.outScript("战魂")
+        return True
+
+    _e.findAndClickPic(
+        "战魂",
+        "ya_assets/images/zhanhun/chuansongmen.bmp", "ya_assets/images/zhanhun/chuansongmen.bmp",
+        "周瑜", "周瑜",
+        "", ""
+    )
+    _e.findAndClickPic(
+        "魂", "周瑜", "周瑜",
+        "ya_assets/images/zdzd.bmp", "ya_assets/images/zdzd.bmp",
+        "0.098,0.113", ""
+    )
+    _e.waitFor("ya_assets/images/xiulian.bmp", timeout=30)
+    _e.addBloud()
+    res = _e.waitForTwo("魂", "洛阳", timeout=10)
+    if res == "second":
+        print("27层没打过")
+        return True
+    _e.outScript("魂")
+    return True
+
+
+def _zhanhun_shihun():
+    _e.findAndClickPic(
+        "ya_assets/images/zhanhun/luoyang.bmp",
+        "ya_assets/images/zhanhun/zhanhuntiaozhan.bmp", "ya_assets/images/zhanhun/zhanhuntiaozhan1.bmp",
+        "噬魂", "噬魂",
+        "0.067,0.132", ""
+    )
+    _e.waitForAAndClickB("噬魂", "噬魂")
+    isIn = _e.waitFor("噬魂", timeout=15)
+    if not isIn:
+        print("噬魂没次数了")
+        return False
+
+    _e.findAndClickPic(
+        "噬魂", "马超", "马超",
+        "ya_assets/images/zdzd.bmp", "ya_assets/images/zdzd.bmp",
+        "0.098,0.113", ""
+    )
+    _e.waitFor("ya_assets/images/xiulian.bmp", timeout=30)
+    _e.addBloud()
+    res = _e.waitForTwo("噬魂", "洛阳", timeout=10)
+    if res == "second":
+        print("28层没打过")
+        return True
+
+    if _e.shihunFloor == "28层":
+        _e.outScript("噬魂")
+        return True
+
+    _e.findAndClickPic(
+        "噬魂",
+        "ya_assets/images/zhanhun/chuansongmen.bmp", "ya_assets/images/zhanhun/chuansongmen.bmp",
+        "诸葛亮", "诸葛亮",
+        "", ""
+    )
+    _e.findAndClickPic(
+        "诸葛亮", "诸葛亮", "诸葛亮",
+        "ya_assets/images/zdzd.bmp", "ya_assets/images/zdzd.bmp",
+        "0.098,0.113", ""
+    )
+    _e.waitFor("ya_assets/images/xiulian.bmp", timeout=30)
+    _e.addBloud()
+    res = _e.waitForTwo("噬魂", "洛阳", timeout=10)
+    if res == "second":
+        print("29层没打过")
+        return True
+    _e.outScript("噬魂")
+    return True
+
+
+def zhanhun49(engine):
+    """49级战魂楼"""
+    global _e
+    _e = engine
+    engine.beginFun()
+    count = engine.zhanhunCount if engine.zhanhunCount > 0 else 6
+    engine.run_loop(_zhanhun49_once, loop_mode="count", count=count, fallback="guandu")
+
+
+def _zhanhun49_once():
+    outFbLocation = _e.find_pic_or_str(
+        "ya_assets/images/outFb.bmp|ya_assets/images/outFb1.bmp", _e.gameLocation, 0
+    )
+    if outFbLocation:
+        _e.click(outFbLocation.x, outFbLocation.y)
+        _e.click(outFbLocation.x, outFbLocation.y)
+        time.sleep(2)
+
+    if _e.overed:
+        return
+
+    isIn = _e.waitFor("涿郡野外", timeout=5)
+    if not isIn:
+        _e.feiFb("地图野外东", is_elite=True)
+
+    _e.findAndClickPic(
+        "涿郡野外",
+        "ya_assets/images/zhanhun/qinshoujiang1.bmp", "ya_assets/images/zhanhun/qinshoujiang2.bmp",
+        "战魂楼", "战魂楼",
+        "0.181,0.124", ""
+    )
+    _e.waitForAAndClickB("ya_assets/images/zhanhun/1.bmp", "战魂楼")
+    isIn = _e.waitFor("战魂", timeout=8)
+    if not isIn:
+        print("49战魂没次数了")
+        return False
+
+    _ZHANHUN49_BOSS = {
+        1: "张宝", 2: "张梁", 3: "张角", 4: "文丑",
+        5: "颜良", 6: "华雄", 7: "孙策", 8: "典韦",
+        9: "郭嘉", 10: "刘备", 11: "曹操", 12: "袁绍",
+        13: "张飞", 14: "大乔", 15: "关羽", 16: "吕布",
+        17: "张飞", 18: "关羽", 19: "吕布", 20: "魔化吕布",
+        21: "刘备", 22: "袁绍", 23: "曹操", 24: "吕布", 25: "魔化吕布",
+    }
+
+    for f in range(1, 26):
+        if _e.overed:
+            return
+        boss = _ZHANHUN49_BOSS[f]
+        boss_img2 = boss
+        if boss == "张梁":
+            boss_img2 = "ya_assets/images/zhanhun/zhangliang1.bmp|ya_assets/images/zhanhun/zhangliang2.bmp"
+        elif boss == "刘备":
+            boss_img2 = "ya_assets/images/zhanhun/liubei.bmp|ya_assets/images/zhanhun/liubei1.bmp"
+        _e.findAndClickPic(
+            f"ya_assets/images/zhanhun/{f}.bmp",
+            boss, boss_img2,
+            "ya_assets/images/zdzd111.bmp|ya_assets/images/zdzd.bmp", "ya_assets/images/zdzd111.bmp|ya_assets/images/zdzd.bmp",
+            "0.098,0.113", ""
+        )
+        if f == 20:
+            _e.waitFor("ya_assets/images/xiulian.bmp", timeout=30)
+        if f >= 20 and f < 25:
+            _e.waitForAAndClickB(
+                f"ya_assets/images/zhanhun/{f + 1}.bmp",
+                "ya_assets/images/zhanhun/chuansongmen.bmp"
+            )
+        if f >= 21:
+            _e.waitFor("ya_assets/images/xiulian.bmp", timeout=30)
+            _e.addBloud()
+            res = _e.waitForTwo(
+                f"ya_assets/images/zhanhun/{f}.bmp",
+                "涿郡野外",
+                timeout=10
+            )
+            if res == "second":
+                print(f"{f}层没打过")
+                return True
+            if f == 25:
+                _e.outScript(f"ya_assets/images/zhanhun/{f}.bmp")
+                return True
+            if f < 25:
+                _e.waitForAAndClickB(
+                    f"ya_assets/images/zhanhun/{f + 1}.bmp",
+                    "ya_assets/images/zhanhun/chuansongmen.bmp"
+                )
+        elif f < 20 and f < 25:
+            _e.waitForAAndClickB(
+                f"ya_assets/images/zhanhun/{f + 1}.bmp",
+                "ya_assets/images/zhanhun/chuansongmen.bmp"
+            )
+
+    _e.outScript(f"ya_assets/images/zhanhun/25.bmp")
+    return True

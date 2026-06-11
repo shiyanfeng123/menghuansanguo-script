@@ -84,8 +84,8 @@ def gongcheng(engine):
                 time.sleep(0.5)
                 _e.zhengdian_by_xiaolvren_for_gongcheng("万花谷", 0, 0, [], 1)
         time.sleep(0.5)
-    while _e.find_str("魔军", _e.gameBottomLocation, _e.color_format, _e.confidenceNum):
-        mojun_loc = _e.find_str("魔军", _e.gameBottomLocation, _e.color_format, _e.confidenceNum)
+    while _e.find_pic_or_str("魔军", _e.gameBottomLocation, 0):
+        mojun_loc = _e.find_pic_or_str("魔军", _e.gameBottomLocation, 0)
         if mojun_loc:
             _e.click(mojun_loc.x, mojun_loc.y)
         gongcheng_loc = _e.waitFor("攻城", _e.gameBottomLocation, 5)

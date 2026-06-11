@@ -1501,7 +1501,7 @@ class CombatAutoScript:
             self.report_battle_info(f"账号{account_index} 释放技能{skill_name}时发生异常: {e}", "error")
             return False
 
-    def summon_general_with_verification(self, account_index, general_name):
+    def summon_general_with_verification(self, account_index, general_name, force_replace=False):
         """召唤武将并验证是否成功
         :param account_index: 账号索引
         :param general_name: 武将名称
@@ -1540,44 +1540,64 @@ class CombatAutoScript:
         ):
             return False
         time.sleep(0.1)
-        if self.beidong_huihe >= 5 and self.zhaohuan_index == account_index:
-            pos = self.unit_positions[account_index]["generals"][0][1:]
-            self.click_position(account_index, pos[0], pos[1])
-            self.beidong_huihe = 0
-            if self.zhaohuan_index < 2:
-                self.zhaohuan_index += 1
-            else:
-                self.zhaohuan_index = 0
-        else:
-            self.click_position(account_index, 12, 12)
         # 4. 更新武将信息（召唤成功后，背包武将已消失）
         char_info = self.unit_info[account_index]["main_char"]
 
-        # 检查武将数量是否已经达到上限（2个）
         alive_generals = [g for g in char_info.get("generals", []) if g.get("alive", True)]
-        # if len(alive_generals) >= 2:
-        #     self.report_battle_info(f"账号{account_index} 武将数量已达上限（2个），不允许召唤", "warning")
-        #     return False
-
         general_count = len(alive_generals)
 
-        # 确定召唤位置（根据当前存活武将数量）
-        if general_count == 0:
-            # 第一个武将位置
-            if account_index == 0:
-                summon_target_pos = (572, 380)  # 账号0武将1位置（中间排）
-            elif account_index == 1:
-                summon_target_pos = (530, 278)  # 账号1武将1位置（上排）
-            else:  # account_index == 2
-                summon_target_pos = (520, 490)  # 账号2武将1位置（下排）
+        # 被动替换：按优先级踢旧武将，使用被踢武将的槽位
+        is_replacement = force_replace or (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index)
+        if is_replacement:
+            if general_count < 2:
+                is_replacement = False
+            if self.beidong_huihe >= 5 and self.zhaohuan_index == account_index:
+                self.beidong_huihe = 0
+                if self.zhaohuan_index < 2:
+                    self.zhaohuan_index += 1
+                else:
+                    self.zhaohuan_index = 0
+        if is_replacement:
+            REPLACE_PRIORITY = ["刘备", "魔化关羽", "武神一怒", "剑阵灭杀", "曹操"]
+            kicked = None
+            for priority_name in REPLACE_PRIORITY:
+                for g in alive_generals:
+                    if g.get("name") == priority_name:
+                        kicked = g
+                        break
+                if kicked:
+                    break
+            if kicked:
+                kicked["alive"] = False
+                summon_target_pos = kicked["position"]
+                self.report_battle_info(
+                    f"账号{account_index} 被动替换：踢掉{kicked['name']}(槽位{summon_target_pos})，腾出位置给刘备",
+                    "action",
+                )
+            else:
+                summon_target_pos = self.unit_positions[account_index]["generals"][0][1:]
+                self.report_battle_info(
+                    f"账号{account_index} 被动替换：无可替换武将，使用兜底槽位{summon_target_pos}",
+                    "warning",
+                )
+            self.click_position(account_index, summon_target_pos[0], summon_target_pos[1])
         else:
-            # 第二个武将位置
-            if account_index == 0:
-                summon_target_pos = (667, 380)  # 账号0武将2位置（中间排）
-            elif account_index == 1:
-                summon_target_pos = (626, 278)  # 账号1武将2位置（上排）
-            else:  # account_index == 2
-                summon_target_pos = (626, 490)  # 账号2武将2位置（下排）
+            self.click_position(account_index, 12, 12)
+            # 确定召唤位置（根据当前存活武将数量）
+            if general_count == 0:
+                if account_index == 0:
+                    summon_target_pos = (572, 380)
+                elif account_index == 1:
+                    summon_target_pos = (530, 278)
+                else:
+                    summon_target_pos = (520, 490)
+            else:
+                if account_index == 0:
+                    summon_target_pos = (667, 380)
+                elif account_index == 1:
+                    summon_target_pos = (626, 278)
+                else:
+                    summon_target_pos = (626, 490)
 
         new_general = {
             "name": general_name,
@@ -1605,8 +1625,9 @@ class CombatAutoScript:
                 "system",
             )
 
+        alive_count = sum(1 for g in char_info.get("generals", []) if g.get("alive", True))
         self.report_battle_info(
-            f"账号{account_index} 召唤{general_name}成功（状态：复活中，武将数量不变: {char_info.get('general_count', 2)}）",
+            f"账号{account_index} 召唤{general_name}成功（状态：复活中，当前存活武将数: {alive_count}）",
             "action",
         )
         return True
@@ -1671,6 +1692,19 @@ class CombatAutoScript:
 
         return True
 
+    # 按坐标+状态优先级查找武将（不依赖列表索引，支持列表含多条目）
+    def _find_general_by_position(self, generals, target_position):
+        candidates = [g for g in generals
+                      if abs(g["position"][0] - target_position[0]) < 50
+                      and abs(g["position"][1] - target_position[1]) < 50]
+        for g in candidates:
+            if g.get("reviving", False):
+                return g
+        for g in candidates:
+            if g.get("alive", True):
+                return g
+        return candidates[-1] if candidates else None
+
     # 初始化单位信息
     def init_unit_info(self):
         """初始化单位信息数据结构
@@ -1701,7 +1735,6 @@ class CombatAutoScript:
                     "need_revive": False,
                     "revive_pending_verification": False,  # 复活待验证标记
                     "reviving": False,  # 复活中标记，默认False
-                    "general_count": 2,  # 默认每个账号有2个武将
                     "generals": [],
                     "deployed_turn": 0,
                 },
@@ -1861,41 +1894,33 @@ class CombatAutoScript:
                                     ):
                                         self._confirm_revive_success_unlocked(account_index)
                         elif unit_type == "general":
-                            # 武将：检测到蓝条，立即更新为存活
+                            # 武将：检测到蓝条，按坐标+优先级匹配
                             with self._state_lock:
                                 char_info = self.unit_info[account_index]["main_char"]
-                                for gen in char_info.get("generals", []):
-                                    if gen.get("name") == unit_name or gen.get("position") == position:
-                                        old_alive = gen.get("alive", True)
-                                        # 如果之前是死亡状态，现在检测到蓝条，立即更新为存活
-                                        if not old_alive:
-                                            gen["alive"] = True
-                                            gen["reviving"] = False
-                                            # 加数量（已在锁内，使用无锁版本）
-                                            self._update_general_count_on_revive_success_unlocked(account_index)
-                                            # 从全局阵亡记录中移除（如果存在）
-                                            for dead_gen in self.global_dead_units["generals"][:]:
-                                                if (
-                                                    dead_gen.get("name") == unit_name
-                                                    and dead_gen.get("account_index") == account_index
-                                                    and dead_gen.get("position") == position
-                                                ):
-                                                    self.global_dead_units["generals"].remove(dead_gen)
-                                                    break
-                                            self.report_battle_info(
-                                                f"账号{account_index} 武将{unit_name}检测到蓝条，状态更新为存活",
-                                                "success",
-                                            )
-                                        # 如果之前在复活中，确认复活成功
-                                        elif gen.get("reviving", False):
-                                            gen["alive"] = True
-                                            gen["reviving"] = False
-                                            # 加数量（已在锁内，使用无锁版本）
-                                            self._update_general_count_on_revive_success_unlocked(account_index)
-                                            self.report_battle_info(
-                                                f"账号{account_index} 武将{unit_name}复活成功（检测到蓝条）", "success"
-                                            )
-                                        break
+                                generals = char_info.get("generals", [])
+                                gen = self._find_general_by_position(generals, position)
+                                if gen:
+                                    old_alive = gen.get("alive", True)
+                                    if not old_alive:
+                                        gen["alive"] = True
+                                        gen["reviving"] = False
+                                        gen_name = gen.get("name", unit_name)
+                                        gen_pos = gen.get("position", position)
+                                        for dead_gen in self.global_dead_units["generals"][:]:
+                                            if dead_gen.get("account_index") == account_index and (
+                                                dead_gen.get("name") == gen_name or dead_gen.get("position") == gen_pos
+                                            ):
+                                                self.global_dead_units["generals"].remove(dead_gen)
+                                                break
+                                        self.report_battle_info(
+                                            f"账号{account_index} 武将{gen_name}检测到蓝条，状态更新为存活", "success"
+                                        )
+                                    elif gen.get("reviving", False):
+                                        gen["alive"] = True
+                                        gen["reviving"] = False
+                                        self.report_battle_info(
+                                            f"账号{account_index} 武将{gen.get('name', unit_name)}复活成功（检测到蓝条）", "success"
+                                        )
             else:
                 # 没找到蓝条，只有在满足条件时才增加计数
                 if should_track_missing:
@@ -1968,78 +1993,53 @@ class CombatAutoScript:
                                                 f"账号{account_index} 主角死亡", "warning"
                                             )
                                 elif unit_type == "general":
-                                    # 武将：如果正在复活中，下一回合没检测到蓝条，状态更新为死亡，数量不变
+                                    # 武将：按坐标+优先级匹配
                                     with self._state_lock:
                                         char_info = self.unit_info[account_index]["main_char"]
-                                        found_general = False
-                                        for gen in char_info.get("generals", []):
-                                            if gen.get("name") == unit_name or gen.get("position") == position:
-                                                found_general = True
-                                                if gen.get("reviving", False):
-                                                    gen["alive"] = False
-                                                    gen["reviving"] = False
-                                                    self.report_battle_info(
-                                                        f"账号{account_index} 武将{unit_name}复活失败（下一回合未检测到蓝条），状态更新为死亡，数量不变",
-                                                        "warning",
-                                                    )
-                                                # 如果之前是存活的，现在判定为死亡
-                                                elif gen.get("alive", True):
-                                                    gen["alive"] = False
-                                                    # 添加到全局阵亡记录
-                                                    dead_general_info = {
-                                                        "name": unit_name,
-                                                        "position": position,
-                                                        "account_index": account_index,
-                                                    }
-                                                    # 检查是否已在全局记录中
-                                                    already_in_global = False
-                                                    for dead_gen in self.global_dead_units["generals"]:
-                                                        if (
-                                                            dead_gen.get("name") == unit_name
-                                                            and dead_gen.get("account_index") == account_index
-                                                            and dead_gen.get("position") == position
-                                                        ):
-                                                            already_in_global = True
-                                                            break
-                                                    if not already_in_global:
-                                                        self.global_dead_units["generals"].append(dead_general_info)
-                                                    self.dead_units[account_index]["generals"].append(dead_general_info)
-                                                    # 武将死亡，立即减数量（已在锁内，使用无锁版本）
-                                                    self._update_general_count_on_death_unlocked(account_index)
-                                                    self.report_battle_info(
-                                                        f"账号{account_index} 武将{unit_name}死亡",
-                                                        "warning",
-                                                    )
-                                                break
-
-                                        # 如果武将在列表中不存在，也要添加到死亡记录中（可能是第一回合的初始武将还没有被识别）
-                                        if not found_general:
-                                            # 检查是否已在全局记录中
-                                            already_in_global = False
-                                            for dead_gen in self.global_dead_units["generals"]:
-                                                if (
-                                                    dead_gen.get("name") == unit_name
-                                                    and dead_gen.get("account_index") == account_index
-                                                    and dead_gen.get("position") == position
-                                                ):
-                                                    already_in_global = True
-                                                    break
-
-                                            if not already_in_global:
-                                                # 添加到全局阵亡记录
-                                                dead_general_info = {
-                                                    "name": unit_name,
-                                                    "position": position,
-                                                    "account_index": account_index,
-                                                }
-                                                self.global_dead_units["generals"].append(dead_general_info)
-                                                self.dead_units[account_index]["generals"].append(dead_general_info)
-                                                # 武将死亡，立即减数量（已在锁内，使用无锁版本）
-                                                self._update_general_count_on_death_unlocked(account_index)
+                                        generals = char_info.get("generals", [])
+                                        gen = self._find_general_by_position(generals, position)
+                                        if gen:
+                                            gen_name = gen.get("name", unit_name)
+                                            if gen.get("reviving", False):
+                                                gen["alive"] = False
+                                                gen["reviving"] = False
                                                 self.report_battle_info(
-                                                    f"账号{account_index} 武将{unit_name}死亡（超过7次未检测到蓝条，武将不在列表中）",
+                                                    f"账号{account_index} 武将{gen_name}复活失败（下一回合未检测到蓝条），状态更新为死亡",
                                                     "warning",
                                                 )
+                                            elif gen.get("alive", True):
+                                                gen["alive"] = False
+                                                dead_general_info = {
+                                                    "name": gen_name,
+                                                    "position": gen.get("position", position),
+                                                    "account_index": account_index,
+                                                }
+                                                already_in_global = any(
+                                                    d.get("name") == gen_name and d.get("account_index") == account_index
+                                                    for d in self.global_dead_units["generals"]
+                                                )
+                                                if not already_in_global:
+                                                    self.global_dead_units["generals"].append(dead_general_info)
+                                                self.dead_units[account_index]["generals"].append(dead_general_info)
+                                                self.report_battle_info(
+                                                    f"账号{account_index} 武将{gen_name}死亡", "warning"
+                                                )
+                                        else:
+                                            dead_general_info = {
+                                                "name": unit_name,
+                                                "position": position,
+                                                "account_index": account_index,
+                                            }
+                                            already_in_global = any(
+                                                d.get("name") == unit_name and d.get("account_index") == account_index
+                                                for d in self.global_dead_units["generals"]
+                                            )
+                                            if not already_in_global:
+                                                self.global_dead_units["generals"].append(dead_general_info)
+                                            self.dead_units[account_index]["generals"].append(dead_general_info)
+                                            self.report_battle_info(
+                                                f"账号{account_index} 武将{unit_name}死亡（槽位为空）", "warning"
+                                            )
 
                                 # 检查是否已经在dead_list中（避免重复添加）
                                 already_added = False
@@ -2154,8 +2154,8 @@ class CombatAutoScript:
         target_pos = self.find_image(dm_index, self.target_lantiao_image, self.enemy_region, 0)
         if target_pos:
             # 调整坐标（根据实际游戏情况调整）
-            target_pos.x = target_pos.x + 25
-            target_pos.y = target_pos.y + 80
+            target_pos.x = target_pos.x + 26
+            target_pos.y = target_pos.y + 70
             self.enemy_target_position = (target_pos.x, target_pos.y)
         else:
             # 如果没找到，使用默认位置
@@ -2166,8 +2166,8 @@ class CombatAutoScript:
         ally_target_pos = self.find_image(dm_index, self.target_lantiao_image, self.ally_region, 0)
         if ally_target_pos:
             # 调整坐标（根据实际游戏情况调整）
-            ally_target_pos.x = ally_target_pos.x + 18
-            ally_target_pos.y = ally_target_pos.y + 83
+            ally_target_pos.x = ally_target_pos.x + 26
+            ally_target_pos.y = ally_target_pos.y + 70
             self.ally_support_target_position = (ally_target_pos.x, ally_target_pos.y)
             # self.report_battle_info(f"我方回合，检测到我军辅助技能施法点位: {self.ally_support_target_position}", "info")
         else:
@@ -2597,130 +2597,46 @@ class CombatAutoScript:
 
                     self.report_battle_info(f"账号{account_idx} {unit_name}阵亡（检测到墓碑）", "warning")
             elif unit_type == "general":
-                # 武将阵亡（检测到墓碑）- 统一处理死亡逻辑
+                # 武将阵亡（检测到墓碑）- 按坐标+优先级匹配
                 with self._state_lock:
-                    # 先检查全局记录，避免重复
-                    already_in_global = False
-                    for dead_general in self.global_dead_units["generals"]:
-                        if (
-                            dead_general.get("name") == unit_name
-                            and dead_general.get("account_index") == account_idx
-                            and dead_general.get("position") == position
-                        ):
-                            already_in_global = True
-                            break
-
-                    # 更新单位信息
-                    found_general = False
-                    for general_info in self.unit_info[account_idx]["generals"]:
-                        if general_info.get("name") == unit_name or general_info.get("position") == position:
-                            found_general = True
-                            if general_info.get("alive", True):
-                                general_info["alive"] = False
-
-                                # 如果武将正在复活中，说明召唤失败，清除复活中状态
-                                if general_info.get("reviving", False):
-                                    general_info["reviving"] = False
-
-                                # 如果已经在全局记录中，确保状态正确，但不重复添加
-                                if already_in_global:
-                                    # 从对应主角的武将列表中移除（每个账号只有1个主角）
-                                    char_info = self.unit_info[account_idx]["main_char"]
-                                    found_in_char = False
-                                    # 使用更宽松的匹配方式：通过name或position匹配
-                                    for gen in char_info["generals"]:
-                                        if (
-                                            gen.get("name") == general_info.get("name", unit_name)
-                                            or gen.get("position") == position
-                                        ):
-                                            # 如果武将正在复活中，说明召唤失败，清除复活中状态
-                                            if gen.get("reviving", False):
-                                                gen["reviving"] = False
-                                            char_info["generals"].remove(gen)
-                                            # 武将死亡，立即减数量（已在锁内，使用无锁版本）
-                                            self._update_general_count_on_death_unlocked(account_idx)
-                                            found_in_char = True
-                                            break
-
-                                    if not found_in_char:
-                                        self.report_battle_info(
-                                            f"账号{account_idx} 警告：武将{general_info.get('name', unit_name)}再次阵亡，但未在主角的武将列表中找到，无法更新general_count",
-                                            "warning",
-                                        )
-
-                                    # 从武将列表中移除
-                                    if general_info in self.unit_info[account_idx]["generals"]:
-                                        self.unit_info[account_idx]["generals"].remove(general_info)
-
-                                    self.report_battle_info(
-                                        f"账号{account_idx} {general_info.get('name', unit_name)}再次阵亡（已在全局记录中）",
-                                        "warning",
-                                    )
-                                else:
-                                    # 不在全局记录中，正常添加
-                                    # 添加到全局阵亡记录（所有账号共享）
-                                    dead_general_info = {
-                                        "name": general_info.get("name", unit_name),
-                                        "position": position,
-                                        "account_index": account_idx,
-                                    }
-                                    self.global_dead_units["generals"].append(dead_general_info)
-
-                                    # 也添加到本地记录（用于兼容旧代码）
-                                    self.dead_units[account_idx]["generals"].append(dead_general_info)
-
-                                    self.report_battle_info(
-                                        f"账号{account_idx} {general_info.get('name', unit_name)}阵亡（检测到墓碑）",
-                                        "warning",
-                                    )
-
-                                    # 从对应主角的武将列表中移除（每个账号只有1个主角）
-                                    char_info = self.unit_info[account_idx]["main_char"]
-                                    found_in_char = False
-                                    # 使用更宽松的匹配方式：通过name或position匹配
-                                    for gen in char_info["generals"]:
-                                        if (
-                                            gen.get("name") == general_info.get("name", unit_name)
-                                            or gen.get("position") == position
-                                        ):
-                                            # 如果武将正在复活中，说明召唤失败，清除复活中状态
-                                            if gen.get("reviving", False):
-                                                gen["reviving"] = False
-                                            char_info["generals"].remove(gen)
-                                            # 武将死亡，立即减数量（已在锁内，使用无锁版本）
-                                            self._update_general_count_on_death_unlocked(account_idx)
-                                            found_in_char = True
-                                            break
-
-                                    if not found_in_char:
-                                        self.report_battle_info(
-                                            f"账号{account_idx} 警告：武将{general_info.get('name', unit_name)}阵亡，但未在主角的武将列表中找到，无法更新general_count",
-                                            "warning",
-                                        )
-
-                                    # 从武将列表中移除
-                                    if general_info in self.unit_info[account_idx]["generals"]:
-                                        self.unit_info[account_idx]["generals"].remove(general_info)
-                            break
-
-                    # 如果武将在列表中不存在，也要添加到死亡记录中（可能是第一回合的初始武将还没有被识别）
-                    if not found_general and not already_in_global:
-                        # 添加到全局阵亡记录
+                    char_info = self.unit_info[account_idx]["main_char"]
+                    generals = char_info.get("generals", [])
+                    gen = self._find_general_by_position(generals, position)
+                    if gen:
+                        gen_name = gen.get("name", unit_name)
+                        gen_alive = gen.get("alive", True)
+                        if gen_alive:
+                            gen["alive"] = False
+                            if gen.get("reviving", False):
+                                gen["reviving"] = False
+                            dead_general_info = {
+                                "name": gen_name,
+                                "position": gen.get("position", position),
+                                "account_index": account_idx,
+                            }
+                            already_in_global = any(
+                                d.get("name") == gen_name and d.get("account_index") == account_idx
+                                for d in self.global_dead_units["generals"]
+                            )
+                            if not already_in_global:
+                                self.global_dead_units["generals"].append(dead_general_info)
+                            self.dead_units[account_idx]["generals"].append(dead_general_info)
+                            self.report_battle_info(f"账号{account_idx} {gen_name}阵亡（检测到墓碑）", "warning")
+                    else:
                         dead_general_info = {
                             "name": unit_name,
                             "position": position,
                             "account_index": account_idx,
                         }
-                        self.global_dead_units["generals"].append(dead_general_info)
-
-                        # 也添加到本地记录
+                        already_in_global = any(
+                            d.get("name") == unit_name and d.get("account_index") == account_idx
+                            for d in self.global_dead_units["generals"]
+                        )
+                        if not already_in_global:
+                            self.global_dead_units["generals"].append(dead_general_info)
                         self.dead_units[account_idx]["generals"].append(dead_general_info)
-
-                        # 武将死亡，立即减数量（已在锁内，使用无锁版本）
-                        self._update_general_count_on_death_unlocked(account_idx)
-
                         self.report_battle_info(
-                            f"账号{account_idx} 武将{unit_name}阵亡（检测到墓碑，武将不在列表中）", "warning"
+                            f"账号{account_idx} 武将{unit_name}阵亡（检测到墓碑，槽位为空）", "warning"
                         )
 
     # 使用恢复药
@@ -2825,57 +2741,6 @@ class CombatAutoScript:
         except Exception as e:
             self.report_battle_info(f"账号{account_index} 使用恢复药失败: {e}", "error")
             return False
-
-    # ==================== 武将数量管理函数 ====================
-    def _update_general_count_on_death(self, account_index):
-        """武将死亡时更新数量：减1（带锁，供外部调用）
-        :param account_index: 账号索引
-        """
-        with self._state_lock:
-            self._update_general_count_on_death_unlocked(account_index)
-
-    def _update_general_count_on_death_unlocked(self, account_index):
-        """武将死亡时更新数量：减1（不带锁，供锁内调用）
-        :param account_index: 账号索引
-        """
-        if account_index in self.unit_info:
-            char_info = self.unit_info[account_index]["main_char"]
-            current_count = char_info.get("general_count", 2)
-            if current_count > 0:
-                char_info["general_count"] = current_count - 1
-                self.report_battle_info(
-                    f"账号{account_index} 武将死亡，武将数量: {current_count} -> {char_info['general_count']}", "info"
-                )
-
-    def _update_general_count_on_revive_success(self, account_index):
-        """检测到蓝条确认复活成功时更新数量：加1（带锁，供外部调用）
-        :param account_index: 账号索引
-        """
-        with self._state_lock:
-            self._update_general_count_on_revive_success_unlocked(account_index)
-
-    def _update_general_count_on_revive_success_unlocked(self, account_index):
-        """检测到蓝条确认复活成功时更新数量：加1（不带锁，供锁内调用）
-        :param account_index: 账号索引
-        """
-        if account_index in self.unit_info:
-            char_info = self.unit_info[account_index]["main_char"]
-            current_count = char_info.get("general_count", 0)
-            if current_count < 2:
-                char_info["general_count"] = current_count + 1
-                self.report_battle_info(
-                    f"账号{account_index} 武将复活成功（检测到蓝条），武将数量: {current_count} -> {char_info['general_count']}",
-                    "info",
-                )
-
-    def _update_main_char_count_on_revive_success(self, account_index):
-        """主角复活成功时更新数量：加1（主角数量从0到1）
-        :param account_index: 账号索引
-        """
-        # 主角数量逻辑：alive=True表示数量为1，alive=False表示数量为0
-        # 这里不需要单独的数量字段，因为主角只有1个
-        # 但为了统一管理，可以添加一个标记
-        pass  # 主角数量固定为0或1，不需要单独管理
 
     # ==================== 复活相关函数 ====================
     def _assign_revive_tasks(self):
@@ -3883,7 +3748,7 @@ class CombatAutoScript:
                         or need_self_liubei
                         or (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index))
                 ):
-                    if self.summon_general_with_verification(account_index, "刘备"):
+                    if self.summon_general_with_verification(account_index, "刘备", force_replace=need_self_liubei):
                         time.sleep(0.1)
                         return True
                     self.has_liubei[account_index] = False
@@ -3919,6 +3784,11 @@ class CombatAutoScript:
                             self.zhaohuan_index += 1
                         else:
                             self.zhaohuan_index = 0
+                            self.beidong_huihe = 0
+                        self.report_battle_info(
+                            f"账号{account_index} 被动替换刘备失败，zhaohuan_index推进至{self.zhaohuan_index}",
+                            "warning",
+                        )
                     # 确保技能面板已打开（点击技能按钮）
                     find_jineng_time = time.time()
                     skill_btn = None
@@ -4042,10 +3912,8 @@ class CombatAutoScript:
                                 # 检测到蓝条（识别到技能），确认复活成功
                                 gen_info["alive"] = True
                                 gen_info["reviving"] = False
-                                # 加数量
-                                self._update_general_count_on_revive_success(account_index)
 
-                                # 从global_dead_units中移除对应记录（通过name和account_index匹配，如果name不一致则使用position匹配）
+                                # 从global_dead_units中移除对应记录
                                 gen_name = gen_info.get("name")
                                 gen_position = gen_info.get("position")
                                 with self._state_lock:

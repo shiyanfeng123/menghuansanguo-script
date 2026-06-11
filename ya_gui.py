@@ -763,6 +763,7 @@ class MyFrame(wx.Frame):
             "帮派任务", "名将闯关", "怪物攻城", "挂机+整点",
             "西瓜保卫战", "战魂楼(精英)", "天外天传送符",
             "嗜血战场(精英)", "英魂秘境(精英)",
+            "炼狱战魂楼", "战魂+红+整点", "战魂+红+魔镜+整点",
         ]
         try:
             from ScriptFactory import get_user_script_choices
@@ -791,7 +792,7 @@ class MyFrame(wx.Frame):
             f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
         if self.is_virtual_machine():
             print("检测到虚拟机环境")
-        wx.CallAfter(self.check_and_update_notify_status)
+        wx.CallAfter(self._check_and_show_update)
         self._init_done = True
 
     def _update_user_display(self):
@@ -1006,8 +1007,24 @@ class MyFrame(wx.Frame):
             if hasattr(self, "update_notify_panel"):
                 self.update_notify_panel.Hide()
 
+    def _check_and_show_update(self):
+        self.check_and_update_notify_status()
+        if self.remote_info and "version" in self.remote_info:
+            latest_version = self.remote_info["version"]
+            if self.current_version != latest_version:
+                dlg = UpdateDialog(self, self.current_version, self.remote_info)
+                dlg.ShowModal()
+                dlg.Destroy()
+
     def on_factory_click(self, event):
-        wx.MessageBox("功能开发中", "ScriptFactory", wx.OK | wx.ICON_INFORMATION)
+        try:
+            from ScriptFactory import ScriptFactoryDialog
+            dlg = ScriptFactoryDialog(parent_frame=self)
+            dlg.Show()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            wx.MessageBox("ScriptFactory启动失败: " + str(e), "错误", wx.OK | wx.ICON_ERROR)
 
     def on_update_link_click(self, event):
         self.stop_update_notify_blink()
@@ -1117,6 +1134,16 @@ class MyFrame(wx.Frame):
         except Exception:
             pass
 
+    def print_and_speak(self, text):
+        print(text)
+        try:
+            import pyttsx3
+            engine = pyttsx3.init()
+            engine.say(text)
+            engine.runAndWait()
+        except Exception:
+            pass
+
     def bind_hotkeys(self):
         keyboard.add_hotkey("F1", lambda: wx.CallAfter(self.start_script))
         keyboard.add_hotkey("F2", lambda: wx.CallAfter(self.pause_script))
@@ -1141,11 +1168,98 @@ class MyFrame(wx.Frame):
         script_name = self.scriptName
         entry = SCRIPT_REGISTRY.get(script_name)
         if not entry:
-            wx.MessageBox("未找到脚本：" + script_name, "错误", wx.OK | wx.ICON_ERROR)
-            return
+            if script_name.startswith("📝 "):
+                user_script_name = script_name[2:].strip()
+                from ScriptEngine import ScriptEngine
+                config = ScriptEngine.load_config(user_script_name)
+                if config:
+                    print("开始脚本！")
+                    wx.CallAfter(self.print_and_speak, "脚本已启动")
+                    self.button_start.Disable()
+
+                    def run_user():
+                        try:
+                            engine = GameEngine()
+                            engine.condition = self.condition
+                            self.engine = engine
+                            engine.scriptName = script_name
+                            engine.zhengdianFloor = self.zhengdianFloor
+                            engine.mojingFloor = self.mojingFloor
+                            engine.heifengFloor = self.heifengFloor
+                            engine.afterZreo = self.afterZreo
+                            engine.heifengCount = int(self.heifengCount) if self.heifengCount and self.heifengCount.isdigit() else 0
+                            engine.qingyuanCount = int(self.qingyuan_count) if self.qingyuan_count and self.qingyuan_count.isdigit() else 0
+                            engine.zhanhunCount = int(self.zhanhun_count) if self.zhanhun_count and self.zhanhun_count.isdigit() else 0
+                            engine.lianyuCount = int(self.lianyu_count) if self.lianyu_count and self.lianyu_count.isdigit() else 0
+                            engine.shihunCount = int(self.shihun_count) if self.shihun_count and self.shihun_count.isdigit() else 0
+                            engine.zhanhunFloor = self.zhanhunFloor
+                            engine.zhanhunFloorNew = self.zhanhunFloorNew
+                            engine.shihunFloor = self.shihun_floor
+                            engine.richangSelection = self.richangSelection
+                            engine.addBloudFlag = self.addBloudFlag
+                            engine.line = self.choice_line
+                            engine.teammate1_pos = self.teammate1_pos
+                            engine.teammate2_pos = self.teammate2_pos
+                            engine.team_leader_pos = self.team_leader_pos
+                            engine._speak_zhengdian = lambda: wx.CallAfter(self.print_and_speak, "整点时间到")
+                            hwnd = engine.find_window(self.game_name)
+                            if not hwnd:
+                                wx.CallAfter(wx.MessageBox, "未找到游戏窗口：" + self.game_name, "错误",
+                                             wx.OK | wx.ICON_ERROR)
+                                return
+                            from ya_engine import GameWindow
+                            engine.main_win = GameWindow(hwnd)
+                            engine.windows["main"] = engine.main_win
+                            if self.teammate1_name:
+                                hwnd1 = engine.find_window(self.teammate1_name)
+                                if hwnd1:
+                                    engine.team1_win = GameWindow(hwnd1)
+                                    engine.windows["team1"] = engine.team1_win
+                            if self.teammate2_name:
+                                hwnd2 = engine.find_window(self.teammate2_name)
+                                if hwnd2:
+                                    engine.team2_win = GameWindow(hwnd2)
+                                    engine.windows["team2"] = engine.team2_win
+
+                            class EngineAdapter:
+                                def __init__(self, engine):
+                                    self.engine = engine
+                                def MoveTo(self, x, y):
+                                    win = self.engine._get_window("main")
+                                    if win:
+                                        win.input.move_to(x, y)
+                                def LeftClick(self):
+                                    win = self.engine._get_window("main")
+                                    if win:
+                                        win.input.left_click(0, 0)
+
+                            engine.dm = EngineAdapter(engine)
+                            se = ScriptEngine(engine, config)
+                            se.run()
+                        except RuntimeError:
+                            print("脚本已停止\n")
+                        except Exception as e:
+                            import traceback
+                            tb = traceback.format_exc()
+                            print(tb)
+                            wx.CallAfter(wx.MessageBox, "脚本异常：" + str(e) + "\n\n" + tb, "错误", wx.OK | wx.ICON_ERROR)
+                        finally:
+                            print("脚本执行结束\n")
+                            wx.CallAfter(self.button_start.Enable)
+
+                    self.script_thread = threading.Thread(target=run_user, daemon=True)
+                    self.script_thread.start()
+                    return
+                else:
+                    wx.MessageBox("未找到脚本配置：" + script_name, "错误", wx.OK | wx.ICON_ERROR)
+                    return
+            else:
+                wx.MessageBox("未找到脚本：" + script_name, "错误", wx.OK | wx.ICON_ERROR)
+                return
         script_fn = entry[0]
 
         print("开始脚本！")
+        wx.CallAfter(self.print_and_speak, "脚本已启动")
         self.button_start.Disable()
 
         def run():
@@ -1172,6 +1286,7 @@ class MyFrame(wx.Frame):
                 engine.teammate1_pos = self.teammate1_pos
                 engine.teammate2_pos = self.teammate2_pos
                 engine.team_leader_pos = self.team_leader_pos
+                engine._speak_zhengdian = lambda: wx.CallAfter(self.print_and_speak, "整点时间到")
                 hwnd = engine.find_window(self.game_name)
                 if not hwnd:
                     wx.CallAfter(wx.MessageBox, "未找到游戏窗口：" + self.game_name, "错误",
@@ -1914,6 +2029,101 @@ class HelpDialog(wx.Dialog):
         dialog_sizer = wx.BoxSizer(wx.VERTICAL)
         dialog_sizer.Add(scroll, 1, wx.EXPAND)
         self.SetSizer(dialog_sizer)
+
+
+class UpdateDialog(wx.Dialog):
+    C_BG = wx.Colour(243, 244, 248)
+    C_SURFACE = wx.Colour(240, 242, 246)
+    C_GOLD = wx.Colour(50, 80, 140)
+    C_TEXT = wx.Colour(40, 42, 50)
+    C_MUTED = wx.Colour(70, 75, 85)
+
+    def __init__(self, parent, current_version, remote_info):
+        super().__init__(parent, title="版本更新", size=(420, 380),
+                         style=wx.DEFAULT_DIALOG_STYLE)
+        self.SetBackgroundColour(self.C_BG)
+        self.remote_info = remote_info
+        self.current_version = current_version
+
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(self.C_BG)
+        vs = wx.BoxSizer(wx.VERTICAL)
+
+        title = wx.StaticText(panel, label="发现新版本!")
+        title.SetForegroundColour(self.C_GOLD)
+        title.SetFont(wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        vs.Add(title, 0, wx.ALIGN_CENTER | wx.ALL, 16)
+
+        version_info = wx.Panel(panel)
+        version_info.SetBackgroundColour(self.C_SURFACE)
+        vis = wx.BoxSizer(wx.VERTICAL)
+
+        cur_label = wx.StaticText(version_info, label=f"当前版本: {current_version}")
+        cur_label.SetForegroundColour(self.C_MUTED)
+        cur_label.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        vis.Add(cur_label, 0, wx.ALL, 6)
+
+        new_version = remote_info.get("version", "未知")
+        new_label = wx.StaticText(version_info, label=f"最新版本: {new_version}")
+        new_label.SetForegroundColour(wx.Colour(39, 174, 96))
+        new_label.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        vis.Add(new_label, 0, wx.ALL, 6)
+
+        version_info.SetSizer(vis)
+        vs.Add(version_info, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 16)
+
+        changelog = remote_info.get("changelog", "")
+        if changelog:
+            log_label = wx.StaticText(panel, label="更新内容:")
+            log_label.SetForegroundColour(self.C_GOLD)
+            log_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            vs.Add(log_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 16)
+
+            log_text = wx.TextCtrl(panel, size=(-1, 120), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
+            log_text.SetValue(changelog)
+            log_text.SetBackgroundColour(self.C_SURFACE)
+            log_text.SetForegroundColour(self.C_TEXT)
+            log_text.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            vs.Add(log_text, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 16)
+
+        btn_bar = wx.BoxSizer(wx.HORIZONTAL)
+        download_btn = wx.Button(panel, size=(130, 36), style=wx.BORDER_NONE, label="下载更新")
+        download_btn.SetBackgroundColour(wx.Colour(39, 174, 96))
+        download_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+        download_btn.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        download_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        download_btn.Bind(wx.EVT_BUTTON, self.on_download)
+        btn_bar.Add(download_btn, 0, wx.RIGHT, 10)
+
+        later_btn = wx.Button(panel, size=(130, 36), style=wx.BORDER_NONE, label="稍后更新")
+        later_btn.SetBackgroundColour(self.C_SURFACE)
+        later_btn.SetForegroundColour(self.C_MUTED)
+        later_btn.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        later_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        later_btn.Bind(wx.EVT_BUTTON, self.on_later)
+        btn_bar.Add(later_btn, 0)
+
+        vs.Add(btn_bar, 0, wx.ALIGN_CENTER | wx.ALL, 16)
+
+        panel.SetSizer(vs)
+        ds = wx.BoxSizer(wx.VERTICAL)
+        ds.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(ds)
+
+    def on_download(self, event):
+        try:
+            import webbrowser
+            url = self.remote_info.get("download_url", "")
+            if url:
+                webbrowser.open(url)
+            else:
+                webbrowser.open("https://p01--script-serve--5yyh9pxyhqq4.code.run")
+        except Exception:
+            pass
+        self.EndModal(wx.ID_OK)
+
+    def on_later(self, event):
+        self.EndModal(wx.ID_CANCEL)
 
 
 if __name__ == "__main__":
