@@ -1377,10 +1377,35 @@ class MyThread(threading.Thread):
                     if self._ocr_text_match(target, txt):
                         cx = int((box[0][0] + box[2][0]) / 2) + x
                         cy = int((box[0][1] + box[2][1]) / 2) + y
+                        self._auto_capture_text(target, screenshot, box)
                         return ResXy(cx, cy)
         except Exception:
             pass
         return None
+
+    @staticmethod
+    def _auto_capture_text(target, screenshot, box):
+        img_path = TEXT_MAP.get(target)
+        if not img_path:
+            return
+        abs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), img_path)
+        if os.path.isfile(abs_path):
+            return
+        x1, y1 = int(box[0][0]), int(box[0][1])
+        x2, y2 = int(box[2][0]), int(box[2][1])
+        if x2 <= x1 or y2 <= y1:
+            return
+        crop = screenshot[y1:y2, x1:x2]
+        import cv2
+        cv2.imwrite(abs_path, crop)
+        test = cv2.imread(abs_path)
+        if test is not None:
+            result = cv2.matchTemplate(screenshot, crop, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, _ = cv2.minMaxLoc(result)
+            if max_val < 0.85:
+                os.remove(abs_path)
+            else:
+                print(f"[AUTO-CAPTURE] {target} -> {img_path} (conf={max_val:.3f})")
 
     @staticmethod
     def _ocr_text_match(target, ocr_text):
