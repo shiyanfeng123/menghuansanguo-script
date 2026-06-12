@@ -12,6 +12,8 @@ import wx
 import wx.lib.scrolledpanel as scrolled
 from datetime import datetime
 
+from ya_engine import GameEngine, MatchResult
+
 
 # ==================== 常量定义 ====================
 class CombatConstants:
@@ -436,10 +438,10 @@ class BattleReportDialog(wx.Frame):
 
 class CombatAutoScript:
     # 初始化战斗自动操作
-    # :param thread_instance: MyThread 实例，用于访问大漠对象和区域定义
+    # :param engine: GameEngine 实例
     # :param enemy_keys_to_detect: 需要检测状态的敌军单位 key 列表，例如 ["诸葛亮", "赵云29"]，如果为None则不检测
-    def __init__(self, thread_instance, enemy_keys_to_detect=None):
-        self.thread = thread_instance
+    def __init__(self, engine, enemy_keys_to_detect=None):
+        self.engine = engine
         self.battle_report_dialog = None  # 战斗播报窗口
         self._dialog_closed = False  # 标记窗口是否已被关闭，防止重新创建
 
@@ -1008,117 +1010,46 @@ class CombatAutoScript:
 
     # 获取账号数量
     def get_account_count(self):
-        """获取账号数量（根据实际可用的大漠对象）"""
-        count = 0
-        if self.thread.dm:
-            count += 1
-        if getattr(self.thread, "win1_dm", None):
-            count += 1
-        if getattr(self.thread, "win2_dm", None):
-            count += 1
-        return max(count, 1)  # 至少返回1（主账号）
+        return 3
 
-    # 获取指定账号的dm对象
-    def get_account_dm(self, account_index):
-        """获取指定账号的dm对象
-        account_index: 0=dm, 1=win1_dm, 2=win2_dm
-        """
-        if account_index == 0:
-            return self.thread.dm
-        elif account_index == 1:
-            return getattr(self.thread, "win1_dm", None)
-        elif account_index == 2:
-            return getattr(self.thread, "win2_dm", None)
-        return self.thread.dm  # 默认返回主账号
+    def _get_role(self, account_index):
+        roles = ["main", "team1", "team2"]
+        return roles[account_index] if 0 <= account_index < 3 else "main"
+
+    def _convert_region(self, region):
+        x1, y1, x2, y2 = region
+        return (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
 
     # 查找图片(封装thread的方法，支持多账号)
     def find_image(self, account_index, image_path, region, find_dir=0, use_lower_confidence=False):
-        """查找图片，支持多账号，支持识别率递减
-        :param account_index: 账号索引
-        :param image_path: 图片路径（支持多个路径用|分隔）
-        :param region: 搜索区域 (x, y, w, h)
-        :param find_dir: 查找方向
-        :param use_lower_confidence: 是否使用更低的识别率（用于难以识别的图片，如道具）
-        :return: ResXy对象或None
-        """
-        dm = self.get_account_dm(account_index)
-        if not dm:
-            return None
-
-        # 直接使用dm对象，避免修改共享状态（线程安全）
-        # 大漠插件本身是线程安全的，可以直接在子线程中使用
+        role = self._get_role(account_index)
+        ya_region = self._convert_region(region)
         try:
-            x, y, w, h = region
-            # 验证坐标有效性（w和h是结束坐标）
-            if w <= x or h <= y:
-                return None
-
-            # 识别率递减：如果use_lower_confidence为True，使用更低的识别率
             if use_lower_confidence:
                 confidence_levels = [0.9, 0.8, 0.7]
             else:
                 confidence_levels = [0.9, 0.8, 0.7]
-
             for confidence in confidence_levels:
-                pos = dm.FindPicEx(int(x), int(y), int(w), int(h), image_path, "", confidence, find_dir)
-                if pos:
-                    # 找到图片，解析坐标
-                    pos = pos.split("|")
-                    pos_res = pos[0].split(",")
-                    pics = image_path.split("|")
-                    picSize = dm.GetPicSize(pics[int(pos_res[0])])
-                    picSize = picSize.split(",")
-                    picW, picH = picSize[0], picSize[1]
-                    posX = int(pos_res[1]) + (int(picW) * 0.5)
-                    posY = int(pos_res[2]) + (int(picH) * 0.5)
-                    return ResXy(int(posX), int(posY))
+                result = self.engine.find_pic(image_path, ya_region, confidence, role, find_dir)
+                if result:
+                    return ResXy(int(result.x), int(result.y))
                 time.sleep(0.02)
-            # 所有识别率都未找到，返回None
             return None
         except Exception:
             return None
 
     # 查找文字(封装thread的方法，支持动态识别率)
     def find_text(self, account_index, text, region, find_dir=0, confidence=None):
-        """查找文字，支持动态识别率
-        confidence: 识别率，如果为None则使用默认值
-        """
-        dm = self.get_account_dm(account_index)
-        if not dm:
+        role = self._get_role(account_index)
+        ya_region = self._convert_region(region)
+        use_confidence = confidence if confidence is not None else 0.9
+        try:
+            result = self.engine.find_pic_or_str(text, ya_region, find_dir, role, use_confidence)
+            if result:
+                return ResXy(int(result.x), int(result.y))
             return None
-
-        # 获取默认识别率和颜色格式
-        default_confidence = getattr(self.thread, "confidenceNum", 0.9)
-        color_format = "ffff00-000000|fff200-000000|fdfd06-000000"
-
-        # 使用指定的识别率或默认值
-        use_confidence = confidence if confidence is not None else default_confidence
-        # 直接使用dm对象，避免修改共享的confidenceNum（线程安全）
-        # 大漠插件本身是线程安全的，可以直接在子线程中使用
-        x, y, w, h = region
-        find_str_result = dm.FindStrFastE(int(x), int(y), int(w), int(h), text, color_format, use_confidence)
-        return self._parse_find_str_result(find_str_result, find_dir)
-
-    # 解析FindStrFastE的结果
-    def _parse_find_str_result(self, find_str_result, find_dir):
-        """解析FindStrFastE的结果"""
-        if not find_str_result:
+        except Exception:
             return None
-        find_str_result = find_str_result.split("|")
-        if int(find_str_result[0]) >= 0:
-            pos_res = None
-            if len(find_str_result) == 3:
-                pos_res = find_str_result
-            elif len(find_str_result) > 3:
-                if int(find_str_result[1]) < int(find_str_result[4]) and find_dir in [0, 1]:
-                    pos_res = find_str_result[:3]
-                else:
-                    pos_res = find_str_result[3:6]
-            if pos_res:
-                posX = pos_res[1]
-                posY = pos_res[2]
-                return ResXy(int(posX), int(posY))
-        return None
 
     # 检查敌军场上是否有配置的敌军单位
     def find_enemy_unit_on_field(self, account_index):
@@ -1149,82 +1080,38 @@ class CombatAutoScript:
 
     # 查找技能目标选择图片（lantiao）
     def find_target_lantiao(self, account_index, search_region, timeout=3.0):
-        """查找技能目标选择图片（lantiao）
-        :param account_index: 账号索引
-        :param search_region: 搜索区域
-        :param timeout: 超时时间（秒）
-        :return: ResXy对象或None
-        """
         if not self.target_lantiao_image:
             return None
-
-        dm = self.get_account_dm(account_index)
-        if not dm:
-            return None
-
-        confidence_levels = [0.9, 0.8, 0.7]  # 识别率递减
-        target_pos = None
+        role = self._get_role(account_index)
+        ya_region = self._convert_region(search_region)
+        confidence_levels = [0.9, 0.8, 0.7]
         start_time = time.time()
-
         try:
-            x, y, w, h = search_region
-            # 验证坐标有效性（w和h是结束坐标）
-            if w <= x or h <= y:
-                return None
-
             while time.time() - start_time < timeout:
-                # 尝试多个识别率
                 for confidence in confidence_levels:
                     if time.time() - start_time >= timeout:
                         break
-
-                    pos = dm.FindPicEx(int(x), int(y), int(w), int(h), self.target_lantiao_image, "", confidence, 0)
-                    if pos:
-                        # 找到图片，解析坐标
-                        pos = pos.split("|")
-                        pos_res = pos[0].split(",")
-                        pics = self.target_lantiao_image.split("|")
-                        picSize = dm.GetPicSize(pics[int(pos_res[0])])
-                        picSize = picSize.split(",")
-                        picW, picH = picSize[0], picSize[1]
-                        posX = int(pos_res[1]) + (int(picW) * 0.5)
-                        posY = int(pos_res[2]) + (int(picH) * 0.5)
-                        target_pos = ResXy(int(posX), int(posY))
-                        break
-                    time.sleep(0.05)  # 短暂延迟后重试
-
-                if target_pos:
-                    break
-                time.sleep(0.1)  # 每次循环后稍作延迟
+                    result = self.engine.find_pic(self.target_lantiao_image, ya_region, confidence, role, 0)
+                    if result:
+                        target_x = int(result.x) + random.randint(25, 30)
+                        target_y = int(result.y) + random.randint(45, 60)
+                        return ResXy(target_x, target_y)
+                    time.sleep(0.05)
+                time.sleep(0.1)
         except Exception:
             return None
-
-        # 如果找到目标，将坐标偏移 x+30, y+60
-        if target_pos:
-            target_pos.x = target_pos.x + random.randint(25, 30)
-            target_pos.y = target_pos.y + random.randint(45, 60)
-
-        return target_pos
+        return None
 
     def _find_all_lantiao(self, account_index, region):
-        dm = self.get_account_dm(account_index)
-        if not dm:
-            return []
-        x, y, w, h = region
-        if w <= x or h <= y:
+        role = self._get_role(account_index)
+        ya_region = self._convert_region(region)
+        x1, y1, x2, y2 = region
+        if x2 <= x1 or y2 <= y1:
             return []
         for confidence in [0.9, 0.8, 0.7]:
-            result = dm.FindPicEx(int(x), int(y), int(w), int(h), self.target_lantiao_image, "", confidence, 0)
-            if result:
-                pic_size = dm.GetPicSize(self.target_lantiao_image).split(",")
-                pw, ph = int(pic_size[0]), int(pic_size[1])
-                positions = []
-                for item in result.split("|"):
-                    parts = item.split(",")
-                    if len(parts) >= 3:
-                        cx = int(parts[1]) + int(pw * 0.5)
-                        cy = int(parts[2]) + int(ph * 0.5)
-                        positions.append((cx, cy))
+            results = self.engine.find_pic_all(self.target_lantiao_image, ya_region, confidence, role)
+            if results:
+                positions = [(int(r.x), int(r.y)) for r in results]
                 if positions:
                     return positions
             time.sleep(0.02)
@@ -1271,12 +1158,10 @@ class CombatAutoScript:
 
     # 点击坐标
     def click_position(self, account_index, x, y):
-        """点击指定坐标"""
-        dm = self.get_account_dm(account_index)
-        dm.MoveTo(int(x), int(y))
+        role = self._get_role(account_index)
+        self.engine.move_to(int(x), int(y), role)
         time.sleep(CombatConstants.CLICK_DELAY)
-        dm.LeftClick()
-        # time.sleep(CombatConstants.ACTION_DELAY)
+        self.engine.left_click(role=role)
 
     # 点击技能并验证是否成功
     def click_skill_with_verification(
@@ -2312,9 +2197,6 @@ class CombatAutoScript:
             return
 
         dm_index = 0
-        dm = self.get_account_dm(dm_index)
-        if not dm:
-            return
 
         self.enemy_target_index = 0
         self.ally_target_index = 0
@@ -2336,12 +2218,8 @@ class CombatAutoScript:
         """在我方回合开始时，由大漠对象0检测场上是否有刘备
         在我方区域检测self.liubei_image，如果超过10次没有找到，则设置has_liubei_on_field为False
         """
-        account_index = 0  # 使用大漠对象0进行检测
-        dm = self.get_account_dm(account_index)
-        if not dm:
-            return
+        account_index = 0
 
-        # 在我方区域检测刘备图片
         liubei_pos = self.find_image(account_index, self.liubei_image, self.ally_region, 0)
 
         with self._state_lock:
@@ -4236,11 +4114,6 @@ class CombatAutoScript:
                 if not self.polling_running:
                     break
 
-                dm = self.get_account_dm(account_index)
-                if not dm:
-                    continue
-
-                # 优先检测操作按钮：如果等待到了操作按钮，就退出循环进入监听环节
                 if self.check_action_button(account_index):
                     step0_completed = True
                     break
@@ -4280,11 +4153,6 @@ class CombatAutoScript:
                     if not self.polling_running:
                         break
 
-                    dm = self.get_account_dm(account_index)
-                    if not dm:
-                        continue
-
-                    # 检测zdzd图片
                     zdzd_pos = self.find_image(account_index, self.zdzd_image, self.zdzd_region, 0)
                     if zdzd_pos:
                         # 找到zdzd图片，点击取消按钮
@@ -4302,9 +4170,6 @@ class CombatAutoScript:
                 for account_index in [0, 1, 2]:
                     if not self.polling_running:
                         break
-                    dm = self.get_account_dm(account_index)
-                    if not dm:
-                        continue
                     if self.check_action_button(account_index):
                         has_action_button = True
                         break
@@ -4333,11 +4198,6 @@ class CombatAutoScript:
                         if not self.polling_running:
                             break
 
-                        dm = self.get_account_dm(account_index)
-                        if not dm:
-                            continue
-
-                        # 直接创建处理线程，_handle_account_turn内部会自己检测和等待操作按钮
                         thread = threading.Thread(target=self._handle_account_turn, args=(account_index,), daemon=False)
                         thread.start()
                         account_threads[account_index] = thread
@@ -4442,32 +4302,26 @@ class CombatAutoScript:
                 # 非我方回合：检测场上的墓碑和敌军状态
                 # 使用主账号（账号0）检测所有账号的状态
                 main_account_index = 0
-                dm = self.get_account_dm(main_account_index)
-                if dm:
-                    # 第一步：一次性扫描全部9个区域检测墓碑
-                    dead_list = self.check_tombstones_all(detect_account_index=main_account_index)
-                    if dead_list:
-                        self.update_unit_info_from_tombstones(dead_list)
+                dead_list = self.check_tombstones_all(detect_account_index=main_account_index)
+                if dead_list:
+                    self.update_unit_info_from_tombstones(dead_list)
 
-                    # 第二步：检测敌军需要清除的状态
-                    if self.enemy_keys_to_detect:
-                        self.detect_enemies_need_clear(main_account_index)
+                if self.enemy_keys_to_detect:
+                    self.detect_enemies_need_clear(main_account_index)
 
-                    # 非我方回合时，由大漠对象0检测场上是否有刘备
-                    self._detect_liubei_on_field()
+                self._detect_liubei_on_field()
 
-                    # 检测血量低单位（每轮只扫一个账号，3轮扫完一轮）
-                    if not hasattr(self, '_hp_scan_round'):
-                        self._hp_scan_round = 0
-                    acct = self._hp_scan_round % 3
-                    self._hp_scan_round += 1
-                    cnt = 0
-                    for ridx, ac in self.hp_region_to_account.items():
-                        if ac == acct:
-                            reg = self.hp_bar_regions[ridx]
-                            if self.find_image(acct, self.low_hp_indicator_image, reg, 0):
-                                cnt += 1
-                    self.low_hp_accounts[acct] = cnt
+                if not hasattr(self, '_hp_scan_round'):
+                    self._hp_scan_round = 0
+                acct = self._hp_scan_round % 3
+                self._hp_scan_round += 1
+                cnt = 0
+                for ridx, ac in self.hp_region_to_account.items():
+                    if ac == acct:
+                        reg = self.hp_bar_regions[ridx]
+                        if self.find_image(acct, self.low_hp_indicator_image, reg, 0):
+                            cnt += 1
+                self.low_hp_accounts[acct] = cnt
                 # 轮询间隔（非我方回合时）
                 if self.polling_running:
                     time.sleep(CombatConstants.DEFAULT_CHECK_INTERVAL)

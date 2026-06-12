@@ -2,11 +2,21 @@
 
 
 a = Analysis(
-    ['yaScript.py'],
+    ['ya_game_scripts.py'],
     pathex=[],
     binaries=[],
-    datas=[('images', 'images')],
-    hiddenimports=[],
+    datas=[
+        ('images', 'images'),
+        ('serveAssets', 'serveAssets'),
+        ('ya_assets', 'ya_assets'),
+    ],
+    hiddenimports=[
+        'ya_engine',
+        'ya_kanloong_combat',
+        'ya_auth',
+        'ScriptEngine',
+        'ScriptFactory',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

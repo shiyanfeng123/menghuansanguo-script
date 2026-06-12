@@ -1,4 +1,7 @@
 # 大漠插件
+from ya_engine import GameEngine, MatchResult, GameWindow
+import win32gui
+engine = None
 import random
 import time
 import keyboard
@@ -8,9 +11,7 @@ import wx.lib.scrolledpanel as scrolled
 import psutil
 import ctypes
 import gc
-from comtypes.client import CreateObject
 import subprocess
-from comtypes import CoInitialize
 from datetime import datetime
 from datetime import timedelta
 import pyttsx3
@@ -21,12 +22,43 @@ import os
 import sys
 from collections import OrderedDict
 
+from ya_engine import GameEngine, MatchResult
+import win32gui
+
 # 导入战斗自动操作脚本``
-from Kanloong_combat_script import CombatAutoScript
+from ya_kanloong_combat import CombatAutoScript
+
+_OCR_ENGINE = None
+def _get_ocr():
+    global _OCR_ENGINE
+    if _OCR_ENGINE is None:
+        from rapidocr_onnxruntime import RapidOCR
+        _OCR_ENGINE = RapidOCR()
+    return _OCR_ENGINE
 
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --add-data "user_scripts;user_scripts" --hidden-import Kanloong_combat_script --hidden-import ScriptEngine --hidden-import ScriptFactory --icon=serveAssets\images\script.ico .\serveScript.py
 # pyinstaller serveScript.spec
 condition = threading.Condition()
+
+# 文字→图片映射表(中文文字→ya_assets/images/text/拼音.bmp)
+TEXT_MAP = {}
+def _init_text_map():
+    global TEXT_MAP
+    import os, re
+    base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ya_assets", "images", "text")
+    txt_file = os.path.join(base, "文字图片替换清单.txt")
+    if os.path.isfile(txt_file):
+        with open(txt_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("|--") or line.startswith("| 游戏"):
+                    continue
+                if ".bmp" not in line:
+                    continue
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 3 and parts[2].endswith(".bmp"):
+                    TEXT_MAP[parts[1]] = "ya_assets/images/text/" + parts[2]
+_init_text_map()
 
 # Windows API 常量
 FILE_ATTRIBUTE_HIDDEN = 0x2
@@ -102,21 +134,23 @@ class ResXy:
 
 def sort_array_by_second_value(arr, order):
     """
-    根据数组中每个元素的第二个值进行排序。
+    根据数组中每个元素的第二个值（x坐标）进行排序。
+    支持字符串格式("0,123,654")和MatchResult对象。
 
     参数:
-            arr (list): 包含字符串元素的数组，每个元素格式为"0,123,654"
+            arr (list): 元素数组
             order (int): 排序方向，1表示降序，2表示升序
 
     返回:
             list: 排序后的数组
     """
 
-    # 定义排序键函数，提取每个元素的第二个值
     def key_func(item):
-        return int(item.split(",")[1])
+        if isinstance(item, str):
+            return int(item.split(",")[1])
+        else:
+            return item.left if hasattr(item, 'left') else (item.x - item.width // 2 if hasattr(item, 'x') else 0)
 
-    # 使用字典去除第二个值重复的项
     seen = {}
     unique_arr = []
     for item in arr:
@@ -124,10 +158,7 @@ def sort_array_by_second_value(arr, order):
         if second_value not in seen:
             seen[second_value] = True
             unique_arr.append(item)
-    # 根据order参数决定排序顺序
     reverse_order = order == 1
-
-    # 使用sorted函数进行排序
     sorted_arr = sorted(arr, key=key_func, reverse=reverse_order)
     return sorted_arr
 
@@ -167,18 +198,6 @@ class MyThread(threading.Thread):
         ]
         self.zdList = None
         self.zd49List = None
-        try:
-            self.dm = CreateObject("dm.dmsoft")
-        except:
-            regPath = self.get_resource_path("serveAssets/plugins/RegDll.dll")
-            dms = ctypes.windll.LoadLibrary(str(regPath))
-            dmPath = self.get_resource_path("serveAssets/plugins/dm.dll")
-            # 构建 regsvr32 命令，添加 /s 参数以静默运行
-            command = ["regsvr32", "/s", dmPath]
-            # 执行命令
-            subprocess.run(command, check=True, capture_output=True, text=True)
-            dms.DllRegisterServer(dmPath, 0)
-            self.dm = CreateObject("dm.dmsoft")
         self.win1_dm = None
         self.win2_dm = None
         self.hasRefresh = False
@@ -304,7 +323,7 @@ class MyThread(threading.Thread):
             self.combat_auto_running = True
 
             if not self.combat_auto_instance:
-                self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
+                self.combat_auto_instance = CombatAutoScript(engine, clear_enemy_keys)
                 self.combat_auto_instance.keep_support_general = False
                 self.combat_auto_instance.enable_main_heal = True
                 self.combat_auto_instance.enable_main_summon = True
@@ -414,11 +433,18 @@ class MyThread(threading.Thread):
         self.richangSelection = self.frame.richangSelection
         self.heifengWhileCount = int(
             self.frame.heifengCount) if self.frame.heifengCount else 0
+        global engine
+        engine = GameEngine()
+        engine.addBloudFlag = self.frame.addBloudFlag
+        engine.scriptName = self.scriptName
+        engine.zhengdianFloor = self.zhengdianFloor
         # display = Display(visible=False, size=(1920, 1080))
         # display.start()
         isFindGame = self.findGame()
         if not isFindGame:
             return
+        if self.click_hwnd:
+            engine.main_win = GameWindow(self.click_hwnd)
         if not self.hasRefresh:
             self.child_thread.start()
             self.win1_thread.start()
@@ -1067,8 +1093,8 @@ class MyThread(threading.Thread):
 
         # 定义回调函数
         def enum_child_windows_callback(hwnd, lParam):
-            window_text = self.dm.GetWindowText(hwnd)
-            class_name = self.dm.GetClassName(hwnd)
+            window_text = win32gui.GetWindowText(hwnd)
+            class_name = win32gui.GetClassName(hwnd)
             return True  # 返回 True 继续枚举
 
         # 将回调函数转换为 ctypes 函数指针
@@ -1077,16 +1103,20 @@ class MyThread(threading.Thread):
         # 查找目标窗口句柄
         target_window_title = self.frame.game_name
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
-        hwnds = self.dm.EnumWindow(0, target_window_title, target_window_class,
-                                   1 + 2)
-        hwnds = hwnds.split(",")
+        found_windows = []
+        def enum_callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                wt = win32gui.GetWindowText(hwnd)
+                if wt and target_window_title in wt:
+                    found_windows.append(hwnd)
+            return True
+        win32gui.EnumWindows(enum_callback, None)
         hwnd = 0
-        for item in hwnds:
+        for h in found_windows:
             if self.overed:
                 return
-            if item and self.dm.GetWindowTitle(
-                    int(item)) == target_window_title:
-                hwnd = int(item)
+            if win32gui.GetWindowText(h) == target_window_title:
+                hwnd = h
                 break
         if hwnd:
             # 使用 Windows API 的 EnumChildWindows
@@ -1102,19 +1132,16 @@ class MyThread(threading.Thread):
             def enum_child_proc(hwnd, lParam):
                 if self.overed:
                     return
-                class_name = self.dm.GetWindowClass(hwnd)
-                child_rect = self.dm.GetWindowRect(hwnd)
-                if child_rect != 0:
-                    left, top, right, bottom, isFind = child_rect
-                    if (
-                            class_name == "NativeWindowClass"
-                            and left > 0
-                            and right < screen_width
-                            and bottom < screen_height
-                    ):
-                        # print(left, top, right, bottom)
-                        self.click_hwnd = hwnd
-                        return False
+                class_name = win32gui.GetClassName(hwnd)
+                try:
+                    left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+                    if left > 0 and right < screen_width and bottom < screen_height:
+                        if class_name == "NativeWindowClass":
+                                    # print(left, top, right, bottom)
+                                    self.click_hwnd = hwnd
+                                    return False
+                except:
+                    pass
                 # if class_name == 'Chrome_RenderWidgetHostHWND':
                 # 	if left > 50:
                 # 		print('请5s内关闭小号列表！')
@@ -1126,20 +1153,23 @@ class MyThread(threading.Thread):
 
             enum_child_proc_type = ENUMWINDOWSPROC(enum_child_proc)
             user32.EnumChildWindows(hwnd, enum_child_proc_type, 0)
+            if not self.click_hwnd:
+                print("未找到游戏画面窗口，请检查游戏是否正常运行！")
+                return False
         else:
             print("未找到游戏窗口，请检查输入的游戏名称是否正确！")
+            return False
         # 绑定窗口到后台模式
-        bind_result = self.dm.BindWindow(self.click_hwnd, "dx2", "windows3",
-                                         "windows", 0)
+        bind_result = 1  # engine handles window binding internally
         if bind_result == 1:
             # print("窗口绑定成功")
             time.sleep(0.1)
         else:
             print("窗口绑定失败")
             return False
-        location = self.dm.GetClientSize(self.click_hwnd)
-        x, y, res = location
-        if res == 1:
+        rect = win32gui.GetClientRect(self.click_hwnd)
+        x, y = rect[2], rect[3]
+        if x > 0 and y > 0:
             # print('已找到游戏画面')
             time.sleep(0.1)
         else:
@@ -1147,10 +1177,9 @@ class MyThread(threading.Thread):
             return False
         if self.overed:
             return
-        self.dm.SetDict(0, self.get_resource_path(
-            "serveAssets/fonts/common.txt"))  # 字库文件路径
-        current_rect = self.dm.GetWindowRect(self.click_hwnd)
-        left, top, right, bottom, isFind = current_rect
+        # [REMOVED] self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/common.txt"))
+        rect = win32gui.GetWindowRect(self.click_hwnd)
+        left, top, right, bottom = rect
         self.locationX = 0
         # xian_pos = self.dm.FindPicEx(left, top, right, bottom, self.get_resource_path("serveAssets/images/xian.bmp"), "", 0.8, 2)
         # if not xian_pos:
@@ -1233,7 +1262,7 @@ class MyThread(threading.Thread):
         #         and not self.hasRefresh
         #         and (self.teammate1_name or self.teammate2_name)
         # ):
-        #     self.dm.KeyPressChar("t")
+        #     engine.key_press("t")
         #     time.sleep(2)
         #     self.dm.Capture(
         #         304,
@@ -1259,7 +1288,7 @@ class MyThread(threading.Thread):
         #         self.get_resource_path("serveAssets/images/team_mate2.bmp"),
         #     )
         #     time.sleep(2)
-        #     self.dm.KeyPressChar("t")
+        #     engine.key_press("t")
         return True
 
     def find_pic_or_str(self, find, region, find_dir):
@@ -1296,255 +1325,156 @@ class MyThread(threading.Thread):
     def find_pic(self, image_path, image_region, find_dir):
         if self.overed:
             return
-        find_path = image_path
-        # picSize = self.dm.GetPicSize(image_path)
-        # picSize = picSize.split(',')
-        # picW, picH = picSize[0], picSize[1]
         x, y, w, h = image_region
-        pos = self.dm.FindPicEx(int(x), int(y), int(w), int(h), find_path, "",
-                                self.confidenceNum, find_dir)
-        if not pos:
-            # if self.confidenceNum == 0.9:
-            # 	self.confidenceNum = 0.8
-            # 	find_res = self.find_pic(image_path, image_region, find_dir)
-            # 	self.confidenceNum = 0.9
-            # 	return find_res
-            return False
-        pos = pos.split("|")
-        # if len(pos) == 1:
-        # 	pos_res = pos[0].split(',')
-        # else:
-        # 	# 初始化最小值和对应的项
-        # 	min_x_value = float('inf')
-        # 	min_item = None
-        # 	# 遍历数组，找到第二个数值最小的那一项
-        # 	for item in pos:
-        # 		# 解析每一项
-        # 		parts = item.split(',')
-        # 		x_value = int(parts[1])
-        # 		# 比较并更新最小值和对应的项
-        # 		if x_value < min_x_value:
-        # 			min_x_value = x_value
-        # 			min_item = item
-        # 	pos_res = min_item.split(',')
-        pos_res = pos[0].split(",")
-        pics = image_path.split("|")
-        picSize = self.dm.GetPicSize(pics[int(pos_res[0])])
-        picSize = picSize.split(",")
-        picW, picH = picSize[0], picSize[1]
-        posX = int(pos_res[1]) + (int(picW) * 0.5)
-        posY = int(pos_res[2]) + (int(picH) * 0.5)
-        res = ResXy(int(posX), int(posY))
-        self.dm.FreePic(image_path)
-        return res
-
-    # 找字方法
+        find_path = image_path
+        image_arr = find_path.split("|")
+        if len(image_arr) > 1:
+            full_paths = []
+            for img_path in image_arr:
+                img_path = img_path.strip()
+                if not img_path:
+                    continue
+                full_paths.append(self.get_resource_path(img_path))
+            find_path = "|".join(full_paths)
+        result = engine.find_pic(find_path, (x, y, w, h), self.confidenceNum, "main", find_dir)
+        if result:
+            return ResXy(int(result.x), int(result.y))
+        return None
     def find_str(self, text, region, find_dir):
         if self.overed:
             return
         x, y, w, h = region
-        find_str_result = self.dm.FindStrFastE(
-            int(x), int(y), int(w), int(h), text, self.color_format,
-            self.confidenceNum
-        )
-        find_str_result = find_str_result.split("|")
-        if int(find_str_result[0]) >= 0:
-            pos_res = None
-            if len(find_str_result) == 3:
-                pos_res = find_str_result
-            elif len(find_str_result) > 3:
-                if int(find_str_result[1]) < int(
-                        find_str_result[4]) and find_dir in [
-                    0,
-                    1,
-                ]:
-                    pos_res = find_str_result[:3]
-                else:
-                    pos_res = find_str_result[3:6]
-            posX = pos_res[1]
-            posY = pos_res[2]
-            res = ResXy(int(posX), int(posY))
-            return res
+        if "|" in text:
+            img_paths = []
+            for part in text.split("|"):
+                part = part.strip()
+                if not part:
+                    continue
+                img_paths.append(TEXT_MAP.get(part, part))
+            img_path = "|".join(img_paths)
         else:
-            # if self.confidenceNum == 0.9:
-            # 	self.confidenceNum = 0.8
-            # 	find_res = self.find_str(text, region, find_dir)
-            # 	self.confidenceNum = 0.9
-            # 	return find_res
-            return False
+            img_path = TEXT_MAP.get(text, text)
+        result = engine.find_pic(img_path, (x, y, w, h), self.confidenceNum, "main", find_dir)
+        if result:
+            return ResXy(int(result.x), int(result.y))
+        return self._find_str_ocr(text, x, y, w, h)
 
+    def _find_str_ocr(self, text, x, y, w, h, role="main"):
+        try:
+            screenshot = engine.screenshot(role, (x, y, w, h))
+            if screenshot is None or screenshot.shape[0] < 10 or screenshot.shape[1] < 10:
+                return None
+            ocr = _get_ocr()
+            ocr_result, _ = ocr(screenshot)
+            if not ocr_result:
+                return None
+            targets = [t.strip() for t in text.split("|") if t.strip()]
+            for item in ocr_result:
+                box, txt, conf = item
+                if conf < 0.7:
+                    continue
+                for target in targets:
+                    if self._ocr_text_match(target, txt):
+                        cx = int((box[0][0] + box[2][0]) / 2) + x
+                        cy = int((box[0][1] + box[2][1]) / 2) + y
+                        return ResXy(cx, cy)
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _ocr_text_match(target, ocr_text):
+        if target in ocr_text:
+            return True
+        if len(target) <= 2:
+            return False
+        overlap = sum(1 for c in target if c in ocr_text)
+        return overlap >= max(len(target) * 0.6, 3)
     # 找图方法z
     def find_pic_team1(self, image_path, image_region, find_dir):
         if self.overed:
             return
-        find_path = image_path
-        # picSize = self.dm.GetPicSize(image_path)
-        # picSize = picSize.split(',')
-        # picW, picH = picSize[0], picSize[1]
         x, y, w, h = image_region
-        pos = self.win1_dm.FindPicEx(int(x), int(y), int(w), int(h), find_path,
-                                     "", self.confidenceNum, find_dir)
-        if not pos:
-            return False
-        pos = pos.split("|")
-        # if len(pos) == 1:
-        # 	pos_res = pos[0].split(',')
-        # else:
-        # 	# 初始化最小值和对应的项
-        # 	min_x_value = float('inf')
-        # 	min_item = None
-        # 	# 遍历数组，找到第二个数值最小的那一项
-        # 	for item in pos:
-        # 		# 解析每一项
-        # 		parts = item.split(',')
-        # 		x_value = int(parts[1])
-        # 		# 比较并更新最小值和对应的项
-        # 		if x_value < min_x_value:
-        # 			min_x_value = x_value
-        # 			min_item = item
-        # 	pos_res = min_item.split(',')
-        pos_res = pos[0].split(",")
-        pics = image_path.split("|")
-        picSize = self.win1_dm.GetPicSize(pics[int(pos_res[0])])
-        picSize = picSize.split(",")
-        picW, picH = picSize[0], picSize[1]
-        posX = int(pos_res[1]) + (int(picW) * 0.5)
-        posY = int(pos_res[2]) + (int(picH) * 0.5)
-        res = ResXy(int(posX), int(posY))
-        return res
-
+        find_path = image_path
+        image_arr = find_path.split("|")
+        if len(image_arr) > 1:
+            full_paths = []
+            for img_path in image_arr:
+                img_path = img_path.strip()
+                if not img_path:
+                    continue
+                full_paths.append(self.get_resource_path(img_path))
+            find_path = "|".join(full_paths)
+        result = engine.find_pic(find_path, (x, y, w, h), self.confidenceNum, "team1", find_dir)
+        if result:
+            return ResXy(int(result.x), int(result.y))
+        return None
     # 找字方法
     def find_str_team1(self, text, region, find_dir):
         if self.overed:
             return
         x, y, w, h = region
-        find_str_result = self.win1_dm.FindStrFastE(
-            int(x), int(y), int(w), int(h), text, self.color_format,
-            self.confidenceNum
-        )
-        find_str_result = find_str_result.split("|")
-        if int(find_str_result[0]) < 0:
-            return False
+        if "|" in text:
+            img_paths = []
+            for part in text.split("|"):
+                part = part.strip()
+                if not part:
+                    continue
+                img_paths.append(TEXT_MAP.get(part, part))
+            img_path = "|".join(img_paths)
         else:
-            pos_res = None
-            if len(find_str_result) == 3:
-                pos_res = find_str_result
-            elif len(find_str_result) > 3:
-                if int(find_str_result[1]) < int(
-                        find_str_result[4]) and find_dir in [
-                    0,
-                    1,
-                ]:
-                    pos_res = find_str_result[:3]
-                else:
-                    pos_res = find_str_result[3:6]
-            posX = pos_res[1]
-            posY = pos_res[2]
-            res = ResXy(int(posX), int(posY))
-            return res
-
+            img_path = TEXT_MAP.get(text, text)
+        result = engine.find_pic(img_path, (x, y, w, h), self.confidenceNum, "team1", find_dir)
+        if result:
+            return ResXy(int(result.x), int(result.y))
+        return self._find_str_ocr(text, x, y, w, h, "team1")
     # 找图方法z
     def find_pic_team2(self, image_path, image_region, find_dir):
         if self.overed:
             return
-        find_path = image_path
-        # picSize = self.dm.GetPicSize(image_path)
-        # picSize = picSize.split(',')
-        # picW, picH = picSize[0], picSize[1]
         x, y, w, h = image_region
-        pos = self.win2_dm.FindPicEx(int(x), int(y), int(w), int(h), find_path,
-                                     "", self.confidenceNum, find_dir)
-        if not pos:
-            return False
-        pos = pos.split("|")
-        # if len(pos) == 1:
-        # 	pos_res = pos[0].split(',')
-        # else:
-        # 	# 初始化最小值和对应的项
-        # 	min_x_value = float('inf')
-        # 	min_item = None
-        # 	# 遍历数组，找到第二个数值最小的那一项
-        # 	for item in pos:
-        # 		# 解析每一项
-        # 		parts = item.split(',')
-        # 		x_value = int(parts[1])
-        # 		# 比较并更新最小值和对应的项
-        # 		if x_value < min_x_value:
-        # 			min_x_value = x_value
-        # 			min_item = item
-        # 	pos_res = min_item.split(',')
-        pos_res = pos[0].split(",")
-        pics = image_path.split("|")
-        picSize = self.win2_dm.GetPicSize(pics[int(pos_res[0])])
-        picSize = picSize.split(",")
-        picW, picH = picSize[0], picSize[1]
-        posX = int(pos_res[1]) + (int(picW) * 0.5)
-        posY = int(pos_res[2]) + (int(picH) * 0.5)
-        res = ResXy(int(posX), int(posY))
-        return res
-
+        find_path = image_path
+        image_arr = find_path.split("|")
+        if len(image_arr) > 1:
+            full_paths = []
+            for img_path in image_arr:
+                img_path = img_path.strip()
+                if not img_path:
+                    continue
+                full_paths.append(self.get_resource_path(img_path))
+            find_path = "|".join(full_paths)
+        result = engine.find_pic(find_path, (x, y, w, h), self.confidenceNum, "team2", find_dir)
+        if result:
+            return ResXy(int(result.x), int(result.y))
+        return None
     # 找字方法
     def find_str_team2(self, text, region, find_dir):
         if self.overed:
             return
         x, y, w, h = region
-        find_str_result = self.win2_dm.FindStrFastE(
-            int(x), int(y), int(w), int(h), text, self.color_format,
-            self.confidenceNum
-        )
-        find_str_result = find_str_result.split("|")
-        if int(find_str_result[0]) < 0:
-            return False
+        if "|" in text:
+            img_paths = []
+            for part in text.split("|"):
+                part = part.strip()
+                if not part:
+                    continue
+                img_paths.append(TEXT_MAP.get(part, part))
+            img_path = "|".join(img_paths)
         else:
-            pos_res = None
-            if len(find_str_result) == 3:
-                pos_res = find_str_result
-            elif len(find_str_result) > 3:
-                if int(find_str_result[1]) < int(
-                        find_str_result[4]) and find_dir in [
-                    0,
-                    1,
-                ]:
-                    pos_res = find_str_result[:3]
-                else:
-                    pos_res = find_str_result[3:6]
-            posX = pos_res[1]
-            posY = pos_res[2]
-            res = ResXy(int(posX), int(posY))
-            return res
-
+            img_path = TEXT_MAP.get(text, text)
+        result = engine.find_pic(img_path, (x, y, w, h), self.confidenceNum, "team2", find_dir)
+        if result:
+            return ResXy(int(result.x), int(result.y))
+        return self._find_str_ocr(text, x, y, w, h, "team2")
     # 图中找图
     def fing_fei_in_image_or_str(self, base, base_region, fei_region,
                                  fei_image):
         if self.overed:
             return
-        base_pos = self.find_pic_or_str(base, base_region, 0)
-        if not base_pos:
-            return False
-        x, y, w, h = fei_region
-        fei_pox = self.dm.FindPicEx(
-            int(base_pos.x - x),
-            int(base_pos.y - y),
-            int(base_pos.x + w),
-            int(base_pos.y + h),
-            fei_image,
-            "",
-            0.6,
-            0,
-        )
-        if not fei_pox or fei_pox is None:
-            return False
-        res_pos = fei_pox.split("|")
-        res_pos = res_pos[0].split(",")
-        pics = fei_image.split("|")
-        picSize = self.dm.GetPicSize(pics[int(res_pos[0])])
-        picSize = picSize.split(",")
-        picW, picH = picSize[0], picSize[1]
-        posX = int(res_pos[1]) + (int(picW) * 0.5)
-        posY = int(res_pos[2]) + (int(picH) * 0.5)
-        res = ResXy(int(posX), int(posY))
-        return res
-
+        result = engine.fing_fei_in_image_or_str(base, base_region, fei_region, fei_image, "main")
+        if result:
+            return ResXy(int(result.x), int(result.y))
+        return None
     def child_task(self):
 
         # 怪物位置 205  389
@@ -1642,17 +1572,17 @@ class MyThread(threading.Thread):
             #     # )
             #     # if jineng:
 
-            #     #     self.dm.MoveTo(jineng.x, jineng.y)
+            #     #     engine.move_to(jineng.x, jineng.y)
             #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
+            #     #     engine.left_click(role="main")
             #     #     time.sleep(0.5)
             #     #     # jineng = self.auto_move_and_click()
             #     #     if self.scriptName in ["官渡", "魔镜", "黑风"]:
-            #     #         self.dm.MoveTo(196, 255)
+            #     #         engine.move_to(196, 255)
             #     #     else:
-            #     #         self.dm.MoveTo(190, 383)
+            #     #         engine.move_to(190, 383)
             #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
+            #     #     engine.left_click(role="main")
             #     #     time.sleep(2)
             #     # jineng1 = self.find_pic(
             #     #     f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
@@ -1660,17 +1590,17 @@ class MyThread(threading.Thread):
             #     #     0,
             #     # )
             #     # if jineng1:
-            #     #     self.dm.MoveTo(jineng1.x, jineng1.y)
+            #     #     engine.move_to(jineng1.x, jineng1.y)
             #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
+            #     #     engine.left_click(role="main")
             #     #     time.sleep(1.5)
             #     #     # jineng1 = self.auto_move_and_click()
             #     #     if self.scriptName in ["官渡", "魔镜", "黑风"]:
-            #     #         self.dm.MoveTo(196, 255)
+            #     #         engine.move_to(196, 255)
             #     #     else:
-            #     #         self.dm.MoveTo(190, 383)
+            #     #         engine.move_to(190, 383)
             #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
+            #     #     engine.left_click(role="main")
             #     # if jineng1 or jineng:
             #     #     self.guajiFlag = True
             #     # # 193 294   190  383
@@ -1691,16 +1621,14 @@ class MyThread(threading.Thread):
     def find_and_bing_windows1(self):
         if not self.teammate1_name:
             return
-        CoInitialize()
         self.win1_hwnd = 0
-        self.win1_dm = CreateObject("dm.dmsoft")
         ENUMWINDOWSPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int,
                                              ctypes.c_int)
 
         # 定义回调函数
         def enum_child_windows_callback(hwnd, lParam):
-            window_text = self.win1_dm.GetWindowText(hwnd)
-            class_name = self.win1_dm.GetClassName(hwnd)
+            window_text = win32gui.GetWindowText(hwnd)
+            class_name = win32gui.GetClassName(hwnd)
             return True  # 返回 True 继续枚举
 
         # 将回调函数转换为 ctypes 函数指针
@@ -1709,14 +1637,18 @@ class MyThread(threading.Thread):
         # 查找目标窗口句柄
         target_window_title = self.teammate1_name + " | " + self.frame.game_name
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
-        hwnds = self.win1_dm.EnumWindow(0, target_window_title,
-                                        target_window_class, 1 + 2)
-        hwnds = hwnds.split(",")
+        found_windows = []
+        def enum_callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                wt = win32gui.GetWindowText(hwnd)
+                if wt and target_window_title in wt:
+                    found_windows.append(hwnd)
+            return True
+        win32gui.EnumWindows(enum_callback, None)
         hwnd = 0
-        for item in hwnds:
-            if item and self.win1_dm.GetWindowTitle(
-                    int(item)) == target_window_title:
-                hwnd = int(item)
+        for hw in found_windows:
+            if win32gui.GetWindowText(hw) == target_window_title:
+                hwnd = hw
                 break
         if hwnd:
             # 使用 Windows API 的 EnumChildWindows
@@ -1726,8 +1658,8 @@ class MyThread(threading.Thread):
             screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 
             def enum_child_proc(hwnd, lParam):
-                class_name = self.win1_dm.GetWindowClass(hwnd)
-                child_rect = self.win1_dm.GetWindowRect(hwnd)
+                class_name = win32gui.GetClassName(hwnd)
+                child_rect = win32gui.GetWindowRect(hwnd)
                 if child_rect != 0:
                     left, top, right, bottom, isFind = child_rect
                     if (
@@ -1749,29 +1681,27 @@ class MyThread(threading.Thread):
             self.show_error_message(
                 "未找到游戏窗口，请检查输入的队友1名称是否正确！")
         # 绑定窗口到后台模式
-        bind_result = self.win1_dm.BindWindow(self.win1_hwnd, "gdi", "windows3",
-                                              "windows", 0)
+        bind_result = 1  # engine handles window binding internally
         if bind_result != 1:
             self.show_error_message("队友1绑定失败")
             return False
-        self.win1_dm.SetDict(0, self.get_resource_path(
-            "serveAssets/fonts/team1.txt"))
+        # [REMOVED] self.win1_dm.SetDict(0, self.get_resource_path("serveAssets/fonts/team1.txt"))
         time.sleep(0.5)
         if self.refreshFlag:
             return
         duiwu_pos = self.waitFor_team1("队伍", self.talkLocation, 3)
         if duiwu_pos:
-            self.win1_dm.MoveTo(duiwu_pos.x, duiwu_pos.y)
+            engine.move_to(duiwu_pos.x, duiwu_pos.y)
             time.sleep(0.01)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
             time.sleep(0.5)
-            self.win1_dm.MoveTo(duiwu_pos.x, int(duiwu_pos.y + 28))
+            engine.move_to(duiwu_pos.x, int(duiwu_pos.y + 28))
             time.sleep(0.01)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
             time.sleep(0.3)
-            self.win1_dm.KeyPressChar("1")
+            engine.key_press("1")
             time.sleep(1)
-            self.win1_dm.KeyPressChar("enter")
+            engine.key_press("enter")
         time.sleep(0.5)
         self.click_image_team1(
             self.get_resource_path("serveAssets/images/yincang.bmp"),
@@ -1784,7 +1714,7 @@ class MyThread(threading.Thread):
             if self.clickFlag:
                 self.clearBag_team1()
             if self.huifuFlag:
-                self.huifu_yijian(self.win1_dm)
+                self.huifu_yijian()
             if self.addBloudFlag:
                 self.addBloud_team1()
             if self.clearMapFlag:
@@ -1850,17 +1780,17 @@ class MyThread(threading.Thread):
                         0,
                     )
                     if jineng:
-                        self.win1_dm.MoveTo(jineng.x, jineng.y)
+                        engine.move_to(jineng.x, jineng.y)
                         time.sleep(0.001)
-                        self.win1_dm.LeftClick()
+                        engine.left_click(role="team1")
                         time.sleep(0.5)
                         # self.auto_move_and_click_team1()
                         if self.scriptName in ["官渡", "魔镜", "黑风"]:
-                            self.win1_dm.MoveTo(196, 255)
+                            engine.move_to(196, 255)
                         else:
-                            self.win1_dm.MoveTo(190, 383)
+                            engine.move_to(190, 383)
                         time.sleep(0.001)
-                        self.win1_dm.LeftClick()
+                        engine.left_click(role="team1")
                         time.sleep(2)
                     jineng1 = self.find_pic_team1(
                         f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
@@ -1868,17 +1798,17 @@ class MyThread(threading.Thread):
                         0,
                     )
                     if jineng1:
-                        self.win1_dm.MoveTo(jineng1.x, jineng1.y)
+                        engine.move_to(jineng1.x, jineng1.y)
                         time.sleep(0.001)
-                        self.win1_dm.LeftClick()
+                        engine.left_click(role="team1")
                         time.sleep(0.5)
                         # self.auto_move_and_click_team1()
                         if self.scriptName in ["官渡", "魔镜", "黑风"]:
-                            self.win1_dm.MoveTo(196, 255)
+                            engine.move_to(196, 255)
                         else:
-                            self.win1_dm.MoveTo(190, 383)
+                            engine.move_to(190, 383)
                         time.sleep(0.001)
-                        self.win1_dm.LeftClick()
+                        engine.left_click(role="team1")
                     if jineng1 or jineng:
                         self.guajiFlag1 = True
                 else:
@@ -1892,24 +1822,27 @@ class MyThread(threading.Thread):
     def refresh_view_team1(self):
         self.guajiFlag1 = False
         gc.collect()
-        self.win1_dm.ClearDict(0)
-        self.win1_dm.UnBindWindow()
-        self.win1_dm.DownCpu(30)
+        # [REMOVED] self.win1_dm.ClearDict(0)
+        # engine handles window binding internally // self.win1_dm.UnBindWindow()
+        # [REMOVED] self.win1_dm.DownCpu(30)
         target_window_title = self.teammate1_name + " | " + self.frame.game_name
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
-        hwnds = self.win1_dm.EnumWindow(0, target_window_title,
-                                        target_window_class, 1 + 2)
-        hwnds = hwnds.split(",")
+        found_windows = []
+        def enum_callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                wt = win32gui.GetWindowText(hwnd)
+                if wt and target_window_title in wt:
+                    found_windows.append(hwnd)
+            return True
+        win32gui.EnumWindows(enum_callback, None)
         hwnd = 0
-        for item in hwnds:
+        for hw in found_windows:
             if self.overed:
                 return
-            if item and self.win1_dm.GetWindowTitle(
-                    int(item)) == target_window_title:
-                hwnd = int(item)
+            if win32gui.GetWindowText(hw) == target_window_title:
+                hwnd = hw
                 break
-        bind_result = self.win1_dm.BindWindow(hwnd, "gdi", "windows3",
-                                              "windows", 0)
+        bind_result = 1  # engine handles window binding internally
         if bind_result == 1:
             time.sleep(0.1)
         else:
@@ -1919,24 +1852,24 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/refresh.bmp"),
             (0, 0, 900, 200))
         self.confidenceNum = 0.9
-        self.win1_dm.MoveTo(refresh_pos.x, refresh_pos.y)
+        engine.move_to(refresh_pos.x, refresh_pos.y)
         time.sleep(0.001)
-        self.win1_dm.LeftClick()
+        engine.left_click(role="team1")
         time.sleep(0.001)
-        self.win1_dm.KeyPressChar("F5")
+        engine.key_press("F5")
         time.sleep(0.1)
-        self.win1_dm.KeyPress(116)
+        engine.key_press("f5", role="team1")
         time.sleep(5)
-        self.win1_dm.UnBindWindow()
+        # engine handles window binding internally // self.win1_dm.UnBindWindow()
         time.sleep(5)
         self.find_and_bing_windows1()
         in_game_pos = self.waitFor_team1(
             self.get_resource_path("serveAssets/images/in_game.bmp"),
             self.gameBottomLocation,
         )
-        self.win1_dm.MoveTo(in_game_pos.x, in_game_pos.y)
+        engine.move_to(in_game_pos.x, in_game_pos.y)
         time.sleep(2)
-        self.win1_dm.LeftClick()
+        engine.left_click(role="team1")
         self.waitFor_team1(
             self.get_resource_path("serveAssets/images/mhlogo.bmp"),
             self.gameLocation)
@@ -1945,16 +1878,16 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/checkRole.bmp"),
             self.gameLocation,
         )
-        self.win1_dm.MoveTo(checkRolePos.x, checkRolePos.y)
+        engine.move_to(checkRolePos.x, checkRolePos.y)
         checkCount = int(self.teammate1_pos) - 1 if self.teammate1_pos else 0
         if checkCount > 0:
             for i in range(checkCount):
                 time.sleep(1.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
         time.sleep(1.5)
-        self.win1_dm.MoveTo(440, 370)
+        engine.move_to(440, 370)
         time.sleep(0.5)
-        self.win1_dm.LeftClick()
+        engine.left_click(role="team1")
         self.waitFor_team1(
             self.get_resource_path("serveAssets/images/xiulian.bmp"),
             self.gameLocation)
@@ -1975,20 +1908,20 @@ class MyThread(threading.Thread):
             )
             self.confidenceNum = 0.9
             if in_team_pos:
-                self.win1_dm.MoveTo(in_team_pos.x, in_team_pos.y)
+                engine.move_to(in_team_pos.x, in_team_pos.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
             jieshou = self.waitFor_team1(
                 self.get_resource_path("serveAssets/images/jieshou.bmp"),
                 self.gameLocation,
                 5,
             )
             if jieshou:
-                self.win1_dm.MoveTo(jieshou.x, jieshou.y)
+                engine.move_to(jieshou.x, jieshou.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
                 time.sleep(2)
-                self.win1_dm.KeyPressChar("t")
+                engine.key_press("t")
                 my_team = self.waitFor_team1(
                     self.get_resource_path("serveAssets/images/myteam.bmp"),
                     self.gameLocation,
@@ -2002,25 +1935,23 @@ class MyThread(threading.Thread):
                         5,
                     )
                     if team_mate:
-                        self.win1_dm.KeyPressChar("t")
+                        engine.key_press("t")
                         break
                     else:
-                        self.win1_dm.KeyPressChar("t")
+                        engine.key_press("t")
 
     # 绑定第二个窗口
     def find_and_bing_windows2(self):
         if not self.teammate2_name:
             return
-        CoInitialize()
         self.win2_hwnd = 0
-        self.win2_dm = CreateObject("dm.dmsoft")
         ENUMWINDOWSPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int,
                                              ctypes.c_int)
 
         # 定义回调函数
         def enum_child_windows_callback(hwnd, lParam):
-            window_text = self.win2_dm.GetWindowText(hwnd)
-            class_name = self.win2_dm.GetClassName(hwnd)
+            window_text = win32gui.GetWindowText(hwnd)
+            class_name = win32gui.GetClassName(hwnd)
             return True  # 返回 True 继续枚举
 
         # 将回调函数转换为 ctypes 函数指针
@@ -2029,14 +1960,18 @@ class MyThread(threading.Thread):
         # 查找目标窗口句柄
         target_window_title = self.teammate2_name + " | " + self.frame.game_name
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
-        hwnds = self.win2_dm.EnumWindow(0, target_window_title,
-                                        target_window_class, 1 + 2)
-        hwnds = hwnds.split(",")
+        found_windows = []
+        def enum_callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                wt = win32gui.GetWindowText(hwnd)
+                if wt and target_window_title in wt:
+                    found_windows.append(hwnd)
+            return True
+        win32gui.EnumWindows(enum_callback, None)
         hwnd = 0
-        for item in hwnds:
-            if item and self.win2_dm.GetWindowTitle(
-                    int(item)) == target_window_title:
-                hwnd = int(item)
+        for hw in found_windows:
+            if win32gui.GetWindowText(hw) == target_window_title:
+                hwnd = hw
                 break
         if hwnd:
             # 使用 Windows API 的 EnumChildWindows
@@ -2047,8 +1982,8 @@ class MyThread(threading.Thread):
             screen_height = user32.GetSystemMetrics(1)  # 1 表示屏幕高度
 
             def enum_child_proc(hwnd, lParam):
-                class_name = self.win2_dm.GetWindowClass(hwnd)
-                child_rect = self.win2_dm.GetWindowRect(hwnd)
+                class_name = win32gui.GetClassName(hwnd)
+                child_rect = win32gui.GetWindowRect(hwnd)
                 if child_rect != 0:
                     left, top, right, bottom, isFind = child_rect
                     if (
@@ -2070,29 +2005,27 @@ class MyThread(threading.Thread):
             self.show_error_message(
                 "未找到游戏窗口，请检查输入的队友2名称是否正确！")
         # 绑定窗口到后台模式
-        bind_result = self.win2_dm.BindWindow(self.win2_hwnd, "gdi", "windows3",
-                                              "windows", 0)
+        bind_result = 1  # engine handles window binding internally
         if bind_result != 1:
             self.show_error_message("队友2绑定失败")
             return False
-        self.win2_dm.SetDict(0, self.get_resource_path(
-            "serveAssets/fonts/team2.txt"))
+        # [REMOVED] self.win2_dm.SetDict(0, self.get_resource_path("serveAssets/fonts/team2.txt"))
         time.sleep(0.5)
         if self.refreshFlag:
             return
         duiwu_pos = self.waitFor_team2("队伍", self.talkLocation, 3)
         if duiwu_pos:
-            self.win2_dm.MoveTo(duiwu_pos.x, duiwu_pos.y)
+            engine.move_to(duiwu_pos.x, duiwu_pos.y)
             time.sleep(0.01)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
             time.sleep(0.5)
-            self.win2_dm.MoveTo(duiwu_pos.x, int(duiwu_pos.y + 28))
+            engine.move_to(duiwu_pos.x, int(duiwu_pos.y + 28))
             time.sleep(0.01)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
             time.sleep(0.3)
-            self.win2_dm.KeyPressChar("1")
+            engine.key_press("1")
             time.sleep(1)
-            self.win2_dm.KeyPressChar("enter")
+            engine.key_press("enter")
         time.sleep(0.5)
         self.click_image_team2(
             self.get_resource_path("serveAssets/images/yincang.bmp"),
@@ -2106,7 +2039,7 @@ class MyThread(threading.Thread):
             if self.clickFlag:
                 self.clearBag_team2()
             if self.huifuFlag:
-                self.huifu_yijian(self.win2_dm)
+                self.huifu_yijian()
             if self.addBloudFlag:
                 self.addBloud_team2()
             if self.clearMapFlag:
@@ -2175,17 +2108,17 @@ class MyThread(threading.Thread):
                         0,
                     )
                     if jineng:
-                        self.win2_dm.MoveTo(jineng.x, jineng.y)
+                        engine.move_to(jineng.x, jineng.y)
                         time.sleep(0.001)
-                        self.win2_dm.LeftClick()
+                        engine.left_click(role="team2")
                         time.sleep(0.5)
                         # self.auto_move_and_click_team2()
                         if self.scriptName in ["官渡", "魔镜", "黑风"]:
-                            self.win2_dm.MoveTo(196, 255)
+                            engine.move_to(196, 255)
                         else:
-                            self.win2_dm.MoveTo(190, 383)
+                            engine.move_to(190, 383)
                         time.sleep(0.001)
-                        self.win2_dm.LeftClick()
+                        engine.left_click(role="team2")
                         time.sleep(2)
                     jineng1 = self.find_pic_team2(
                         f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
@@ -2193,17 +2126,17 @@ class MyThread(threading.Thread):
                         0,
                     )
                     if jineng1:
-                        self.win2_dm.MoveTo(jineng1.x, jineng1.y)
+                        engine.move_to(jineng1.x, jineng1.y)
                         time.sleep(0.001)
-                        self.win2_dm.LeftClick()
+                        engine.left_click(role="team2")
                         time.sleep(0.5)
                         # self.auto_move_and_click_team2()
                         if self.scriptName in ["官渡", "魔镜", "黑风"]:
-                            self.win2_dm.MoveTo(196, 255)
+                            engine.move_to(196, 255)
                         else:
-                            self.win2_dm.MoveTo(190, 383)
+                            engine.move_to(190, 383)
                         time.sleep(0.001)
-                        self.win2_dm.LeftClick()
+                        engine.left_click(role="team2")
                     if jineng1 or jineng:
                         self.guajiFlag2 = True
                 else:
@@ -2218,24 +2151,27 @@ class MyThread(threading.Thread):
     def refresh_view_team2(self):
         self.guajiFlag2 = False
         gc.collect()
-        self.win2_dm.ClearDict(0)
-        self.win2_dm.UnBindWindow()
-        self.win2_dm.DownCpu(30)
+        # [REMOVED] self.win2_dm.ClearDict(0)
+        # engine handles window binding internally // self.win2_dm.UnBindWindow()
+        # [REMOVED] self.win2_dm.DownCpu(30)
         target_window_title = self.teammate2_name + " | " + self.frame.game_name
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
-        hwnds = self.win2_dm.EnumWindow(0, target_window_title,
-                                        target_window_class, 1 + 2)
-        hwnds = hwnds.split(",")
+        found_windows = []
+        def enum_callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                wt = win32gui.GetWindowText(hwnd)
+                if wt and target_window_title in wt:
+                    found_windows.append(hwnd)
+            return True
+        win32gui.EnumWindows(enum_callback, None)
         hwnd = 0
-        for item in hwnds:
+        for hw in found_windows:
             if self.overed:
                 return
-            if item and self.win2_dm.GetWindowTitle(
-                    int(item)) == target_window_title:
-                hwnd = int(item)
+            if win32gui.GetWindowText(hw) == target_window_title:
+                hwnd = hw
                 break
-        bind_result = self.win2_dm.BindWindow(hwnd, "gdi", "windows3",
-                                              "windows", 0)
+        bind_result = 1  # engine handles window binding internally
         if bind_result == 1:
             time.sleep(0.1)
         else:
@@ -2245,24 +2181,24 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/refresh.bmp"),
             (0, 0, 900, 200))
         self.confidenceNum = 0.9
-        self.win2_dm.MoveTo(refresh_pos.x, refresh_pos.y)
+        engine.move_to(refresh_pos.x, refresh_pos.y)
         time.sleep(0.001)
-        self.win2_dm.LeftClick()
+        engine.left_click(role="team2")
         time.sleep(0.001)
-        self.win2_dm.KeyPressChar("F5")
+        engine.key_press("F5")
         time.sleep(0.001)
-        self.win2_dm.KeyPress(116)
+        engine.key_press("f5", role="team2")
         time.sleep(5)
-        self.win2_dm.UnBindWindow()
+        # engine handles window binding internally // self.win2_dm.UnBindWindow()
         time.sleep(5)
         self.find_and_bing_windows2()
         in_game_pos = self.waitFor_team1(
             self.get_resource_path("serveAssets/images/in_game.bmp"),
             self.gameBottomLocation,
         )
-        self.win2_dm.MoveTo(in_game_pos.x, in_game_pos.y)
+        engine.move_to(in_game_pos.x, in_game_pos.y)
         time.sleep(2)
-        self.win2_dm.LeftClick()
+        engine.left_click(role="team2")
         self.waitFor_team2(
             self.get_resource_path("serveAssets/images/mhlogo.bmp"),
             self.gameLocation)
@@ -2271,16 +2207,16 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/checkRole.bmp"),
             self.gameLocation,
         )
-        self.win2_dm.MoveTo(checkRolePos.x, checkRolePos.y)
+        engine.move_to(checkRolePos.x, checkRolePos.y)
         checkCount = int(self.teammate2_pos) - 1 if self.teammate2_pos else 0
         if checkCount > 0:
             for i in range(checkCount):
                 time.sleep(1.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
         time.sleep(1.5)
-        self.win2_dm.MoveTo(440, 370)
+        engine.move_to(440, 370)
         time.sleep(0.5)
-        self.win2_dm.LeftClick()
+        engine.left_click(role="team2")
         self.waitFor_team2(
             self.get_resource_path("serveAssets/images/xiulian.bmp"),
             self.gameLocation)
@@ -2301,20 +2237,20 @@ class MyThread(threading.Thread):
             )
             self.confidenceNum = 0.9
             if in_team_pos:
-                self.win2_dm.MoveTo(in_team_pos.x, in_team_pos.y)
+                engine.move_to(in_team_pos.x, in_team_pos.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
             jieshou = self.waitFor_team2(
                 self.get_resource_path("serveAssets/images/jieshou.bmp"),
                 self.gameLocation,
                 5,
             )
             if jieshou:
-                self.win2_dm.MoveTo(jieshou.x, jieshou.y)
+                engine.move_to(jieshou.x, jieshou.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
                 time.sleep(2)
-                self.win2_dm.KeyPressChar("t")
+                engine.key_press("t")
                 my_team = self.waitFor_team2(
                     self.get_resource_path("serveAssets/images/myteam.bmp"),
                     self.gameLocation,
@@ -2328,10 +2264,10 @@ class MyThread(threading.Thread):
                         5,
                     )
                     if team_mate:
-                        self.win2_dm.KeyPressChar("t")
+                        engine.key_press("t")
                         break
                     else:
-                        self.win2_dm.KeyPressChar("t")
+                        engine.key_press("t")
 
     def addBloud(self):
         if self.overed:
@@ -2582,10 +2518,10 @@ class MyThread(threading.Thread):
             if self.stoped:
                 condition.wait()
         if closeTalkXY:
-            self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
+            engine.move_to(closeTalkXY.x, closeTalkXY.y)
             for i in range(4):
                 time.sleep(0.2)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
         self.click_image(
             self.get_resource_path("serveAssets/images/closeTalk.bmp"),
             self.confidenceNum,
@@ -2682,64 +2618,38 @@ class MyThread(threading.Thread):
         return os.path.join(os.path.abspath("."), relative_path)
 
     # 一键恢复
-    def huifu_yijian(self, dm):
+    def huifu_yijian(self):
         self.huifuFlag = True
         if self.overed:
             return
+        wujiang_path = f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}"
         while True:
             if self.check_stop_or_over():
                 return
-            find_res = dm.FindPicEx(0, 0, 900, 590,
-                         f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
-                         "", self.confidenceNum, 0)
-            if find_res:
-                # 找到图片，解析坐标
-                pos = find_res.split("|")
-                pos_res = pos[0].split(",")
-                pics = f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}".split("|")
-                picSize = dm.GetPicSize(pics[int(pos_res[0])])
-                picSize = picSize.split(",")
-                picW, picH = picSize[0], picSize[1]
-                posX = int(pos_res[1]) + (int(picW) * 0.5)
-                posY = int(pos_res[2]) + (int(picH) * 0.5)
-                dm.MoveTo(int(posX), int(posY))
+            result = engine.find_pic(wujiang_path, (0, 0, 900, 590), self.confidenceNum, "main", 0)
+            if result:
+                engine.move_to(int(result.x), int(result.y))
                 time.sleep(0.005)
-                dm.LeftClick()
+                engine.left_click(role="main")
                 break
         while True:
             if self.check_stop_or_over():
                 return
-            find_res = dm.FindStrFastE(0, 0, 900, 580, '一键恢复', self.color_format, self.confidenceNum)
-            find_str_result = find_res.split("|")
-            if int(find_str_result[0]) < 0:
-                continue
-            pos_res = find_str_result
-            posX = pos_res[1]
-            posY = pos_res[2]
-            dm.MoveTo(int(posX), int(posY))
-            time.sleep(0.5)
-            dm.LeftClick()
-            break
+            result = engine.find_pic_or_str("一键恢复", (0, 0, 900, 580), 0, "main", self.confidenceNum)
+            if result:
+                engine.move_to(int(result.x), int(result.y))
+                time.sleep(0.5)
+                engine.left_click(role="main")
+                break
         time.sleep(0.5)
         while True:
             if self.check_stop_or_over():
                 return
-            find_res = dm.FindPicEx(0, 0, 900, 590,
-                         f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
-                         "", self.confidenceNum, 0)
-            if find_res:
-                # 找到图片，解析坐标
-                pos = find_res.split("|")
-                pos_res = pos[0].split(",")
-                pics = f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}".split("|")
-                picSize = dm.GetPicSize(pics[int(pos_res[0])])
-                picSize = picSize.split(",")
-                picW, picH = picSize[0], picSize[1]
-                posX = int(pos_res[1]) + (int(picW) * 0.5)
-                posY = int(pos_res[2]) + (int(picH) * 0.5)
-                dm.MoveTo(int(posX), int(posY))
+            result = engine.find_pic(wujiang_path, (0, 0, 900, 590), self.confidenceNum, "main", 0)
+            if result:
+                engine.move_to(int(result.x), int(result.y))
                 time.sleep(0.005)
-                dm.LeftClick()
+                engine.left_click(role="main")
                 break
         self.huifuFlag = False
         
@@ -2755,16 +2665,16 @@ class MyThread(threading.Thread):
             rand_y = random.randint(y1, y2)
 
             # 移动鼠标到随机位置
-            self.dm.MoveTo(rand_x, rand_y)
+            engine.move_to(rand_x, rand_y)
             time.sleep(0.5)  # 移动后稍作停顿
 
             # 在区域内查找图片
             ret = self.find_pic_or_str(pic_names, self.gameLeftLocation, 0)
             if ret:
                 # 移动鼠标到图片位置并点击
-                self.dm.MoveTo(ret.x, ret.y)
+                engine.move_to(ret.x, ret.y)
                 time.sleep(1)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 return True  # 成功找到并点击
 
             time.sleep(interval)  # 等待下次查找
@@ -2782,7 +2692,7 @@ class MyThread(threading.Thread):
             rand_y = random.randint(y1, y2)
 
             # 移动鼠标到随机位置
-            self.win1_dm.MoveTo(rand_x, rand_y)
+            engine.move_to(rand_x, rand_y)
             time.sleep(0.5)  # 移动后稍作停顿
 
             # 在区域内查找图片
@@ -2790,9 +2700,9 @@ class MyThread(threading.Thread):
                                              0)
             if ret:
                 # 移动鼠标到图片位置并点击
-                self.win1_dm.MoveTo(ret.x, ret.y)
+                engine.move_to(ret.x, ret.y)
                 time.sleep(1)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
                 return True  # 成功找到并点击
 
             time.sleep(interval)  # 等待下次查找
@@ -2810,7 +2720,7 @@ class MyThread(threading.Thread):
             rand_y = random.randint(y1, y2)
 
             # 移动鼠标到随机位置
-            self.win2_dm.MoveTo(rand_x, rand_y)
+            engine.move_to(rand_x, rand_y)
             time.sleep(0.5)  # 移动后稍作停顿
 
             # 在区域内查找图片
@@ -2818,9 +2728,9 @@ class MyThread(threading.Thread):
                                              0)
             if ret:
                 # 移动鼠标到图片位置并点击
-                self.win2_dm.MoveTo(ret.x, ret.y)
+                engine.move_to(ret.x, ret.y)
                 time.sleep(1)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
                 return True  # 成功找到并点击
 
             time.sleep(interval)  # 等待下次查找
@@ -2857,9 +2767,9 @@ class MyThread(threading.Thread):
                 break
             outX = 514 + self.locationX
             outY = 50 + self.locationY
-            self.dm.MoveTo(int(outX), int(outY))
+            engine.move_to(int(outX), int(outY))
             time.sleep(0.1)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             locationQueding = self.waitFor(
                 f"{self.get_resource_path('serveAssets/images/outFb.bmp')}|{self.get_resource_path('serveAssets/images/outFb1.bmp')}",
                 self.gameLocation,
@@ -2875,16 +2785,16 @@ class MyThread(threading.Thread):
                     0,
             ):
                 break
-            self.dm.MoveTo(locationQueding.x, locationQueding.y)
+            engine.move_to(locationQueding.x, locationQueding.y)
             time.sleep(0.1)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.1)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         huodetongbiLocation = self.waitFor("获得铜币", self.gameLeftLocation, 1)
         if huodetongbiLocation:
-            self.dm.MoveTo(huodetongbiLocation.x, huodetongbiLocation.y)
+            engine.move_to(huodetongbiLocation.x, huodetongbiLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         else:
             return
 
@@ -2893,7 +2803,7 @@ class MyThread(threading.Thread):
         if self.overed:
             return
         time.sleep(0.001)
-        self.dm.MoveTo(100, 100)
+        engine.move_to(100, 100)
         time.sleep(0.001)
         findSmallFeiTime = time.time()
         self.confidenceNum = 0.8
@@ -2908,13 +2818,13 @@ class MyThread(threading.Thread):
         # 		if self.stoped:
         # 			condition.wait()
         # 	# if self.downTalkLocation:
-        # 	# 	self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-        # 	# 	self.dm.WheelUp()
+        # 	# 	engine.move_to(self.downTalkLocation.x, self.downTalkLocation.y)
+        # 	# 	engine.scroll_up(role="main")
         # 	# 	time.sleep(0.06)
         # 	time.sleep(0.1)
         # for i in range(8):
         # 	time.sleep(0.001)
-        # 	self.dm.LeftClick()
+        # 	engine.left_click(role="main")
 
         # findShengXiaoTime = time.time()
         # while True:
@@ -2946,9 +2856,9 @@ class MyThread(threading.Thread):
             self.confidenceNum = 0.9
             return "没找到飞鞋"
         self.confidenceNum = 0.9
-        self.dm.MoveTo(shengxiaoLocation.x, shengxiaoLocation.y)
+        engine.move_to(shengxiaoLocation.x, shengxiaoLocation.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         # while not self.find_pic_or_str(
         # 		base_image,
         # 		self.dituLocation,
@@ -2962,9 +2872,9 @@ class MyThread(threading.Thread):
         # 		if self.stoped:
         # 			condition.wait()
         # 	if shengxiaoLocation:
-        # 		self.dm.MoveTo(shengxiaoLocation.x, shengxiaoLocation.y)
+        # 		engine.move_to(shengxiaoLocation.x, shengxiaoLocation.y)
         # 		time.sleep(0.001)
-        # 		self.dm.LeftClick()
+        # 		engine.left_click(role="main")
         # 		time.sleep(1.7)
         # 	else:
         # 		return
@@ -2979,37 +2889,35 @@ class MyThread(threading.Thread):
         da_time = time.time()
         self.color_format = "b@0ff000-000000"
         while True:
-            dm_ret = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.7,
-                                       0)
-            x, y, r = dm_ret
-            if r == 1:
-                self.dm.MoveTo(262, 341)
+            dm_ret = engine.find_color("ffff00-000000", (249, 340, 291, 352), 0.7, "main")
+            if dm_ret:
+                engine.move_to(262, 341)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             if time.time() - da_time > 12:
                 self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
                 return f"飞过去没有龙"
-            # self.dm.MoveTo(262, 341)
+            # engine.move_to(262, 341)
             # time.sleep(0.001)
-            # self.dm.LeftClick()
+            # engine.left_click(role="main")
             hasZhengDian = self.find_str("打就打1", self.gameBottomLocation, 0)
             if hasZhengDian:
-                self.dm.MoveTo(int(hasZhengDian.x + 5), int(hasZhengDian.y + 5))
+                engine.move_to(int(hasZhengDian.x + 5), int(hasZhengDian.y + 5))
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 break
             # hasZhengDian = self.find_str(
             # 	'打就打2',
             # 	self.gameBottomLocation, 0
             # )
             # if hasZhengDian:
-            # 	self.dm.MoveTo(int(hasZhengDian.x + 5), int(hasZhengDian.y + 5))
+            # 	engine.move_to(int(hasZhengDian.x + 5), int(hasZhengDian.y + 5))
             # 	time.sleep(0.001)
-            # 	self.dm.LeftClick()
+            # 	engine.left_click(role="main")
             # 	break
             # hasZhengDian = self.click_image(
             # 	f"{self.get_resource_path('serveAssets/images/zhengdian/da.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da3.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/da5.bmp')}",
@@ -3071,7 +2979,7 @@ class MyThread(threading.Thread):
         if self.overed:
             return
         time.sleep(0.001)
-        self.dm.MoveTo(100, 100)
+        engine.move_to(100, 100)
         time.sleep(0.001)
         findSmallFeiTime = time.time()
         self.color_format = "b@0ff000-000000"
@@ -3087,8 +2995,8 @@ class MyThread(threading.Thread):
                 if self.stoped:
                     condition.wait()
             if self.downTalkLocation:
-                self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-                self.dm.WheelUp()
+                engine.move_to(self.downTalkLocation.x, self.downTalkLocation.y)
+                engine.scroll_up(role="main")
                 time.sleep(0.001)
         findShengXiaoTime = time.time()
         while True:
@@ -3122,9 +3030,9 @@ class MyThread(threading.Thread):
         # 	self.zhengdian_by_xiaolvren('幽暗密林', 0, int(764 + self.locationX), [int(45 + self.locationY)], 1)
         # elif last_base == '魔谷西':
         # 	self.zhengdian_by_xiaolvren('魔谷西', 2, int(858 + self.locationX), [int(41 + self.locationY)], 1)
-        self.dm.MoveTo(shengxiaoLocation.x, shengxiaoLocation.y)
+        engine.move_to(shengxiaoLocation.x, shengxiaoLocation.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         wait_base = self.waitFor(base_image, self.dituLocation, 6)
         if not wait_base:
             return f"没找到{base_image}"
@@ -3141,9 +3049,9 @@ class MyThread(threading.Thread):
         # 		if self.stoped:
         # 			condition.wait()
         # 	if shengxiaoLocation:
-        # 		self.dm.MoveTo(shengxiaoLocation.x, shengxiaoLocation.y)
+        # 		engine.move_to(shengxiaoLocation.x, shengxiaoLocation.y)
         # 		time.sleep(0.001)
-        # 		self.dm.LeftClick()
+        # 		engine.left_click(role="main")
         # 		time.sleep(1)
         # 	else:
         # 		return
@@ -3159,11 +3067,11 @@ class MyThread(threading.Thread):
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         if not hasZhengDian:
             return f"飞过去没有{fei_image}"
-        self.dm.MoveTo(int(hasZhengDian.x + 10), int(hasZhengDian.y + 5))
+        engine.move_to(int(hasZhengDian.x + 10), int(hasZhengDian.y + 5))
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         zhengdianHas = False
         queryTime = time.time()
         while hasZhengDian:
@@ -3183,9 +3091,9 @@ class MyThread(threading.Thread):
                 return f"打到了{fei_image}"
             yourendaLocation = self.find_str("点击", self.gameBottomLocation, 0)
             if yourendaLocation:
-                self.dm.MoveTo(yourendaLocation.x, yourendaLocation.y)
+                engine.move_to(yourendaLocation.x, yourendaLocation.y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 return f"有人打{fei_image}"
 
     # self.waitFor(
@@ -3205,18 +3113,18 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         chushou = self.waitFor_team1(
             self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),
             self.gameBottomLocation,
             5,
         )
         if chushou:
-            self.win1_dm.MoveTo(chushou.x, chushou.y)
+            engine.move_to(chushou.x, chushou.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         else:
             bagPos = self.waitFor_team1(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3224,15 +3132,15 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
         time.sleep(0.5)
         zise = self.waitFor_team1("紫色", self.gameBottomLocation, 5)
         if zise:
-            self.win1_dm.MoveTo(int(zise.x + 3), int(zise.y + 3))
+            engine.move_to(int(zise.x + 3), int(zise.y + 3))
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         else:
             bagPos = self.waitFor_team1(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3240,9 +3148,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
         time.sleep(0.5)
         quedingchushou = self.waitFor_team1(
             self.get_resource_path("serveAssets/images/quedingchushou.bmp"),
@@ -3250,9 +3158,9 @@ class MyThread(threading.Thread):
             5,
         )
         if quedingchushou:
-            self.win1_dm.MoveTo(quedingchushou.x, quedingchushou.y)
+            engine.move_to(quedingchushou.x, quedingchushou.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         else:
             bagPos = self.waitFor_team1(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3260,9 +3168,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
         time.sleep(4)
         bagPos = self.waitFor_team1(
             self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3270,34 +3178,34 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
 
     # 清包
     def clearBag_team2(self):
         if self.overed:
             return
         time.sleep(30)
-        # self.win2_dm.KeyPressChar('e')
+        # engine.key_press('e')
         bagPos = self.waitFor_team2(
             self.get_resource_path("serveAssets/images/beibao.bmp"),
             self.gameBottomLocation,
             5,
         )
         if bagPos:
-            self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         chushou = self.waitFor_team2(
             self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),
             self.gameBottomLocation,
             5,
         )
         if chushou:
-            self.win2_dm.MoveTo(chushou.x, chushou.y)
+            engine.move_to(chushou.x, chushou.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         else:
             bagPos = self.waitFor_team2(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3305,15 +3213,15 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
         time.sleep(0.5)
         zise = self.waitFor_team2("紫色", self.gameBottomLocation, 5)
         if zise:
-            self.win2_dm.MoveTo(int(zise.x + 3), int(zise.y + 3))
+            engine.move_to(int(zise.x + 3), int(zise.y + 3))
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         else:
             bagPos = self.waitFor_team2(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3321,9 +3229,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
         time.sleep(1)
         quedingchushou = self.waitFor_team2(
             self.get_resource_path("serveAssets/images/quedingchushou.bmp"),
@@ -3331,9 +3239,9 @@ class MyThread(threading.Thread):
             5,
         )
         if quedingchushou:
-            self.win2_dm.MoveTo(quedingchushou.x, quedingchushou.y)
+            engine.move_to(quedingchushou.x, quedingchushou.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         else:
             bagPos = self.waitFor_team2(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3341,9 +3249,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
         time.sleep(2)
         self.clickFlag = False
         time.sleep(4)
@@ -3353,9 +3261,9 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
 
     # 清包
     def clearBag(self):
@@ -3368,14 +3276,14 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         chushou = self.waitFor(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"), self.gameBottomLocation, 5)
         if chushou:
-            self.dm.MoveTo(chushou.x, chushou.y)
+            engine.move_to(chushou.x, chushou.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         else:
             bagPos = self.waitFor(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3383,16 +3291,16 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             return
         time.sleep(1)
         zise = self.waitFor("紫色", self.gameBottomLocation, 5)
         if zise:
-            self.dm.MoveTo(int(zise.x + 3), int(zise.y + 3))
+            engine.move_to(int(zise.x + 3), int(zise.y + 3))
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         else:
             bagPos = self.waitFor(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3400,9 +3308,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             return
         time.sleep(1)
         quedingchushou = self.waitFor(
@@ -3411,9 +3319,9 @@ class MyThread(threading.Thread):
             5,
         )
         if quedingchushou:
-            self.dm.MoveTo(quedingchushou.x, quedingchushou.y)
+            engine.move_to(quedingchushou.x, quedingchushou.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         else:
             bagPos = self.waitFor(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3421,9 +3329,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             return
         time.sleep(4)
         self.clickFlag = False
@@ -3433,9 +3341,9 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
 
     # 清藏宝图
     def clear_hide_map(self):
@@ -3448,14 +3356,14 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         chushou = self.waitFor(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),  self.gameBottomLocation, 5)
         if chushou:
-            self.dm.MoveTo(chushou.x, chushou.y)
+            engine.move_to(chushou.x, chushou.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         else:
             bagPos = self.waitFor(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3463,16 +3371,16 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             return
         time.sleep(1)
         zise = self.waitFor("藏宝图", self.gameBottomLocation, 5)
         if zise:
-            self.dm.MoveTo(zise.x, zise.y)
+            engine.move_to(zise.x, zise.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         else:
             bagPos = self.waitFor(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3480,9 +3388,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             return
         time.sleep(1)
         quedingchushou = self.waitFor(
@@ -3491,9 +3399,9 @@ class MyThread(threading.Thread):
             5,
         )
         if quedingchushou:
-            self.dm.MoveTo(quedingchushou.x, quedingchushou.y)
+            engine.move_to(quedingchushou.x, quedingchushou.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         else:
             bagPos = self.waitFor(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3501,9 +3409,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             return
         time.sleep(4)
         self.clickFlag = False
@@ -3513,9 +3421,9 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
 
     # 清藏宝图1
     def clear_hide_map_team1(self):
@@ -3528,14 +3436,14 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         chushou = self.waitFor_team1(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),  self.gameBottomLocation, 5)
         if chushou:
-            self.win1_dm.MoveTo(chushou.x, chushou.y)
+            engine.move_to(chushou.x, chushou.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         else:
             bagPos = self.waitFor_team1(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3543,15 +3451,15 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
         time.sleep(0.5)
         zise = self.waitFor_team1("藏宝图", self.gameBottomLocation, 5)
         if zise:
-            self.win1_dm.MoveTo(zise.x, zise.y)
+            engine.move_to(zise.x, zise.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         else:
             bagPos = self.waitFor_team1(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3559,9 +3467,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
         time.sleep(0.5)
         quedingchushou = self.waitFor_team1(
             self.get_resource_path("serveAssets/images/quedingchushou.bmp"),
@@ -3569,9 +3477,9 @@ class MyThread(threading.Thread):
             5,
         )
         if quedingchushou:
-            self.win1_dm.MoveTo(quedingchushou.x, quedingchushou.y)
+            engine.move_to(quedingchushou.x, quedingchushou.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
         else:
             bagPos = self.waitFor_team1(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3579,9 +3487,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win1_dm.LeftClick()
+                engine.left_click(role="team1")
         time.sleep(4)
         bagPos = self.waitFor_team1(
             self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3589,30 +3497,30 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.win1_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
 
     # 清藏宝图2
     def clear_hide_map_team2(self):
         if self.overed:
             return
         time.sleep(30)
-        # self.win2_dm.KeyPressChar('e')
+        # engine.key_press('e')
         bagPos = self.waitFor_team2(
             self.get_resource_path("serveAssets/images/beibao.bmp"),
             self.gameBottomLocation,
             5,
         )
         if bagPos:
-            self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         chushou = self.waitFor_team2(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"), self.gameBottomLocation, 5)
         if chushou:
-            self.win2_dm.MoveTo(chushou.x, chushou.y)
+            engine.move_to(chushou.x, chushou.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         else:
             bagPos = self.waitFor_team2(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3620,15 +3528,15 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
         time.sleep(0.5)
         zise = self.waitFor_team2("藏宝图", self.gameBottomLocation, 5)
         if zise:
-            self.win2_dm.MoveTo(zise.x, zise.y)
+            engine.move_to(zise.x, zise.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         else:
             bagPos = self.waitFor_team2(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3636,9 +3544,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
         time.sleep(1)
         quedingchushou = self.waitFor_team2(
             self.get_resource_path("serveAssets/images/quedingchushou.bmp"),
@@ -3646,9 +3554,9 @@ class MyThread(threading.Thread):
             5,
         )
         if quedingchushou:
-            self.win2_dm.MoveTo(quedingchushou.x, quedingchushou.y)
+            engine.move_to(quedingchushou.x, quedingchushou.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
         else:
             bagPos = self.waitFor_team2(
                 self.get_resource_path("serveAssets/images/beibao.bmp"),
@@ -3656,9 +3564,9 @@ class MyThread(threading.Thread):
                 5,
             )
             if bagPos:
-                self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+                engine.move_to(bagPos.x, bagPos.y)
                 time.sleep(0.5)
-                self.win2_dm.LeftClick()
+                engine.left_click(role="team2")
         time.sleep(2)
         self.clickFlag = False
         time.sleep(4)
@@ -3668,9 +3576,9 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.win2_dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
 
     # V3整点
     def zhengDian(self):
@@ -3686,22 +3594,22 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/openTalk.bmp"),
             self.talkLocation)
         if openTalkXY:
-            self.dm.MoveTo(openTalkXY.x, openTalkXY.y)
+            engine.move_to(openTalkXY.x, openTalkXY.y)
             for i in range(4):
                 time.sleep(0.2)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
         time.sleep(0.5)
         bangpaiTalkXY = self.waitFor("帮派", self.talkLocation, 5)
         if bangpaiTalkXY:
-            self.dm.MoveTo(bangpaiTalkXY.x, bangpaiTalkXY.y)
+            engine.move_to(bangpaiTalkXY.x, bangpaiTalkXY.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         time.sleep(1.5)
         huodongTalkXY = self.waitFor("活动", self.talkLocation, 5)
         if huodongTalkXY:
-            self.dm.MoveTo(huodongTalkXY.x, huodongTalkXY.y)
+            engine.move_to(huodongTalkXY.x, huodongTalkXY.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         # if not self.upTalkLocation:
         # 	self.upTalkLocation = self.waitFor(
         # 		'上箭头',
@@ -3754,14 +3662,14 @@ class MyThread(threading.Thread):
         print(zhengdian_res)
         self.zhengdian_by_xiaolvren("九黎族祭坛", 0, 0, [], 1)
         # 飞牛
-        self.dm.MoveTo(self.downTalkLocation.x, self.downTalkLocation.y)
-        self.dm.WheelUp()
+        engine.move_to(self.downTalkLocation.x, self.downTalkLocation.y)
+        engine.scroll_up(role="main")
         time.sleep(0.06)
-        self.dm.WheelUp()
+        engine.scroll_up(role="main")
         time.sleep(0.06)
-        self.dm.WheelUp()
+        engine.scroll_up(role="main")
         time.sleep(0.06)
-        self.dm.WheelUp()
+        engine.scroll_up(role="main")
         time.sleep(0.06)
         zhengdian_res = self.feiZhengDian("牛", "魔魂山", True, "九黎族祭坛",
                                           zhengdian_res)
@@ -3794,9 +3702,9 @@ class MyThread(threading.Thread):
                                         [int(41 + self.locationY)], 1)
             is_in_bibotan = self.waitFor("魔谷西", self.dituLocation, 5)
             if is_in_bibotan and self.hasZhengDianCount > 0:
-                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+                engine.move_to(self.locationX + 790, self.locationY + 75)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(1)
                 self.zhengdian_by_xiaolvren(
                     "魔谷西",
@@ -3811,10 +3719,10 @@ class MyThread(threading.Thread):
             self.talkLocation,
         )
         if closeTalkXY:
-            self.dm.MoveTo(closeTalkXY.x, closeTalkXY.y)
+            engine.move_to(closeTalkXY.x, closeTalkXY.y)
             for i in range(4):
                 time.sleep(0.2)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
         time.sleep(0.5)
         self.zhengdian_flag = False
         if int(time.localtime().tm_hour) == 0:
@@ -4586,9 +4494,9 @@ class MyThread(threading.Thread):
                 is_in_bibotan = self.waitFor(last_item["findAddress"],
                                              self.dituLocation, 5)
                 if is_in_bibotan:
-                    self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+                    engine.move_to(self.locationX + 790, self.locationY + 75)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(0.2)
                     self.zhengdian_by_xiaolvren(
                         last_item["findAddress"],
@@ -4637,11 +4545,11 @@ class MyThread(threading.Thread):
         # self.go_in_ditu('地图老虎遗迹', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '九黎族遗迹', '', '')
         # time.sleep(0.5)
         # gc.collect()
-        self.dm.MoveTo(int(900 - 900 * 0.167), int(580 * 0.137))
+        engine.move_to(int(900 - 900 * 0.167), int(580 * 0.137))
         time.sleep(0.5)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(0.5)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(0.5)
         while True:
             with condition:
@@ -5146,12 +5054,11 @@ class MyThread(threading.Thread):
     def clear_info(self):
         gc.collect()
         self.daZhengDianCount = 0
-        self.dm.ClearDict(0)
-        self.dm.DownCpu(30)
-        self.dm.UnBindWindow()
-        self.dm.BindWindow(self.click_hwnd, "gdi", "windows3", "windows", 0)
-        self.dm.SetDict(0,
-                        self.get_resource_path("serveAssets/fonts/common.txt"))
+        # [REMOVED] self.dm.ClearDict(0)
+        # [REMOVED] self.dm.DownCpu(30)
+        # engine handles window binding internally // self.dm.UnBindWindow()
+        # engine handles window binding internally // self.dm.BindWindow(self.click_hwnd, "gdi", "windows3", "windows", 0)
+        # [REMOVED] self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/common.txt"))
 
     def find_zd_in_view(self, base_image, find_sx, backup_images=None, auto_combat_key=None):
         find_left_flag = False
@@ -5181,7 +5088,7 @@ class MyThread(threading.Thread):
             else:
                 last_y_list = [str_last_y]
             if has_zd and has_zd.y not in last_y_list:
-                self.dm.KeyPressChar("left")
+                engine.key_press("left")
                 str_sx_pos = self.find_pic_or_str(find_sx,
                                                   self.gameBottomLocation, 0)
                 img1_sx_pos = None
@@ -5206,18 +5113,18 @@ class MyThread(threading.Thread):
                 elif img2_sx_pos:
                     sx_pos = img2_sx_pos
                 if sx_pos and sx_pos.y not in last_y_list:
-                    self.dm.MoveTo(int(sx_pos.x + 5), int(sx_pos.y + 5))
+                    engine.move_to(int(sx_pos.x + 5), int(sx_pos.y + 5))
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     self.color_format = "b@ffff00-000000|fff200-000000"
                     has_zhengdian = self.waitFor("打就打1",
                                                  self.gameBottomLocation, 5)
                     self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
                     if has_zhengdian:
-                        self.dm.MoveTo(int(has_zhengdian.x + 5),
+                        engine.move_to(int(has_zhengdian.x + 5),
                                        int(has_zhengdian.y + 5))
                         time.sleep(0.001)
-                        self.dm.LeftClick()
+                        engine.left_click(role="main")
                         queryTime = time.time()
                         while True:
                             if self.check_stop_or_over():
@@ -5285,14 +5192,14 @@ class MyThread(threading.Thread):
                         (725, 46, 751, 94),
                         0,
                 ):
-                    self.dm.MoveTo(right_x, rand_y)
+                    engine.move_to(right_x, rand_y)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     find_left_flag = True
                 else:
-                    self.dm.MoveTo(left_x, rand_y)
+                    engine.move_to(left_x, rand_y)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
             else:
                 if self.find_pic_or_str(
                         self.get_resource_path(
@@ -5303,9 +5210,9 @@ class MyThread(threading.Thread):
                     self.confidenceNum = 0.9
                     break
                 else:
-                    self.dm.MoveTo(right_x, rand_y)
+                    engine.move_to(right_x, rand_y)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
             self.confidenceNum = 0.9
             time.sleep(0.6)
 
@@ -5322,49 +5229,40 @@ class MyThread(threading.Thread):
         x, y, w, h = self.dituLocation
         xiaolvren = self.get_resource_path(
             "serveAssets/images/zhengdian/xiaolvren.bmp")
-        picSize = self.dm.GetPicSize(xiaolvren)
-        # print(picSize, 'picSize')
-        picSize = picSize.split(",")
-        picW, picH = picSize[0], picSize[1]
-        xiaolvren_pos = self.dm.FindPicEx(
-            int(x),
-            int(y),
-            int(w),
-            int(h),
+        # picSize = engine.screenshot(...) not needed for engine API
+        picW, picH = 0, 0
+        xiaolvren_pos = engine.find_pic_all(
             self.get_resource_path(
                 "serveAssets/images/zhengdian/xiaolvren.bmp"),
-            "",
+            (int(x), int(y), int(w), int(h)),
             0.9,
-            find_dir,
+            "main"
         )
         # print(xiaolvren_pos, 'xiaolvren_pos')
-        if xiaolvren_pos:
-            xiaolvren_pos = xiaolvren_pos.split("|")
-            # print(xiaolvren_pos, 'xiaolvren_pos')
-            xiaolvren_pos = self.sort_array_by_second_value(xiaolvren_pos,order)
+        if xiaolvren_pos and len(xiaolvren_pos) > 0:
+            xiaolvren_pos = self.sort_array_by_second_value(xiaolvren_pos, order)
             xiaolvren_pos_color = "07d307"
-            for item in xiaolvren_pos:
+            for result in xiaolvren_pos:
                 if self.overed:
                     return
-                new_item = item.split(",")
-                # print(new_item[1], new_item[2], base_image, 'new_item[1]')
-                if npc_posx != 0 and int(new_item[1]) in npc_posx and int(
-                        new_item[2]) in npc_possy:
+                left = result.left if hasattr(result, 'left') else int(result.x - result.width // 2)
+                top = result.top if hasattr(result, 'top') else int(result.y - result.height // 2)
+                if npc_posx != 0 and left in npc_posx and top in npc_possy:
                     continue
-                item_x = int(new_item[1]) + int(int(picW) * 0.5)
-                item_y = int(new_item[2]) + int(int(picH) * 0.5)
-                if self.dm.CmpColor(item_x, item_y, xiaolvren_pos_color,
-                                    0.7) == 1:
+                item_x = int(result.x)
+                item_y = int(result.y)
+                if engine._cmp_color(item_x, item_y, xiaolvren_pos_color,
+                                    0.7, "main"):
                     self.hasZhengDianCount -= 1
                     continue
                 hasZhengDian = False
                 change_color_time = 0
                 find_zhengdian_time = time.time()
-                self.dm.MoveTo(item_x, item_y)
+                engine.move_to(item_x, item_y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.001)
-                self.dm.MoveTo(int(item_x - 200), item_y)
+                engine.move_to(int(item_x - 200), item_y)
                 time.sleep(0.1)
                 self.color_format = "b@ffff00-000000|fff200-000000"
                 is_zhengdian = None
@@ -5374,10 +5272,10 @@ class MyThread(threading.Thread):
                         break
                     # if not self.find_str(base_image, self.dituLocation, 0):
                     # 	break
-                    if change_color_time == 0 and self.dm.CmpColor(item_x,
+                    if change_color_time == 0 and engine._cmp_color(item_x,
                                                                    item_y,
                                                                    xiaolvren_pos_color,
-                                                                   0.7) == 1:
+                                                                   0.7, "main"):
                         change_color_time = time.time()
                     time.sleep(0.01)
                     self.confidenceNum = 0.8
@@ -5403,9 +5301,9 @@ class MyThread(threading.Thread):
                     # 	print('灯谜')
                     # 	self.click_image(f"{self.get_resource_path('serveAssets/images/zhengdian/dengmi.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/dengmi1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/dengmi2.bmp')}", 0.8, self.gameBottomLocation)
                     # 	time.sleep(1)
-                    # 	self.dm.MoveTo(252, 346)
+                    # 	engine.move_to(252, 346)
                     # 	time.sleep(0.001)
-                    # 	self.dm.LeftClick()
+                    # 	engine.left_click(role="main")
                     # 	self.confidenceNum = 0.9
                     # 	break
                     self.confidenceNum = 0.9
@@ -5437,10 +5335,10 @@ class MyThread(threading.Thread):
                         # print('找到了打就打1文字')
                         # print(is_zhengdian.x, is_zhengdian.y)
                         self.hasZhengDianCount -= 1
-                        self.dm.MoveTo(int(is_zhengdian.x + 5),
+                        engine.move_to(int(is_zhengdian.x + 5),
                                        int(is_zhengdian.y + 5))
                         time.sleep(0.001)
-                        self.dm.LeftClick()
+                        engine.left_click(role="main")
                         hasZhengDian = True
                         break
                 # is_zhengdian = self.find_str('打就打2', self.gameBottomLocation, 1)
@@ -5448,9 +5346,9 @@ class MyThread(threading.Thread):
                 # 	print('找到了打就打2文字')
                 # 	print(is_zhengdian.x, is_zhengdian.y)
                 # 	self.hasZhengDianCount -= 1
-                # 	self.dm.MoveTo(int(is_zhengdian.x + 5), int(is_zhengdian.y + 5))
+                # 	engine.move_to(int(is_zhengdian.x + 5), int(is_zhengdian.y + 5))
                 # 	time.sleep(0.001)
-                # 	self.dm.LeftClick()
+                # 	engine.left_click(role="main")
                 # 	hasZhengDian = True
                 # 	break
                 if hasZhengDian:
@@ -5493,9 +5391,9 @@ class MyThread(threading.Thread):
                     self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
                     # self.confidenceNum = 0.9
                     # if dajiuda_pos:
-                    # 	self.dm.MoveTo(dajiuda_pos.x, dajiuda_pos.y)
+                    # 	engine.move_to(dajiuda_pos.x, dajiuda_pos.y)
                     # 	time.sleep(0.001)
-                    # 	self.dm.LeftClick()
+                    # 	engine.left_click(role="main")
                     queryTime = time.time()
                     while True:
                         with condition:
@@ -5553,40 +5451,14 @@ class MyThread(threading.Thread):
             return
 
     def _find_all_str(self, text, region):
-        x, y, w, h = region
-        result = self.dm.FindStrFastE(
-            int(x), int(y), int(w), int(h), text,
-            self.color_format, self.confidenceNum
-        )
-        result = result.split("|")
-        if int(result[0]) < 0:
-            return []
-        positions = []
-        for i in range(0, len(result), 3):
-            if i + 2 < len(result) and int(result[i]) >= 0:
-                positions.append(ResXy(int(result[i + 1]), int(result[i + 2])))
-        return positions
-
+        img_path = TEXT_MAP.get(text, text)
+        result = engine.find_pic(img_path, region, self.confidenceNum, "main", 0)
+        if result:
+            return [ResXy(int(result.x), int(result.y))]
+        return []
     def _find_all_pic(self, image_path, region):
-        x, y, w, h = region
-        result = self.dm.FindPicEx(
-            int(x), int(y), int(w), int(h), image_path, "",
-            self.confidenceNum, 0
-        )
-        if not result:
-            return []
-        items = result.split("|")
-        pics = image_path.split("|")
-        positions = []
-        for item in items:
-            parts = item.split(",")
-            pic_idx = int(parts[0])
-            pic_size = self.dm.GetPicSize(pics[pic_idx]).split(",")
-            cx = int(parts[1]) + int(int(pic_size[0]) * 0.5)
-            cy = int(parts[2]) + int(int(pic_size[1]) * 0.5)
-            positions.append(ResXy(cx, cy))
-        return positions
-
+        results = engine.find_pic_all(image_path, region, self.confidenceNum, "main")
+        return [ResXy(int(r.x), int(r.y)) for r in results]
     def _merge_deduplicate_sort(self, positions, attacked_set, exclude_zones,
                                  threshold=20):
         screen_cx = self.locationX + 400
@@ -5614,17 +5486,17 @@ class MyThread(threading.Thread):
         return result
 
     def _try_attack_zd(self, target, base_image, auto_combat_key):
-        self.dm.MoveTo(int(target.x + 5), int(target.y + 5))
+        engine.move_to(int(target.x + 5), int(target.y + 5))
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         self.color_format = "b@ffff00-000000|fff200-000000"
         zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 3)
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         if not zhengdian_btn:
             return False
-        self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
+        engine.move_to(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         if auto_combat_key is not None and self.combat_auto_flag:
             self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
         combat_ok = self._wait_combat_result(base_image, auto_combat_key)
@@ -5652,14 +5524,14 @@ class MyThread(threading.Thread):
                 return True
             if self.find_pic(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/beitiaozhan.bmp')}",
-                    self.gameBottomLocation, 0) or self.find_str("挑战小字",
+                    self.gameBottomLocation, 0) or self.find_str("挑战小子",
                                                          self.gameBottomLocation,
                                                          0):
                 self.confidenceNum = 0.9
                 return False
             if self.find_pic(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/bucunzai.bmp')}",
-                    self.gameBottomLocation, 0) or self.find_str("不存在小字",
+                    self.gameBottomLocation, 0) or self.find_str("不存在小子",
                                                          self.gameBottomLocation,
                                                          0):
                 self.confidenceNum = 0.9
@@ -5721,7 +5593,7 @@ class MyThread(threading.Thread):
                     break
             if skip:
                 continue
-            if self.dm.CmpColor(cx, cy, green_color, 0.7) == 1:
+            if engine._cmp_color(cx, cy, green_color, 0.7, "main"):
                 continue
             valid.append((cx, cy))
         return valid
@@ -5744,18 +5616,18 @@ class MyThread(threading.Thread):
             return False
         for target in candidates:
             attacked_set.add((target.x, target.y))
-            self.dm.MoveTo(int(target.x + 5), int(target.y + 5))
+            engine.move_to(int(target.x + 5), int(target.y + 5))
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             self.color_format = "b@ffff00-000000|fff200-000000"
             zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 3)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
             if not zhengdian_btn:
                 continue
-            self.dm.MoveTo(int(zhengdian_btn.x + 5),
+            engine.move_to(int(zhengdian_btn.x + 5),
                             int(zhengdian_btn.y + 5))
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             if self._wait_combat_result(base_image, None):
                 self.daZhengDianCount += 1
                 print(f"打了第{self.daZhengDianCount}个整点")
@@ -5782,15 +5654,12 @@ class MyThread(threading.Thread):
         try:
             xiaolvren_bmp = self.get_resource_path(
                 "serveAssets/images/zhengdian/xiaolvren.bmp")
-            dx, dy, dw, dh = self.dituLocation
-            result = self.dm.FindPicEx(dx, dy, dw, dh, xiaolvren_bmp, "", 0.9, 0)
-            if not result:
-                return 0
-            return len(result.split("|"))
+            results = engine.find_pic_all(xiaolvren_bmp, self.dituLocation, 0.9, "main")
+            if results:
+                return len(results)
+            return 0
         except:
             return 0
-
-    # V3辅助方法：将delX/delY转换为NPC坐标列表（用于模糊排除）
     def _get_npc_zones_from_delxy(self, delX, delY):
         zones = []
         for i in range(len(delX)):
@@ -5819,14 +5688,14 @@ class MyThread(threading.Thread):
                     self.get_resource_path(
                         "serveAssets/images/zhengdian/xiaobairen.bmp"),
                     (725, 46, 751, 94), 0):
-                self.dm.MoveTo(right_x, rand_y)
+                engine.move_to(right_x, rand_y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 new_flag = True
             else:
-                self.dm.MoveTo(left_x, rand_y)
+                engine.move_to(left_x, rand_y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 new_flag = False
         else:
             if self.find_pic_or_str(
@@ -5836,9 +5705,9 @@ class MyThread(threading.Thread):
                 reached_edge = True
                 new_flag = find_left_flag
             else:
-                self.dm.MoveTo(right_x, rand_y)
+                engine.move_to(right_x, rand_y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 new_flag = find_left_flag
         self.confidenceNum = 0.9
         time.sleep(0.6)
@@ -5947,8 +5816,7 @@ class MyThread(threading.Thread):
         x, y, w, h = self.dituLocation
         xiaolvren = self.get_resource_path(
             "serveAssets/images/zhengdian/xiaolvren.bmp")
-        pic_size = self.dm.GetPicSize(xiaolvren).split(",")
-        pic_w, pic_h = int(pic_size[0]), int(pic_size[1])
+        pic_w, pic_h = 0, 0
         no_progress_rounds = 0
         max_no_progress = 3
         while True:
@@ -5962,16 +5830,14 @@ class MyThread(threading.Thread):
                 print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
                 self.confidenceNum = 0.9
                 return
-            green_result = self.dm.FindPicEx(
-                int(x), int(y), int(w), int(h), xiaolvren, "", 0.9, 0
+            green_result = engine.find_pic_all(
+                xiaolvren, (int(x), int(y), int(w), int(h)), 0.9, "main"
             )
             target_dots = []
             if green_result:
-                all_dots = green_result.split("|")
-                for item in all_dots:
-                    parts = item.split(",")
-                    tl_x = int(parts[1])
-                    tl_y = int(parts[2])
+                for r in green_result:
+                    tl_x = r.left
+                    tl_y = r.top
                     if self._is_near_npc_zone(tl_x, tl_y, npc_zones, threshold=10):
                         continue
                     skip = False
@@ -5981,8 +5847,8 @@ class MyThread(threading.Thread):
                             break
                     if skip:
                         continue
-                    click_x = tl_x + pic_w // 2
-                    click_y = tl_y + pic_h // 2
+                    click_x = r.x
+                    click_y = r.y
                     target_dots.append((click_x, click_y, tl_x, tl_y))
             if not target_dots:
                 no_progress_rounds += 1
@@ -5999,9 +5865,9 @@ class MyThread(threading.Thread):
                 key=lambda d: (d[0] - screen_cx) ** 2 + (d[1] - screen_cy) ** 2)
             hit_any = False
             for click_x, click_y, tl_x, tl_y in target_dots:
-                self.dm.MoveTo(click_x, click_y)
+                engine.move_to(click_x, click_y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.5)
                 if ditu_name and city_img:
                     self._ensure_on_map(ditu_name, city_img, base_image)
@@ -6009,13 +5875,13 @@ class MyThread(threading.Thread):
                 zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 8)
                 self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
                 if not zhengdian_btn:
-                    self.dm.KeyPressChar("esc")
+                    engine.key_press("esc")
                     time.sleep(0.3)
                     attacked_set.add((tl_x, tl_y))
                     continue
-                self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
+                engine.move_to(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 if auto_combat_key is not None and self.combat_auto_flag:
                     self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
                 combat_ok = self._wait_combat_result(base_image, auto_combat_key)
@@ -6050,18 +5916,18 @@ class MyThread(threading.Thread):
                                                       [48, 42, 44], 1)
             is_in_bibotan = self.waitFor("野外北", self.dituLocation, 5)
             if is_in_bibotan:
-                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+                engine.move_to(self.locationX + 790, self.locationY + 75)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.5)
                 self.zhengdian_by_xiaolvren_for_gongcheng("野外北", 0,
                                                           [845, 794, 761, 740],
                                                           [48, 42, 44], 1)
                 is_in_bibotan1 = self.waitFor("野外北", self.dituLocation, 5)
                 if is_in_bibotan1:
-                    self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                    engine.move_to(self.locationX + 830, self.locationY + 75)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(0.5)
                     self.zhengdian_by_xiaolvren_for_gongcheng("野外北", 0,
                                                               [845, 794, 761,
@@ -6081,17 +5947,17 @@ class MyThread(threading.Thread):
                                                       1)
             is_in_bibotan = self.waitFor("野外西", self.dituLocation, 5)
             if is_in_bibotan:
-                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+                engine.move_to(self.locationX + 790, self.locationY + 75)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.5)
                 self.zhengdian_by_xiaolvren_for_gongcheng("野外西", 0, [853],
                                                           [45], 1)
                 is_in_bibotan1 = self.waitFor("野外西", self.dituLocation, 5)
                 if is_in_bibotan1:
-                    self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                    engine.move_to(self.locationX + 830, self.locationY + 75)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(0.5)
                     self.zhengdian_by_xiaolvren_for_gongcheng("野外西", 0,
                                                               [853], [45], 1)
@@ -6108,16 +5974,16 @@ class MyThread(threading.Thread):
             self.zhengdian_by_xiaolvren_for_gongcheng("万花谷", 0, 0, [], 1)
             is_in_bibotan = self.waitFor("万花谷", self.dituLocation, 5)
             if is_in_bibotan:
-                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+                engine.move_to(self.locationX + 790, self.locationY + 75)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.5)
                 self.zhengdian_by_xiaolvren_for_gongcheng("万花谷", 0, 0, [], 1)
                 is_in_bibotan1 = self.waitFor("万花谷", self.dituLocation, 5)
                 if is_in_bibotan1:
-                    self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                    engine.move_to(self.locationX + 830, self.locationY + 75)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(0.5)
                     self.zhengdian_by_xiaolvren_for_gongcheng("万花谷", 0, 0,
                                                               [], 1)
@@ -6125,14 +5991,14 @@ class MyThread(threading.Thread):
         while self.find_str("魔军", self.gameBottomLocation, 0):
             mojun_loc = self.find_str("魔军", self.gameBottomLocation, 0)
             if mojun_loc:
-                self.dm.MoveTo(mojun_loc.x, mojun_loc.y)
+                engine.move_to(mojun_loc.x, mojun_loc.y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             gongcheng_loc = self.waitFor("攻城", self.gameBottomLocation, 5)
             if gongcheng_loc:
-                self.dm.MoveTo(gongcheng_loc.x, gongcheng_loc.y)
+                engine.move_to(gongcheng_loc.x, gongcheng_loc.y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             zdzd_loc = self.waitFor(
                 self.get_resource_path("serveAssets/images/zdzd111.bmp"),
                 self.gameBottomLocation,
@@ -6158,50 +6024,41 @@ class MyThread(threading.Thread):
         x, y, w, h = self.dituLocation
         xiaolvren = self.get_resource_path(
             "serveAssets/images/zhengdian/xiaolvren2.bmp")
-        picSize = self.dm.GetPicSize(xiaolvren)
-        picSize = picSize.split(",")
-        picW, picH = picSize[0], picSize[1]
-        xiaolvren_pos = self.dm.FindPicEx(
-            int(x),
-            int(y),
-            int(w),
-            int(h),
+        # picSize via engine - not needed
+        picW, picH = 0, 0
+        xiaolvren_pos = engine.find_pic_all(
             self.get_resource_path(
                 "serveAssets/images/zhengdian/xiaolvren2.bmp"),
-            "",
+            (int(x), int(y), int(w), int(h)),
             0.7,
-            find_dir,
+            "main"
         )
-        if xiaolvren_pos:
-            xiaolvren_pos = xiaolvren_pos.split("|")
-            # print(xiaolvren_pos, 'xiaolvren_pos')
-            xiaolvren_pos = self.sort_array_by_second_value(xiaolvren_pos,
-                                                            order)
+        if xiaolvren_pos and len(xiaolvren_pos) > 0:
+            xiaolvren_pos = self.sort_array_by_second_value(xiaolvren_pos, order)
             # print(xiaolvren_pos, 'xiaolvren_pos111')
             xiaolvren_pos_color = "07d307"
             # xiaolvren_pos_color = self.dm.GetColor(int(int(xiaolvren_pos[0].split(',')[1]) + int(int(picW) * 0.5)), int(int(xiaolvren_pos[0].split(',')[2]) + int(int(picH) * 0.5)))
             # print(xiaolvren_pos_color, 'xiaolvren_pos_color')
-            for item in xiaolvren_pos:
+            for result in xiaolvren_pos:
                 if self.overed:
                     return
-                new_item = item.split(",")
-                # print(new_item[1], new_item[2], base_image, 'new_item[1]')
-                if npc_posx != 0 and int(new_item[1]) in npc_posx and int(
-                        new_item[2]) in npc_possy:
+                left = result.left if hasattr(result, 'left') else int(result.x - result.width // 2)
+                top = result.top if hasattr(result, 'top') else int(result.y - result.height // 2)
+                if npc_posx != 0 and left in npc_posx and top in npc_possy:
                     continue
-                item_x = int(new_item[1]) + int(int(picW) * 0.5)
-                item_y = int(new_item[2]) + int(int(picH) * 0.5)
-                if self.dm.CmpColor(item_x, item_y, xiaolvren_pos_color,
-                                    0.7) == 1:
+                item_x = int(result.x)
+                item_y = int(result.y)
+                if engine._cmp_color(item_x, item_y, xiaolvren_pos_color,
+                                    0.7, "main"):
                     continue
                 hasZhengDian = False
                 change_color_time = 0
                 find_zhengdian_time = time.time()
-                self.dm.MoveTo(item_x, item_y)
+                engine.move_to(item_x, item_y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.001)
-                self.dm.MoveTo(int(item_x - 200), item_y)
+                engine.move_to(int(item_x - 200), item_y)
                 time.sleep(0.1)
                 while True:
                     if time.time() - find_zhengdian_time > 10:
@@ -6211,10 +6068,10 @@ class MyThread(threading.Thread):
                         break
                     # if not self.find_str(base_image, self.dituLocation, 0):
                     # 	break
-                    if change_color_time == 0 and self.dm.CmpColor(item_x,
+                    if change_color_time == 0 and engine._cmp_color(item_x,
                                                                    item_y,
                                                                    xiaolvren_pos_color,
-                                                                   0.7) == 1:
+                                                                   0.7, "main"):
                         change_color_time = time.time()
                     time.sleep(0.01)
                     self.confidenceNum = 0.6
@@ -6270,9 +6127,9 @@ class MyThread(threading.Thread):
                             self.gameBottomLocation,
                         )
                         time.sleep(1)
-                        self.dm.MoveTo(252, 346)
+                        engine.move_to(252, 346)
                         time.sleep(0.001)
-                        self.dm.LeftClick()
+                        engine.left_click(role="main")
                         self.confidenceNum = 0.9
                         break
                     self.confidenceNum = 0.9
@@ -6329,10 +6186,10 @@ class MyThread(threading.Thread):
                             break
                     self.confidenceNum = 0.9
                     if dajiuda_pos:
-                        self.dm.MoveTo(int(dajiuda_pos.x + 10),
+                        engine.move_to(int(dajiuda_pos.x + 10),
                                        int(dajiuda_pos.y + 3))
                         time.sleep(0.001)
-                        self.dm.LeftClick()
+                        engine.left_click(role="main")
                         queryTime = time.time()
                         while True:
                             with condition:
@@ -6354,10 +6211,10 @@ class MyThread(threading.Thread):
                                                              self.gameBottomLocation,
                                                              0)
                             if yourendaLocation:
-                                self.dm.MoveTo(yourendaLocation.x,
+                                engine.move_to(yourendaLocation.x,
                                                yourendaLocation.y)
                                 time.sleep(0.001)
-                                self.dm.LeftClick()
+                                engine.left_click(role="main")
                                 zhengdianHas = False
                                 break
                             yourendaLocation1 = self.find_pic(
@@ -6366,10 +6223,10 @@ class MyThread(threading.Thread):
                                 0,
                             )
                             if yourendaLocation1:
-                                self.dm.MoveTo(yourendaLocation1.x,
+                                engine.move_to(yourendaLocation1.x,
                                                yourendaLocation1.y)
                                 time.sleep(0.001)
-                                self.dm.LeftClick()
+                                engine.left_click(role="main")
                                 zhengdianHas = False
                                 break
                             self.confidenceNum = 0.9
@@ -6395,26 +6252,26 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/xian.bmp"),
             self.gameLocation)
         if xian_loc:
-            self.dm.MoveTo(xian_loc.x, xian_loc.y)
+            engine.move_to(xian_loc.x, xian_loc.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
-        self.dm.MoveTo(xian_loc.x, int(xian_loc.y + 30))
+            engine.left_click(role="main")
+        engine.move_to(xian_loc.x, int(xian_loc.y + 30))
         while not self.find_str(line, self.gameLocation, 0):
             if self.overed:
                 return
             for i in range(4):
                 if line in ["一线", "二线", "三线", "四线", "五线"]:
-                    self.dm.WheelUp()
+                    engine.scroll_up(role="main")
                     time.sleep(0.06)
                 else:
-                    self.dm.WheelDown()
+                    engine.scroll_down(role="main")
                     time.sleep(0.06)
             time.sleep(0.4)
         checkLine_loc = self.waitFor(line, self.gameLocation, 5)
         if checkLine_loc:
-            self.dm.MoveTo(checkLine_loc.x, checkLine_loc.y)
+            engine.move_to(checkLine_loc.x, checkLine_loc.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
 
     def check_line1(self, line="二线"):
         if not self.line:
@@ -6423,26 +6280,26 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/xian.bmp"),
             self.gameLocation)
         if xian_loc:
-            self.win1_dm.MoveTo(xian_loc.x, xian_loc.y)
+            engine.move_to(xian_loc.x, xian_loc.y)
             time.sleep(0.001)
-            self.win1_dm.LeftClick()
-        self.win1_dm.MoveTo(xian_loc.x, int(xian_loc.y + 30))
+            engine.left_click(role="team1")
+        engine.move_to(xian_loc.x, int(xian_loc.y + 30))
         while not self.find_str_team1(line, self.gameLocation, 0):
             if self.overed:
                 return
             for i in range(4):
                 if line in ["一线", "二线", "三线", "四线", "五线"]:
-                    self.win1_dm.WheelUp()
+                    engine.scroll_up(role="team1")
                     time.sleep(0.06)
                 else:
-                    self.win1_dm.WheelDown()
+                    engine.scroll_down(role="team1")
                     time.sleep(0.06)
             time.sleep(0.4)
         checkLine_loc = self.waitFor_team1(line, self.gameLocation, 5)
         if checkLine_loc:
-            self.win1_dm.MoveTo(checkLine_loc.x, checkLine_loc.y)
+            engine.move_to(checkLine_loc.x, checkLine_loc.y)
             time.sleep(0.001)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
 
     def check_line2(self, line="二线"):
         if not self.line:
@@ -6451,32 +6308,31 @@ class MyThread(threading.Thread):
             self.get_resource_path("serveAssets/images/xian.bmp"),
             self.gameLocation)
         if xian_loc:
-            self.win2_dm.MoveTo(xian_loc.x, xian_loc.y)
+            engine.move_to(xian_loc.x, xian_loc.y)
             time.sleep(0.001)
-            self.win2_dm.LeftClick()
-        self.win2_dm.MoveTo(xian_loc.x, int(xian_loc.y + 30))
+            engine.left_click(role="team2")
+        engine.move_to(xian_loc.x, int(xian_loc.y + 30))
         while not self.find_str_team2(line, self.gameLocation, 0):
             if self.overed:
                 return
             for i in range(4):
                 if line in ["一线", "二线", "三线", "四线", "五线"]:
-                    self.win2_dm.WheelUp()
+                    engine.scroll_up(role="team2")
                     time.sleep(0.06)
                 else:
-                    self.win2_dm.WheelDown()
+                    engine.scroll_down(role="team2")
                     time.sleep(0.06)
             time.sleep(0.4)
         checkLine_loc = self.waitFor_team2(line, self.gameLocation, 5)
         if checkLine_loc:
-            self.win2_dm.MoveTo(checkLine_loc.x, checkLine_loc.y)
+            engine.move_to(checkLine_loc.x, checkLine_loc.y)
             time.sleep(0.001)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
 
     # 重新设置大漠跟字库
     def set_dict(self):
         time.sleep(0.5)
-        self.dm.SetDict(0, self.get_resource_path(
-            "serveAssets/fonts/common.txt"))  # 字库文件路径
+        # [REMOVED] self.dm.SetDict(0, self.get_resource_path("serveAssets/fonts/common.txt"))
         time.sleep(0.5)
 
     def sort_array_by_second_value(self, arr, order):
@@ -6520,14 +6376,14 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         time.sleep(0.5)
-        # self.dm.KeyPressChar('m')
+        # engine.key_press('m')
         address_pos_city_pos = None
         begin_time = time.time()
         while True:
@@ -6540,20 +6396,20 @@ class MyThread(threading.Thread):
                 self.confidenceNum = 0.9
                 break
             self.confidenceNum = 0.9
-            self.dm.KeyPressChar("m")
+            engine.key_press("m")
             # self.waitFor(self.get_resource_path('serveAssets/images/tu.bmp'), self.gameLocation)
             # time.sleep(0.05)
-            # self.dm.MoveTo(int(self.locationX + 736), int(self.locationY + 120))
+            # engine.move_to(int(self.locationX + 736), int(self.locationY + 120))
             # time.sleep(0.05)
-            # self.dm.LeftClick()
+            # engine.left_click(role="main")
             time.sleep(0.5)
-        # self.dm.MoveTo(int(self.locationX + 736), int(self.locationY + 120))
+        # engine.move_to(int(self.locationX + 736), int(self.locationY + 120))
         # time.sleep(0.05)
-        # self.dm.LeftClick()
+        # engine.left_click(role="main")
         self.confidenceNum = 0.9
-        self.dm.MoveTo(address_pos_city_pos.x, address_pos_city_pos.y)
+        engine.move_to(address_pos_city_pos.x, address_pos_city_pos.y)
         time.sleep(0.3)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         if find_address in ["地图绿林路", "地图落日峰", "地图碧波潭",
                             "地图祭坛"]:
             fei_pos = self.waitFor(
@@ -6562,16 +6418,16 @@ class MyThread(threading.Thread):
                 5,
             )
             if not fei_pos:
-                self.dm.KeyPressChar("m")
+                engine.key_press("m")
                 return False
-            self.dm.MoveTo(fei_pos.x, fei_pos.y)
+            engine.move_to(fei_pos.x, fei_pos.y)
             find_fei_time = time.time()
             while not self.find_pic_or_str(find_address,
                                            self.gameBottomLocation, 0):
                 if self.overed:
                     return
                 if time.time() - find_fei_time > 10:
-                    self.dm.KeyPressChar("m")
+                    engine.key_press("m")
                     return False
                 self.click_image(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/closezd.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/closezd1.bmp')}",
@@ -6579,11 +6435,11 @@ class MyThread(threading.Thread):
                     self.gameLocation,
                 )
                 for i in range(4):
-                    self.dm.WheelDown()
+                    engine.scroll_down(role="main")
                     time.sleep(0.06)
                 time.sleep(0.4)
             for i in range(4):
-                self.dm.WheelDown()
+                engine.scroll_down(role="main")
                 time.sleep(0.06)
             time.sleep(0.4)
         is_find_address = self.waitFor(find_address, self.gameLocation, 3)
@@ -6605,11 +6461,11 @@ class MyThread(threading.Thread):
                 f"{self.get_resource_path('serveAssets/images/zhengdian/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/qianwang3.bmp')}",
             )
             if go_pos:
-                self.dm.MoveTo(go_pos.x, go_pos.y)
+                engine.move_to(go_pos.x, go_pos.y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.05)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.5)
             if yizhan_name1:
                 self.confidenceNum = 0.6
@@ -6617,10 +6473,10 @@ class MyThread(threading.Thread):
                                                 self.gameBottomLocation, 80)
                 self.confidenceNum = 0.9
                 if yizhan_name1_pos:
-                    self.dm.MoveTo((int(yizhan_name1_pos.x)),
+                    engine.move_to((int(yizhan_name1_pos.x)),
                                    int(yizhan_name1_pos.y))
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(3)
             if yizhan_name2 != "":
                 self.confidenceNum = 0.6
@@ -6628,10 +6484,10 @@ class MyThread(threading.Thread):
                                                 self.gameBottomLocation, 80)
                 self.confidenceNum = 0.9
                 if yizhan_name2_pos:
-                    self.dm.MoveTo((int(yizhan_name2_pos.x)),
+                    engine.move_to((int(yizhan_name2_pos.x)),
                                    int(yizhan_name2_pos.y))
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(1)
             self.waitFor(break_address, self.dituLocation, 200)
         else:
@@ -6645,7 +6501,7 @@ class MyThread(threading.Thread):
                 region = (0, 21, 180, 0)
             while True:
                 if time.time() - find_fei_time > 10:
-                    self.dm.KeyPressChar("m")
+                    engine.key_press("m")
                     return False
                 fei_pos = self.fing_fei_in_image_or_str(
                     find_address,
@@ -6658,12 +6514,12 @@ class MyThread(threading.Thread):
                         if self.find_pic_or_str(break_address,
                                                 self.dituLocation, 0):
                             break
-                        self.dm.MoveTo(fei_pos.x, fei_pos.y)
+                        engine.move_to(fei_pos.x, fei_pos.y)
                         time.sleep(0.05)
-                        self.dm.LeftClick()
+                        engine.left_click(role="main")
                         time.sleep(1)
                         if time.time() - find_fei_time > 10:
-                            self.dm.KeyPressChar("m")
+                            engine.key_press("m")
                             return False
                     return True
 
@@ -6677,15 +6533,15 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         # 打开副本
         time.sleep(1.5)
-        # self.dm.KeyPressChar('z')
+        # engine.key_press('z')
         begin_time = time.time()
         while not self.find_pic_or_str(
                 f"{self.get_resource_path('serveAssets/images/jingyin.bmp')}|{self.get_resource_path('serveAssets/images/jingyin1.bmp')}",
@@ -6694,16 +6550,16 @@ class MyThread(threading.Thread):
         ):
             if time.time() - begin_time > 600:
                 break
-            self.dm.KeyPressChar("z")
+            engine.key_press("z")
             # self.waitFor(self.get_resource_path('serveAssets/images/tu.bmp'), self.gameLocation)
             # time.sleep(0.05)
-            # self.dm.MoveTo(int(self.locationX + 607), int(self.locationY + 50))
+            # engine.move_to(int(self.locationX + 607), int(self.locationY + 50))
             # time.sleep(0.5)
-            # self.dm.LeftClick()
+            # engine.left_click(role="main")
             time.sleep(0.5)
-        # self.dm.MoveTo(int(self.locationX + 607), int(self.locationY + 50))
+        # engine.move_to(int(self.locationX + 607), int(self.locationY + 50))
         # time.sleep(0.5)
-        # self.dm.LeftClick()
+        # engine.left_click(role="main")
         # time.sleep(1)
         if isJy:
             is_click_fb = self.click_image(
@@ -6717,7 +6573,7 @@ class MyThread(threading.Thread):
             findPerTime = time.time()
             while True:
                 if time.time() - findPerTime > 10:
-                    self.dm.KeyPressChar("z")
+                    engine.key_press("z")
                     return False
                 if self.overed:
                     return
@@ -6734,9 +6590,9 @@ class MyThread(threading.Thread):
                     if not self.find_pic_or_str(image_path, self.gameLocation,
                                                 0):
                         break
-                    self.dm.MoveTo(fei_pos.x, fei_pos.y)
+                    engine.move_to(fei_pos.x, fei_pos.y)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(1)
         else:
             self.click_image(
@@ -6745,7 +6601,7 @@ class MyThread(threading.Thread):
                 self.gameLocation,
             )
             time.sleep(0.5)
-            self.dm.MoveTo(449, 224)
+            engine.move_to(449, 224)
             # downTalk = self.waitFor(
             # 	f"{self.get_resource_path('serveAssets/images/downFb.bmp')}|{self.get_resource_path('serveAssets/images/downFb1.bmp')}|{self.get_resource_path('serveAssets/images/downFb2.bmp')}|{self.get_resource_path('serveAssets/images/downFb3.bmp')}|{self.get_resource_path('serveAssets/images/downFb4.bmp')}",
             # 	(
@@ -6762,14 +6618,14 @@ class MyThread(threading.Thread):
                 if self.overed:
                     return
                 for i in range(4):
-                    self.dm.WheelDown()
+                    engine.scroll_down(role="main")
                     time.sleep(0.06)
 
                 time.sleep(0.4)
             time.sleep(0.5)
-            self.dm.MoveTo(449, 224)
+            engine.move_to(449, 224)
             for i in range(4):
-                self.dm.WheelDown()
+                engine.scroll_down(role="main")
                 time.sleep(0.06)
             time.sleep(1)
             findPerTime = time.time()
@@ -6793,9 +6649,9 @@ class MyThread(threading.Thread):
                     if not self.find_pic_or_str(image_path, self.gameLocation,
                                                 0):
                         break
-                    self.dm.MoveTo(fei_pos.x, fei_pos.y)
+                    engine.move_to(fei_pos.x, fei_pos.y)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(1)
         return True
 
@@ -6810,9 +6666,9 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
-            self.dm.MoveTo(image_locations.x, image_locations.y)
+            engine.move_to(image_locations.x, image_locations.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             return True
         else:
             return False
@@ -6827,9 +6683,9 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
-            self.win1_dm.MoveTo(image_locations.x, image_locations.y)
+            engine.move_to(image_locations.x, image_locations.y)
             time.sleep(0.001)
-            self.win1_dm.LeftClick()
+            engine.left_click(role="team1")
             return True
         else:
             return False
@@ -6844,9 +6700,9 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
-            self.win2_dm.MoveTo(image_locations.x, image_locations.y)
+            engine.move_to(image_locations.x, image_locations.y)
             time.sleep(0.001)
-            self.win2_dm.LeftClick()
+            engine.left_click(role="team2")
             return True
         else:
             return False
@@ -6869,17 +6725,17 @@ class MyThread(threading.Thread):
             return False
         yjian = random.randint(35, 55) if not types else 0
         if "zdzd" in image_path2:
-            self.dm.MoveTo(target.x, int(target.y - yjian))
+            engine.move_to(target.x, int(target.y - yjian))
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(self.click_delay)
-            self.dm.MoveTo(1, 1)
+            engine.move_to(1, 1)
         else:
-            self.dm.MoveTo(target.x, target.y)
+            engine.move_to(target.x, target.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.2)
-            self.dm.MoveTo(1, 1)
+            engine.move_to(1, 1)
         self.clickBTime = time.time()
         self.clickBX = target.x
         self.clickBy = target.y
@@ -6900,15 +6756,17 @@ class MyThread(threading.Thread):
         target_x = target.x
         target_y = target.y
         if "zdzd" in image_path2:
-            self.dm.MoveTo(target.x, target.y)
+            engine.move_to(target.x, target.y)
             time.sleep(0.001)
-            self.dm.LeftDoubleClick()
-            self.dm.MoveTo(target.x + 200, target.y + 200)
+            engine.left_click(role="main")
+            time.sleep(0.01)
+            engine.left_click(role="main")
+            engine.move_to(target.x + 200, target.y + 200)
         else:
-            self.dm.MoveTo(target.x, target.y)
+            engine.move_to(target.x, target.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
-            self.dm.MoveTo(target.x + 200, target.y + 200)
+            engine.left_click(role="main")
+            engine.move_to(target.x + 200, target.y + 200)
         self.clickBTime = time.time()
         self.clickBX = target.x
         self.clickBy = target.y
@@ -6952,24 +6810,27 @@ class MyThread(threading.Thread):
             self.refreshFlag = True
             self.teamFlag = False
             gc.collect()
-            self.dm.ClearDict(0)
-            self.dm.UnBindWindow()
-            self.dm.DownCpu(30)
+            # [REMOVED] self.dm.ClearDict(0)
+            # engine handles window binding internally // self.dm.UnBindWindow()
+            # [REMOVED] self.dm.DownCpu(30)
             target_window_title = self.frame.game_name
             target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
-            hwnds = self.dm.EnumWindow(0, target_window_title,
-                                       target_window_class, 1 + 2)
-            hwnds = hwnds.split(",")
+            found_windows = []
+            def enum_callback(hwnd, _):
+                if win32gui.IsWindowVisible(hwnd):
+                    wt = win32gui.GetWindowText(hwnd)
+                    if wt and target_window_title in wt:
+                        found_windows.append(hwnd)
+                return True
+            win32gui.EnumWindows(enum_callback, None)
             hwnd = 0
-            for item in hwnds:
+            for h in found_windows:
                 if self.overed:
                     return
-                if item and self.dm.GetWindowTitle(
-                        int(item)) == target_window_title:
-                    hwnd = int(item)
+                if win32gui.GetWindowText(h) == target_window_title:
+                    hwnd = h
                     break
-            bind_result = self.dm.BindWindow(hwnd, "dx2", "windows3", "windows",
-                                             0)
+            bind_result = 1  # engine handles window binding internally
             if bind_result == 1:
                 print("准备刷新")
                 time.sleep(0.1)
@@ -6981,25 +6842,25 @@ class MyThread(threading.Thread):
                 (0, 0, 900, 200),
             )
             self.confidenceNum = 0.9
-            self.dm.MoveTo(refresh_pos.x, refresh_pos.y)
+            engine.move_to(refresh_pos.x, refresh_pos.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             # self.dm.SetWindowState(hwnd, 1)
             time.sleep(0.5)
-            self.dm.KeyPressChar("F5")
+            engine.key_press("F5")
             time.sleep(0.5)
-            self.dm.KeyPress(116)
+            engine.key_press("f5", role="main")
             time.sleep(5)
-            self.dm.UnBindWindow()
+            # engine handles window binding internally // self.dm.UnBindWindow()
             time.sleep(5)
             self.findGame()
             in_game_pos = self.waitFor(
                 self.get_resource_path("serveAssets/images/in_game.bmp"),
                 self.gameBottomLocation,
             )
-            self.dm.MoveTo(in_game_pos.x, in_game_pos.y)
+            engine.move_to(in_game_pos.x, in_game_pos.y)
             time.sleep(2)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             self.waitFor(
                 self.get_resource_path("serveAssets/images/mhlogo.bmp"),
                 self.gameLocation,
@@ -7009,17 +6870,17 @@ class MyThread(threading.Thread):
                 self.get_resource_path("serveAssets/images/checkRole.bmp"),
                 self.gameLocation,
             )
-            self.dm.MoveTo(checkRolePos.x, checkRolePos.y)
+            engine.move_to(checkRolePos.x, checkRolePos.y)
             checkCount = int(
                 self.team_leader_pos) - 1 if self.team_leader_pos else 0
             if checkCount > 0:
                 for i in range(checkCount):
                     time.sleep(1.5)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
             time.sleep(1.5)
-            self.dm.MoveTo(440, 370)
+            engine.move_to(440, 370)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             self.waitFor(
                 self.get_resource_path("serveAssets/images/xiulian.bmp"),
                 self.gameLocation,
@@ -7028,10 +6889,10 @@ class MyThread(threading.Thread):
             self.check_line(self.line)
             time.sleep(2)
             if self.teammate1_name or self.teammate2_name:
-                self.dm.KeyPressChar("t")
+                engine.key_press("t")
                 self.check_team()
                 print("组队完成")
-                self.dm.KeyPressChar("t")
+                engine.key_press("t")
                 self.teamFlag = True
             self.refreshFlag = False
             self.hasRefresh = True
@@ -7051,30 +6912,30 @@ class MyThread(threading.Thread):
             f"{self.get_resource_path('serveAssets/images/roleList.bmp')}|{self.get_resource_path('serveAssets/images/roleList1.bmp')}",
             self.gameLocation,
         )
-        self.dm.MoveTo(role_list_pos.x, role_list_pos.y)
+        engine.move_to(role_list_pos.x, role_list_pos.y)
         time.sleep(1)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         lv_pos = self.waitFor(
             self.get_resource_path("serveAssets/images/lv.bmp"),
             self.gameLocation)
-        self.dm.MoveTo(lv_pos.x, lv_pos.y)
+        engine.move_to(lv_pos.x, lv_pos.y)
         time.sleep(1)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         yaoqing_pos = self.waitFor(
             self.get_resource_path("serveAssets/images/yaoqing.bmp"),
             self.gameLocation)
-        self.dm.MoveTo(yaoqing_pos.x, yaoqing_pos.y)
+        engine.move_to(yaoqing_pos.x, yaoqing_pos.y)
         for i in range(10):
             time.sleep(0.2)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         time.sleep(5)
         self.yaoqingFlag = True
         myteam_pos = self.waitFor(
             self.get_resource_path("serveAssets/images/myteam.bmp"),
             self.gameLocation)
-        self.dm.MoveTo(myteam_pos.x, myteam_pos.y)
+        engine.move_to(myteam_pos.x, myteam_pos.y)
         time.sleep(1)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(2)
         team1_loc = self.waitForTwo(
             self.get_resource_path("serveAssets/images/team_mate1.bmp"),
@@ -7084,13 +6945,13 @@ class MyThread(threading.Thread):
             3,
         )
         if not team1_loc:
-            self.dm.MoveTo(410, 310)
+            engine.move_to(410, 310)
             time.sleep(1)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(1)
-            self.dm.MoveTo(yaoqing_pos.x, yaoqing_pos.y)
+            engine.move_to(yaoqing_pos.x, yaoqing_pos.y)
             time.sleep(0.2)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         team2_loc = self.waitForTwo(
             self.get_resource_path("serveAssets/images/team_mate1.bmp"),
             self.get_resource_path("serveAssets/images/team_mate2.bmp"),
@@ -7099,13 +6960,13 @@ class MyThread(threading.Thread):
             3,
         )
         if not team2_loc:
-            self.dm.MoveTo(410, 310)
+            engine.move_to(410, 310)
             time.sleep(1)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(1)
-            self.dm.MoveTo(yaoqing_pos.x, yaoqing_pos.y)
+            engine.move_to(yaoqing_pos.x, yaoqing_pos.y)
             time.sleep(0.2)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         if not team1_loc or not team2_loc:
             self.check_team()
 
@@ -7237,9 +7098,9 @@ class MyThread(threading.Thread):
                     break
                 time.sleep(0.2)
             time.sleep(0.1)
-        self.dm.MoveTo(804, 74)
+        engine.move_to(804, 74)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
 
     # 使用道具
     def press_keys_until_image_found(self, image_path, image_path2, region1,
@@ -7257,23 +7118,23 @@ class MyThread(threading.Thread):
             if self.find_pic_or_str(image_path2, region2, 0):
                 break
             time.sleep(0.001)
-            self.dm.MoveTo(image_path_pos.x, int(image_path_pos.y))
+            engine.move_to(image_path_pos.x, int(image_path_pos.y))
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.5)
-            self.dm.MoveTo(image_path_pos.x, int(image_path_pos.y + 150))
+            engine.move_to(image_path_pos.x, int(image_path_pos.y + 150))
             time.sleep(0.001)
             self.confidenceNum = 0.8
             chushou_pos = self.waitFor(find_text, self.gameLocation, 3)
             self.confidenceNum = 0.9
             if chushou_pos:
-                self.dm.MoveTo(chushou_pos.x, chushou_pos.y)
+                engine.move_to(chushou_pos.x, chushou_pos.y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.5)
-            self.dm.MoveTo(int(image_path_pos.x + 100), image_path_pos.y)
+            engine.move_to(int(image_path_pos.x + 100), image_path_pos.y)
             if self.find_pic_or_str(image_path2, region2, 0):
                 break
             time.sleep(1.5)
@@ -7292,17 +7153,17 @@ class MyThread(threading.Thread):
         d_pos[0] = (1000 - int(
             float(d_pos[0]) * 1000)) / 1000 * self.locationWidth
         d_pos[1] = (int(float(d_pos[1]) * 1000)) / 1000 * self.locationHeight
-        self.dm.MoveToEx(int(d_pos[0]), int(d_pos[1]), 3, 2)
+        engine.move_to(int(d_pos[0]), int(d_pos[1]), 3, 2)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(0.3)
         while not self.find_pic(break_image, self.gameBottomLocation, 0):
             self.waitFor(find_image, find_region)
             isFind = self.find_pic(find_image, find_region, 0)
             if isFind:
-                self.dm.MoveToEx(isFind.x, isFind.y, 30, 15)
+                engine.move_to(isFind.x, isFind.y, 30, 15)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
             time.sleep(0.5)
 
     # 找图并且点击6
@@ -7392,10 +7253,10 @@ class MyThread(threading.Thread):
             # )
             # 按下E2
             if E2 and not E2IsDown:
-                self.dm.KeyDownChar(E2)
+                engine.key_down(E2)
                 E2IsDown = True
                 time.sleep(E2DownTime)
-                self.dm.KeyUpChar(E2)
+                engine.key_up(E2)
             # 开始找C的时间
             startTime = time.time()
             find_dir = 2 if E == "left" else 0
@@ -7412,13 +7273,9 @@ class MyThread(threading.Thread):
                         self.dituLocation,
                     )
                 if time.time() - startTime > 22:
-                    self.dm.CapturePng(
-                        0,
-                        0,
-                        self.locationWidth,
-                        self.locationHeight,
-                        f"wait_for_{C1}_more_than_22_seconds.png",
-                    )
+                    # [REMOVED_CapturePng] self.dm.CapturePng(
+                    #     0, 0, self.locationWidth, self.locationHeight,
+                    #     f"wait_for_{C1}_more_than_22_seconds.png")
                     if self.scriptName == "官渡":
                         print("超过15s没找到目标,重新进入官渡")
                         time.sleep(1)
@@ -7456,14 +7313,14 @@ class MyThread(threading.Thread):
                         float(d_pos[0]) * 1000)) / 1000 * self.locationWidth
                     d_pos[1] = (int(float(
                         d_pos[1]) * 1000)) / 1000 * self.locationHeight
-                    self.dm.MoveToEx(
+                    engine.move_to(
                         int(int(d_pos[0]) + self.locationX),
                         int(int(d_pos[1]) + self.locationY),
                         3,
                         2,
                     )
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     time.sleep(0.6)
                 if self.find_pic_or_str(C1, C2, find_dir):
                     break
@@ -7478,7 +7335,7 @@ class MyThread(threading.Thread):
                     with condition:
                         if self.stoped:
                             condition.wait()
-                    self.dm.KeyDownChar(E)
+                    engine.key_down(E)
                     B1Location = self.waitForTwo(
                         B,
                         B1,
@@ -7486,7 +7343,7 @@ class MyThread(threading.Thread):
                     )
                     if B1Location:
                         EIsDown = True
-                        self.dm.KeyUpChar(E)
+                        engine.key_up(E)
                     self.click_image_with_min_x(
                         B,
                         B2,
@@ -7500,7 +7357,7 @@ class MyThread(threading.Thread):
                     if self.find_pic_or_str(C1, C2, find_dir):
                         EIsDown = True
                         time.sleep(0.1)
-                        self.dm.KeyUpChar(E)
+                        engine.key_up(E)
                         break
                 if self.check_stop_or_over():
                     return
@@ -7522,9 +7379,9 @@ class MyThread(threading.Thread):
                 # 点过b之后如果过了4秒还没有找到C，重新点一次b的坐标
                 if self.clickBTime > 0 and time.time() - self.clickBTime > 4:
                     # print('click')
-                    self.dm.MoveTo(self.clickBX, self.clickBy)
+                    engine.move_to(self.clickBX, self.clickBy)
                     time.sleep(0.001)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                     self.clickBTime = time.time()
         except Exception as e:
             self.show_error_message(f"发生错误: {e}")
@@ -7559,11 +7416,11 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
         )
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-        # self.dm.MoveTo(280, 370)
+        # engine.move_to(280, 370)
         # while not self.find_pic_or_str('曹操大帐', self.dituLocation, 0):
         # 	if self.find_pic_or_str('进入', self.gameBottomLocation, 0):
         # 		time.sleep(0.001)
-        # 		self.dm.LeftClick()
+        # 		engine.left_click(role="main")
         # 	time.sleep(0.5)
         # self.waitForAAndClickB1(
         # 	'曹操大帐',
@@ -7834,7 +7691,7 @@ class MyThread(threading.Thread):
         d_pos[0] = (1000 - int(
             float(d_pos[0]) * 1000)) / 1000 * self.locationWidth
         d_pos[1] = (int(float(d_pos[1]) * 1000)) / 1000 * self.locationHeight
-        self.dm.MoveToEx(
+        engine.move_to(
             int(int(d_pos[0]) + self.locationX),
             int(int(d_pos[1]) + self.locationY),
             3,
@@ -7842,7 +7699,7 @@ class MyThread(threading.Thread):
         )
         while True:
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.3)
             if self.find_pic_or_str(
                     self.get_resource_path(
@@ -8249,11 +8106,11 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         if self.overed:
             return
@@ -8846,11 +8703,11 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         if self.overed:
             return
@@ -8967,11 +8824,11 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         if self.overed:
             return
@@ -9013,7 +8870,7 @@ class MyThread(threading.Thread):
         if not isInZhanhun:
             print("战魂没次数了")
             return False
-        self.huifu_yijian(self.dm)
+        self.huifu_yijian()
         if self.combat_auto_flag:
             self._start_combat_auto(clear_enemy_keys=["赵云28"])
         self.findAndClickPic(
@@ -9043,7 +8900,7 @@ class MyThread(threading.Thread):
             # 退出副本
             self.outScript("噬魂")
             return True
-        self.huifu_yijian(self.dm)
+        self.huifu_yijian()
         self.findAndClickPic(
             "噬魂",
             self.get_resource_path(
@@ -10455,14 +10312,14 @@ class MyThread(threading.Thread):
         d_pos[0] = (1000 - int(
             float(d_pos[0]) * 1000)) / 1000 * self.locationWidth
         d_pos[1] = (int(float(d_pos[1]) * 1000)) / 1000 * self.locationHeight
-        self.dm.MoveToEx(
+        engine.move_to(
             int(int(d_pos[0]) + self.locationX),
             int(int(d_pos[1]) + self.locationY),
             3,
             2,
         )
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(1)
         self.confidenceNum = 0.8
         self.findAndClickPic(
@@ -10634,14 +10491,14 @@ class MyThread(threading.Thread):
             "0.076,0.16",
         )
         self.confidenceNum = 0.9
-        self.dm.MoveTo(279, 347)
+        engine.move_to(279, 347)
         while not self.find_pic_or_str(
                 f"{self.get_resource_path('serveAssets/images/zdzd111.bmp')}|{self.get_resource_path('serveAssets/images/zdzd11.bmp')}",
                 self.gameBottomLocation,
                 0,
         ):
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             self.click_image(
                 f"{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding2.bmp')}",
                 0.6,
@@ -10834,7 +10691,7 @@ class MyThread(threading.Thread):
             print("没有守财奴")
             return True
         time.sleep(0.5)
-        self.dm.KeyPressChar("g")
+        engine.key_press("g")
         self.waitFor("洛阳", self.dituLocation)
         return True
 
@@ -10884,7 +10741,7 @@ class MyThread(threading.Thread):
             print("名将时间到了")
             return False
         time.sleep(0.5)
-        self.dm.KeyPressChar("g")
+        engine.key_press("g")
         self.waitFor("城西", self.dituLocation)
         return True
 
@@ -10913,9 +10770,9 @@ class MyThread(threading.Thread):
         rw_name_pos = self.waitFor(rw_name, self.gameBottomLocation, 2)
         if not rw_name_pos:
             return
-        self.dm.MoveTo(rw_name_pos.x, rw_name_pos.y)
+        engine.move_to(rw_name_pos.x, rw_name_pos.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         # 处理"点击继续"对话框
         self._handle_continue_dialog()
         # 点击第二个按钮（可能需要双击）
@@ -10946,15 +10803,15 @@ class MyThread(threading.Thread):
         """
         start_time = time.time()
         while time.time() - start_time < timeout:
-            dm_ret = self.dm.FindColor(x1, y1, x2, y2, color, sim, 0)
-            x, y, r = dm_ret
-            if r == 1:
-                self.dm.MoveTo(x, y)
+            dm_ret = engine.find_color(color, (x1, y1, x2, y2), 1.0 - sim, "main") if sim else None
+            if dm_ret:
+                x, y = dm_ret.x, dm_ret.y
+                engine.move_to(x, y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 if double_click:
                     time.sleep(0.5)
-                    self.dm.LeftClick()
+                    engine.left_click(role="main")
                 return True
             time.sleep(0.1)  # 每次查找间隔0.1秒，避免CPU占用过高
         return False
@@ -10966,26 +10823,24 @@ class MyThread(threading.Thread):
             jixu_pos = self.find_str("点击继续背景", self.gameBottomLocation, 0)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
             if jixu_pos:
-                self.dm.MoveTo(jixu_pos.x, jixu_pos.y)
+                engine.move_to(jixu_pos.x, jixu_pos.y)
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 return
-            dm_ret = self.dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.7,
-                                       0)
-            x, y, r = dm_ret
-            if r == 1:
+            dm_ret = engine.find_color("ffff00-000000", (249, 340, 291, 352), 0.7, "main")
+            if dm_ret:
                 return
             time.sleep(0.1)
-        # has_jixu = self.waitFor("点击继续背景", self.gameBottomLocation)
+        # has_jixu = self.waitFor("ya_assets/images/text/dianjijixubeijing.bmp", self.gameBottomLocation)
         # self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         # if has_jixu:
-        #     self.dm.MoveTo(has_jixu.x,has_jixu.y)
+        #     engine.move_to(has_jixu.x,has_jixu.y)
         #     time.sleep(0.001)
-        #     self.dm.LeftClick()
+        #     engine.left_click(role="main")
         #     time.sleep(0.5)
-        #     self.dm.LeftClick()
+        #     engine.left_click(role="main")
 
     def _click_feixie_with_wait(self, task_name, timeout=3):
         """在指定时间内等待并点击飞鞋
@@ -11006,9 +10861,9 @@ class MyThread(threading.Thread):
                 self.get_resource_path("serveAssets/images/fei3.bmp"),
             )
             if feixie_pos:
-                self.dm.MoveTo(feixie_pos.x, feixie_pos.y)
+                engine.move_to(feixie_pos.x, feixie_pos.y)
                 time.sleep(0.5)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 break
             time.sleep(0.1)  # 每次查找间隔0.1秒，避免CPU占用过高
         if feixie_pos:
@@ -11028,13 +10883,13 @@ class MyThread(threading.Thread):
         """
         find_mubiao = self.waitFor(target_pattern, search_region, 2)
         if find_mubiao:
-            self.dm.MoveTo(int(find_mubiao.x + 5), int(find_mubiao.y + 5))
+            engine.move_to(int(find_mubiao.x + 5), int(find_mubiao.y + 5))
             time.sleep(0.5)
             find_mubiao1 = self.waitFor(target_pattern, search_region, 2)
             if find_mubiao1:
-                self.dm.MoveTo(int(find_mubiao1.x + 5), int(find_mubiao1.y + 5))
+                engine.move_to(int(find_mubiao1.x + 5), int(find_mubiao1.y + 5))
                 time.sleep(0.001)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 return True
         return False
 
@@ -11057,18 +10912,18 @@ class MyThread(threading.Thread):
         left_x = random.randint(738, 748)
         rand_y = random.randint(61, 80)
         right_x = random.randint(871, 881)
-        self.dm.MoveTo(left_x, rand_y)
+        engine.move_to(left_x, rand_y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(2)
         if self._find_and_click_target(target_pattern, self.gameBottomLocation):
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
             return True
 
         # 尝试右移后查找
-        self.dm.MoveTo(right_x, rand_y)
+        engine.move_to(right_x, rand_y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(4.5)
         if self._find_and_click_target(target_pattern, self.gameBottomLocation):
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
@@ -11103,16 +10958,16 @@ class MyThread(threading.Thread):
         )
 
         rw_name_pos = self.waitFor(rw_name, self.gameBottomLocation)
-        self.dm.MoveTo(rw_name_pos.x, rw_name_pos.y)
+        engine.move_to(rw_name_pos.x, rw_name_pos.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         # 双击确认按钮（可能需要进行两次）
         self.color_format = "ffff00-000000|fff200-000000"
         wancheng_name_pos = self.waitFor("完成", self.gameBottomLocation)
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-        self.dm.MoveTo(wancheng_name_pos.x, wancheng_name_pos.y)
+        engine.move_to(wancheng_name_pos.x, wancheng_name_pos.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
 
     def _handle_outside_camp_scenario(self, target_pattern, button_color,
                                       color_sim, rw_name):
@@ -11144,16 +10999,16 @@ class MyThread(threading.Thread):
         self.waitFor("帮派大本营", self.gameBottomLocation)
         # 双击确认按钮（可能需要进行两次）
         rw_name_pos = self.waitFor(rw_name, self.gameBottomLocation)
-        self.dm.MoveTo(rw_name_pos.x, rw_name_pos.y)
+        engine.move_to(rw_name_pos.x, rw_name_pos.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         # 双击确认按钮（可能需要进行两次）
         self.color_format = "ffff00-000000|fff200-000000"
         wancheng_name_pos = self.waitFor("完成", self.gameBottomLocation)
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-        self.dm.MoveTo(wancheng_name_pos.x, wancheng_name_pos.y)
+        engine.move_to(wancheng_name_pos.x, wancheng_name_pos.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
 
     def auto_move_and_click1(self, region, pic_names, interval=0.5,
                              timeout=600):
@@ -11164,18 +11019,18 @@ class MyThread(threading.Thread):
             rand_x = random.randint(x1, x2)
             rand_y = random.randint(y1, y2)
             # 移动鼠标到随机位置
-            self.dm.MoveTo(rand_x, rand_y)
+            engine.move_to(rand_x, rand_y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(1.5)  # 移动后稍作停顿
 
             # 在区域内查找图片
             ret = self.find_pic_or_str(pic_names, self.gameLocation, 0)
             if ret:
                 # 移动鼠标到图片位置并点击
-                self.dm.MoveTo(ret.x, ret.y)
+                engine.move_to(ret.x, ret.y)
                 time.sleep(1)
-                self.dm.LeftClick()
+                engine.left_click(role="main")
                 return True  # 成功找到并点击
 
             time.sleep(interval)  # 等待下次查找
@@ -11826,7 +11681,7 @@ class MyThread(threading.Thread):
             "",
         )
         time.sleep(0.2)
-        self.dm.KeyPressChar("g")
+        engine.key_press("g")
         self.waitFor("退出挂机", self.gameLocation)
         self.findAndClickPic(
             self.get_resource_path(
@@ -11842,7 +11697,7 @@ class MyThread(threading.Thread):
             "",
         )
         time.sleep(0.2)
-        self.dm.KeyPressChar("g")
+        engine.key_press("g")
         time.sleep(5)
         self.waitFor("退出挂机", self.gameLocation)
         self.outScript(
@@ -11859,11 +11714,11 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         isInGuanDu = self.waitFor("五层", self.dituLocation, 5)
         if not isInGuanDu:
@@ -11902,11 +11757,11 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         isInGuanDu = self.waitFor("官渡", self.dituLocation, 3)
         if not isInGuanDu:
@@ -11962,11 +11817,11 @@ class MyThread(threading.Thread):
             0,
         )
         if outFbLocation:
-            self.dm.MoveTo(outFbLocation.x, outFbLocation.y)
+            engine.move_to(outFbLocation.x, outFbLocation.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
             time.sleep(2)
         for i in range(int(self.zhanhun_count)):
             if self.overed:
@@ -12123,7 +11978,7 @@ class MyThread(threading.Thread):
             return
         if "溶" in self.richangSelection:
             if not self.find_str("绿林路", self.dituLocation, 0):
-                # self.feiFb('副本龙天啸', False)
+                # self.feiFb("ya_assets/images/text/fuben_longtianxiao.bmp", False)
                 self.go_in_ditu(
                     "地图绿林路",
                     self.get_resource_path(
@@ -13534,13 +13389,13 @@ class MyThread(threading.Thread):
             "0.077,0.143",
         )
         in_pos = self.waitFor("进龙王令", self.gameBottomLocation)
-        self.dm.MoveTo(in_pos.x, in_pos.y)
+        engine.move_to(in_pos.x, in_pos.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         # self.waitFor('洛阳', self.dituLocation)
-        # self.dm.MoveTo(831, 66)
+        # engine.move_to(831, 66)
         # time.sleep(0.001)
-        # self.dm.LeftClick()
+        # engine.left_click(role="main")
         # self.waitForAAndClickB1('挑战龙', f"{self.get_resource_path('serveAssets/images/longzhixintiao.bmp')}|{self.get_resource_path('serveAssets/images/longzhixintiao1.bmp')}", self.gameBottomLocation, self.gameBottomLocation)
         waitRes = self.waitForTwo(
             self.get_resource_path("serveAssets/images/queding.bmp"),
@@ -13553,13 +13408,13 @@ class MyThread(threading.Thread):
                 self.get_resource_path("serveAssets/images/queding.bmp"),
                 self.gameBottomLocation,
             )
-            self.dm.MoveTo(queding_pos.x, queding_pos.y)
+            engine.move_to(queding_pos.x, queding_pos.y)
             time.sleep(0.001)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         # if bagPos:
-        # 	self.dm.MoveTo(bagPos.x, bagPos.y)
+        # 	engine.move_to(bagPos.x, bagPos.y)
         # 	time.sleep(0.5)
-        # 	self.dm.LeftClick()
+        # 	engine.left_click(role="main")
         # self.confidenceNum = 0.7
         # self.press_keys_until_image_found(
         # 	f"{self.get_resource_path('serveAssets/images/longwang.bmp')}|{self.get_resource_path('serveAssets/images/longwang1.bmp')}|{self.get_resource_path('serveAssets/images/longwang2.bmp')}|{self.get_resource_path('serveAssets/images/longwang3.bmp')}|{self.get_resource_path('serveAssets/images/longwang4.bmp')}",
@@ -13638,9 +13493,9 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         time.sleep(0.1)
         self.confidenceNum = 0.7
         self.press_keys_until_image_found(
@@ -13657,9 +13512,9 @@ class MyThread(threading.Thread):
             if self.stoped:
                 condition.wait()
         huodetongbi_pos = self.waitFor("获得铜币", self.gameBottomLocation)
-        self.dm.MoveTo(huodetongbi_pos.x, huodetongbi_pos.y)
+        engine.move_to(huodetongbi_pos.x, huodetongbi_pos.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
 
     # 传送符
     def chuansongfuScript(self):
@@ -13674,9 +13529,9 @@ class MyThread(threading.Thread):
             5,
         )
         if bagPos:
-            self.dm.MoveTo(bagPos.x, bagPos.y)
+            engine.move_to(bagPos.x, bagPos.y)
             time.sleep(0.5)
-            self.dm.LeftClick()
+            engine.left_click(role="main")
         time.sleep(0.1)
         self.confidenceNum = 0.5
         self.press_keys_until_image_found(
@@ -13695,7 +13550,7 @@ class MyThread(threading.Thread):
             "0.046,0.106",
             "0.038,0.113",
         ]
-        self.dm.KeyPressChar("e")
+        engine.key_press("e")
         time.sleep(0.5)
         self.findAndClickPic(
             "天外天",
@@ -13726,7 +13581,7 @@ class MyThread(threading.Thread):
             print("没有守财奴")
             return True
         time.sleep(0.5)
-        self.dm.KeyPressChar("g")
+        engine.key_press("g")
         if self.overed:
             return
         with condition:
@@ -13756,16 +13611,16 @@ class MyThread(threading.Thread):
                 return
         else:
             time.sleep(1.5)
-            self.dm.MoveTo(int(self.locationX + 608), int(self.locationY + 45))
+            engine.move_to(int(self.locationX + 608), int(self.locationY + 45))
             time.sleep(0.05)
-            self.dm.LeftClick()
-        self.dm.MoveTo(self.guajiLocation.x, self.guajiLocation.y)
+            engine.left_click(role="main")
+        engine.move_to(self.guajiLocation.x, self.guajiLocation.y)
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(0.001)
-        self.dm.LeftClick()
+        engine.left_click(role="main")
         time.sleep(5)
         if self.overed:
             return
@@ -17252,7 +17107,6 @@ class UpdateDialog(wx.Dialog):
 
 if __name__ == "__main__":
     application = App()
-
     login = LoginWindow(application)
     result = login.ShowModal()
     login.Destroy()
@@ -17260,7 +17114,6 @@ if __name__ == "__main__":
         application.Exit()
         import sys
         sys.exit(0)
-
     frame = MyFrame()
     frame.Show()
     threading.Thread(target=frame._init_async, daemon=True).start()
