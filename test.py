@@ -345,7 +345,7 @@ import time
 # res121 = get_mac_address()
 # print(res121)
 # longLocation = (0, 0, 900, 580)
-similarity = 0.9  # 相似度阈值
+similarity = 0.6  # 相似度阈值
 
 
 # # dm.EnableDisplayDebug(1)
@@ -368,7 +368,7 @@ def get_resource_path(self, relative_path):
 # dm.KeyDownChar('right')
 # time.sleep(5)
 # dm_ret = dm.FindPicEx(0, 0, x, y,
-#                       r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\images\zhengdian/shandongsanceng.bmp",
+#                       r"E:\project\python\serveAssets\images\zhengdian/she-foot-2.bmp",
 #                       "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
 # dm_ret3 = dm.FindPicEx(530, 0, 589, 580, r"E:\project\python\name1.bmp", "", similarity, 0)
@@ -377,7 +377,45 @@ def get_resource_path(self, relative_path):
 # print('res111', res111)
 # 249  342 391  352
 # dm_ret = dm.FindColor(249, 340, 291, 352, "ffff00-000000", 0.9, 0)
+def search_all_images(dm, region, similarity=0.6):
+    base = r"E:\project\python\serveAssets\images\zhengdian"
+    monsters = [
+        ("虎", "hu"),
+        ("牛", "niu"),
+        ("兔", "tu"),
+        ("猴", "hou"),
+        ("羊", "yang"),
+        ("火焰帝红", "huoyan"),
+        ("寒冰帝", "hanbin"),
+        ("蛇", "she"),
+        ("龙", "long"),
+    ]
+    parts = ["head", "body", "foot"]
+    left, top, right, bottom = region
+    for name, code in monsters:
+        found = []
+        for part in parts:
+            img1 = f"{base}/{code}-{part}-1.bmp"
+            img2 = f"{base}/{code}-{part}-2.bmp"
+            if not os.path.exists(img1) or not os.path.exists(img2):
+                continue
+            img_path = f"{img1}|{img2}"
+            ret = dm.FindPicEx(left, top, right, bottom, img_path, "", similarity, 0)
+            if ret:
+                hits = {}
+                for item in ret.split("|"):
+                    idx = int(item.split(",")[0])
+                    label = f"{part}-1" if idx == 0 else f"{part}-2"
+                    hits[label] = hits.get(label, 0) + 1
+                found.extend(hits.keys())
+        if found:
+            print(f"[{name}] 找到: {', '.join(found)}")
+        else:
+            print(f"[{name}] 未找到")
+
+
 # print(dm_ret, 'dm_ret')
+search_all_images(dm, (0, 0, x, y), similarity)
 # x, y, r = dm_ret
 # print(x, y, r)
 # if r == 1:
@@ -611,15 +649,15 @@ class VersionDisplayFrame(wx.Frame):
 # 	app.MainLoop()
 # 释放内存
 # dm.FreeMem(memory_address)
-dict_id = dm.SetDict(0, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\common.txt")  # 字库文件路径
-dict_id1 = dm.SetDict(1, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\team1.txt")  # 字库文件路径
-dict_id2 = dm.SetDict(2, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\team2.txt")  # 字库文件路径
+dict_id = dm.SetDict(0, r"E:\project\python\serveAssets\fonts\common.txt")  # 字库文件路径
+dict_id1 = dm.SetDict(1, r"E:\project\python\serveAssets\fonts\team1.txt")  # 字库文件路径
+dict_id2 = dm.SetDict(2, r"E:\project\python\serveAssets\fonts\team2.txt")  # 字库文件路径
 # dict_id2 = dm.SetDict(0, r"D:\myproject\menghuansanguo-script-master\menghuansanguo-script\serveAssets\fonts\zhengdian.txt")  # 字库文件路径
 print(f"字库加载成功，{dict_id},{dict_id1},{dict_id2}")
 # print(dm.GetDictCount(0), dm.GetDictCount(1), dm.GetDictCount(2))
 # 文字识别参数
-color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
-# color_format = "ffff00-000000|fff200-000000|fdfd06-000000"  # 右上角偏移色
+# color_format = '0ff000-000000|ffffff-00000|ffcc00-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00ffff-000000'
+color_format = "b@ffff00-000000|fff200-000000" # 右上角偏移色
 # color_format = 'ffffff-00000|00ff00-000000a'  # 绿色字体
 print(dm.GetColor(854,334))
 # color_format = "ffff00-000000|fff200-000000|f4f400-000000"
@@ -647,7 +685,7 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png") 534 368
-find_str_result = dm.FindStrFastE(0, 0, x, y, "魂", color_format, sim)
+find_str_result = dm.FindStrFastE(0, 0, x, y, "打就打1", color_format, sim)
 print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)

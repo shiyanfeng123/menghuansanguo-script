@@ -4052,12 +4052,11 @@ class CombatAutoScript:
                 char_info = self.unit_info[account_index]["main_char"]
                 # 检查该武将是否已在列表中
                 general_name = detected_skill or "攻击武将"
-                found_general = False
-                for gen_info in char_info.get("generals", []):
-                    # 通过技能名称或位置匹配（攻击武将技能：剑阵灭杀、武神一怒）
-                    if gen_info.get("name") == general_name or detected_skill in ["剑阵灭杀", "武神一怒", "曹操单攻"]:
-                        found_general = True
-                        break
+                generals = char_info.get("generals", [])
+                if self.current_turn <= 1:
+                    found_general = len(generals) >= 2
+                else:
+                    found_general = any(g.get("name") == general_name for g in generals)
 
                 if not found_general:
                     # 武将不在列表中，添加到列表（可能是第一回合初始武将或召唤后检测到蓝条）
@@ -4086,7 +4085,7 @@ class CombatAutoScript:
                 else:
                     # 武将已在列表中，检查是否正在复活中
                     for gen_info in char_info.get("generals", []):
-                        if gen_info.get("name") == general_name or detected_skill in ["剑阵灭杀", "武神一怒", "曹操单攻"]:
+                        if gen_info.get("name") == general_name:
                             if gen_info.get("reviving", False):
                                 # 检测到蓝条（识别到技能），确认复活成功
                                 gen_info["alive"] = True

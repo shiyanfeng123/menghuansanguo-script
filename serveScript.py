@@ -206,6 +206,8 @@ class MyThread(threading.Thread):
         self.zhengdianFloor = ""
         self.shihun_count = 0
         self.shihun_floor = ""
+        self.sixiang_count = 0
+        self.sixiang_difficulty = ""
         self.richangFlag = ""
         self.after_zreo = ""
         self.teammate1_name = ""
@@ -406,12 +408,16 @@ class MyThread(threading.Thread):
         self.shihun_floor = self.frame.shihun_floor
         self.shihun_count = int(
             self.frame.shihun_count) if self.frame.shihun_count else 5
+        self.sixiang_count = int(
+            self.frame.sixiang_count) if self.frame.sixiang_count else 5
+        self.sixiang_difficulty = self.frame.sixiang_difficulty
         self.heifengFloor = self.frame.heifengFloor
         self.teammate1_pos = self.frame.teammate1_pos
         self.teammate2_pos = self.frame.teammate2_pos
         self.team_leader_pos = self.frame.team_leader_pos
         self.after_zreo = self.frame.afterZreo
         self.richangSelection = self.frame.richangSelection
+        self.liubeiCounts = self.frame.liubeiCounts if hasattr(self.frame, "liubeiCounts") else {0: 1, 1: 0, 2: 0}
         self.heifengWhileCount = int(
             self.frame.heifengCount) if self.frame.heifengCount else 0
         # display = Display(visible=False, size=(1920, 1080))
@@ -540,8 +546,8 @@ class MyThread(threading.Thread):
                     "serveAssets/images/zhengdian/zhuojun.bmp"),
                 "findAddress": self.get_resource_path(
                     "serveAssets/images/zhengdian/jitan1.bmp"),
-                "delX": [int(848 + self.locationX)],
-                "delY": [int(49 + self.locationY)],
+                "delX": [int(819 + self.locationX)],
+                "delY": [int(51 + self.locationY)],
             },
             {
                 "ditu": "地图山洞三层",
@@ -613,8 +619,8 @@ class MyThread(threading.Thread):
                     "serveAssets/images/zhengdian/zhuojun.bmp"),
                 "findAddress": self.get_resource_path(
                     "serveAssets/images/zhengdian/jitan1.bmp"),
-                "delX": [int(848 + self.locationX)],
-                "delY": [int(49 + self.locationY)],
+                "delX": [int(819 + self.locationX)],
+                "delY": [int(51 + self.locationY)],
             },
             {
                 "ditu": "地图山洞三层",
@@ -629,7 +635,7 @@ class MyThread(threading.Thread):
         self.normal_zd_images = [
             ("serveAssets/images/zhengdian/hu-head-1.bmp", "serveAssets/images/zhengdian/hu-head-2.bmp"),
             ("serveAssets/images/zhengdian/hu-body-1.bmp", "serveAssets/images/zhengdian/hu-body-2.bmp"),
-            ("serveAssets/images/zhengdian/hu-foot-1.bmp", "serveAssets/images/zhengdian/hu-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/hu-foot-1.bmp"),
             ("serveAssets/images/zhengdian/niu-head-1.bmp", "serveAssets/images/zhengdian/niu-head-2.bmp"),
             ("serveAssets/images/zhengdian/niu-body-1.bmp", "serveAssets/images/zhengdian/niu-body-2.bmp"),
             ("serveAssets/images/zhengdian/niu-foot-1.bmp", "serveAssets/images/zhengdian/niu-foot-2.bmp"),
@@ -638,22 +644,22 @@ class MyThread(threading.Thread):
             ("serveAssets/images/zhengdian/tu-foot-1.bmp", "serveAssets/images/zhengdian/tu-foot-2.bmp"),
             ("serveAssets/images/zhengdian/hou-head-1.bmp", "serveAssets/images/zhengdian/hou-head-2.bmp"),
             ("serveAssets/images/zhengdian/hou-body-1.bmp", "serveAssets/images/zhengdian/hou-body-2.bmp"),
-            ("serveAssets/images/zhengdian/hou-foot-1.bmp", "serveAssets/images/zhengdian/hou-foot-2.bmp"),
+            ("serveAssets/images/zhengdian/hou-foot-1.bmp"),
             ("serveAssets/images/zhengdian/yang-head-1.bmp", "serveAssets/images/zhengdian/yang-head-2.bmp"),
             ("serveAssets/images/zhengdian/yang-body-1.bmp", "serveAssets/images/zhengdian/yang-body-2.bmp"),
             ("serveAssets/images/zhengdian/yang-foot-1.bmp", "serveAssets/images/zhengdian/yang-foot-2.bmp"),
             ("serveAssets/images/zhengdian/huoyan-head-1.bmp", "serveAssets/images/zhengdian/huoyan-head-2.bmp"),
             ("serveAssets/images/zhengdian/huoyan-body-1.bmp", "serveAssets/images/zhengdian/huoyan-body-2.bmp"),
-            ("serveAssets/images/zhengdian/huoyan-foot-1.bmp", "serveAssets/images/zhengdian/huoyan-foot-2.bmp"),
+            # ("serveAssets/images/zhengdian/huoyan-foot-1.bmp", "serveAssets/images/zhengdian/huoyan-foot-2.bmp"),
             ("serveAssets/images/zhengdian/hanbin-head-1.bmp", "serveAssets/images/zhengdian/hanbin-head-2.bmp"),
             ("serveAssets/images/zhengdian/hanbin-body-1.bmp", "serveAssets/images/zhengdian/hanbin-body-2.bmp"),
-            ("serveAssets/images/zhengdian/hanbin-foot-1.bmp", "serveAssets/images/zhengdian/hanbin-foot-2.bmp"),
+            # ("serveAssets/images/zhengdian/hanbin-foot-1.bmp", "serveAssets/images/zhengdian/hanbin-foot-2.bmp"),
         ]
         self.she_images = [
             ("serveAssets/images/zhengdian/sheshengxiao1.bmp", "serveAssets/images/zhengdian/sheshengxiao2.bmp"),
             ("serveAssets/images/zhengdian/she-head-1.bmp", "serveAssets/images/zhengdian/she-head-2.bmp"),
             ("serveAssets/images/zhengdian/she-body-1.bmp", "serveAssets/images/zhengdian/she-body-2.bmp"),
-            ("serveAssets/images/zhengdian/she-foot-1.bmp", "serveAssets/images/zhengdian/she-foot-2.bmp"),
+            # ("serveAssets/images/zhengdian/she-foot-1.bmp", "serveAssets/images/zhengdian/she-foot-2.bmp"),
         ]
         self.long_images = [
             ("serveAssets/images/zhengdian/newlong.bmp", "serveAssets/images/zhengdian/newlong2.bmp"),
@@ -678,7 +684,19 @@ class MyThread(threading.Thread):
                 time.sleep(5)
                 self._stop_combat_auto()
         elif self.scriptName == "测试":
-            self.clearBag()
+            self.new_zhengdian()
+        elif self.scriptName == "四象":
+            if not self.find_pic(self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"), self.dituLocation, 0):
+                self.go_in_ditu(
+                    "地图封魔遗迹",
+                    self.get_resource_path(
+                        "serveAssets/images/zhengdian/xiangyang.bmp"),
+                    self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+                    "",
+                    "",
+                    True,
+                )
+            self.sixiangWhile()
         elif self.scriptName == "老鼠":
             if self.zhengdianFloor not in ["全打", "走路", "龙+全打", "蛇+全打",
                                            "49整点", "49蛇+全打", "49龙+全打"]:
@@ -718,7 +736,7 @@ class MyThread(threading.Thread):
                     "地图虎牢关外",
                     self.get_resource_path(
                         "serveAssets/images/zhengdian/luoyang.bmp"),
-                    "洛阳",
+                    "虎牢关外",
                     "",
                     "",
                     True,
@@ -750,7 +768,7 @@ class MyThread(threading.Thread):
                 self.zhanhunFloor = "25层"
                 print("未选择层数，自动打25层")
             self.zhanhunWhile()
-        elif self.scriptName == "炼狱战魂楼":
+        elif self.scriptName == "战魂楼(镇魂)":
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -768,6 +786,28 @@ class MyThread(threading.Thread):
                 if self.check_stop_or_over():
                     return
                 hongRes = self.zhanhunNewScript()
+                if not hongRes:
+                    break
+            self.scriptName = "官渡"
+            self.guanduWhile()
+        elif self.scriptName == "战魂楼(噬魂)":
+            if not self.find_str("洛阳", self.dituLocation, 0):
+                self.go_in_ditu(
+                    "地图洛阳大道",
+                    self.get_resource_path(
+                        "serveAssets/images/zhengdian/luoyang.bmp"),
+                    "洛阳",
+                    "",
+                    "",
+                    True,
+                )
+            if not self.shihun_floor:
+                self.shihun_floor = "29层"
+                print("未选择层数，自动打29层")
+            for i in range(self.shihun_count):
+                if self.check_stop_or_over():
+                    return
+                hongRes = self.zhanhunNew1Script()
                 if not hongRes:
                     break
             self.scriptName = "官渡"
@@ -4255,7 +4295,7 @@ class MyThread(threading.Thread):
                 if is_fei1:
                     npc_count1 = len(last_item1["delX"])
                     npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
-                    self.find_zd_walk_v3(last_item1["findAddress"], "龙生肖红", self._get_long_images(), None, npc_count1, npc_zones1, last_item1["ditu"], last_item1["city"])
+                    self.find_zd_walk_v3(last_item1["findAddress"], "单龙", self._get_long_images(), None, npc_count1, npc_zones1, last_item1["ditu"], last_item1["city"])
         # 龙/蛇时辰：走路搜索普通整点，避免小绿人误打龙/蛇
         if self._is_dragon_hour() or self._is_snake_hour():
             self.zhengdian_all_walk()
@@ -4992,7 +5032,7 @@ class MyThread(threading.Thread):
                 if is_fei:
                     npc_count = len(last_item["delX"])
                     npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
-                    self.find_zd_walk_v3(last_item["findAddress"], "龙生肖红", self._get_long_images(), None, npc_count, npc_zones, last_item["ditu"], last_item["city"])
+                    self.find_zd_walk_v3(last_item["findAddress"], "单龙", self._get_long_images(), None, npc_count, npc_zones, last_item["ditu"], last_item["city"])
         # 全部选项：走路搜索普通整点
         for i in range(8):
             last_item = shuffled[-1]
@@ -5621,7 +5661,9 @@ class MyThread(threading.Thread):
         zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 3)
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         if not zhengdian_btn:
-            return False
+            zhengdian_btn = self.waitFor("打就打", self.gameBottomLocation, 0.3)
+            if not zhengdian_btn:
+                return False
         self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
         time.sleep(0.001)
         self.dm.LeftClick()
@@ -5751,7 +5793,9 @@ class MyThread(threading.Thread):
             zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 3)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
             if not zhengdian_btn:
-                continue
+                zhengdian_btn = self.waitFor("打就打", self.gameBottomLocation, 0.3)
+                if not zhengdian_btn:
+                    continue
             self.dm.MoveTo(int(zhengdian_btn.x + 5),
                             int(zhengdian_btn.y + 5))
             time.sleep(0.001)
@@ -5808,17 +5852,16 @@ class MyThread(threading.Thread):
 
     # V3辅助方法：走路一步，返回(新方向flag, 是否到达右边界)
     def _walk_one_step(self, find_left_flag):
-        left_x = random.randint(738, 748)
+        left_x = random.randint(742, 758)
         rand_y = 80
-        right_x = random.randint(861, 871)
+        right_x = random.randint(852, 871)
         reached_edge = False
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         self.confidenceNum = 0.6
         if not find_left_flag:
             if self.find_pic_or_str(
-                    self.get_resource_path(
-                        "serveAssets/images/zhengdian/xiaobairen.bmp"),
-                    (725, 46, 751, 94), 0):
+                    f"{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen1.bmp')}",
+                    (725, 46, 761, 94), 0):
                 self.dm.MoveTo(right_x, rand_y)
                 time.sleep(0.001)
                 self.dm.LeftClick()
@@ -5830,9 +5873,8 @@ class MyThread(threading.Thread):
                 new_flag = False
         else:
             if self.find_pic_or_str(
-                    self.get_resource_path(
-                        "serveAssets/images/zhengdian/xiaobairen.bmp"),
-                    (861, 41, 881, 96), 0):
+                    f"{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen1.bmp')}",
+                    (851, 41, 877, 96), 0):
                 reached_edge = True
                 new_flag = find_left_flag
             else:
@@ -5847,7 +5889,7 @@ class MyThread(threading.Thread):
     def _ensure_on_map(self, ditu_name, city_img, break_address):
         if self.waitFor(break_address, self.dituLocation, 0.3):
             return
-        print(f"不在{break_address}，走回去...")
+        # print(f"不在{break_address}，走回去...")
         self.go_in_ditu(ditu_name, city_img, break_address, "", "", is_fei=False)
 
     # V3走路模式：小绿人计数预检+走路搜索，用于龙蛇整点和走路模式
@@ -5870,6 +5912,7 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
+            self.waitFor(base_image, self.dituLocation)
             green_count = self._count_xiaolvren()
             if green_count <= npc_count:
                 if walk_rounds == 0:
@@ -5877,15 +5920,15 @@ class MyThread(threading.Thread):
                     time.sleep(0.3)
                     green_count2 = self._count_xiaolvren()
                     if green_count2 <= npc_count:
-                        print(f"{base_image}: 小绿人数量({green_count2})<=NPC数量({npc_count})，无整点")
+                        # print(f"{base_image}: 小绿人数量({green_count2})<=NPC数量({npc_count})，无整点")
                         self.confidenceNum = 0.9
                         return
                 else:
-                    print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
+                    # print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
                     self.confidenceNum = 0.9
                     return
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-            self.confidenceNum = 0.6
+            self.confidenceNum = 0.7
             all_positions = []
             str_positions = self._find_all_str(find_sx, self.gameBottomLocation)
             all_positions.extend(str_positions)
@@ -5894,7 +5937,7 @@ class MyThread(threading.Thread):
                     pic_path = "|".join(
                         self.get_resource_path(p) for p in pair)
                     pic_positions = self._find_all_pic(pic_path,
-                                                        self.gameBottomLocation)
+                                                        self.gameLocation)
                     all_positions.extend(pic_positions)
             candidates = self._merge_deduplicate_sort(
                 all_positions, attacked_set, []
@@ -5910,7 +5953,12 @@ class MyThread(threading.Thread):
                     )
                     if success:
                         self.daZhengDianCount += 1
-                        print(f"打了{find_sx}，第{self.daZhengDianCount}个整点")
+                        print(f"打了第{self.daZhengDianCount}个整点")
+                        self.waitFor(base_image, self.dituLocation)
+                        for _ in range(3):
+                            time.sleep(0.3)
+                            if self._count_xiaolvren() > npc_count:
+                                break
                         attacked_set.clear()
                         failed_y_set.clear()
                         break
@@ -5922,11 +5970,11 @@ class MyThread(threading.Thread):
                 self._ensure_on_map(ditu_name, city_img, base_image)
             walk_rounds += 1
             if reached_edge:
-                print(f"{base_image}: 走完一圈未找到{find_sx}")
+                # print(f"{base_image}: 走完一圈未找到{find_sx}")
                 self.confidenceNum = 0.9
                 return
             if walk_rounds >= max_walk_rounds:
-                print(f"{base_image}: 走路超过{max_walk_rounds}轮，安全退出")
+                # print(f"{base_image}: 走路超过{max_walk_rounds}轮，安全退出")
                 self.confidenceNum = 0.9
                 return
 
@@ -5957,9 +6005,10 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
+            self.waitFor(base_image, self.dituLocation)
             green_count = self._count_xiaolvren()
             if green_count <= npc_count:
-                print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
+                # print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
                 self.confidenceNum = 0.9
                 return
             green_result = self.dm.FindPicEx(
@@ -5987,7 +6036,7 @@ class MyThread(threading.Thread):
             if not target_dots:
                 no_progress_rounds += 1
                 if no_progress_rounds >= max_no_progress:
-                    print(f"{base_image}: 连续{max_no_progress}轮无目标小绿人，退出")
+                    # print(f"{base_image}: 连续{max_no_progress}轮无目标小绿人，退出")
                     self.confidenceNum = 0.9
                     return
                 time.sleep(0.5)
@@ -6002,20 +6051,64 @@ class MyThread(threading.Thread):
                 self.dm.MoveTo(click_x, click_y)
                 time.sleep(0.001)
                 self.dm.LeftClick()
-                time.sleep(0.5)
+                time.sleep(0.3)
+                self.dm.MoveTo(int(click_x - 200), click_y)
+                time.sleep(0.1)
                 if ditu_name and city_img:
                     self._ensure_on_map(ditu_name, city_img, base_image)
-                self.color_format = "b@ffff00-000000|fff200-000000"
-                zhengdian_btn = self.waitFor("打就打1", self.gameBottomLocation, 8)
-                self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-                if not zhengdian_btn:
+
+                start_time = time.time()
+                change_color_time = 0
+                found_btn = False
+                npc_images = (
+                    f"{self.get_resource_path('serveAssets/images/zhengdian/dianwei.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dianwei1.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/jixu.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/jixu1.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/jixu2.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/liwu.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/liwu1.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/liwu2.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dengmi.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dengmi1.bmp')}"
+                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dengmi2.bmp')}"
+                )
+
+                while time.time() - start_time < 8:
+                    if self.find_pic(npc_images, self.gameBottomLocation, 0):
+                        print(f"点击到NPC，跳过")
+                        break
+
+                    if change_color_time == 0 and self.dm.CmpColor(
+                            click_x, click_y, "07d307", 0.7) == 1:
+                        change_color_time = time.time()
+                    if change_color_time > 0 and time.time() - change_color_time > 5:
+                        break
+
+                    self.color_format = "b@ffff00-000000|fff200-000000"
+                    zhengdian_btn = self.find_str("打就打1", self.gameBottomLocation, 1)
+                    self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+                    if zhengdian_btn:
+                        self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
+                        time.sleep(0.001)
+                        self.dm.LeftClick()
+                        found_btn = True
+                        break
+                    zhengdian_btn1 = self.find_str("打就打", self.gameBottomLocation, 1)
+                    if zhengdian_btn1:
+                        self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
+                        time.sleep(0.001)
+                        self.dm.LeftClick()
+                        found_btn = True
+                        break
+
+                    time.sleep(0.05)
+
+                if not found_btn:
                     self.dm.KeyPressChar("esc")
                     time.sleep(0.3)
                     attacked_set.add((tl_x, tl_y))
                     continue
-                self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
-                time.sleep(0.001)
-                self.dm.LeftClick()
                 if auto_combat_key is not None and self.combat_auto_flag:
                     self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
                 combat_ok = self._wait_combat_result(base_image, auto_combat_key)
@@ -6024,13 +6117,18 @@ class MyThread(threading.Thread):
                 if combat_ok:
                     self.daZhengDianCount += 1
                     print(f"打了第{self.daZhengDianCount}个整点")
+                    self.waitFor(base_image, self.dituLocation)
+                    for _ in range(3):
+                        time.sleep(0.3)
+                        if self._count_xiaolvren() > npc_count:
+                            break
                     attacked_set.clear()
                     hit_any = True
                     break
                 else:
                     attacked_set.add((tl_x, tl_y))
             if not hit_any:
-                print(f"{base_image}: 所有小绿人已尝试但未找到可打整点，退出")
+                # print(f"{base_image}: 所有小绿人已尝试但未找到可打整点，退出")
                 self.confidenceNum = 0.9
                 return
 
@@ -7452,6 +7550,9 @@ class MyThread(threading.Thread):
                         if self.stoped:
                             condition.wait()
                     d_pos = D.split(",")
+                    if float(d_pos[0]) > 1 and float(d_pos[1]) > 1:
+                        d_pos[0] = (900 - float(d_pos[0])) / 900
+                        d_pos[1] = float(d_pos[1]) / 580
                     d_pos[0] = (1000 - int(
                         float(d_pos[0]) * 1000)) / 1000 * self.locationWidth
                     d_pos[1] = (int(float(
@@ -8957,9 +9058,9 @@ class MyThread(threading.Thread):
         return True
 
     def zhanhunNew1Script(self):
-        if not self.zhanhunFloorNew:
-            self.zhanhunFloorNew = "29层"
-            print("未选择层数，自动打229层")
+        if not self.shihun_floor:
+            self.shihun_floor = "29层"
+            print("未选择层数，自动打29层")
         print("开始噬魂")
         outFbLocation = self.find_pic_or_str(
             f"{self.get_resource_path('serveAssets/images/outFb.bmp')}|{self.get_resource_path('serveAssets/images/outFb1.bmp')}",
@@ -9039,7 +9140,7 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("28层没打过")
             return True
-        if self.zhanhunFloorNew == "28层":
+        if self.shihun_floor == "28层":
             # 退出副本
             self.outScript("噬魂")
             return True
@@ -11851,6 +11952,41 @@ class MyThread(threading.Thread):
         )
         return True
 
+    # 四象脚本
+    def sixiangScript(self):
+        print("四象脚本")
+        with condition:
+            if self.stoped:
+                condition.wait()
+        isInGuanDu = self.waitFor(self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"), self.dituLocation, 5)
+        if not isInGuanDu:
+            self.go_in_ditu(
+                "地图封魔遗迹",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/xiangyang.bmp"),
+                self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+                "",
+                "",
+                True,
+            )
+        # 进入四象
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+            f"{self.get_resource_path('serveAssets/images/sixiang/sixiangshizhe1.bmp')}|{self.get_resource_path('serveAssets/images/sixiang/sixiangshizhe.bmp')}",
+            self.get_resource_path('serveAssets/images/sixiang/xiaolvren.bmp'),
+            self.gameLocation,
+            '进入',
+            self.gameBottomLocation,
+            "862,66",
+        )
+        # 进入第一层
+        self.waitForAAndClickB1(self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"), "进入", self.dituLocation,
+                                self.gameBottomLocation)
+        isInMojing = self.waitFor(self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"), self.dituLocation, 5)
+        if not isInMojing:
+            print("四象没次数了")
+            return False
+        
     # 黑风循环
     def heifengWhile(self):
         outFbLocation = self.find_pic_or_str(
@@ -11938,6 +12074,18 @@ class MyThread(threading.Thread):
             hongRes = self.hongScript()
             if not hongRes:
                 print("红没次数")
+                break
+        self.scriptName = "官渡"
+        self.guanduWhile()
+
+    # 一直执行四象
+    def sixiangWhile(self):
+        for i in range(int(self.sixiang_count)):
+            if self.overed:
+                return
+            sixiangRes = self.sixiangScript()
+            if not sixiangRes:
+                print("四象没次数")
                 break
         self.scriptName = "官渡"
         self.guanduWhile()
@@ -14457,7 +14605,11 @@ class MyFrame(wx.Frame):
         self.team_leader_pos = ""
         self.shihun_count = ""
         self.shihun_floor = ""
+        self.sixiang_count = ""
+        self.sixiang_difficulty = ""
         self.addBloudFlag = False
+        self.enablePersistentLiubei = True
+        self.liubeiCounts = {0: 1, 1: 0, 2: 0}
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer.AddSpacer(8)
@@ -14646,6 +14798,7 @@ class MyFrame(wx.Frame):
                 "黑风",
                 "矿产",
                 "龙岛",
+                "四象",
                 "龙王令",
                 "引魔符",
                 "49日常",
@@ -14657,11 +14810,13 @@ class MyFrame(wx.Frame):
                 "挂机+整点",
                 "西瓜保卫战",
                 "战魂楼(精英)",
+                "战魂楼(镇魂)",
+                "战魂楼(噬魂)",
                 "天外天传送符",
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                # "测试",
+                "测试",
             ],
         )
         self.free_choices = (
@@ -14672,7 +14827,7 @@ class MyFrame(wx.Frame):
                 "黑风",
                 "矿产",
                 "龙岛",
-                # "刷孙策",
+                "四象",
                 "龙王令",
                 "引魔符",
                 "49日常",
@@ -14684,6 +14839,8 @@ class MyFrame(wx.Frame):
                 "挂机+整点",
                 "西瓜保卫战",
                 "战魂楼(精英)",
+                "战魂楼(镇魂)",
+                "战魂楼(噬魂)",
                 "天外天传送符",
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
@@ -15070,6 +15227,14 @@ class MyFrame(wx.Frame):
             dialog.zhanhun_count.SetValue(self.zhanhun_count)
             dialog.shihun_count.SetValue(self.shihun_count)
             dialog.choiceShiHunCeng.SetValue(self.shihun_floor)
+            dialog.sixiang_count.SetValue(self.sixiang_count)
+            dialog.sixiang_difficulty.SetValue(self.sixiang_difficulty)
+            if hasattr(self, "enablePersistentLiubei") and hasattr(dialog, "persistentLiubeiCB"):
+                dialog.persistentLiubeiCB.SetValue(self.enablePersistentLiubei)
+            if hasattr(self, "liubeiCounts") and hasattr(dialog, "liubeiCountInputs"):
+                for idx, val in self.liubeiCounts.items():
+                    if idx in dialog.liubeiCountInputs:
+                        dialog.liubeiCountInputs[idx].SetValue(str(val))
             if self.richangSelection:
                 for cb in dialog.check_boxes:
                     if cb.GetLabel() in self.richangSelection:
@@ -16070,8 +16235,16 @@ class MyDialog(wx.Dialog):
         self.qingyuan_count.SetHint("青渊次数")
         self.qingyuan_count.SetBackgroundColour(self.C_INPUT_BG)
         self.qingyuan_count.SetForegroundColour(self.C_TEXT)
+        self.sixiang_difficulty = wx.ComboBox(f1, size=(-1, 28), choices=["普通", "精英", "炼狱"])
+        self.sixiang_difficulty.SetHint("四象难度")
+        self.sixiang_difficulty.SetBackgroundColour(self.C_INPUT_BG)
+        self.sixiang_difficulty.SetForegroundColour(self.C_TEXT)
+        self.sixiang_count = wx.TextCtrl(f1, size=(-1, 28), validator=NumberValidator())
+        self.sixiang_count.SetHint("次数")
+        self.sixiang_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.sixiang_count.SetForegroundColour(self.C_TEXT)
 
-        for lbl_text, ctrl in [("魔镜", self.choiceMojing), ("类型", self.choiceHeifeng), ("次数", self.number_input), ("青渊", self.qingyuan_count)]:
+        for lbl_text, ctrl in [("魔镜", self.choiceMojing), ("类型", self.choiceHeifeng), ("次数", self.number_input), ("青渊", self.qingyuan_count), ("四象", self.sixiang_difficulty), ("次数", self.sixiang_count)]:
             rs = wx.BoxSizer(wx.HORIZONTAL)
             lb = wx.StaticText(f1, label=lbl_text)
             lb.SetForegroundColour(self.C_MUTED)
@@ -16286,6 +16459,8 @@ class MyDialog(wx.Dialog):
         zhanhun_count = self.zhanhun_count.GetValue()
         shihun_count = self.shihun_count.GetValue()
         shihun_floor = self.choiceShiHunCeng.GetValue()
+        sixiang_count = self.sixiang_count.GetValue()
+        sixiang_difficulty = self.sixiang_difficulty.GetValue()
 
         # 保存数据到文件
         self.save_to_file(
@@ -16308,7 +16483,9 @@ class MyDialog(wx.Dialog):
             zhanhun_count,
             qingyuan_count,
             shihun_count,
-            shihun_floor
+            shihun_floor,
+            sixiang_count,
+            sixiang_difficulty,
         )
 
     def save_to_file(
@@ -16333,6 +16510,8 @@ class MyDialog(wx.Dialog):
             qingyuan_count,
             shihun_count,
             shihun_floor,
+            sixiang_count,
+            sixiang_difficulty,
     ):
         # 获取脚本文件的同级目录
         exe_path = sys.executable
@@ -16361,6 +16540,8 @@ class MyDialog(wx.Dialog):
             file.write(f"zhanhun_count: {zhanhun_count}\n")
             file.write(f"shihun_count: {shihun_count}\n")
             file.write(f"shihun_floor: {shihun_floor}\n")
+            file.write(f"sixiang_count: {sixiang_count}\n")
+            file.write(f"sixiang_difficulty: {sixiang_difficulty}\n")
         wx.MessageBox("数据已保存", "成功", wx.OK | wx.ICON_INFORMATION)
 
     def get_file_info(self, event):
@@ -16400,6 +16581,8 @@ class MyDialog(wx.Dialog):
         zhanhun_count = data.get("zhanhun_count", "")
         shihun_count = data.get("shihun_count", "")
         shihun_floor = data.get("shihun_floor", "")
+        sixiang_count = data.get("sixiang_count", "")
+        sixiang_difficulty = data.get("sixiang_difficulty", "")
         for cb in self.check_boxes:
             if cb.GetLabel() in selected_options:
                 cb.SetValue(True)
@@ -16424,6 +16607,8 @@ class MyDialog(wx.Dialog):
         self.zhanhun_count.SetValue(zhanhun_count)
         self.shihun_count.SetValue(shihun_count)
         self.choiceShiHunCeng.SetValue(shihun_floor)
+        self.sixiang_count.SetValue(sixiang_count)
+        self.sixiang_difficulty.SetValue(sixiang_difficulty)
 
     def addBloudFun(self, event):
         """设置自动战斗标志"""
@@ -16494,6 +16679,8 @@ class MyDialog(wx.Dialog):
             "zhanhun_count": self.zhanhun_count.GetValue(),
             "shihun_count": self.shihun_count.GetValue(),
             "shihun_floor": self.choiceShiHunCeng.GetValue(),
+            "sixiang_count": self.sixiang_count.GetValue(),
+            "sixiang_difficulty": self.sixiang_difficulty.GetValue(),
             "persistent_liubei": self.persistentLiubeiCB.GetValue() if hasattr(self, "persistentLiubeiCB") else True,
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
         }
@@ -16523,6 +16710,8 @@ class MyDialog(wx.Dialog):
         self.zhanhun_count.SetValue(settings.get("zhanhun_count", ""))
         self.shihun_count.SetValue(settings.get("shihun_count", ""))
         self.choiceShiHunCeng.SetValue(settings.get("shihun_floor", ""))
+        self.sixiang_count.SetValue(settings.get("sixiang_count", ""))
+        self.sixiang_difficulty.SetValue(settings.get("sixiang_difficulty", ""))
         if hasattr(self, "persistentLiubeiCB"):
             self.persistentLiubeiCB.SetValue(settings.get("persistent_liubei", True))
         liubei_counts = settings.get("liubei_counts", {"0": "1", "1": "0", "2": "0"})
@@ -16651,6 +16840,8 @@ class MyDialog(wx.Dialog):
         parent.zhanhun_count = self.zhanhun_count.GetValue()
         parent.shihun_count = self.shihun_count.GetValue()
         parent.shihun_floor = self.choiceShiHunCeng.GetValue()
+        parent.sixiang_count = self.sixiang_count.GetValue()
+        parent.sixiang_difficulty = self.sixiang_difficulty.GetValue()
         if self.addBloudBtn.IsShown():
             parent.addBloudFlag = False
         else:
