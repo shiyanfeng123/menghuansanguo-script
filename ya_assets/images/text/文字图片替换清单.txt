@@ -383,8 +383,8 @@
 
 | 游戏文字 | 拼音文件名 | 游戏场景 | 查找区域 | 使用的方法 |
 |----------|-----------|---------|---------|-----------|
-| 左门 | zuomen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
-| 右门 | youmen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 左门神 | zuomen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
+| 右门神 | youmen.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
 | 炼丹童 | liandantong.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
 
 ## 6.5 五行副本 怪物
@@ -396,7 +396,7 @@
 | 神金系 | shenjinxi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
 | 神木系 | shenmuxi.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
 | 张辽 | zhangliao.bmp | 副本战斗地图 | gameBottomLocation | findAndClickPic target |
-| 进五行 | jinwuxing.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
+| 进入五行 | jinwuxing.bmp | NPC对话框 | gameBottomLocation | waitForAAndClickB / findAndClickPic |
 
 ## 6.6 溶洞副本 怪物
 # 文件: ya_scripts/dungeon.py → rongdong()

@@ -82,10 +82,9 @@ class ScreenCapture:
         bmp_str = self._bitmap.GetBitmapBits(True)
         img = np.frombuffer(bmp_str, dtype=np.uint8)
         img = img.reshape((bmp_info['bmHeight'], bmp_info['bmWidth'], 4))
-        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
         if not self._use_print_window:
             if img.shape[0] > 0 and img.shape[1] > 0:
-                if np.mean(img) < 5:
+                if np.mean(img[:,:,:3]) < 5:
                     self._use_print_window = True
                     return self.capture(region)
         if region:
@@ -111,6 +110,59 @@ class ScreenCapture:
             pass
 
 
+class DxcamCapture:
+    """基于 dxcam 的 GPU 截图 — 直接 BGR 输出，比 GDI BitBlt 快 3-5 倍"""
+
+    def __init__(self, hwnd: int):
+        self.hwnd = hwnd
+        self._camera = None
+        try:
+            import dxcam
+            self._camera = dxcam.create(output_color="BGR")
+        except Exception:
+            pass
+
+    def _is_available(self):
+        return self._camera is not None
+
+    def capture(self, region=None):
+        if not self._is_available():
+            return None
+        try:
+            left, top, right, bottom = self._get_screen_rect(region)
+            if right <= left or bottom <= top:
+                return np.zeros((1, 1, 3), dtype=np.uint8)
+            frame = self._camera.grab(region=(left, top, right, bottom))
+            if frame is not None:
+                return frame
+            return np.zeros((1, 1, 3), dtype=np.uint8)
+        except Exception:
+            return None
+
+    def _get_screen_rect(self, region):
+        try:
+            rect = ctypes.wintypes.RECT()
+            ctypes.windll.user32.GetClientRect(self.hwnd, ctypes.byref(rect))
+            pt = ctypes.c_int(0), ctypes.c_int(0)
+            ctypes.windll.user32.ClientToScreen(self.hwnd, ctypes.byref(pt[0]))
+            ctypes.windll.user32.ClientToScreen(self.hwnd, ctypes.byref(pt[1]))
+            sx, sy = pt[0].value, pt[1].value
+            if region:
+                return (sx + region[0], sy + region[1], sx + region[2], sy + region[3])
+            return (sx, sy, sx + rect.right, sy + rect.bottom)
+        except Exception:
+            return (0, 0, 0, 0)
+
+    def get_pixel_color(self, x, y):
+        img = self.capture(region=(x, y, x + 1, y + 1))
+        if img is not None and img.shape[0] > 0:
+            return (int(img[0, 0, 0]), int(img[0, 0, 1]), int(img[0, 0, 2]))
+        return (0, 0, 0)
+
+    def __del__(self):
+        pass
+
+
 class ImageMatcher:
     """四层混合图像匹配引擎"""
 
@@ -118,7 +170,17 @@ class ImageMatcher:
         self.capture = capture
         self._template_cache: dict = {}
         self._last_screenshot: Optional[np.ndarray] = None
+        self._last_screenshot_gray: Optional[np.ndarray] = None
         self._last_screenshot_time: float = 0.0
+
+    def _to_gray(self, img: np.ndarray) -> np.ndarray:
+        if img.ndim == 2:
+            return img
+        if img is self._last_screenshot and self._last_screenshot_gray is not None and self._last_screenshot_gray.shape == img.shape[:2]:
+            return self._last_screenshot_gray
+        if img.shape[2] == 3:
+            return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        return cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
 
     def _get_screenshot(self, region: Optional[Tuple[int, int, int, int]] = None) -> np.ndarray:
         """截图缓存，100ms内复用"""
@@ -128,6 +190,7 @@ class ImageMatcher:
         img = self.capture.capture(region)
         if region is None:
             self._last_screenshot = img
+            self._last_screenshot_gray = self._to_gray(img)
             self._last_screenshot_time = now
         return img
 
@@ -175,7 +238,9 @@ class ImageMatcher:
         if screenshot is None or screenshot.shape[0] < 10 or screenshot.shape[1] < 10:
             return []
         th, tw = template.shape[:2]
-        res = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        gray_screen = self._to_gray(screenshot)
+        gray_tmpl = self._to_gray(template)
+        res = cv2.matchTemplate(gray_screen, gray_tmpl, cv2.TM_CCOEFF_NORMED)
         locs = np.where(res >= threshold)
         boxes = []
         for pt in zip(*locs[::-1]):
@@ -220,7 +285,36 @@ class ImageMatcher:
         sh, sw = screenshot.shape[:2]
         if th > sh or tw > sw:
             return None
-        res = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        gray_screen = self._to_gray(screenshot)
+        gray_tmpl = self._to_gray(template)
+
+        if sh > 200 and sw > 200 and th >= 10 and tw >= 10:
+            coarse_screen = cv2.resize(gray_screen, (sw // 2, sh // 2))
+            coarse_tmpl = cv2.resize(gray_tmpl, (tw // 2, th // 2))
+            cth, ctw = coarse_tmpl.shape
+            csh, csw = coarse_screen.shape
+            if cth <= csh and ctw <= csw:
+                cres = cv2.matchTemplate(coarse_screen, coarse_tmpl, cv2.TM_CCOEFF_NORMED)
+                _, cmax_val, _, cmax_loc = cv2.minMaxLoc(cres)
+                if cmax_val >= threshold * 0.85:
+                    cx = cmax_loc[0] * 2
+                    cy = cmax_loc[1] * 2
+                    margin = max(tw, th) + 10
+                    x1 = max(0, cx - margin)
+                    y1 = max(0, cy - margin)
+                    x2 = min(sw, cx + margin)
+                    y2 = min(sh, cy + margin)
+                    refine_screen = gray_screen[y1:y2, x1:x2]
+                    refine_res = cv2.matchTemplate(refine_screen, gray_tmpl, cv2.TM_CCOEFF_NORMED)
+                    _, refine_val, _, refine_loc = cv2.minMaxLoc(refine_res)
+                    if refine_val >= threshold:
+                        return MatchResult(
+                            x=x1 + refine_loc[0] + tw // 2, y=y1 + refine_loc[1] + th // 2,
+                            confidence=float(refine_val), width=tw, height=th,
+                            left=x1 + refine_loc[0], top=y1 + refine_loc[1]
+                        )
+
+        res = cv2.matchTemplate(gray_screen, gray_tmpl, cv2.TM_CCOEFF_NORMED)
         if find_dir == 0:
             locs = np.where(res >= threshold)
             if len(locs[0]) == 0:
@@ -271,12 +365,14 @@ class ImageMatcher:
         best: Optional[MatchResult] = None
         th, tw = template.shape[:2]
         sh, sw = screenshot.shape[:2]
+        gray_screen = self._to_gray(screenshot)
+        gray_tmpl = self._to_gray(template)
         for scale in [0.8, 0.9, 1.1, 1.2]:
-            scaled = cv2.resize(template, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+            scaled = cv2.resize(gray_tmpl, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
             rh, rw = scaled.shape[:2]
             if rh > sh or rw > sw:
                 continue
-            res = cv2.matchTemplate(screenshot, scaled, cv2.TM_CCOEFF_NORMED)
+            res = cv2.matchTemplate(gray_screen, scaled, cv2.TM_CCOEFF_NORMED)
             _, max_val, _, max_loc = cv2.minMaxLoc(res)
             if max_val >= threshold * 0.9 and (best is None or max_val > best.confidence):
                 best = MatchResult(
@@ -285,8 +381,8 @@ class ImageMatcher:
                     left=max_loc[0], top=max_loc[1]
                 )
         if best is None and th <= sh and tw <= sw:
-            edge_screenshot = cv2.Canny(cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY), 50, 150)
-            edge_template = cv2.Canny(cv2.cvtColor(template, cv2.COLOR_BGR2GRAY), 50, 150)
+            edge_screenshot = cv2.Canny(gray_screen, 50, 150)
+            edge_template = cv2.Canny(gray_tmpl, 50, 150)
             res = cv2.matchTemplate(edge_screenshot, edge_template, cv2.TM_CCOEFF_NORMED)
             _, max_val, _, max_loc = cv2.minMaxLoc(res)
             if max_val >= threshold * 0.85:
@@ -749,6 +845,8 @@ class InputController:
     def __init__(self, hwnd: int):
         self.hwnd = hwnd
         self._use_send = True
+        self._last_x = 0
+        self._last_y = 0
 
     @staticmethod
     def _make_lparam(x: int, y: int) -> int:
@@ -763,28 +861,42 @@ class InputController:
             user32.PostMessageW(self.hwnd, msg, wp, lp)
 
     def move_to(self, x: int, y: int):
+        self._last_x = x
+        self._last_y = y
         self._post_or_send(self.WM_MOUSEMOVE, 0, self._make_lparam(x, y))
 
     def left_click(self, x: Optional[int] = None, y: Optional[int] = None):
         if x is not None and y is not None:
             self.move_to(x, y)
             time.sleep(0.02)
-        lp = self._make_lparam(x or 0, y or 0)
+        if x is None:
+            x = self._last_x
+        if y is None:
+            y = self._last_y
+        lp = self._make_lparam(x, y)
         self._post_or_send(self.WM_LBUTTONDOWN, 1, lp)
         time.sleep(0.05)
         self._post_or_send(self.WM_LBUTTONUP, 0, lp)
 
-    def left_down(self, x: int, y: int):
+    def left_down(self, x: int = None, y: int = None):
+        if x is None: x = self._last_x
+        if y is None: y = self._last_y
         self._post_or_send(self.WM_LBUTTONDOWN, 1, self._make_lparam(x, y))
 
-    def left_up(self, x: int, y: int):
+    def left_up(self, x: int = None, y: int = None):
+        if x is None: x = self._last_x
+        if y is None: y = self._last_y
         self._post_or_send(self.WM_LBUTTONUP, 0, self._make_lparam(x, y))
 
     def right_click(self, x: Optional[int] = None, y: Optional[int] = None):
         if x is not None and y is not None:
             self.move_to(x, y)
             time.sleep(0.02)
-        lp = self._make_lparam(x or 0, y or 0)
+        if x is None:
+            x = self._last_x
+        if y is None:
+            y = self._last_y
+        lp = self._make_lparam(x, y)
         self._post_or_send(self.WM_RBUTTONDOWN, 2, lp)
         time.sleep(0.05)
         self._post_or_send(self.WM_RBUTTONUP, 0, lp)
@@ -871,7 +983,11 @@ class GameWindow:
 
     def __init__(self, hwnd: int):
         self.hwnd = hwnd
-        self.capture = ScreenCapture(hwnd)
+        dxcam = DxcamCapture(hwnd)
+        if dxcam._is_available():
+            self.capture = dxcam
+        else:
+            self.capture = ScreenCapture(hwnd)
         self.matcher = ImageMatcher(self.capture)
         self.text_finder = TextFinder(self.capture)
         self.color_finder = ColorFinder(self.capture)
@@ -1124,7 +1240,7 @@ class GameEngine:
             h, w = screenshot.shape[:2]
             if y < 0 or y >= h or x < 0 or x >= w:
                 return False
-            pixel = screenshot[y, x]
+            pixel = screenshot[y, x, :3]
             max_diff = int(255 * (1 - sim))
             color_str = color_str.strip()
             if color_str.startswith("b@"):

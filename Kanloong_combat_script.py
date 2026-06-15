@@ -507,6 +507,12 @@ class CombatAutoScript:
         self.zhugeliang_status2_missing_count = {}  # 格式：{account_index: count}
         # 跟踪每个单位连续未找到蓝条的操作回合数：{(account_index, region_idx): count}
         self.lantiao_missing_rounds = {}  # 格式：{(account_index, region_idx): count}
+        # 我方武将免死被动追踪 + 轮转预替换
+        # key: (account_index, "曹操"/"刘备"/"魔化关羽"), value: 免死触发后的轮次计数
+        self.ally_undead_rounds = {}
+        self.undead_threshold = 3         # 计数>=3触发预替换（免死4回合，第3回合替换留缓冲）
+        self.proactive_replace_account = 0  # 轮转替换账号: 0→1→2→0
+        self.need_proactive_replace = False  # 本轮是否需要预替换
         # 不再记录第一回合武将数量，默认每个账号有2个武将
 
         # 刘备技能释放顺序和冷却记录
@@ -747,6 +753,7 @@ class CombatAutoScript:
         self.liubei_image = f"{self.get_resource_path('serveAssets/images/auto/miankong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/miankong2.bmp')}"  # 刘备图片路径（用于检测场上是否有刘备）
         self.tiandihudun_image = self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
         self.caocaobusi_image = f"{self.get_resource_path('serveAssets/images/auto/bumiexiongxin1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugeliangbeidong.bmp')}"
+        self.moguan_miansi_image = self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp")
         self.zhugexuetiao_image = f"{self.get_resource_path('serveAssets/images/auto/zhugexuetiao.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao2.bmp')}"
         # 技能CD配置（回合数）
         self.skill_cd_config = {
@@ -2362,6 +2369,41 @@ class CombatAutoScript:
             if liubei_beidong:
                 self.beidong_huihe = 1
 
+    def _track_ally_undead(self, dm_index):
+        """非我方回合追踪我方武将免死被动轮次
+        扫描6个武将血条区域(region_idx 3-8), 检测免死图片并计数"""
+        tracker_config = {
+            "曹操": {"image": self.caocaobusi_image, "mode": "disappear"},
+            "刘备": {"image": self.tiandihudun_image, "mode": "appear"},
+            "魔化关羽": {"image": self.moguan_miansi_image, "mode": "appear"},
+        }
+        for region_idx in range(3, 9):
+            acct = self.hp_region_to_account.get(region_idx)
+            if acct is None:
+                continue
+            unit_info = self.hp_bar_unit_mapping.get(acct, {}).get(region_idx)
+            if not unit_info:
+                continue
+            _, gen_name, _ = unit_info
+            if gen_name not in tracker_config:
+                continue
+            char_info = self.unit_info[acct]["main_char"]
+            gen_alive = any(
+                g.get("name") == gen_name and g.get("alive", True)
+                for g in char_info.get("generals", []))
+            key = (acct, gen_name)
+            if not gen_alive:
+                self.ally_undead_rounds[key] = -1
+                continue
+            cfg = tracker_config[gen_name]
+            region = self.hp_bar_regions[region_idx]
+            found = self.find_image(dm_index, cfg["image"], region, 0)
+            prev = self.ally_undead_rounds.get(key, 0)
+            if cfg["mode"] == "disappear":
+                self.ally_undead_rounds[key] = 0 if found else prev + 1
+            else:
+                self.ally_undead_rounds[key] = prev + 1 if found else 0
+
     def detect_enemies_need_clear(self, dm_index):
         """检测需要清除状态的敌军（只检测传入的敌军单位 key）
         参考Kanloong_combat_script.py的实现
@@ -3798,6 +3840,40 @@ class CombatAutoScript:
             turn_start_time = time.time()
             turn_timeout = CombatConstants.TURN_TIMEOUT  # 25秒超时
 
+            # 预替换检查：场上免死武将不足时，按轮转账号踢旧召新
+            if self.need_proactive_replace:
+                with self._state_lock:
+                    if self.need_proactive_replace and account_index == self.proactive_replace_account:
+                        self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
+                        my_turn = True
+                    else:
+                        my_turn = False
+                if my_turn:
+                    char_info = self.unit_info[account_index]["main_char"]
+                    worst_key = None
+                    worst_count = -1
+                    gen_order = ["曹操", "魔化关羽", "刘备"]
+                    for gen_name in gen_order:
+                        gen_alive = any(
+                            g.get("name") == gen_name and g.get("alive", True)
+                            for g in char_info.get("generals", []))
+                        if gen_alive:
+                            key = (account_index, gen_name)
+                            count = self.ally_undead_rounds.get(key, 0)
+                            if count > worst_count:
+                                worst_count = count
+                                worst_key = key
+                    if worst_key:
+                        gen_name = worst_key[1]
+                        if self.summon_general_with_verification(
+                            account_index, gen_name, force_replace=True):
+                            self.ally_undead_rounds[worst_key] = 0
+                            self.need_proactive_replace = False
+                            self.report_battle_info(
+                                f"账号{account_index} 预替换{gen_name}(免死轮次={worst_count}), "
+                                f"下次替换账号{self.proactive_replace_account}", "action")
+                            return True
+
             # 确保技能面板已打开（点击技能按钮）
             skill_btn = self.find_image(account_index, self.button_images["技能按钮"], self.right_button_region, 0)
             if skill_btn:
@@ -3928,6 +4004,7 @@ class CombatAutoScript:
                         or (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index))
                 ):
                     if self.summon_general_with_verification(account_index, "刘备", force_replace=need_self_liubei):
+                        self.ally_undead_rounds[(account_index, "刘备")] = 0
                         time.sleep(0.1)
                         return True
                     self.has_liubei[account_index] = False
@@ -3991,6 +4068,7 @@ class CombatAutoScript:
                     general_order = ["曹操", "魔化关羽", "刘备"]
                     for general_name in general_order:
                         if self.summon_general_with_verification(account_index, general_name):
+                            self.ally_undead_rounds[(account_index, general_name)] = 0
                             time.sleep(0.1)
                             return True
                     self.has_general[account_index] = False
@@ -4325,6 +4403,12 @@ class CombatAutoScript:
                     # 在我方回合开始时，分配复活任务（优先级：其他账号主角 > 随机账号武将）
                     self.revive_assignments = self._assign_revive_tasks()
 
+                    # 统计全场免死安全的武将数，决定是否需要预替换
+                    undead_active = sum(
+                        1 for k, v in self.ally_undead_rounds.items()
+                        if v >= 0 and v < self.undead_threshold)
+                    self.need_proactive_replace = (undead_active <= 1)
+
                     # 为每个账号创建独立的处理线程
                     # 主账号已确认是我方回合，直接创建线程，_handle_account_turn内部会自己检测和等待操作按钮
                     account_threads = {}
@@ -4454,6 +4538,9 @@ class CombatAutoScript:
 
                     # 非我方回合时，由大漠对象0检测场上是否有刘备
                     self._detect_liubei_on_field()
+
+                    # 追踪我方武将免死被动轮次
+                    self._track_ally_undead(main_account_index)
 
                     # 检测血量低单位（每轮只扫一个账号，3轮扫完一轮）
                     if not hasattr(self, '_hp_scan_round'):
