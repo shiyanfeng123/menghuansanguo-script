@@ -233,7 +233,6 @@ class MyThread(threading.Thread):
         self.clickFlag = False
         self.addBloudFlag = False
         self.combat_auto_flag = False
-        self.enablePersistentLiubei = True
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.stoped = False
         self.zdzdPath = self.get_resource_path("serveAssets/images/zdzd.bmp")
@@ -310,14 +309,12 @@ class MyThread(threading.Thread):
                 self.combat_auto_instance.keep_support_general = False
                 self.combat_auto_instance.enable_main_heal = True
                 self.combat_auto_instance.enable_main_summon = True
-                self.combat_auto_instance.enable_persistent_liubei = self.frame.enablePersistentLiubei
                 self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
                 print("战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
             else:
                 self.combat_auto_instance.reconfigure(
                     enemy_keys_to_detect=clear_enemy_keys,
                     liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
-                    enable_persistent_liubei=self.frame.enablePersistentLiubei,
                 )
                 print("战斗自动操作实例已重置并重新配置")
 
@@ -14608,7 +14605,6 @@ class MyFrame(wx.Frame):
         self.sixiang_count = ""
         self.sixiang_difficulty = ""
         self.addBloudFlag = False
-        self.enablePersistentLiubei = True
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -15229,8 +15225,6 @@ class MyFrame(wx.Frame):
             dialog.choiceShiHunCeng.SetValue(self.shihun_floor)
             dialog.sixiang_count.SetValue(self.sixiang_count)
             dialog.sixiang_difficulty.SetValue(self.sixiang_difficulty)
-            if hasattr(self, "enablePersistentLiubei") and hasattr(dialog, "persistentLiubeiCB"):
-                dialog.persistentLiubeiCB.SetValue(self.enablePersistentLiubei)
             if hasattr(self, "liubeiCounts") and hasattr(dialog, "liubeiCountInputs"):
                 for idx, val in self.liubeiCounts.items():
                     if idx in dialog.liubeiCountInputs:
@@ -16178,12 +16172,6 @@ class MyDialog(wx.Dialog):
             self.liubeiCountInputs = {0: 1, 1: 0, 2: 0}
 
         sw_row = wx.BoxSizer(wx.HORIZONTAL)
-        if has_script != "free":
-            self.persistentLiubeiCB = wx.CheckBox(panel, label="刘备常驻")
-            self.persistentLiubeiCB.SetValue(True)
-            self.persistentLiubeiCB.SetForegroundColour(self.C_MUTED)
-            self.persistentLiubeiCB.Bind(wx.EVT_CHECKBOX, self.on_persistent_liubei_change)
-            sw_row.Add(self.persistentLiubeiCB, 0, wx.ALIGN_CENTER_VERTICAL)
         sw_row.AddStretchSpacer()
 
         btn_container = wx.Panel(panel, size=(132, 32))
@@ -16626,11 +16614,6 @@ class MyDialog(wx.Dialog):
         self.frame.addBloudFlag = False
         print("自动战斗标志已设置为 False")
 
-    def on_persistent_liubei_change(self, event):
-        """刘备常驻复选框变更"""
-        self.frame.enablePersistentLiubei = self.persistentLiubeiCB.GetValue()
-        print(f"刘备常驻已设置为 {self.frame.enablePersistentLiubei}")
-
     def on_text_change(self, event):
         if self.team_leader_text.GetValue():
             self.button.Enable()
@@ -16681,7 +16664,6 @@ class MyDialog(wx.Dialog):
             "shihun_floor": self.choiceShiHunCeng.GetValue(),
             "sixiang_count": self.sixiang_count.GetValue(),
             "sixiang_difficulty": self.sixiang_difficulty.GetValue(),
-            "persistent_liubei": self.persistentLiubeiCB.GetValue() if hasattr(self, "persistentLiubeiCB") else True,
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
         }
 
@@ -16712,8 +16694,6 @@ class MyDialog(wx.Dialog):
         self.choiceShiHunCeng.SetValue(settings.get("shihun_floor", ""))
         self.sixiang_count.SetValue(settings.get("sixiang_count", ""))
         self.sixiang_difficulty.SetValue(settings.get("sixiang_difficulty", ""))
-        if hasattr(self, "persistentLiubeiCB"):
-            self.persistentLiubeiCB.SetValue(settings.get("persistent_liubei", True))
         liubei_counts = settings.get("liubei_counts", {"0": "1", "1": "0", "2": "0"})
         for idx in self.liubeiCountInputs:
             key = str(idx)
@@ -16846,7 +16826,6 @@ class MyDialog(wx.Dialog):
             parent.addBloudFlag = False
         else:
             parent.addBloudFlag = True
-        parent.enablePersistentLiubei = self.persistentLiubeiCB.GetValue() if hasattr(self, "persistentLiubeiCB") else True
         parent.liubeiCounts = {}
         for idx in self.liubeiCountInputs:
             item = self.liubeiCountInputs[idx]
