@@ -234,6 +234,8 @@ class MyThread(threading.Thread):
         self.addBloudFlag = False
         self.combat_auto_flag = False
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
+        self.independent_win1 = False
+        self.independent_win2 = False
         self.stoped = False
         self.zdzdPath = self.get_resource_path("serveAssets/images/zdzd.bmp")
         self.BisClick = False
@@ -415,6 +417,8 @@ class MyThread(threading.Thread):
         self.after_zreo = self.frame.afterZreo
         self.richangSelection = self.frame.richangSelection
         self.liubeiCounts = self.frame.liubeiCounts if hasattr(self.frame, "liubeiCounts") else {0: 1, 1: 0, 2: 0}
+        self.independent_win1 = self.frame.independent_win1 if hasattr(self.frame, "independent_win1") else False
+        self.independent_win2 = self.frame.independent_win2 if hasattr(self.frame, "independent_win2") else False
         self.heifengWhileCount = int(
             self.frame.heifengCount) if self.frame.heifengCount else 0
         # display = Display(visible=False, size=(1920, 1080))
@@ -1744,7 +1748,7 @@ class MyThread(threading.Thread):
         enum_child_windows_callback_func = ENUMWINDOWSPROC(
             enum_child_windows_callback)
         # 查找目标窗口句柄
-        target_window_title = self.teammate1_name + " | " + self.frame.game_name
+        target_window_title = self.teammate1_name if self.independent_win1 else (self.teammate1_name + " | " + self.frame.game_name)
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
         hwnds = self.win1_dm.EnumWindow(0, target_window_title,
                                         target_window_class, 1 + 2)
@@ -1932,7 +1936,7 @@ class MyThread(threading.Thread):
         self.win1_dm.ClearDict(0)
         self.win1_dm.UnBindWindow()
         self.win1_dm.DownCpu(30)
-        target_window_title = self.teammate1_name + " | " + self.frame.game_name
+        target_window_title = self.teammate1_name if self.independent_win1 else (self.teammate1_name + " | " + self.frame.game_name)
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
         hwnds = self.win1_dm.EnumWindow(0, target_window_title,
                                         target_window_class, 1 + 2)
@@ -2064,7 +2068,7 @@ class MyThread(threading.Thread):
         enum_child_windows_callback_func = ENUMWINDOWSPROC(
             enum_child_windows_callback)
         # 查找目标窗口句柄
-        target_window_title = self.teammate2_name + " | " + self.frame.game_name
+        target_window_title = self.teammate2_name if self.independent_win2 else (self.teammate2_name + " | " + self.frame.game_name)
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
         hwnds = self.win2_dm.EnumWindow(0, target_window_title,
                                         target_window_class, 1 + 2)
@@ -2258,7 +2262,7 @@ class MyThread(threading.Thread):
         self.win2_dm.ClearDict(0)
         self.win2_dm.UnBindWindow()
         self.win2_dm.DownCpu(30)
-        target_window_title = self.teammate2_name + " | " + self.frame.game_name
+        target_window_title = self.teammate2_name if self.independent_win2 else (self.teammate2_name + " | " + self.frame.game_name)
         target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
         hwnds = self.win2_dm.EnumWindow(0, target_window_title,
                                         target_window_class, 1 + 2)
@@ -4241,7 +4245,6 @@ class MyThread(threading.Thread):
             if self.stoped:
                 condition.wait()
         self.clear_info()
-
         time.sleep(0.5)
         while True:
             with condition:
@@ -4254,7 +4257,7 @@ class MyThread(threading.Thread):
                 break
             time.sleep(1)  # 每秒钟检查一次
         # 蛇+全打/全打：蛇时辰走路搜索蛇
-        if self.zhengdianFloor in ["蛇+全打", "全打"] and self._is_snake_hour():
+        if self.zhengdianFloor in ["蛇+全打"] and self._is_snake_hour():
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
             for i in range(14):
@@ -4274,7 +4277,7 @@ class MyThread(threading.Thread):
                     npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
                     self.find_zd_walk_v3(last_item1["findAddress"], "蛇", self._get_she_images(), "蛇", npc_count1, npc_zones1, last_item1["ditu"], last_item1["city"])
         # 龙+全打/蛇+全打/全打：龙时辰走路搜索龙
-        if self.zhengdianFloor in ["龙+全打", "蛇+全打", "全打"] and self._is_dragon_hour():
+        if self.zhengdianFloor in ["龙+全打", "蛇+全打"] and self._is_dragon_hour():
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
             for i in range(14):
@@ -5695,6 +5698,7 @@ class MyThread(threading.Thread):
                                                          self.gameBottomLocation,
                                                          0):
                 self.confidenceNum = 0.9
+                print("被挑战")
                 return False
             if self.find_pic(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/bucunzai.bmp')}",
@@ -5702,6 +5706,7 @@ class MyThread(threading.Thread):
                                                          self.gameBottomLocation,
                                                          0):
                 self.confidenceNum = 0.9
+                print("不存在")
                 return False
             self.confidenceNum = 0.9
 
@@ -5804,10 +5809,10 @@ class MyThread(threading.Thread):
         return False
 
     def _is_dragon_hour(self):
-        return int(time.localtime().tm_hour) in [2, 6, 10, 14, 18, 22]
+        return int(time.localtime().tm_hour) in [3, 7, 11, 15, 19, 23]
 
     def _is_snake_hour(self):
-        return int(time.localtime().tm_hour) in [1, 2, 9, 13, 15, 21]
+        return int(time.localtime().tm_hour) in [2, 6, 10, 14, 18, 22]
 
     def _get_normal_zd_images(self):
         return self.normal_zd_images
@@ -5831,6 +5836,17 @@ class MyThread(threading.Thread):
         except:
             return 0
 
+    # V3辅助方法：等小绿人计数稳定（连续两次一致）
+    def _wait_xiaolvren_stable(self, max_attempts=5):
+        prev = -1
+        for _ in range(max_attempts):
+            time.sleep(0.3)
+            cur = self._count_xiaolvren()
+            if cur == prev:
+                return cur
+            prev = cur
+        return self._count_xiaolvren()
+
     # V3辅助方法：将delX/delY转换为NPC坐标列表（用于模糊排除）
     def _get_npc_zones_from_delxy(self, delX, delY):
         zones = []
@@ -5851,7 +5867,7 @@ class MyThread(threading.Thread):
     def _walk_one_step(self, find_left_flag):
         left_x = random.randint(742, 758)
         rand_y = 80
-        right_x = random.randint(852, 871)
+        right_x = random.randint(859, 870)
         reached_edge = False
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         self.confidenceNum = 0.6
@@ -5871,7 +5887,7 @@ class MyThread(threading.Thread):
         else:
             if self.find_pic_or_str(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen1.bmp')}",
-                    (851, 41, 877, 96), 0):
+                    (859, 41, 877, 96), 0):
                 reached_edge = True
                 new_flag = find_left_flag
             else:
@@ -5899,8 +5915,7 @@ class MyThread(threading.Thread):
         if npc_zones is None:
             npc_zones = []
         find_left_flag = False
-        attacked_set = set()
-        failed_y_set = set()
+        attacked_y_set = set()
         walk_rounds = 0
         max_walk_rounds = 60
         while True:
@@ -5912,16 +5927,8 @@ class MyThread(threading.Thread):
             self.waitFor(base_image, self.dituLocation)
             green_count = self._count_xiaolvren()
             if green_count <= npc_count:
-                if walk_rounds == 0:
-                    find_left_flag, _ = self._walk_one_step(find_left_flag)
-                    time.sleep(0.3)
-                    green_count2 = self._count_xiaolvren()
-                    if green_count2 <= npc_count:
-                        # print(f"{base_image}: 小绿人数量({green_count2})<=NPC数量({npc_count})，无整点")
-                        self.confidenceNum = 0.9
-                        return
-                else:
-                    # print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
+                time.sleep(0.5)
+                if self._count_xiaolvren() <= npc_count:
                     self.confidenceNum = 0.9
                     return
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
@@ -5937,14 +5944,14 @@ class MyThread(threading.Thread):
                                                         self.gameLocation)
                     all_positions.extend(pic_positions)
             candidates = self._merge_deduplicate_sort(
-                all_positions, attacked_set, []
+                all_positions, set(), []
             )
             self.confidenceNum = 0.9
             if candidates:
                 for target in candidates:
-                    if any(abs(target.y - fy) <= 10 for fy in failed_y_set):
+                    if any(abs(target.y - ay) <= 10 for ay in attacked_y_set):
                         continue
-                    attacked_set.add((target.x, target.y))
+                    attacked_y_set.add(target.y)
                     success = self._try_attack_zd(
                         target, base_image, auto_combat_key
                     )
@@ -5952,15 +5959,11 @@ class MyThread(threading.Thread):
                         self.daZhengDianCount += 1
                         print(f"打了第{self.daZhengDianCount}个整点")
                         self.waitFor(base_image, self.dituLocation)
-                        for _ in range(3):
-                            time.sleep(0.3)
-                            if self._count_xiaolvren() > npc_count:
-                                break
-                        attacked_set.clear()
-                        failed_y_set.clear()
+                        self._wait_xiaolvren_stable()
+                        attacked_y_set.clear()
                         break
                     else:
-                        failed_y_set.add(target.y)
+                        pass
                 continue
             find_left_flag, reached_edge = self._walk_one_step(find_left_flag)
             if ditu_name and city_img:
@@ -6005,9 +6008,10 @@ class MyThread(threading.Thread):
             self.waitFor(base_image, self.dituLocation)
             green_count = self._count_xiaolvren()
             if green_count <= npc_count:
-                # print(f"{base_image}: 小绿人数量({green_count})<=NPC数量({npc_count})，整点已清完")
-                self.confidenceNum = 0.9
-                return
+                time.sleep(0.5)
+                if self._count_xiaolvren() <= npc_count:
+                    self.confidenceNum = 0.9
+                    return
             green_result = self.dm.FindPicEx(
                 int(x), int(y), int(w), int(h), xiaolvren, "", 0.9, 0
             )
@@ -6115,10 +6119,7 @@ class MyThread(threading.Thread):
                     self.daZhengDianCount += 1
                     print(f"打了第{self.daZhengDianCount}个整点")
                     self.waitFor(base_image, self.dituLocation)
-                    for _ in range(3):
-                        time.sleep(0.3)
-                        if self._count_xiaolvren() > npc_count:
-                            break
+                    self._wait_xiaolvren_stable()
                     attacked_set.clear()
                     hit_any = True
                     break
@@ -14606,6 +14607,8 @@ class MyFrame(wx.Frame):
         self.sixiang_difficulty = ""
         self.addBloudFlag = False
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
+        self.independent_win1 = False
+        self.independent_win2 = False
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer.AddSpacer(8)
@@ -15229,6 +15232,20 @@ class MyFrame(wx.Frame):
                 for idx, val in self.liubeiCounts.items():
                     if idx in dialog.liubeiCountInputs:
                         dialog.liubeiCountInputs[idx].SetValue(str(val))
+            if hasattr(self, "independent_win1") and hasattr(dialog, "independent_win1_on"):
+                if self.independent_win1:
+                    dialog.independent_win1_off.Hide()
+                    dialog.independent_win1_on.Show()
+                else:
+                    dialog.independent_win1_on.Hide()
+                    dialog.independent_win1_off.Show()
+            if hasattr(self, "independent_win2") and hasattr(dialog, "independent_win2_on"):
+                if self.independent_win2:
+                    dialog.independent_win2_off.Hide()
+                    dialog.independent_win2_on.Show()
+                else:
+                    dialog.independent_win2_on.Hide()
+                    dialog.independent_win2_off.Show()
             if self.richangSelection:
                 for cb in dialog.check_boxes:
                     if cb.GetLabel() in self.richangSelection:
@@ -16064,7 +16081,7 @@ class MyDialog(wx.Dialog):
     C_INPUT_BG = wx.Colour(255, 255, 255)
 
     def __init__(self, parent, has_script):
-        super().__init__(parent, title="游戏设置", size=(570, 610), pos=(200, 20))
+        super().__init__(parent, title="游戏设置", size=(570, 550), pos=(200, 20))
         self.SetBackgroundColour(self.C_BG)
         self.frame = parent
         self.config_file = "settings_config.json"
@@ -16129,8 +16146,26 @@ class MyDialog(wx.Dialog):
         # ── 队伍 ──
         sec = lambda t: self._section_header(main_sizer, panel, t)
         sec("队伍")
-        tm = wx.FlexGridSizer(cols=3, vgap=5, hgap=6)
+        tm = wx.FlexGridSizer(cols=4, vgap=5, hgap=6)
         tm.AddGrowableCol(1, 1)
+
+        def _make_toggle_btn(parent, label_off, label_on, bind_fn):
+            container = wx.Panel(parent, size=(74, 30))
+            container.SetBackgroundColour(self.C_BG)
+            btn_off = wx.Button(container, label=label_off, size=(72, 28), style=wx.BORDER_NONE, pos=(1, 1))
+            btn_off.SetBackgroundColour(wx.Colour(190, 195, 205))
+            btn_off.SetForegroundColour(wx.Colour(60, 60, 60))
+            btn_off.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            btn_off.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+            btn_on = wx.Button(container, label=label_on, size=(72, 28), style=wx.BORDER_NONE, pos=(1, 1))
+            btn_on.SetBackgroundColour(wx.Colour(34, 153, 84))
+            btn_on.SetForegroundColour(wx.Colour(255, 255, 255))
+            btn_on.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            btn_on.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+            btn_on.Hide()
+            btn_off.Bind(wx.EVT_BUTTON, lambda e, c=container, o=btn_off, n=btn_on: bind_fn(e, True, c, o, n))
+            btn_on.Bind(wx.EVT_BUTTON, lambda e, c=container, o=btn_off, n=btn_on: bind_fn(e, False, c, o, n))
+            return container, btn_off, btn_on
 
         for txt, attr_hint, is_leader in [("队长", "游戏名称", True), ("队友1", "队友1", False), ("队友2", "队友2", False)]:
             tm.Add(label(txt, 40), 0, wx.ALIGN_CENTER_VERTICAL)
@@ -16148,6 +16183,28 @@ class MyDialog(wx.Dialog):
             b.SetForegroundColour(self.C_MUTED)
             b.Hide()
             tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
+            if is_leader:
+                tm.Add(wx.Panel(panel, size=(58, 1)), 0, wx.ALIGN_CENTER_VERTICAL)
+            elif "1" in txt:
+                def _toggle1(event, flag, container, off_btn, on_btn):
+                    if flag:
+                        off_btn.Hide(); on_btn.Show(); container.Layout()
+                    else:
+                        on_btn.Hide(); off_btn.Show(); container.Layout()
+                container, off_btn, on_btn = _make_toggle_btn(panel, "独立❌", "独立✅", _toggle1)
+                self.independent_win1_off = off_btn
+                self.independent_win1_on = on_btn
+                tm.Add(container, 0, wx.ALIGN_CENTER_VERTICAL)
+            else:
+                def _toggle2(event, flag, container, off_btn, on_btn):
+                    if flag:
+                        off_btn.Hide(); on_btn.Show(); container.Layout()
+                    else:
+                        on_btn.Hide(); off_btn.Show(); container.Layout()
+                container, off_btn, on_btn = _make_toggle_btn(panel, "独立❌", "独立✅", _toggle2)
+                self.independent_win2_off = off_btn
+                self.independent_win2_on = on_btn
+                tm.Add(container, 0, wx.ALIGN_CENTER_VERTICAL)
         main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
         if has_script != "free":
@@ -16167,33 +16224,27 @@ class MyDialog(wx.Dialog):
                 tc.SetForegroundColour(self.C_TEXT)
                 self.liubeiCountInputs[idx] = tc
                 liubei_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
+            liubei_row.AddStretchSpacer()
+            sw_row = wx.BoxSizer(wx.HORIZONTAL)
+            sw_row.AddStretchSpacer()
+            btn_container = wx.Panel(panel, size=(132, 32))
+            btn_container.SetBackgroundColour(self.C_BG)
+            self.addBloudBtn = wx.Button(btn_container, label="🔴 自动战斗 关", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
+            self.addBloudBtn.SetBackgroundColour(self.C_SURFACE)
+            self.addBloudBtn.SetForegroundColour(self.C_MUTED)
+            self.addBloudBtn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+            self.addBloudBtn.Bind(wx.EVT_BUTTON, self.addBloudFun)
+            self.closeBloudBtn = wx.Button(btn_container, label="🟢 自动战斗 开", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
+            self.closeBloudBtn.SetBackgroundColour(wx.Colour(34, 153, 84))
+            self.closeBloudBtn.SetForegroundColour(wx.Colour(255, 255, 255))
+            self.closeBloudBtn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+            self.closeBloudBtn.Bind(wx.EVT_BUTTON, self.closeBloudFun)
+            self.closeBloudBtn.Hide()
+            sw_row.Add(btn_container, 0, wx.ALIGN_CENTER_VERTICAL)
+            liubei_row.Add(sw_row, 0, wx.ALIGN_CENTER_VERTICAL)
             main_sizer.Add(liubei_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         else:
             self.liubeiCountInputs = {0: 1, 1: 0, 2: 0}
-
-        sw_row = wx.BoxSizer(wx.HORIZONTAL)
-        sw_row.AddStretchSpacer()
-
-        btn_container = wx.Panel(panel, size=(132, 32))
-        btn_container.SetBackgroundColour(self.C_BG)
-        self.addBloudBtn = wx.Button(btn_container, label="🔴 自动战斗 关", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
-        self.addBloudBtn.SetBackgroundColour(self.C_SURFACE)
-        self.addBloudBtn.SetForegroundColour(self.C_MUTED)
-        self.addBloudBtn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.addBloudBtn.Bind(wx.EVT_BUTTON, self.addBloudFun)
-        self.closeBloudBtn = wx.Button(btn_container, label="🟢 自动战斗 开", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
-        self.closeBloudBtn.SetBackgroundColour(wx.Colour(34, 153, 84))
-        self.closeBloudBtn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.closeBloudBtn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.closeBloudBtn.Bind(wx.EVT_BUTTON, self.closeBloudFun)
-        self.closeBloudBtn.Hide()
-        sw_row.Add(btn_container, 0, wx.ALIGN_CENTER_VERTICAL)
-        main_sizer.Add(sw_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
-        main_sizer.AddSpacer(8)
-
-        if has_script == "free":
-            self.addBloudBtn.Hide()
-            self.closeBloudBtn.Hide()
 
         # ── 三栏：副本 | 战魂 | 整点 ──
         cols = wx.BoxSizer(wx.HORIZONTAL)
@@ -16834,6 +16885,8 @@ class MyDialog(wx.Dialog):
             else:
                 val = item.GetValue()
                 parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
+        parent.independent_win1 = self.independent_win1_on.IsShown() if hasattr(self, "independent_win1_on") else False
+        parent.independent_win2 = self.independent_win2_on.IsShown() if hasattr(self, "independent_win2_on") else False
         # parent.selections = selections
         # 关闭对话框
         self.EndModal(wx.ID_OK)

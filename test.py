@@ -370,8 +370,8 @@ def get_resource_path(self, relative_path):
 # dm_ret = dm.FindPicEx(0, 0, x, y,
 #                       r"E:\project\python\serveAssets\images\zhengdian/she-foot-2.bmp",
 #                       "", similarity, 0)
-dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
-print(dm_ret1)
+# dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
+# print(dm_ret1)
 # dm_ret3 = dm.FindPicEx(530, 0, 589, 580, r"E:\project\python\name1.bmp", "", similarity, 0)
 # # # #
 # res111 = dm.GetNetTime()
@@ -416,7 +416,7 @@ def search_all_images(dm, region, similarity=0.6):
 
 
 # print(dm_ret, 'dm_ret')
-# search_all_images(dm, (0, 0, x, y), similarity)
+search_all_images(dm, (0, 0, x, y), similarity)
 # x, y, r = dm_ret
 # print(x, y, r)
 # if r == 1:
