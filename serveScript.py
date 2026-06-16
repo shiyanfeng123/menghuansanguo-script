@@ -16081,7 +16081,7 @@ class MyDialog(wx.Dialog):
     C_INPUT_BG = wx.Colour(255, 255, 255)
 
     def __init__(self, parent, has_script):
-        super().__init__(parent, title="游戏设置", size=(570, 550), pos=(200, 20))
+        super().__init__(parent, title="游戏设置", size=(570, 580), pos=(200, 20))
         self.SetBackgroundColour(self.C_BG)
         self.frame = parent
         self.config_file = "settings_config.json"
