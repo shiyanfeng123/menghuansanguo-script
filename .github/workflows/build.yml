@@ -1,0 +1,55 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify dm.dll exists
+        run: |
+          if (-not (Test-Path "serveAssets\plugins\dm.dll")) {
+            Write-Host "dm.dll missing, restoring from git..."
+            git checkout HEAD -- serveAssets/plugins/dm.dll
+          }
+          if (Test-Path "serveAssets\plugins\dm.dll") {
+            Write-Host "dm.dll OK"
+          } else {
+            Write-Host "::error::dm.dll still missing after restore"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Ensure user_scripts directory
+        run: |
+          if (-not (Test-Path "user_scripts")) {
+            New-Item -ItemType Directory -Path user_scripts -Force
+          }
+        shell: pwsh
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller serveScript.spec --noconfirm
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: menghuansanguo-script
+          path: dist/*.exe
+          retention-days: 30
