@@ -63,7 +63,7 @@ jobs:
           New-Item -ItemType Directory -Path release -Force
           $exes = Get-ChildItem -Path dist -Filter "*.exe"
           $src = $exes[0]
-          $dest = "release\menghuansanguo-script.exe"
+          $dest = "release\脚本v26.6.1.exe"
           Copy-Item $src.FullName -Destination $dest
           Write-Host "Release exe: $dest ($((Get-Item $dest).Length) bytes)"
         shell: pwsh
@@ -85,5 +85,5 @@ jobs:
             提交: ${{ github.sha }}
             时间: ${{ github.event.head_commit.timestamp }}
             直接下载下方 exe 文件即可使用
-          files: release/menghuansanguo-script.exe
+          files: release/*.exe
           make_latest: true
