@@ -23,7 +23,7 @@ from collections import OrderedDict
 
 # 导入战斗自动操作脚本``
 from Kanloong_combat_script import CombatAutoScript
-
+# e:/project/python/.venv32/Scripts/pyinstaller.exe serveScript.spec
 # 打包命令：pyinstaller -F -w --add-data "serveAssets;serveAssets" --add-data "user_scripts;user_scripts" --hidden-import Kanloong_combat_script --hidden-import ScriptEngine --hidden-import ScriptFactory --icon=serveAssets\images\script.ico .\serveScript.py
 # pyinstaller serveScript.spec
 condition = threading.Condition()
@@ -649,11 +649,11 @@ class MyThread(threading.Thread):
             ("serveAssets/images/zhengdian/yang-head-1.bmp", "serveAssets/images/zhengdian/yang-head-2.bmp"),
             ("serveAssets/images/zhengdian/yang-body-1.bmp", "serveAssets/images/zhengdian/yang-body-2.bmp"),
             ("serveAssets/images/zhengdian/yang-foot-1.bmp", "serveAssets/images/zhengdian/yang-foot-2.bmp"),
-            ("serveAssets/images/zhengdian/huoyan-head-1.bmp", "serveAssets/images/zhengdian/huoyan-head-2.bmp"),
-            ("serveAssets/images/zhengdian/huoyan-body-1.bmp", "serveAssets/images/zhengdian/huoyan-body-2.bmp"),
-            # ("serveAssets/images/zhengdian/huoyan-foot-1.bmp", "serveAssets/images/zhengdian/huoyan-foot-2.bmp"),
-            ("serveAssets/images/zhengdian/hanbin-head-1.bmp", "serveAssets/images/zhengdian/hanbin-head-2.bmp"),
-            ("serveAssets/images/zhengdian/hanbin-body-1.bmp", "serveAssets/images/zhengdian/hanbin-body-2.bmp"),
+            # ("serveAssets/images/zhengdian/huoyan-head-1.bmp", "serveAssets/images/zhengdian/huoyan-head-2.bmp"),
+            # ("serveAssets/images/zhengdian/huoyan-body-1.bmp", "serveAssets/images/zhengdian/huoyan-body-2.bmp"),
+            # # ("serveAssets/images/zhengdian/huoyan-foot-1.bmp", "serveAssets/images/zhengdian/huoyan-foot-2.bmp"),
+            # ("serveAssets/images/zhengdian/hanbin-head-1.bmp", "serveAssets/images/zhengdian/hanbin-head-2.bmp"),
+            # ("serveAssets/images/zhengdian/hanbin-body-1.bmp", "serveAssets/images/zhengdian/hanbin-body-2.bmp"),
             # ("serveAssets/images/zhengdian/hanbin-foot-1.bmp", "serveAssets/images/zhengdian/hanbin-foot-2.bmp"),
         ]
         self.she_images = [
@@ -4300,7 +4300,7 @@ class MyThread(threading.Thread):
         if self._is_dragon_hour() or self._is_snake_hour():
             self.zhengdian_all_walk()
         else:
-            self.zhengdian_all_v3()
+            self.zhengdian_all_walk()
         time.sleep(0.5)
         self.zhengdian_flag = False
         if self.scriptName == "抢龙":
@@ -4577,7 +4577,7 @@ class MyThread(threading.Thread):
             if is_fei:
                 npc_count = len(last_item["delX"])
                 npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
-                self.find_zd_walk_v3(last_item["findAddress"], "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, npc_count, npc_zones, last_item["ditu"], last_item["city"])
+                self.find_zd_walk_v3(last_item["findAddress"], "单猴|单羊|单虎|牛|单兔", self._get_normal_zd_images(), None, npc_count, npc_zones, last_item["ditu"], last_item["city"])
 
     def zhengdian_all_new(self):
         print("开始整点！")
@@ -4598,7 +4598,7 @@ class MyThread(threading.Thread):
             )
             if is_fei:
                 self.find_zd_in_view(
-                    last_item["findAddress"], "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝"
+                    last_item["findAddress"], "单猴|单羊|单虎|牛|单兔"
                 )
 
     def zhengdian_all(self):
@@ -4707,7 +4707,7 @@ class MyThread(threading.Thread):
         time.sleep(1)
         # 走路模式：小绿人预检+走路搜索；非走路模式：小绿人导航
         if self.zhengdianFloor == "走路":
-            self.find_zd_walk_v3("九黎族祭坛", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, 0, [], "地图老虎", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
+            self.find_zd_walk_v3("九黎族祭坛", "单猴|单羊|单虎|牛|单兔", self._get_normal_zd_images(), None, 0, [], "地图老虎", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         else:
             self.find_zd_xiaolvren_v3("九黎族祭坛", 0, [], None, "地图老虎", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         time.sleep(0.5)
@@ -4721,7 +4721,7 @@ class MyThread(threading.Thread):
             "",
         )
         if self.zhengdianFloor == "走路":
-            self.find_zd_walk_v3("魔魂山", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, 0, [], "地图牛", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
+            self.find_zd_walk_v3("魔魂山", "单猴|单羊|单虎|牛|单兔", self._get_normal_zd_images(), None, 0, [], "地图牛", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         else:
             self.find_zd_xiaolvren_v3("魔魂山", 0, [], None, "地图牛", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         # 去魔谷西
@@ -4737,7 +4737,7 @@ class MyThread(threading.Thread):
         time.sleep(1)
         # 魔谷西有2个NPC，需传入npc_count和npc_zones
         if self.zhengdianFloor == "走路":
-            self.find_zd_walk_v3("魔谷西", "单猴|单羊|单虎|牛|单兔|火焰帝红|寒冰帝", self._get_normal_zd_images(), None, 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))], "地图羊", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
+            self.find_zd_walk_v3("魔谷西", "单猴|单羊|单虎|牛|单兔", self._get_normal_zd_images(), None, 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))], "地图羊", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         else:
             self.find_zd_xiaolvren_v3("魔谷西", 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))], None, "地图羊", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         time.sleep(0.5)
@@ -5211,7 +5211,8 @@ class MyThread(threading.Thread):
             if not has_zd and is_full_mode:
                 backup_paths = []
                 for pair in backup_images:
-                    for p in pair:
+                    items = pair if isinstance(pair, tuple) else (pair,)
+                    for p in items:
                         backup_paths.append(self.get_resource_path(p))
                 has_zd = self.find_pic_or_str(
                     "|".join(backup_paths), self.gameBottomLocation, 0
@@ -5227,8 +5228,10 @@ class MyThread(threading.Thread):
                 img1_sx_pos = None
                 img2_sx_pos = None
                 if not str_sx_pos and is_full_mode:
+                    first_item = backup_images[0]
+                    first_path = first_item[0] if isinstance(first_item, tuple) else first_item
                     img1_sx_pos = self.find_pic_or_str(
-                        self.get_resource_path(backup_images[0][0]),
+                        self.get_resource_path(first_path),
                         self.gameBottomLocation,
                         0,
                     )
@@ -5684,7 +5687,6 @@ class MyThread(threading.Thread):
                     condition.wait()
             if time.time() - query_time > 5:
                 return False
-            self.confidenceNum = 0.6
             if self.find_pic(
                     self.get_resource_path("serveAssets/images/zdzd111.bmp"),
                     self.gameLocation, 0):
@@ -5700,11 +5702,7 @@ class MyThread(threading.Thread):
                 self.confidenceNum = 0.9
                 print("被挑战")
                 return False
-            if self.find_pic(
-                    f"{self.get_resource_path('serveAssets/images/zhengdian/bucunzai.bmp')}",
-                    self.gameBottomLocation, 0) or self.find_str("不存在小字",
-                                                         self.gameBottomLocation,
-                                                         0):
+            if self.find_str("不存在",self.gameBottomLocation,0):
                 self.confidenceNum = 0.9
                 print("不存在")
                 return False
@@ -5938,8 +5936,9 @@ class MyThread(threading.Thread):
             all_positions.extend(str_positions)
             if backup_images:
                 for pair in backup_images:
+                    items = pair if isinstance(pair, tuple) else (pair,)
                     pic_path = "|".join(
-                        self.get_resource_path(p) for p in pair)
+                        self.get_resource_path(p) for p in items)
                     pic_positions = self._find_all_pic(pic_path,
                                                         self.gameLocation)
                     all_positions.extend(pic_positions)
@@ -14932,7 +14931,7 @@ class MyFrame(wx.Frame):
             sys.exit(0)
         frame = MyFrame()
         frame.Show()
-        threading.Thread(target=frame._init_async, daemon=True).start()
+        wx.CallAfter(frame._init_async)
 
     def _load_icon(self, name, size):
         path = self.get_resource_path("serveAssets/images/" + name)
@@ -17486,5 +17485,5 @@ if __name__ == "__main__":
 
     frame = MyFrame()
     frame.Show()
-    threading.Thread(target=frame._init_async, daemon=True).start()
+    wx.CallAfter(frame._init_async)
     application.MainLoop()
