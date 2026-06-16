@@ -3250,7 +3250,7 @@ class MyThread(threading.Thread):
             time.sleep(0.5)
             self.win1_dm.LeftClick()
         chushou = self.waitFor_team1(
-            self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),
+            f"{self.get_resource_path('serveAssets/images/chushou.bmp')}|{self.get_resource_path('serveAssets/images/chushou1.bmp')}",
             self.gameBottomLocation,
             5,
         )
@@ -3331,7 +3331,7 @@ class MyThread(threading.Thread):
             time.sleep(0.5)
             self.win2_dm.LeftClick()
         chushou = self.waitFor_team2(
-            self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),
+            f"{self.get_resource_path('serveAssets/images/chushou.bmp')}|{self.get_resource_path('serveAssets/images/chushou1.bmp')}",
             self.gameBottomLocation,
             5,
         )
@@ -3412,7 +3412,7 @@ class MyThread(threading.Thread):
             self.dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.dm.LeftClick()
-        chushou = self.waitFor(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"), self.gameBottomLocation, 5)
+        chushou = self.waitFor(f"{self.get_resource_path('serveAssets/images/chushou.bmp')}|{self.get_resource_path('serveAssets/images/chushou1.bmp')}", self.gameBottomLocation, 5)
         if chushou:
             self.dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3492,7 +3492,7 @@ class MyThread(threading.Thread):
             self.dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.dm.LeftClick()
-        chushou = self.waitFor(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),  self.gameBottomLocation, 5)
+        chushou = self.waitFor(f"{self.get_resource_path('serveAssets/images/chushou.bmp')}|{self.get_resource_path('serveAssets/images/chushou1.bmp')}",  self.gameBottomLocation, 5)
         if chushou:
             self.dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3572,7 +3572,7 @@ class MyThread(threading.Thread):
             self.win1_dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.win1_dm.LeftClick()
-        chushou = self.waitFor_team1(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"),  self.gameBottomLocation, 5)
+        chushou = self.waitFor_team1(f"{self.get_resource_path('serveAssets/images/chushou.bmp')}|{self.get_resource_path('serveAssets/images/chushou1.bmp')}",  self.gameBottomLocation, 5)
         if chushou:
             self.win1_dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)
@@ -3649,7 +3649,7 @@ class MyThread(threading.Thread):
             self.win2_dm.MoveTo(bagPos.x, bagPos.y)
             time.sleep(0.5)
             self.win2_dm.LeftClick()
-        chushou = self.waitFor_team2(self.get_resource_path(f"{'serveAssets/images/chushou.bmp'}|{'serveAssets/images/chushou1.bmp'}"), self.gameBottomLocation, 5)
+        chushou = self.waitFor_team2(f"{self.get_resource_path('serveAssets/images/chushou.bmp')}|{self.get_resource_path('serveAssets/images/chushou1.bmp')}", self.gameBottomLocation, 5)
         if chushou:
             self.win2_dm.MoveTo(chushou.x, chushou.y)
             time.sleep(0.5)

@@ -753,7 +753,9 @@ class CombatAutoScript:
         self.liubei_image = f"{self.get_resource_path('serveAssets/images/auto/miankong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/miankong2.bmp')}"  # 刘备图片路径（用于检测场上是否有刘备）
         self.tiandihudun_image = self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
         self.caocaobusi_image = f"{self.get_resource_path('serveAssets/images/auto/bumiexiongxin1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugeliangbeidong.bmp')}"
+        self.caocao_alive_image = self.get_resource_path("serveAssets/images/auto/caocaobusi.bmp")
         self.moguan_miansi_image = self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp")
+        self.moguan_verify_image = self.get_resource_path("serveAssets/images/auto/miansi1.bmp")
         self.zhugexuetiao_image = f"{self.get_resource_path('serveAssets/images/auto/zhugexuetiao.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao2.bmp')}"
         # 技能CD配置（回合数）
         self.skill_cd_config = {
@@ -2387,11 +2389,20 @@ class CombatAutoScript:
                 continue
             cfg = tracker_config[gen_name]
             region = self.hp_bar_regions[region_idx]
-            found = self.find_image(dm_index, cfg["image"], region, 0)
             prev = self.ally_undead_rounds.get(key, 0)
-            if cfg["mode"] == "disappear":
+            if gen_name == "曹操":
+                alive_region = (region[0], region[1], region[2], region[3] + 130)
+                alive_found = self.find_image(dm_index, self.caocao_alive_image, alive_region, 0)
+                busi_found = self.find_image(dm_index, cfg["image"], region, 0)
+                if busi_found:
+                    self.ally_undead_rounds[key] = 0
+                elif alive_found:
+                    self.ally_undead_rounds[key] = prev + 1
+            elif cfg["mode"] == "disappear":
+                found = self.find_image(dm_index, cfg["image"], region, 0)
                 self.ally_undead_rounds[key] = 0 if found else prev + 1
             else:
+                found = self.find_image(dm_index, cfg["image"], region, 0)
                 self.ally_undead_rounds[key] = prev + 1 if found else 0
 
     def _find_undead_region(self, account_index, general_name):
@@ -3896,9 +3907,10 @@ class CombatAutoScript:
                                     if gen_name == "曹操":
                                         verified = bool(self.find_image(account_index, self.caocaobusi_image, region, 0))
                                     elif gen_name == "刘备":
-                                        verified = not self.find_image(account_index, self.tiandihudun_image, region, 0)
+                                        verified = (bool(self.find_image(account_index, self.target_lantiao_image, region, 0))
+                                                    and not self.find_image(account_index, self.tiandihudun_image, region, 0))
                                     else:
-                                        verified = not self.find_image(account_index, self.moguan_miansi_image, region, 0)
+                                        verified = bool(self.find_image(account_index, self.moguan_verify_image, region, 0))
                                 else:
                                     verified = False
                                 if verified:
