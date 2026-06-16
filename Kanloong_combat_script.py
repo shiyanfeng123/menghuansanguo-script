@@ -4890,6 +4890,7 @@ class CombatAutoScript:
                 self.zhaohuan_index = 0
                 self.clear_zhugeliang = False
                 self.enable_persistent_liubei = True
+                self._last_kicked_info = None
                 self.attack_buff_tracker = {}
                 self.low_hp_accounts = {}
             except Exception:
