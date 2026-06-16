@@ -43,11 +43,8 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
-        id: build
         run: |
           pyinstaller serveScript.spec --noconfirm
-          $exit = $LASTEXITCODE
-          Write-Host "PyInstaller exit code: $exit"
           $exes = Get-ChildItem -Path dist -Filter "*.exe" -ErrorAction SilentlyContinue
           foreach ($e in $exes) {
             Write-Host "Found exe: $($e.FullName) ($($e.Length) bytes)"
@@ -58,32 +55,53 @@ jobs:
           }
         shell: pwsh
 
-      - name: Prepare release exe
+      - name: Prepare release
         run: |
           New-Item -ItemType Directory -Path release -Force
-          $exes = Get-ChildItem -Path dist -Filter "*.exe"
-          $src = $exes[0]
-          $dest = "release\脚本v26.6.1.exe"
-          Copy-Item $src.FullName -Destination $dest
-          Write-Host "Release exe: $dest ($((Get-Item $dest).Length) bytes)"
+          $src = (Get-ChildItem -Path dist -Filter "*.exe")[0]
+          Copy-Item $src.FullName -Destination "release\脚本v26.6.1.exe"
+          Compress-Archive -Path "release\脚本v26.6.1.exe" -DestinationPath "release\脚本v26.6.1.zip"
+          Write-Host "Release files ready"
         shell: pwsh
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: menghuansanguo-script
-          path: release/*.exe
+          path: release/*
           retention-days: 30
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: "脚本v26.6.1 自动构建 #${{ github.run_number }}"
-          body: |
-            由 GitHub Actions 自动构建
-            提交: ${{ github.sha }}
-            时间: ${{ github.event.head_commit.timestamp }}
-            直接下载下方 exe 文件即可使用
-          files: release/*.exe
+          name: "脚本v26.6.1 #${{ github.run_number }}"
+          body: "由 GitHub Actions 自动构建\n提交: ${{ github.sha }}"
+          files: release/*
           make_latest: true
+
+  deploy-server:
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download release zip
+        uses: actions/download-artifact@v4
+        with:
+          name: menghuansanguo-script
+          path: release
+
+      - name: Push to server repo
+        env:
+          SERVER_TOKEN: ${{ secrets.SERVER_TOKEN }}
+        run: |
+          git clone https://x-access-token:${SERVER_TOKEN}@github.com/shiyanfeng123/script-serve.git server-repo
+          cp release/*.zip server-repo/releases/
+          cd server-repo
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "自动更新 v26.6.1" && git push
