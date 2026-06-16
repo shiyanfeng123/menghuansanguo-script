@@ -2,12 +2,14 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [master]
+    branches: [master, main]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
@@ -17,25 +19,18 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Verify dm.dll exists
+      - name: Prepare build environment
         run: |
           if (-not (Test-Path "serveAssets\plugins\dm.dll")) {
-            Write-Host "dm.dll missing, restoring from git..."
-            git checkout HEAD -- serveAssets/plugins/dm.dll
-          }
-          if (Test-Path "serveAssets\plugins\dm.dll") {
-            Write-Host "dm.dll OK"
-          } else {
-            Write-Host "::error::dm.dll still missing after restore"
+            Write-Host "::error::dm.dll missing"
             exit 1
           }
-        shell: pwsh
-
-      - name: Ensure user_scripts directory
-        run: |
+          Write-Host "dm.dll OK, size: $((Get-Item serveAssets\plugins\dm.dll).Length)"
           if (-not (Test-Path "user_scripts")) {
             New-Item -ItemType Directory -Path user_scripts -Force
           }
+          python -c "import py_compile; py_compile.compile('serveScript.py', doraise=True)"
+          Write-Host "Python syntax check passed"
         shell: pwsh
 
       - name: Install dependencies
@@ -45,11 +40,36 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
-        run: pyinstaller serveScript.spec --noconfirm
+        id: build
+        run: |
+          pyinstaller serveScript.spec --noconfirm
+          $exit = $LASTEXITCODE
+          Write-Host "PyInstaller exit code: $exit"
+          $exes = Get-ChildItem -Path dist -Filter "*.exe" -ErrorAction SilentlyContinue
+          foreach ($e in $exes) {
+            Write-Host "Found exe: $($e.FullName) ($($e.Length) bytes)"
+          }
+          if ($exes.Count -eq 0) {
+            Write-Host "::error::No exe files found in dist/"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Prepare artifacts
+        run: |
+          New-Item -ItemType Directory -Path release -Force
+          $exes = Get-ChildItem -Path dist -Filter "*.exe"
+          foreach ($e in $exes) {
+            $version = "v26.6.1"
+            $dest = "release\menghuansanguo-script-$version.exe"
+            Copy-Item $e.FullName -Destination $dest
+            Write-Host "Copied to: $dest ($((Get-Item $dest).Length) bytes)"
+          }
+        shell: pwsh
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: menghuansanguo-script
-          path: dist/*.exe
+          path: release/*.exe
           retention-days: 30
