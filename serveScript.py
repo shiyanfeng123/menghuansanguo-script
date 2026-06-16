@@ -17018,7 +17018,7 @@ class UpdateDialog(wx.Dialog):
     C_MUTED = wx.Colour(70, 75, 85)
 
     def __init__(self, parent, remote_info):
-        super().__init__(parent, title="检查更新", size=(550, 450), pos=(260, 30),
+        super().__init__(parent, title="检查更新", size=(550, 560), pos=(260, 30),
                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.SetBackgroundColour(self.C_BG)
         self.current_version = UpdateDialog.get_current_version()
@@ -17026,9 +17026,16 @@ class UpdateDialog(wx.Dialog):
         self.latest_version = self.remote_info["version"]
         self.download_url = self.remote_info["download_url"]
         self.release_date = self.remote_info["release_date"]
+        self.force_update = self.remote_info.get("force_update", False)
+        self.announcement = self.remote_info.get("announcement", {})
 
         self.InitUI()
-        self.changelog_text.SetValue(self.remote_info["changelog"])
+        changelog = self.remote_info["changelog"]
+        if isinstance(changelog, list):
+            changelog_text = "\n".join("• " + item for item in changelog)
+        else:
+            changelog_text = changelog
+        self.changelog_text.SetValue(changelog_text)
 
         if self.current_version != self.latest_version:
             self.update_button.Show()
@@ -17039,6 +17046,11 @@ class UpdateDialog(wx.Dialog):
             self.status_label.SetLabel("已是最新版本")
             self.status_label.SetForegroundColour(self.C_MUTED)
 
+        if self.force_update and self.current_version != self.latest_version:
+            self.close_button.Disable()
+            self.close_button.SetLabel("请先更新")
+
+        self._populate_announcement()
         self.Layout()
 
     def InitUI(self):
@@ -17130,15 +17142,28 @@ class UpdateDialog(wx.Dialog):
         close_button.SetBackgroundColour(self.C_SURFACE)
         close_button.SetForegroundColour(self.C_TEXT)
         close_button.Bind(wx.EVT_BUTTON, lambda e: self.Close())
+        self.close_button = close_button
 
         button_sizer.Add(self.update_button, 0, wx.RIGHT, 8)
         button_sizer.AddStretchSpacer()
         button_sizer.Add(close_button, 0)
         button_panel.SetSizer(button_sizer)
 
+        self.announcement_panel = wx.Panel(content_panel)
+        self.announcement_panel.SetBackgroundColour(wx.Colour(255, 248, 230))
+        announcement_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.announcement_label = wx.StaticText(self.announcement_panel)
+        self.announcement_label.SetFont(label_font)
+        self.announcement_label.SetForegroundColour(wx.Colour(180, 100, 0))
+        self.announcement_label.Wrap(480)
+        announcement_sizer.Add(self.announcement_label, 0, wx.EXPAND | wx.ALL, 8)
+        self.announcement_panel.SetSizer(announcement_sizer)
+        self.announcement_panel.Hide()
+
+        vbox.Add(self.announcement_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         vbox.Add(version_panel, 0, wx.EXPAND | wx.ALL, 8)
         vbox.Add(changelog_panel, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        vbox.Add(button_panel, 0, wx.EXPAND | wx.BOTTOM, 8)
+        vbox.Add(button_panel, 0, wx.EXPAND | wx.ALL, 8)
         content_panel.SetSizer(vbox)
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -17149,6 +17174,14 @@ class UpdateDialog(wx.Dialog):
         dialog_sizer = wx.BoxSizer(wx.VERTICAL)
         dialog_sizer.Add(main_panel, 1, wx.EXPAND)
         self.SetSizer(dialog_sizer)
+
+    def _populate_announcement(self):
+        text = self.announcement.get("text", "")
+        if not text:
+            return
+        self.announcement_label.SetLabel(text)
+        self.announcement_label.Wrap(480)
+        self.announcement_panel.Show()
 
     def on_update(self, event):
         # 打开下载链接
@@ -17169,7 +17202,14 @@ class UpdateDialog(wx.Dialog):
 
     @staticmethod
     def get_current_version():
-        return "26.1.2"
+        try:
+            version_file = os.path.join(os.getcwd(), "version.json")
+            if os.path.exists(version_file):
+                with open(version_file, "r", encoding="utf-8") as f:
+                    return json.load(f).get("version", "0.0.0")
+        except Exception:
+            pass
+        return "0.0.0"
 
     def download_update(self):
         """
@@ -17243,11 +17283,20 @@ class UpdateDialog(wx.Dialog):
                     total = None
                 state["total"] = total
 
-                fname = (
-                        os.path.basename(urllib.parse.unquote(
-                            urllib.parse.urlparse(download_url).path))
-                        or f"脚本v{getattr(self, 'latest_version', 'unknown')}.exe"
-                )
+                fname = None
+                cd = resp.getheader("Content-Disposition", "") or ""
+                if "filename=" in cd:
+                    try:
+                        fname = cd.split("filename=")[-1].strip().strip('"').strip("'")
+                    except Exception:
+                        pass
+                if not fname:
+                    url_basename = os.path.basename(urllib.parse.unquote(
+                        urllib.parse.urlparse(download_url).path))
+                    if url_basename and "." in url_basename:
+                        fname = url_basename
+                if not fname:
+                    fname = f"脚本v{getattr(self, 'latest_version', 'unknown')}.exe"
                 dst = os.path.join(os.getcwd(), fname)
                 state["dst"] = dst
 
@@ -17436,38 +17485,56 @@ class UpdateDialog(wx.Dialog):
                 pass
 
     @staticmethod
-    def _install_update(zip_path):
-        import zipfile, shutil, subprocess, sys
+    def _install_update(exe_path):
+        import shutil, subprocess, sys
         try:
-            extract_dir = os.path.join(os.getcwd(), "_update_tmp")
-            if os.path.exists(extract_dir):
-                shutil.rmtree(extract_dir, ignore_errors=True)
-            os.makedirs(extract_dir, exist_ok=True)
+            current_exe = sys.executable
+            if not current_exe.lower().endswith(".exe"):
+                wx.MessageBox("当前不是以 exe 方式运行，无法自动更新。", "提示", wx.OK | wx.ICON_WARNING)
+                return
 
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(extract_dir)
+            backup_path = current_exe + ".old"
+            if os.path.exists(backup_path):
+                try:
+                    os.remove(backup_path)
+                except Exception:
+                    pass
 
-            for root, dirs, files in os.walk(extract_dir):
-                for f in files:
-                    src = os.path.join(root, f)
-                    rel = os.path.relpath(src, extract_dir)
-                    dest = os.path.join(os.getcwd(), rel)
-                    os.makedirs(os.path.dirname(dest), exist_ok=True)
-                    try:
-                        shutil.copy2(src, dest)
-                    except:
-                        pass
-
-            shutil.rmtree(extract_dir, ignore_errors=True)
             try:
-                os.remove(zip_path)
-            except:
+                os.rename(current_exe, backup_path)
+            except Exception:
+                wx.MessageBox("无法替换当前程序，请手动关闭后替换。", "错误", wx.OK | wx.ICON_ERROR)
+                return
+
+            try:
+                shutil.copy2(exe_path, current_exe)
+            except Exception as e:
+                try:
+                    os.rename(backup_path, current_exe)
+                except Exception:
+                    pass
+                wx.MessageBox(f"替换失败: {e}", "错误", wx.OK | wx.ICON_ERROR)
+                return
+
+            try:
+                os.remove(exe_path)
+            except Exception:
                 pass
 
+            try:
+                os.remove(backup_path)
+            except Exception:
+                pass
+
+            version_src = os.path.join(os.path.dirname(exe_path), "version.json") if os.path.dirname(exe_path) else None
+            if version_src and os.path.exists(version_src):
+                try:
+                    shutil.copy2(version_src, os.path.join(os.getcwd(), "version.json"))
+                except Exception:
+                    pass
+
             wx.MessageBox("更新安装完成，点击确定后将重启应用。", "安装完成", wx.OK | wx.ICON_INFORMATION)
-            exe = sys.executable
-            script = sys.argv[0]
-            subprocess.Popen([exe, script], close_fds=True)
+            subprocess.Popen([current_exe], close_fds=True)
             os._exit(0)
         except Exception as e:
             wx.MessageBox(f"安装更新失败: {e}", "错误", wx.OK | wx.ICON_ERROR)

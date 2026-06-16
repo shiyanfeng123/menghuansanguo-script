@@ -59,9 +59,14 @@ jobs:
       - name: Prepare release
         run: |
           New-Item -ItemType Directory -Path release -Force
+          $v = Get-Content "version.json" -Raw | ConvertFrom-Json
+          $ver = $v.version
+          Write-Host "Building version: $ver"
           $src = (Get-ChildItem -Path dist -Filter "*.exe")[0]
-          Copy-Item $src.FullName -Destination "release\脚本v26.6.1.exe"
-          Compress-Archive -Path "release\脚本v26.6.1.exe" -DestinationPath "release\脚本v26.6.1.zip"
+          Copy-Item $src.FullName -Destination "release\脚本v$ver.exe"
+          $v.release_date = (Get-Date -Format "yyyy-MM-dd")
+          $v | ConvertTo-Json -Depth 10 | Set-Content -Path "release\version.json" -Encoding UTF8
+          echo "VERSION=$ver" >> $env:GITHUB_ENV
           Write-Host "Release files ready"
         shell: pwsh
 
@@ -76,7 +81,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: "脚本v26.6.1 #${{ github.run_number }}"
-          body: "由 GitHub Actions 自动构建\n提交: ${{ github.sha }}"
+          name: "脚本v${{ env.VERSION }} #${{ github.run_number }}"
+          body: "由 GitHub Actions 自动构建\n版本: ${{ env.VERSION }}\n提交: ${{ github.sha }}"
           files: release/*
           make_latest: true
