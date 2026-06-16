@@ -5,6 +5,9 @@ on:
     branches: [master, main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -55,16 +58,14 @@ jobs:
           }
         shell: pwsh
 
-      - name: Prepare artifacts
+      - name: Prepare release exe
         run: |
           New-Item -ItemType Directory -Path release -Force
           $exes = Get-ChildItem -Path dist -Filter "*.exe"
-          foreach ($e in $exes) {
-            $version = "v26.6.1"
-            $dest = "release\menghuansanguo-script-$version.exe"
-            Copy-Item $e.FullName -Destination $dest
-            Write-Host "Copied to: $dest ($((Get-Item $dest).Length) bytes)"
-          }
+          $src = $exes[0]
+          $dest = "release\menghuansanguo-script.exe"
+          Copy-Item $src.FullName -Destination $dest
+          Write-Host "Release exe: $dest ($((Get-Item $dest).Length) bytes)"
         shell: pwsh
 
       - name: Upload EXE artifact
@@ -73,3 +74,16 @@ jobs:
           name: menghuansanguo-script
           path: release/*.exe
           retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "脚本v26.6.1 自动构建 #${{ github.run_number }}"
+          body: |
+            由 GitHub Actions 自动构建
+            提交: ${{ github.sha }}
+            时间: ${{ github.event.head_commit.timestamp }}
+            直接下载下方 exe 文件即可使用
+          files: release/menghuansanguo-script.exe
+          make_latest: true
