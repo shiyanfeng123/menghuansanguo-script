@@ -79,29 +79,3 @@ jobs:
           body: "由 GitHub Actions 自动构建\n提交: ${{ github.sha }}"
           files: release/*
           make_latest: true
-
-  deploy-server:
-    needs: build
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download release zip
-        uses: actions/download-artifact@v4
-        with:
-          name: menghuansanguo-script
-          path: release
-
-      - name: Push to server repo
-        env:
-          SERVER_TOKEN: ${{ secrets.SERVER_TOKEN }}
-        run: |
-          git clone https://x-access-token:${SERVER_TOKEN}@github.com/shiyanfeng123/script-serve.git server-repo
-          cp release/*.zip server-repo/releases/
-          cd server-repo
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add .
-          git diff --cached --quiet || git commit -m "自动更新 v26.6.1" && git push
