@@ -82,13 +82,30 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
+          python -m pip install --upgrade pip wheel setuptools
+          pip install --no-cache-dir pywin32-ctypes comtypes psutil pyttsx3 keyboard requests
+          pip install --no-cache-dir wxPython
+          pip install --no-cache-dir pyinstaller pyinstaller-hooks-contrib
+          python -c "import wx; print('wxPython OK:', wx.__version__)"
+          python -c "import psutil; print('psutil OK:', psutil.__version__)"
+          python -c "import comtypes; print('comtypes OK')"
+          python -c "import win32ctypes; print('win32ctypes OK')"
+          python -c "import pyttsx3; print('pyttsx3 OK')"
+          python -c "import keyboard; print('keyboard OK')"
+          python -c "from comtypes.client import CreateObject; print('comtypes.client OK')"
+          Write-Host "All dependencies verified"
+        shell: pwsh
+
+      - name: Clean old build
+        run: |
+          if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+          if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
+          Write-Host "Cleaned old build directories"
+        shell: pwsh
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller serveScript.spec --noconfirm
+          pyinstaller serveScript.spec --noconfirm --clean
           $exes = Get-ChildItem -Path dist -Filter "*.exe" -ErrorAction SilentlyContinue
           foreach ($e in $exes) {
             Write-Host "Found exe: $($e.FullName) ($($e.Length) bytes)"
