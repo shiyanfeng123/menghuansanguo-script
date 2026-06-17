@@ -2586,7 +2586,7 @@ class CombatAutoScript:
                 self.liubei_missing_count += 1
 
                 # 如果连续10次未找到，设置标志为False
-                if self.liubei_missing_count >= 4:
+                if self.liubei_missing_count >= 7:
                     if self.has_liubei_on_field:
                         self.has_liubei_on_field = False
 
