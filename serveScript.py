@@ -5827,7 +5827,7 @@ class MyThread(threading.Thread):
             xiaolvren_bmp = self.get_resource_path(
                 "serveAssets/images/zhengdian/xiaolvren.bmp")
             dx, dy, dw, dh = self.dituLocation
-            result = self.dm.FindPicEx(dx, dy, dw, dh, xiaolvren_bmp, "", 0.9, 0)
+            result = self.dm.FindPicEx(dx, dy, dw, dh, xiaolvren_bmp, "", 0.7, 0)
             if not result:
                 return 0
             return len(result.split("|"))
@@ -5871,8 +5871,8 @@ class MyThread(threading.Thread):
         self.confidenceNum = 0.6
         if not find_left_flag:
             if self.find_pic_or_str(
-                    f"{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen1.bmp')}",
-                    (725, 46, 761, 94), 0):
+                    f"{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen2.bmp')}",
+                    (717, 46, 761, 94), 0):
                 self.dm.MoveTo(right_x, rand_y)
                 time.sleep(0.001)
                 self.dm.LeftClick()
@@ -5885,7 +5885,7 @@ class MyThread(threading.Thread):
         else:
             if self.find_pic_or_str(
                     f"{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xiaobairen1.bmp')}",
-                    (859, 41, 877, 96), 0):
+                    (859, 41, 899, 96), 0):
                 reached_edge = True
                 new_flag = find_left_flag
             else:
@@ -5963,6 +5963,8 @@ class MyThread(threading.Thread):
                         break
                     else:
                         pass
+                if ditu_name and city_img:
+                    self._ensure_on_map(ditu_name, city_img, base_image)
                 continue
             find_left_flag, reached_edge = self._walk_one_step(find_left_flag)
             if ditu_name and city_img:
