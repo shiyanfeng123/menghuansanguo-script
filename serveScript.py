@@ -16190,7 +16190,7 @@ class MyDialog(wx.Dialog):
                         off_btn.Hide(); on_btn.Show(); container.Layout()
                     else:
                         on_btn.Hide(); off_btn.Show(); container.Layout()
-                container, off_btn, on_btn = _make_toggle_btn(panel, "独立❌", "独立✅", _toggle1)
+                container, off_btn, on_btn = _make_toggle_btn(panel, "独立✅", "独立✅", _toggle1)
                 self.independent_win1_off = off_btn
                 self.independent_win1_on = on_btn
                 tm.Add(container, 0, wx.ALIGN_CENTER_VERTICAL)
@@ -16200,13 +16200,14 @@ class MyDialog(wx.Dialog):
                         off_btn.Hide(); on_btn.Show(); container.Layout()
                     else:
                         on_btn.Hide(); off_btn.Show(); container.Layout()
-                container, off_btn, on_btn = _make_toggle_btn(panel, "独立❌", "独立✅", _toggle2)
+                container, off_btn, on_btn = _make_toggle_btn(panel, "独立✅", "独立✅", _toggle2)
                 self.independent_win2_off = off_btn
                 self.independent_win2_on = on_btn
                 tm.Add(container, 0, wx.ALIGN_CENTER_VERTICAL)
         main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
-        if has_script != "free":
+        # 暂时修改
+        if has_script != "free1":
             liubei_row = wx.BoxSizer(wx.HORIZONTAL)
             liubei_row_label = wx.StaticText(panel, label="刘备:")
             liubei_row_label.SetForegroundColour(self.C_MUTED)
@@ -16386,8 +16387,9 @@ class MyDialog(wx.Dialog):
         self.check_boxes = []
         opts = ["战", "镇", "噬", "溶", "丹", "五", "云", "名", "八", "鼠", "英", "庐", "红", "渊", "帮", "官", "镜", "卖", "V", "整", "全"]
         for opt in opts:
-            if opt == "整" and has_script == "free":
-                continue
+            # 暂时注释
+            # if opt == "整" and has_script == "free":
+            #     continue
             cb = wx.CheckBox(day_panel, label=opt)
             cb.SetForegroundColour(self.C_MUTED)
             cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
