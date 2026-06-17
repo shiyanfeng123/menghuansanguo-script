@@ -342,16 +342,19 @@ class MyThread(threading.Thread):
             self.combat_auto_running = False
 
             if self.combat_auto_instance:
+                self.combat_auto_instance.polling_running = False
                 if self.combat_auto_instance.battle_report_dialog:
                     self.combat_auto_instance.battle_report_dialog.set_running(False)
+
+            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+                self.combat_auto_thread.join(timeout=5)
+            self.combat_auto_thread = None
+
+            if self.combat_auto_instance:
                 try:
                     self.combat_auto_instance.reset_state()
                 except Exception as e:
                     print(f"重置战斗脚本状态时出错: {e}")
-
-            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
-                self.combat_auto_thread.join(timeout=3)
-            self.combat_auto_thread = None
 
         except Exception as e:
             print(f"停止战斗自动操作失败: {e}")
@@ -685,7 +688,13 @@ class MyThread(threading.Thread):
                 time.sleep(5)
                 self._stop_combat_auto()
         elif self.scriptName == "测试":
-            self.new_zhengdian()
+            self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
+            time.sleep(5)
+            self._stop_combat_auto()
+            self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
+            time.sleep(5)
+            self._stop_combat_auto()
+            # self.new_zhengdian()
         elif self.scriptName == "四象":
             if not self.find_pic(self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"), self.dituLocation, 0):
                 self.go_in_ditu(
@@ -4241,6 +4250,7 @@ class MyThread(threading.Thread):
         if self.overed:
             return None
         print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
+        zhengdian_hour = int(time.localtime().tm_hour) + 1
         with condition:
             if self.stoped:
                 condition.wait()
@@ -4257,7 +4267,7 @@ class MyThread(threading.Thread):
                 break
             time.sleep(1)  # 每秒钟检查一次
         # 蛇+全打/全打：蛇时辰走路搜索蛇
-        if self.zhengdianFloor in ["蛇+全打"] and self._is_snake_hour():
+        if self.zhengdianFloor in ["蛇+全打"] and self._is_snake_hour(zhengdian_hour):
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
             for i in range(14):
@@ -4277,7 +4287,7 @@ class MyThread(threading.Thread):
                     npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
                     self.find_zd_walk_v3(last_item1["findAddress"], "蛇", self._get_she_images(), "蛇", npc_count1, npc_zones1, last_item1["ditu"], last_item1["city"])
         # 龙+全打/蛇+全打/全打：龙时辰走路搜索龙
-        if self.zhengdianFloor in ["龙+全打", "蛇+全打"] and self._is_dragon_hour():
+        if self.zhengdianFloor in ["龙+全打", "蛇+全打"] and self._is_dragon_hour(zhengdian_hour):
             shuffled1 = self.zdList.copy()
             random.shuffle(shuffled1)
             for i in range(14):
@@ -4296,11 +4306,8 @@ class MyThread(threading.Thread):
                     npc_count1 = len(last_item1["delX"])
                     npc_zones1 = self._get_npc_zones_from_delxy(last_item1["delX"], last_item1["delY"])
                     self.find_zd_walk_v3(last_item1["findAddress"], "单龙", self._get_long_images(), None, npc_count1, npc_zones1, last_item1["ditu"], last_item1["city"])
-        # 龙/蛇时辰：走路搜索普通整点，避免小绿人误打龙/蛇
-        if self._is_dragon_hour() or self._is_snake_hour():
-            self.zhengdian_all_walk()
-        else:
-            self.zhengdian_all_walk()
+        # 龙/蛇时辰：视野搜索普通整点，避免小绿人误打龙/蛇
+        self.zhengdian_all_inview()
         time.sleep(0.5)
         self.zhengdian_flag = False
         if self.scriptName == "抢龙":
@@ -4578,6 +4585,28 @@ class MyThread(threading.Thread):
                 npc_count = len(last_item["delX"])
                 npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
                 self.find_zd_walk_v3(last_item["findAddress"], "单猴|单羊|单虎|牛|单兔", self._get_normal_zd_images(), None, npc_count, npc_zones, last_item["ditu"], last_item["city"])
+
+    def zhengdian_all_inview(self):
+        print("开始整点(视野搜索)！")
+        self.clear_info()
+        shuffled = self.zdList.copy()
+        random.shuffle(shuffled)
+        for i in range(14):
+            last_item = shuffled[-1]
+            shuffled = shuffled[:-1]
+            print(f"飞{last_item['ditu']}")
+            is_fei = self.go_in_ditu(
+                last_item["ditu"],
+                last_item["city"],
+                last_item["findAddress"],
+                "",
+                "",
+                True,
+            )
+            if is_fei:
+                self.find_zd_in_view(
+                    last_item["findAddress"], "单猴|单羊|单虎|牛|单兔", self._get_normal_zd_images()
+                )
 
     def zhengdian_all_new(self):
         print("开始整点！")
@@ -4980,6 +5009,7 @@ class MyThread(threading.Thread):
         if self.overed:
             return
         print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
+        zhengdian_hour = int(time.localtime().tm_hour) + 1
         self.clear_info()
         shuffled = self.zd49List.copy()
         random.shuffle(shuffled)
@@ -4994,7 +5024,7 @@ class MyThread(threading.Thread):
                 break
             time.sleep(1)
         # 49蛇+全打/49整点/49龙+全打：蛇时辰走路搜索蛇
-        if self.zhengdianFloor in ["49蛇+全打", "49整点", "49龙+全打"] and self._is_snake_hour():
+        if self.zhengdianFloor in ["49蛇+全打", "49整点", "49龙+全打"] and self._is_snake_hour(zhengdian_hour):
             shuffled_she = self.zd49List.copy()
             random.shuffle(shuffled_she)
             for i in range(8):
@@ -5014,7 +5044,7 @@ class MyThread(threading.Thread):
                     npc_zones = self._get_npc_zones_from_delxy(last_item["delX"], last_item["delY"])
                     self.find_zd_walk_v3(last_item["findAddress"], "蛇", self._get_she_images(), "蛇", npc_count, npc_zones, last_item["ditu"], last_item["city"])
         # 49蛇+全打/49龙+全打/49整点：龙时辰走路搜索龙
-        if self.zhengdianFloor in ["49蛇+全打", "49龙+全打", "49整点"] and self._is_dragon_hour():
+        if self.zhengdianFloor in ["49蛇+全打", "49龙+全打", "49整点"] and self._is_dragon_hour(zhengdian_hour):
             shuffled_long = self.zd49List.copy()
             random.shuffle(shuffled_long)
             for i in range(8):
@@ -5254,11 +5284,13 @@ class MyThread(threading.Thread):
                     self.dm.LeftClick()
                     self.color_format = "b@ffff00-000000|fff200-000000"
                     has_zhengdian = self.waitFor("打就打1",
-                                                 self.gameBottomLocation, 5)
+                                                 self.gameBottomLocation, 3)
                     self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+                    if not has_zhengdian:
+                        has_zhengdian = self.waitFor("打就打", self.gameBottomLocation, 0.3)   
                     if has_zhengdian:
-                        self.dm.MoveTo(int(has_zhengdian.x + 5),
-                                       int(has_zhengdian.y + 5))
+                        self.dm.MoveTo(int(has_zhengdian.x + 16),
+                                       int(has_zhengdian.y + 88))
                         time.sleep(0.001)
                         self.dm.LeftClick()
                         queryTime = time.time()
@@ -5280,12 +5312,7 @@ class MyThread(threading.Thread):
                             ):
                                 zhengdianHas = True
                                 break
-                            yourendaLocation1 = self.find_pic(
-                                f"{self.get_resource_path('serveAssets/images/zhengdian/beitiaozhan.bmp')}",
-                                self.gameBottomLocation,
-                                0,
-                            )
-                            if yourendaLocation1:
+                            if self.find_pic(f"{self.get_resource_path('serveAssets/images/zhengdian/beitiaozhan.bmp')}",self.gameBottomLocation, 0) or self.find_str("挑战小字",self.gameBottomLocation,0):
                                 print("整点被挑战了")
                                 zhengdianHas = False
                                 if is_full_mode:
@@ -5298,12 +5325,7 @@ class MyThread(threading.Thread):
                                 else:
                                     str_last_y = sx_pos.y
                                 break
-                            bucunzai = self.find_pic(
-                                f"{self.get_resource_path('serveAssets/images/zhengdian/bucunzai.bmp')}",
-                                self.gameBottomLocation,
-                                0,
-                            )
-                            if bucunzai:
+                            if self.find_str("不存在",self.gameBottomLocation,0):
                                 print("整点消失了")
                                 zhengdianHas = False
                                 break
@@ -5316,16 +5338,16 @@ class MyThread(threading.Thread):
                             if auto_combat_key is not None and self.combat_auto_flag and find_sx == auto_combat_key:
                                 self._stop_combat_auto()
                             print(f"打了{find_sx}")
-            self.confidenceNum = 0.6
-            left_x = random.randint(738, 748)
+            self.confidenceNum = 0.7
+            left_x = random.randint(742, 758)
             rand_y = 80
-            right_x = random.randint(861, 871)
+            right_x = random.randint(859, 870)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
             if not find_left_flag:
                 if self.find_pic_or_str(
                         self.get_resource_path(
                             "serveAssets/images/zhengdian/xiaobairen.bmp"),
-                        (725, 46, 751, 94),
+                        (717, 46, 761, 94),
                         0,
                 ):
                     self.dm.MoveTo(right_x, rand_y)
@@ -5340,7 +5362,7 @@ class MyThread(threading.Thread):
                 if self.find_pic_or_str(
                         self.get_resource_path(
                             "serveAssets/images/zhengdian/xiaobairen.bmp"),
-                        (861, 41, 881, 96),
+                        (859, 41, 899, 96),
                         0,
                 ):
                     self.confidenceNum = 0.9
@@ -5806,11 +5828,15 @@ class MyThread(threading.Thread):
                 return True
         return False
 
-    def _is_dragon_hour(self):
-        return int(time.localtime().tm_hour) in [3, 7, 11, 15, 19, 23]
+    def _is_dragon_hour(self, hour=None):
+        if hour is None:
+            hour = int(time.localtime().tm_hour)
+        return hour in [3, 7, 11, 15, 19, 23]
 
-    def _is_snake_hour(self):
-        return int(time.localtime().tm_hour) in [2, 6, 10, 14, 18, 22]
+    def _is_snake_hour(self, hour=None):
+        if hour is None:
+            hour = int(time.localtime().tm_hour)
+        return hour in [2, 6, 10, 14, 18, 22]
 
     def _get_normal_zd_images(self):
         return self.normal_zd_images
@@ -5897,9 +5923,12 @@ class MyThread(threading.Thread):
         return new_flag, reached_edge
 
     def _ensure_on_map(self, ditu_name, city_img, break_address):
-        if self.waitFor(break_address, self.dituLocation, 0.3):
+        if self.waitFor(break_address, self.dituLocation, 1):
             return
-        # print(f"不在{break_address}，走回去...")
+        time.sleep(0.5)
+        if self.waitFor(break_address, self.dituLocation, 1):
+            return
+        print(f"[walk_v3] 不在{break_address}，走回去...")
         self.go_in_ditu(ditu_name, city_img, break_address, "", "", is_fei=False)
 
     # V3走路模式：小绿人计数预检+走路搜索，用于龙蛇整点和走路模式
@@ -5912,9 +5941,30 @@ class MyThread(threading.Thread):
         if npc_zones is None:
             npc_zones = []
         find_left_flag = False
-        attacked_y_set = set()
+        attacked_set = set()
         walk_rounds = 0
         max_walk_rounds = 60
+        is_full_mode = backup_images is not None
+        just_combated = False
+        ZD_COLOR = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+        KEYWORD_PREFIX = {
+            "牛": "niu", "单虎": "hu", "单兔": "tu",
+            "单猴": "hou", "单羊": "yang", "蛇": "she", "单龙": "long",
+        }
+        unit_groups = {}
+        if is_full_mode:
+            for pair in backup_images:
+                items = pair if isinstance(pair, tuple) else (pair,)
+                for p in items:
+                    fname = p.split("/")[-1].lower()
+                    for kw, prefix in KEYWORD_PREFIX.items():
+                        if fname.startswith(prefix):
+                            if kw not in unit_groups:
+                                unit_groups[kw] = []
+                            unit_groups[kw].append(p)
+                            break
+        text_keywords = find_sx.split("|")
+        print(f"[walk_v3] 开始 搜索={find_sx} npc_count={npc_count} 地图={ditu_name}")
         while True:
             if self.overed or self.check_stop_or_over():
                 return
@@ -5922,59 +5972,139 @@ class MyThread(threading.Thread):
                 if self.stoped:
                     condition.wait()
             self.waitFor(base_image, self.dituLocation)
-            green_count = self._count_xiaolvren()
-            if green_count <= npc_count:
-                time.sleep(0.5)
-                if self._count_xiaolvren() <= npc_count:
-                    self.confidenceNum = 0.9
-                    return
-            self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+            if not just_combated:
+                green_count = self._count_xiaolvren()
+                if green_count <= npc_count:
+                    time.sleep(0.5)
+                    if self._count_xiaolvren() <= npc_count:
+                        self.color_format = ZD_COLOR
+                        self.confidenceNum = 0.7
+                        pre_search = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
+                        if not pre_search and is_full_mode:
+                            backup_paths = []
+                            for pair in backup_images:
+                                items = pair if isinstance(pair, tuple) else (pair,)
+                                for p in items:
+                                    backup_paths.append(self.get_resource_path(p))
+                            pre_search = self.find_pic_or_str(
+                                "|".join(backup_paths), self.gameLocation, 0
+                            )
+                        self.confidenceNum = 0.9
+                        if not pre_search:
+                            print(f"[walk_v3] 小绿人{green_count}<={npc_count}且无目标，退出")
+                            return
+                        print(f"[walk_v3] 小绿人{green_count}<={npc_count}但搜到目标，继续")
+            else:
+                just_combated = False
+            self.color_format = ZD_COLOR
             self.confidenceNum = 0.7
-            all_positions = []
-            str_positions = self._find_all_str(find_sx, self.gameBottomLocation)
-            all_positions.extend(str_positions)
-            if backup_images:
+            has_zd = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
+            if not has_zd and is_full_mode:
+                backup_paths = []
                 for pair in backup_images:
                     items = pair if isinstance(pair, tuple) else (pair,)
-                    pic_path = "|".join(
-                        self.get_resource_path(p) for p in items)
-                    pic_positions = self._find_all_pic(pic_path,
-                                                        self.gameLocation)
-                    all_positions.extend(pic_positions)
-            candidates = self._merge_deduplicate_sort(
-                all_positions, set(), []
-            )
+                    for p in items:
+                        backup_paths.append(self.get_resource_path(p))
+                has_zd = self.find_pic_or_str(
+                    "|".join(backup_paths), self.gameLocation, 0
+                )
             self.confidenceNum = 0.9
-            if candidates:
-                for target in candidates:
-                    if any(abs(target.y - ay) <= 10 for ay in attacked_y_set):
-                        continue
-                    attacked_y_set.add(target.y)
-                    success = self._try_attack_zd(
-                        target, base_image, auto_combat_key
-                    )
-                    if success:
-                        self.daZhengDianCount += 1
-                        print(f"打了第{self.daZhengDianCount}个整点")
-                        self.waitFor(base_image, self.dituLocation)
-                        self._wait_xiaolvren_stable()
-                        attacked_y_set.clear()
-                        break
-                    else:
-                        pass
-                if ditu_name and city_img:
-                    self._ensure_on_map(ditu_name, city_img, base_image)
-                continue
+            if has_zd and has_zd.x >= 80:
+                identified_keyword = None
+                if is_full_mode and unit_groups:
+                    for kw in text_keywords:
+                        self.color_format = ZD_COLOR
+                        self.confidenceNum = 0.7
+                        str_positions = self._find_all_str(kw, self.gameBottomLocation)
+                        self.confidenceNum = 0.9
+                        for sp in str_positions:
+                            if abs(sp.x - has_zd.x) <= 50 and abs(sp.y - has_zd.y) <= 50:
+                                identified_keyword = kw
+                                break
+                        if identified_keyword:
+                            break
+                    if not identified_keyword:
+                        for kw, img_list in unit_groups.items():
+                            unit_img_paths = "|".join(
+                                self.get_resource_path(p) for p in img_list
+                            )
+                            self.color_format = ZD_COLOR
+                            self.confidenceNum = 0.7
+                            pic_positions = self._find_all_pic(unit_img_paths, self.gameLocation)
+                            self.confidenceNum = 0.9
+                            for pp in pic_positions:
+                                if abs(pp.x - has_zd.x) <= 50 and abs(pp.y - has_zd.y) <= 50:
+                                    identified_keyword = kw
+                                    break
+                            if identified_keyword:
+                                break
+                    if identified_keyword:
+                        print(f"[walk_v3] 识别单位=[{identified_keyword}] pos=({has_zd.x},{has_zd.y})")
+                skip = any(abs(has_zd.x - ax) <= 10 and abs(has_zd.y - ay) <= 10
+                           for ax, ay in attacked_set)
+                if not skip:
+                    self.dm.KeyPressChar("left")
+                    sx_pos = None
+                    if identified_keyword and is_full_mode:
+                        self.color_format = ZD_COLOR
+                        self.confidenceNum = 0.7
+                        sx_pos = self.find_pic_or_str(identified_keyword, self.gameBottomLocation, 0)
+                        if not sx_pos and identified_keyword in unit_groups:
+                            unit_img_paths = "|".join(
+                                self.get_resource_path(p) for p in unit_groups[identified_keyword]
+                            )
+                            sx_pos = self.find_pic_or_str(
+                                unit_img_paths, self.gameBottomLocation, 0
+                            )
+                        self.confidenceNum = 0.9
+                        if sx_pos:
+                            print(f"[walk_v3] 精搜[{identified_keyword}]成功 pos=({sx_pos.x},{sx_pos.y})")
+                    if not sx_pos:
+                        self.color_format = ZD_COLOR
+                        self.confidenceNum = 0.7
+                        sx_pos = self.find_pic_or_str(find_sx, self.gameBottomLocation, 0)
+                        if not sx_pos and is_full_mode:
+                            backup_paths = []
+                            for pair in backup_images:
+                                items = pair if isinstance(pair, tuple) else (pair,)
+                                for p in items:
+                                    backup_paths.append(self.get_resource_path(p))
+                            sx_pos = self.find_pic_or_str(
+                                "|".join(backup_paths), self.gameBottomLocation, 0
+                            )
+                        self.confidenceNum = 0.9
+                    if sx_pos and sx_pos.x >= 80:
+                        skip2 = any(abs(sx_pos.x - ax) <= 10 and abs(sx_pos.y - ay) <= 10
+                                    for ax, ay in attacked_set)
+                        if not skip2:
+                            attacked_set.add((sx_pos.x, sx_pos.y))
+                            unit_info = f"[{identified_keyword}]" if identified_keyword else ""
+                            print(f"[walk_v3] 尝试攻击{unit_info} target=({sx_pos.x},{sx_pos.y})")
+                            success = self._try_attack_zd(
+                                sx_pos, base_image, auto_combat_key
+                            )
+                            if success:
+                                self.daZhengDianCount += 1
+                                print(f"打了第{self.daZhengDianCount}个整点")
+                                self.waitFor(base_image, self.dituLocation)
+                                time.sleep(0.5)
+                                attacked_set.clear()
+                                just_combated = True
+                                continue
+                            else:
+                                print(f"[walk_v3] 攻击失败 target=({sx_pos.x},{sx_pos.y})")
             find_left_flag, reached_edge = self._walk_one_step(find_left_flag)
             if ditu_name and city_img:
                 self._ensure_on_map(ditu_name, city_img, base_image)
             walk_rounds += 1
+            if walk_rounds % 10 == 0:
+                print(f"[walk_v3] 走路第{walk_rounds}轮")
             if reached_edge:
-                # print(f"{base_image}: 走完一圈未找到{find_sx}")
+                print(f"[walk_v3] {base_image}: 走完一圈未找到{find_sx}")
                 self.confidenceNum = 0.9
                 return
             if walk_rounds >= max_walk_rounds:
-                # print(f"{base_image}: 走路超过{max_walk_rounds}轮，安全退出")
+                print(f"[walk_v3] {base_image}: 走路超过{max_walk_rounds}轮，安全退出")
                 self.confidenceNum = 0.9
                 return
 
@@ -6106,8 +6236,6 @@ class MyThread(threading.Thread):
                     time.sleep(0.05)
 
                 if not found_btn:
-                    self.dm.KeyPressChar("esc")
-                    time.sleep(0.3)
                     attacked_set.add((tl_x, tl_y))
                     continue
                 if auto_combat_key is not None and self.combat_auto_flag:
@@ -11984,6 +12112,120 @@ class MyThread(threading.Thread):
         if not isInMojing:
             print("四象没次数了")
             return False
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            '玄水马龙',
+            '玄水马龙',
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+            self.gameBottomLocation,
+            "",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
+            self.dituLocation,
+            "814,90",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
+            '玄武',
+            '玄武',
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+            self.gameBottomLocation,
+            "858,64",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.dituLocation,
+            "748,71",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
+            self.dituLocation,
+            "855,65",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
+            '朱雀',
+            '朱雀',
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+            self.gameBottomLocation,
+            "851,68",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.dituLocation,
+            "755,83",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
+            self.dituLocation,
+            "810,52",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
+            '青龙',
+            '青龙',
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+            self.gameBottomLocation,
+            "857,88",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.dituLocation,
+            "752,73",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
+            self.dituLocation,
+            "768,70",
+        )
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
+            '白虎',
+            '白虎',
+            self.gameBottomLocation,
+            self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+            self.gameBottomLocation,
+            "862,67",
+        )
+        self.outScript(
+            self.get_resource_path(
+                "serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
+        )
+        return True
+
         
     # 黑风循环
     def heifengWhile(self):
@@ -14815,7 +15057,7 @@ class MyFrame(wx.Frame):
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
-                # "测试",
+                "测试",
             ],
         )
         self.free_choices = (
