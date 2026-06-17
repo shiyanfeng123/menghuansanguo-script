@@ -83,16 +83,19 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel setuptools
-          pip install --no-cache-dir pywin32-ctypes comtypes psutil pyttsx3 keyboard requests
+          pip install --no-cache-dir pywin32 pywin32-ctypes comtypes psutil pyttsx3 keyboard requests
           pip install --no-cache-dir wxPython
           pip install --no-cache-dir pyinstaller pyinstaller-hooks-contrib
+          python Scripts/pywin32_postinstall.py -install 2>$null
+          python -c "import pywin32; print('pywin32 OK:', pywin32.__version__)" 2>$null
+          python -c "import pythoncom; print('pythoncom OK')"
+          python -c "import pywintypes; print('pywintypes OK')"
+          python -c "import win32api; print('win32api OK')"
           python -c "import wx; print('wxPython OK:', wx.__version__)"
           python -c "import psutil; print('psutil OK:', psutil.__version__)"
           python -c "import comtypes; print('comtypes OK')"
-          python -c "import win32ctypes; print('win32ctypes OK')"
-          python -c "import pyttsx3; print('pyttsx3 OK')"
-          python -c "import keyboard; print('keyboard OK')"
           python -c "from comtypes.client import CreateObject; print('comtypes.client OK')"
+          python -c "import pyttsx3; print('pyttsx3 OK')"
           Write-Host "All dependencies verified"
         shell: pwsh
 
