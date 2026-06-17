@@ -11,8 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
@@ -35,17 +33,82 @@ jobs:
           }
           python -c "import py_compile; py_compile.compile('serveScript.py', doraise=True)"
           Write-Host "Python syntax check passed"
+          $v = Get-Content "version.json" -Raw | ConvertFrom-Json
+          $ver = $v.version
+          $parts = $ver -split '\.'
+          $major = [int]$parts[0]
+          $minor = [int]$parts[1]
+          $patch = if ($parts.Count -gt 2) { [int]$parts[2] } else { 0 }
+          $vi = @"
+          # UTF-8 编码
+          VSVersionInfo(
+            ffi=FixedFileInfo(
+              filevers=($major, $minor, $patch, 0),
+              prodvers=($major, $minor, $patch, 0),
+              mask=0x3f,
+              flags=0x0,
+              OS=0x40004,
+              fileType=0x1,
+              subtype=0x0,
+              date=(0, 0)
+            ),
+            kids=[
+              StringFileInfo(
+                [
+                  StringTable(
+                    '040904b0',
+                    [
+                      StringStruct('CompanyName', '忆安'),
+                      StringStruct('FileDescription', '忆安的脚本'),
+                      StringStruct('FileVersion', '$ver.0'),
+                      StringStruct('InternalName', 'python'),
+                      StringStruct('LegalCopyright', 'LegalCopyright'),
+                      StringStruct('OriginalFilename', '脚本.exe'),
+                      StringStruct('ProductName', '脚本'),
+                      StringStruct('ProductVersion', '$ver.0')
+                    ])
+                ]),
+              VarFileInfo([VarStruct('Translation', [0x409, 1200])])
+            ]
+          )
+          "@
+          Set-Content -Path "version_info.txt" -Value $vi -Encoding UTF8
+          Write-Host "Updated version_info.txt to $ver"
+          $spec = Get-Content "serveScript.spec" -Raw
+          $spec = $spec -replace "name='脚本v[^']*'", "name='脚本v$ver'"
+          Set-Content -Path "serveScript.spec" -Value $spec -Encoding UTF8
+          Write-Host "Updated serveScript.spec exe name to 脚本v$ver"
         shell: pwsh
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
+          python -m pip install --upgrade pip wheel setuptools
+          pip install --no-cache-dir pywin32 pywin32-ctypes comtypes psutil pyttsx3 keyboard requests
+          pip install --no-cache-dir wxPython
+          pip install --no-cache-dir pyinstaller pyinstaller-hooks-contrib
+          python Scripts/pywin32_postinstall.py -install 2>$null
+          python -c "import pywin32; print('pywin32 OK:', pywin32.__version__)" 2>$null
+          python -c "import pythoncom; print('pythoncom OK')"
+          python -c "import pywintypes; print('pywintypes OK')"
+          python -c "import win32api; print('win32api OK')"
+          python -c "import wx; print('wxPython OK:', wx.__version__)"
+          python -c "import psutil; print('psutil OK:', psutil.__version__)"
+          python -c "import comtypes; print('comtypes OK')"
+          python -c "from comtypes.client import CreateObject; print('comtypes.client OK')"
+          python -c "import pyttsx3; print('pyttsx3 OK')"
+          Write-Host "All dependencies verified"
+        shell: pwsh
+
+      - name: Clean old build
+        run: |
+          if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+          if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
+          Write-Host "Cleaned old build directories"
+        shell: pwsh
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller serveScript.spec --noconfirm
+          pyinstaller serveScript.spec --noconfirm --clean
           $exes = Get-ChildItem -Path dist -Filter "*.exe" -ErrorAction SilentlyContinue
           foreach ($e in $exes) {
             Write-Host "Found exe: $($e.FullName) ($($e.Length) bytes)"
@@ -59,9 +122,14 @@ jobs:
       - name: Prepare release
         run: |
           New-Item -ItemType Directory -Path release -Force
+          $v = Get-Content "version.json" -Raw | ConvertFrom-Json
+          $ver = $v.version
+          Write-Host "Building version: $ver"
           $src = (Get-ChildItem -Path dist -Filter "*.exe")[0]
-          Copy-Item $src.FullName -Destination "release\脚本v26.6.1.exe"
-          Compress-Archive -Path "release\脚本v26.6.1.exe" -DestinationPath "release\脚本v26.6.1.zip"
+          Copy-Item $src.FullName -Destination "release\脚本v$ver.exe"
+          $v.release_date = (Get-Date -Format "yyyy-MM-dd")
+          $v | ConvertTo-Json -Depth 10 | Set-Content -Path "release\version.json" -Encoding UTF8
+          echo "VERSION=$ver" >> $env:GITHUB_ENV
           Write-Host "Release files ready"
         shell: pwsh
 
@@ -76,7 +144,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: "脚本v26.6.1 #${{ github.run_number }}"
-          body: "由 GitHub Actions 自动构建\n提交: ${{ github.sha }}"
+          name: "脚本v${{ env.VERSION }} #${{ github.run_number }}"
+          body: "由 GitHub Actions 自动构建\n版本: ${{ env.VERSION }}\n提交: ${{ github.sha }}"
           files: release/*
           make_latest: true

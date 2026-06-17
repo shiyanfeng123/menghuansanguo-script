@@ -1,0 +1,16 @@
+{
+  "version": "26.6.1",
+  "release_date": "2025-06-16",
+  "changelog": [
+    "新增GitHub Actions自动打包",
+    "exe文件支持直接下载",
+    "优化脚本稳定性"
+  ],
+  "announcement": {
+    "text": "",
+    "level": "info",
+    "expire": null
+  },
+  "force_update": false,
+  "download_url": "/api/update"
+}
