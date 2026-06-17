@@ -5824,8 +5824,7 @@ class MyThread(threading.Thread):
     # V3辅助方法：统计小地图上小绿人数量
     def _count_xiaolvren(self):
         try:
-            xiaolvren_bmp = self.get_resource_path(
-                "serveAssets/images/zhengdian/xiaolvren.bmp")
+            xiaolvren_bmp = f"{self.get_resource_path('serveAssets/images/zhengdian/xiaolvren.bmp')}"
             dx, dy, dw, dh = self.dituLocation
             result = self.dm.FindPicEx(dx, dy, dw, dh, xiaolvren_bmp, "", 0.7, 0)
             if not result:
@@ -5855,7 +5854,7 @@ class MyThread(threading.Thread):
         return zones
 
     # V3辅助方法：判断坐标是否在NPC区域附近（模糊匹配，阈值threshold像素）
-    def _is_near_npc_zone(self, x, y, npc_zones, threshold=10):
+    def _is_near_npc_zone(self, x, y, npc_zones, threshold=2):
         for zx, zy in npc_zones:
             if abs(x - zx) <= threshold and abs(y - zy) <= threshold:
                 return True
