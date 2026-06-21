@@ -5777,7 +5777,7 @@ class MyThread(threading.Thread):
         if not types:
             target = self.find_str(image_path, image_region, find_dir)
             if target:
-                target.x = target.x + random.randint(10, 32)
+                target.x = target.x + random.randint(10, 35)
                 target.y = target.y + 5
         else:
             target = self.find_pic(image_path, image_region, find_dir)
@@ -9113,7 +9113,7 @@ class MyThread(threading.Thread):
         # 0.054,0.122
         self.findAndClickPic(
             "天界精英",
-            "天界分身",
+            "天界分身新",
             "天界分身",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
@@ -9171,8 +9171,8 @@ class MyThread(threading.Thread):
         # 打人界巨灵神0.095,0.134
         self.findAndClickPic(
             "人界",
-            "人界分身",
-            "人界分身",
+            "人间分身新",
+            "天界分身新",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
             self.gameBottomLocation,
@@ -9241,7 +9241,7 @@ class MyThread(threading.Thread):
         # 打妖鼠头领  0.152,0.122
         self.findAndClickPic(
             "鼠穴入口",
-            "妖鼠头领",
+            "妖鼠头领2",
             "妖鼠头领",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
@@ -9266,8 +9266,8 @@ class MyThread(threading.Thread):
         # 打猎杀鼠  0.097,0.124
         self.findAndClickPic(
             "鼠穴",
-            "暗杀鼠",
-            "暗杀鼠",
+            "暗杀鼠2",
+            "暗杀鼠2",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
             self.gameBottomLocation,
@@ -9447,7 +9447,7 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
             "占卜币",
-            "占卜币",
+            f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
             self.gameBottomLocation,
@@ -9467,7 +9467,7 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
             "占卜币",
-            "占卜币",
+            f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
             self.gameBottomLocation,
@@ -9521,7 +9521,7 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/baguaqunmozhen.bmp"),
             "占卜币",
-            "占卜币",
+            f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
             self.gameBottomLocation,
@@ -10590,8 +10590,8 @@ class MyThread(threading.Thread):
         )
         self.findAndClickPic(
             "密洞",
-            "金龙王",
-            "金龙王",
+            "金龙王新",
+            self.get_resource_path("serveAssets/images/richang/jinlongwang1.bmp"),
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/zdzd.bmp"),
             self.gameBottomLocation,

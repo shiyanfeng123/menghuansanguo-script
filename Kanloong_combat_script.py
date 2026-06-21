@@ -511,6 +511,7 @@ class CombatAutoScript:
         # ally_undead_last_increment_turn: key同上, value=上次递增时的回合数(防止同回合多次递增)
         self.ally_undead_rounds = {}
         self.ally_undead_last_increment_turn = {}
+        self.caocao_passive_missing_rounds = {}
         self.undead_threshold = 4  # count>=4时认为被动耗尽, 不再计入安全武将数
         self.proactive_replace_account = 0
         self.need_proactive_replace = False
@@ -1482,10 +1483,6 @@ class CombatAutoScript:
 
         # DEBUG: 输出召唤时的武将列表详情（必须在is_replacement赋值之后）
         _debug_all_generals = [{"name": g.get("name"), "alive": g.get("alive", True), "replacing": g.get("replacing", False), "pending_kick": g.get("pending_kick", False), "position": g.get("position")} for g in char_info.get("generals", [])]
-        self.report_battle_info(
-            f"账号{account_index} [DEBUG召唤详情] general_name={general_name}, force_replace={force_replace}, general_count={general_count}, is_replacement={is_replacement}, all_generals={_debug_all_generals}",
-            "info",
-        )
 
         if is_replacement:
             # 替换优先级: 刘备 > 魔化关羽 > 曹操 (张星彩永远不在替换列表中)
@@ -2279,6 +2276,8 @@ class CombatAutoScript:
                     del self.ally_undead_rounds[key]
                 if key in self.ally_undead_last_increment_turn:
                     del self.ally_undead_last_increment_turn[key]
+                if key in self.caocao_passive_missing_rounds:
+                    del self.caocao_passive_missing_rounds[key]
                 continue
 
             # 召唤中(reviving)的武将: 跳过, 等上场后再追踪
@@ -2290,6 +2289,8 @@ class CombatAutoScript:
                 self.ally_undead_rounds[key] = -1
                 if key in self.ally_undead_last_increment_turn:
                     del self.ally_undead_last_increment_turn[key]
+                if key in self.caocao_passive_missing_rounds:
+                    del self.caocao_passive_missing_rounds[key]
                 continue
 
             region = self.hp_bar_regions[region_idx]
@@ -2298,30 +2299,26 @@ class CombatAutoScript:
             # 本回合是否还能递增(同一回合只递增一次)
             can_increment = (last_turn != current_turn)
 
-            # === 曹操: 检测不灭雄心(被动可用) + 不死护盾(已触发) ===
+            # === 曹操: 检测不灭雄心(被动可用), 连续4次未识别到判定被动触发 ===
             if gen_name == "曹操":
-                alive_region = (region[0], region[1], region[2], region[3] + 130)
                 busi_found = self.find_image(dm_index, self.caocaobusi_image, region, 0)
-                alive_found = self.find_image(dm_index, self.caocao_alive_image, alive_region, 0)
                 if busi_found:
-                    # 状态A: 不灭雄心还在 → 被动可用, count=0
+                    # 不灭雄心还在 → 被动可用, count=0, 缺失计数重置
                     self.ally_undead_rounds[key] = 0
-                    self.ally_undead_last_increment_turn[key] = -1
-                elif alive_found:
-                    # 状态B: 不灭雄心消失 + 不死护盾出现 → 被动已触发
-                    if prev == 0:
-                        # 首次触发: count从0变为1
-                        self.ally_undead_rounds[key] = 1
-                        self.ally_undead_last_increment_turn[key] = current_turn
-                    elif can_increment:
-                        # 后续回合: count+1
-                        self.ally_undead_rounds[key] = prev + 1
-                        self.ally_undead_last_increment_turn[key] = current_turn
+                    self.caocao_passive_missing_rounds[key] = 0
                 else:
-                    # 状态C: 不灭雄心消失 + 不死护盾也消失 → 被动耗尽
-                    if prev > 0 and can_increment:
-                        self.ally_undead_rounds[key] = prev + 1
-                        self.ally_undead_last_increment_turn[key] = current_turn
+                    # 不灭雄心未识别到 → 缺失计数+1
+                    self.caocao_passive_missing_rounds[key] = self.caocao_passive_missing_rounds.get(key, 0) + 1
+                    # 连续6次未识别到 → 判定被动触发, count每回合+1(受can_increment限制)
+                    if self.caocao_passive_missing_rounds[key] >= 6:
+                        if prev == 0:
+                            # 首次触发: count 0→1
+                            self.ally_undead_rounds[key] = 1
+                            self.ally_undead_last_increment_turn[key] = current_turn
+                        elif can_increment:
+                            # 后续每回合+1
+                            self.ally_undead_rounds[key] = prev + 1
+                            self.ally_undead_last_increment_turn[key] = current_turn
 
             # === 魔化关羽: 检测miansi1(被动可用) + mianyisiwang(已触发) ===
             elif gen_name == "魔化关羽":
@@ -4631,12 +4628,11 @@ class CombatAutoScript:
                 found_xingcai = any(g.get("name") == "张星彩" for g in char_info.get("generals", []))
 
                 if not found_xingcai:
-                    if account_index == 0:
-                        xingcai_position = (572, 380) if len(char_info.get("generals", [])) == 0 else (667, 380)
-                    elif account_index == 1:
-                        xingcai_position = (530, 278) if len(char_info.get("generals", [])) == 0 else (626, 278)
-                    else:
-                        xingcai_position = (520, 490) if len(char_info.get("generals", [])) == 0 else (626, 490)
+                    _existing_positions = [g.get("position") for g in char_info.get("generals", []) if g.get("position")]
+                    _slot1 = self.unit_positions[account_index]["generals"][0][1:]
+                    _slot2 = self.unit_positions[account_index]["generals"][1][1:]
+                    _slot1_occupied = any(abs(p[0]-_slot1[0]) < 50 and abs(p[1]-_slot1[1]) < 50 for p in _existing_positions)
+                    xingcai_position = _slot2 if _slot1_occupied else _slot1
 
                     new_general = {
                         "name": "张星彩",
@@ -4650,7 +4646,42 @@ class CombatAutoScript:
                         char_info["generals"] = []
                     char_info["generals"].append(new_general)
 
+                # 4.1 执行分配的复活任务（如果当前账号有分配任务）
+                if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout:
+                    if self._check_and_mark_reviving(assigned_revive_target, "主角"):
+                        if self.revive_main_char_with_target(account_index, assigned_revive_target):
+                            # 复活任务完成，从分配列表中移除
+                            if account_index in self.revive_assignments:
+                                del self.revive_assignments[account_index]
+                            time.sleep(0.1)
+                            return True
+                        else:
+                            # 复活失败，清除reviving标记
+                            with self._state_lock:
+                                if assigned_revive_target in self.unit_info:
+                                    char_info_revive = self.unit_info[assigned_revive_target]["main_char"]
+                                    if char_info_revive.get("reviving", False):
+                                        char_info_revive["reviving"] = False
+                                        self.report_battle_info(
+                                            f"账号{account_index} 复活账号{assigned_revive_target}的主角失败，清除reviving标记",
+                                            "warning",
+                                        )
+                            # 从分配列表中移除，允许重新分配
+                            if account_index in self.revive_assignments:
+                                del self.revive_assignments[account_index]
+
+                # 4.2 释放技能（策略引擎）
                 if self._execute_best_strategy(account_index, "xingcai_support"):
+                    return True
+
+                # 4.3 防御（保底兼容）
+                defense_btn = self.find_image(
+                    account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
+                )
+                if defense_btn:
+                    self.click_position(account_index, defense_btn.x, defense_btn.y)
+                    self.report_battle_info(f"账号{account_index} 张星彩执行防御", "action")
+                    time.sleep(CombatConstants.ACTION_DELAY)
                     return True
             
             # 如果未识别到单位类型，返回False
@@ -5259,6 +5290,7 @@ class CombatAutoScript:
             self._zhugeliang_low_hp = False
             self.ally_undead_rounds = {}
             self.ally_undead_last_increment_turn = {}
+            self.caocao_passive_missing_rounds = {}
             self.proactive_replace_account = 0
             self.need_proactive_replace = False
             self._proactive_replace_in_progress = False
