@@ -416,7 +416,7 @@ def search_all_images(dm, region, similarity=0.6):
 
 
 # print(dm_ret, 'dm_ret')
-search_all_images(dm, (0, 0, x, y), similarity)
+# search_all_images(dm, (0, 0, x, y), similarity)
 # x, y, r = dm_ret
 # print(x, y, r)
 # if r == 1:
@@ -686,7 +686,7 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png") 534 368
-find_str_result = dm.FindStrFastE(0, 0, x, y, "单猴|单羊|单虎|牛|单兔", color_format, sim)
+find_str_result = dm.FindStrFastE(0, 0, x, y, "金龙王", color_format, sim)
 print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
