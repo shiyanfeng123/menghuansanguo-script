@@ -15380,7 +15380,7 @@ class MyDialog(wx.Dialog):
         main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
         # 暂时修改
-        _show_auto_combat = has_script != "free" or datetime.now() < datetime(2026, 12, 30)
+        _show_auto_combat = has_script != "free" or datetime.now() < datetime(2026, 10, 30)
         if _show_auto_combat:
             main_sizer.AddSpacer(8)
             sec("自动战斗")
