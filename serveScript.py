@@ -180,7 +180,7 @@ class MyThread(threading.Thread):
         self.downTalkLocation = None
         self.clickFlag = False
         self.addBloudFlag = False
-        self.combat_auto_flag = False
+        self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.independent_win1 = False
         self.independent_win2 = False
@@ -351,7 +351,7 @@ class MyThread(threading.Thread):
             self.frame.zhanhun_count) if self.frame.zhanhun_count else 5
         self.zhanhunFloorNew = self.frame.zhanhunFloorNew
         self.mojingFloor = self.frame.mojingFloor
-        self.combat_auto_flag = self.frame.addBloudFlag
+        self.combat_auto_scenes = self.frame.combat_auto_scenes if hasattr(self.frame, 'combat_auto_scenes') else []
         self.teammate1_name = self.frame.teammate1_name
         self.teammate2_name = self.frame.teammate2_name
         self.zhengdianFloor = self.frame.zhengdianFloor
@@ -674,7 +674,7 @@ class MyThread(threading.Thread):
             self.zhengdianFloor = "龙+全打"
             self.new_zhengdian()
         elif self.scriptName == "测试自动战斗":
-            if self.combat_auto_flag:
+            if self.combat_auto_scenes:
                 self._start_combat_auto()
                 time.sleep(5)
                 self._stop_combat_auto()
@@ -4671,10 +4671,10 @@ class MyThread(threading.Thread):
         self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
         time.sleep(0.001)
         self.dm.LeftClick()
-        if auto_combat_key is not None and self.combat_auto_flag:
+        if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
             self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
-        if auto_combat_key is not None and self.combat_auto_flag:
+        if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
             self._stop_combat_auto()
         return combat_result
 
@@ -4930,10 +4930,10 @@ class MyThread(threading.Thread):
                 if not found_btn:
                     attacked_set.add((tl_x, tl_y))
                     continue
-                if auto_combat_key is not None and self.combat_auto_flag:
+                if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
                     self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
                 combat_ok = self._wait_combat_result(base_image, auto_combat_key)
-                if auto_combat_key is not None and self.combat_auto_flag:
+                if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
                     self._stop_combat_auto()
                 if combat_ok == "success":
                     self.daZhengDianCount += 1
@@ -7941,7 +7941,7 @@ class MyThread(threading.Thread):
             print("战魂没次数了")
             return False
         self.huifu_yijian(self.dm)
-        if self.combat_auto_flag:
+        if "战魂" in self.combat_auto_scenes:
             self._start_combat_auto(clear_enemy_keys=["赵云28"])
         self.findAndClickPic(
             "噬魂",
@@ -7954,7 +7954,7 @@ class MyThread(threading.Thread):
         )
         self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"),
                      self.gameLocation)
-        if self.combat_auto_flag:
+        if "战魂" in self.combat_auto_scenes:
             self._stop_combat_auto()
         self.addBloud()
         waitForTwoRes = self.waitForTwo(
@@ -7982,7 +7982,7 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
             "",
         )
-        if self.combat_auto_flag:
+        if "战魂" in self.combat_auto_scenes:
             self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
         self.findAndClickPic(
             "噬魂",
@@ -7995,7 +7995,7 @@ class MyThread(threading.Thread):
         )
         self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"),
                      self.gameLocation)
-        if self.combat_auto_flag:
+        if "战魂" in self.combat_auto_scenes:
             self._stop_combat_auto()
         self.addBloud()
         waitForTwoRes = self.waitForTwo(
@@ -10812,7 +10812,7 @@ class MyThread(threading.Thread):
         if not isInMojing:
             print("四象没次数了")
             return False
-        _sixiang_auto_combat = self.combat_auto_flag and self.sixiang_difficulty in ("精英", "炼狱")
+        _sixiang_auto_combat = "四象" in self.combat_auto_scenes and self.sixiang_difficulty in ("精英", "炼狱")
         if _sixiang_auto_combat:
             self._start_combat_auto()
         self.findAndClickPic(
@@ -13618,6 +13618,7 @@ class MyFrame(wx.Frame):
         self.sixiang_count = "35"
         self.sixiang_difficulty = ""
         self.addBloudFlag = False
+        self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.independent_win1 = False
         self.independent_win2 = False
@@ -13878,33 +13879,37 @@ class MyFrame(wx.Frame):
         self.dropdown.SetBackgroundColour(wx.Colour(240, 242, 246))
         self.dropdown.SetForegroundColour(wx.Colour(40, 42, 50))
         self.dropdown.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        self.panel.Layout()
+        self.Layout()
 
     def _init_async(self):
-        self.remote_info = self.check_server_update()
-        self.mac_address = self.get_mac_address()
-        self.mac_address1 = ":".join(
-            ["{:02x}".format((uuid.getnode() >> elements) & 0xFF) for elements
-             in range(0, 8 * 6, 8)][::-1]
-        )
-        app = wx.GetApp()
-        self.user_name = app.user_info.get("username", "免费用户")
-        self.has_script = app.user_info.get("has_script", "free")
-        self.end_time = app.user_info.get("end_time", "2199-12-30 23:59:59")
-        self.token = app.user_info.get("token", "")
+        def _do_init():
+            self.remote_info = self.check_server_update()
+            self.mac_address = self.get_mac_address()
+            self.mac_address1 = ":".join(
+                ["{:02x}".format((uuid.getnode() >> elements) & 0xFF) for elements
+                 in range(0, 8 * 6, 8)][::-1]
+            )
+            app = wx.GetApp()
+            self.user_name = app.user_info.get("username", "免费用户")
+            self.has_script = app.user_info.get("has_script", "free")
+            self.end_time = app.user_info.get("end_time", "2199-12-30 23:59:59")
+            self.token = app.user_info.get("token", "")
 
-        self._update_user_display()
-        print(
-            f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
-        if self.is_virtual_machine() and self.user_name not in [
-            "关服就离开",
-            "RInoicc",
-            "钞能力",
-        ]:
-            print("虚拟机")
-            wx.CallAfter(self.Close)
-            return
-        wx.CallAfter(self.check_and_update_notify_status)
-        self._init_done = True
+            wx.CallAfter(self._update_user_display)
+            print(
+                f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
+            if self.is_virtual_machine() and self.user_name not in [
+                "关服就离开",
+                "RInoicc",
+                "钞能力",
+            ]:
+                print("虚拟机")
+                wx.CallAfter(self.Close)
+                return
+            wx.CallAfter(self.check_and_update_notify_status)
+            self._init_done = True
+        threading.Thread(target=_do_init, daemon=True).start()
 
     def _update_user_display(self):
         pass
@@ -14113,18 +14118,18 @@ class MyFrame(wx.Frame):
             "6.挂机+整点，使用之前打开查看副本，点一下需要打的副本，然后启动脚本即可；",
             "7.保存数据之后会在脚本同级文件夹生成一个data.txt，下次使用脚本直接点击读取即可自动填入；",
             "8.日常顺序是：战魂楼精英=>炼狱战魂楼=>溶洞=>炼丹=>五行=>云游精英=>名将挑战赛=>八门精英=>老鼠精英=>英魂=>三顾茅庐=>红=>青渊=>帮派任务=>官渡精英;",
-            "9.自动战斗点击之后，战魂楼28，29层会自己战斗；",
+            "9.自动战斗选择了对应的副本/整点，到打的时候会自动开启，刘备数量为账号内拥有的刘备数量总和，包括出战的，自动战斗多开，队友1要在队伍中第二位，队友2在队伍中第三位；",
             "10.整点全打为飞过去打页面上能找到的怪物，走路打九黎族祭坛，魔魂山，魔谷西三个地图的怪物。",
             "常见问题：",
             "1.点开始脚本没任何反应：使用管理员打开脚本；",
             "2.点开始之后提示无效窗口：务必保证输入的没问题，360最新版的只能绑定第一个打开的窗口；",
             "3.脚本关了一直提示未找到句柄窗口：点击重置即可；",
-            "4.卡在副本进门位置不动：务必多开变身卡。",
+            "4.卡在副本进门位置不动：务必多开变身卡；",
+            "5.脚本关了卡死直接按F9/F10。",
         ]
         images = [
             self.get_resource_path("serveAssets/images/shuoming1.bmp"),
             self.get_resource_path("serveAssets/images/shuoming2.bmp"),
-            self.get_resource_path("serveAssets/images/shuoming3.bmp"),
             self.get_resource_path("serveAssets/images/shuoming4.bmp"),
         ]
 
@@ -14271,12 +14276,9 @@ class MyFrame(wx.Frame):
                         cb.SetValue(True)
                     else:
                         cb.SetValue(False)
-            if self.addBloudFlag:
-                dialog.addBloudBtn.Hide()
-                dialog.closeBloudBtn.Show()
-            else:
-                dialog.addBloudBtn.Show()
-                dialog.closeBloudBtn.Hide()
+            if hasattr(self, 'combat_auto_scenes') and hasattr(dialog, 'combat_auto_checkboxes'):
+                for scene, cb in dialog.combat_auto_checkboxes.items():
+                    cb.SetValue(scene in self.combat_auto_scenes)
         if dialog.ShowModal() == wx.ID_OK:
             # 在对话框结束后，获取对话框中输入的数据
             print("当前游戏名称：" + self.game_name)
@@ -15100,7 +15102,7 @@ class MyDialog(wx.Dialog):
     C_INPUT_BG = wx.Colour(255, 255, 255)
 
     def __init__(self, parent, has_script):
-        super().__init__(parent, title="游戏设置", size=(570, 580), pos=(200, 20))
+        super().__init__(parent, title="游戏设置", size=(570, 610), pos=(200, 20))
         self.SetBackgroundColour(self.C_BG)
         self.frame = parent
         self.config_file = "settings_config.json"
@@ -15231,43 +15233,47 @@ class MyDialog(wx.Dialog):
 
         # 暂时修改
         if has_script != "free1":
-            liubei_row = wx.BoxSizer(wx.HORIZONTAL)
-            liubei_row_label = wx.StaticText(panel, label="刘备:")
-            liubei_row_label.SetForegroundColour(self.C_MUTED)
-            liubei_row_label.SetMinSize((40, -1))
-            liubei_row.Add(liubei_row_label, 0, wx.ALIGN_CENTER_VERTICAL)
+            main_sizer.AddSpacer(8)
+            sec("自动战斗")
+            auto_combat_panel = wx.Panel(panel)
+            auto_combat_panel.SetBackgroundColour(self.C_BG)
+            auto_row = wx.BoxSizer(wx.HORIZONTAL)
+
+            self.combat_auto_checkboxes = {}
+            scene_label = wx.StaticText(auto_combat_panel, label="副本开关")
+            scene_label.SetForegroundColour(self.C_MUTED)
+            scene_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            auto_row.Add(scene_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+            for scene in ["战魂", "蛇", "四象"]:
+                cb = wx.CheckBox(auto_combat_panel, label=scene)
+                cb.SetForegroundColour(self.C_MUTED)
+                cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+                self.combat_auto_checkboxes[scene] = cb
+                auto_row.Add(cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+
+            auto_row.AddStretchSpacer()
+
+            liubei_label = wx.StaticText(auto_combat_panel, label="刘备数量")
+            liubei_label.SetForegroundColour(self.C_MUTED)
+            liubei_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            auto_row.Add(liubei_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
             self.liubeiCountInputs = {}
             for idx, lbl in [(0, "队长"), (1, "队友1"), (2, "队友2")]:
-                lb = wx.StaticText(panel, label=f"{lbl}:")
+                lb = wx.StaticText(auto_combat_panel, label=f"{lbl}:")
                 lb.SetForegroundColour(self.C_MUTED)
-                liubei_row.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
-                tc = wx.TextCtrl(panel, size=(32, 24), validator=NumberValidator())
+                auto_row.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 4)
+                tc = wx.TextCtrl(auto_combat_panel, size=(32, 24), validator=NumberValidator())
                 tc.SetValue("1" if idx == 0 else "0")
                 tc.SetBackgroundColour(self.C_INPUT_BG)
                 tc.SetForegroundColour(self.C_TEXT)
                 self.liubeiCountInputs[idx] = tc
-                liubei_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
-            liubei_row.AddStretchSpacer()
-            sw_row = wx.BoxSizer(wx.HORIZONTAL)
-            sw_row.AddStretchSpacer()
-            btn_container = wx.Panel(panel, size=(132, 32))
-            btn_container.SetBackgroundColour(self.C_BG)
-            self.addBloudBtn = wx.Button(btn_container, label="🔴 自动战斗 关", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
-            self.addBloudBtn.SetBackgroundColour(self.C_SURFACE)
-            self.addBloudBtn.SetForegroundColour(self.C_MUTED)
-            self.addBloudBtn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-            self.addBloudBtn.Bind(wx.EVT_BUTTON, self.addBloudFun)
-            self.closeBloudBtn = wx.Button(btn_container, label="🟢 自动战斗 开", size=(130, 30), style=wx.BORDER_NONE, pos=(1, 1))
-            self.closeBloudBtn.SetBackgroundColour(wx.Colour(34, 153, 84))
-            self.closeBloudBtn.SetForegroundColour(wx.Colour(255, 255, 255))
-            self.closeBloudBtn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-            self.closeBloudBtn.Bind(wx.EVT_BUTTON, self.closeBloudFun)
-            self.closeBloudBtn.Hide()
-            sw_row.Add(btn_container, 0, wx.ALIGN_CENTER_VERTICAL)
-            liubei_row.Add(sw_row, 0, wx.ALIGN_CENTER_VERTICAL)
-            main_sizer.Add(liubei_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+                auto_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
+
+            auto_combat_panel.SetSizer(auto_row)
+            main_sizer.Add(auto_combat_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         else:
             self.liubeiCountInputs = {0: 1, 1: 0, 2: 0}
+            self.combat_auto_checkboxes = {}
 
         # ── 三栏：副本 | 战魂 | 整点 ──
         cols = wx.BoxSizer(wx.HORIZONTAL)
@@ -15703,22 +15709,6 @@ class MyDialog(wx.Dialog):
         self.sixiang_difficulty.SetValue(sixiang_difficulty)
         self.zhanhun_start_floor.SetValue(zhanhun_start_floor)
 
-    def addBloudFun(self, event):
-        """设置自动战斗标志"""
-        self.addBloudBtn.Hide()
-        self.closeBloudBtn.Show()
-        # 只设置 flag，不启动战斗自动操作
-        self.frame.addBloudFlag = True
-        print("自动战斗标志已设置为 True")
-
-    def closeBloudFun(self, event):
-        """取消自动战斗标志"""
-        self.addBloudBtn.Show()
-        self.closeBloudBtn.Hide()
-        # 只设置 flag，不停止战斗自动操作
-        self.frame.addBloudFlag = False
-        print("自动战斗标志已设置为 False")
-
     def on_text_change(self, event):
         if self.team_leader_text.GetValue():
             self.button.Enable()
@@ -15746,6 +15736,11 @@ class MyDialog(wx.Dialog):
         for cb in self.check_boxes:
             if cb.GetValue():
                 selected_options.append(cb.GetLabel())
+        combat_auto_scenes = []
+        if hasattr(self, 'combat_auto_checkboxes'):
+            for scene, cb in self.combat_auto_checkboxes.items():
+                if cb.GetValue():
+                    combat_auto_scenes.append(scene)
         return {
             "selected_options": selected_options,
             "game_name": self.team_leader_text.GetValue(),
@@ -15771,6 +15766,7 @@ class MyDialog(wx.Dialog):
             "sixiang_difficulty": self.sixiang_difficulty.GetValue(),
             "zhanhun_start_floor": self.zhanhun_start_floor.GetValue(),
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
+            "combat_auto_scenes": combat_auto_scenes,
         }
 
     def apply_settings(self, settings):
@@ -15807,6 +15803,10 @@ class MyDialog(wx.Dialog):
             default_val = "1" if idx == 0 else "0"
             if not isinstance(self.liubeiCountInputs[idx], int):
                 self.liubeiCountInputs[idx].SetValue(str(liubei_counts.get(key, default_val)))
+        if hasattr(self, 'combat_auto_checkboxes'):
+            saved_scenes = settings.get("combat_auto_scenes", [])
+            for scene, cb in self.combat_auto_checkboxes.items():
+                cb.SetValue(scene in saved_scenes)
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -15930,10 +15930,11 @@ class MyDialog(wx.Dialog):
         parent.sixiang_count = self.sixiang_count.GetValue()
         parent.sixiang_difficulty = self.sixiang_difficulty.GetValue()
         parent.zhanhun_start_floor = self.zhanhun_start_floor.GetValue()
-        if self.addBloudBtn.IsShown():
-            parent.addBloudFlag = False
-        else:
-            parent.addBloudFlag = True
+        parent.combat_auto_scenes = []
+        if hasattr(self, 'combat_auto_checkboxes'):
+            for scene, cb in self.combat_auto_checkboxes.items():
+                if cb.GetValue():
+                    parent.combat_auto_scenes.append(scene)
         parent.liubeiCounts = {}
         for idx in self.liubeiCountInputs:
             item = self.liubeiCountInputs[idx]
@@ -15993,7 +15994,6 @@ class HelpDialog(wx.Dialog):
 
         scroll = scrolled.ScrolledPanel(self, -1, style=wx.TAB_TRAVERSAL)
         scroll.SetBackgroundColour(self.C_BG)
-        scroll.SetupScrolling(scroll_y=True, rate_y=20)
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -16017,10 +16017,27 @@ class HelpDialog(wx.Dialog):
         dc = wx.ClientDC(text_ctrl)
         dc.SetFont(text_ctrl.GetFont())
         line_h = dc.GetCharHeight()
-        lines = all_text.count('\n') + 1
-        text_h = line_h * lines + 60
+        available_w = 800 - 40
+        wrapped_lines = 0
+        for line in all_text.split('\n'):
+            if not line:
+                wrapped_lines += 1
+                continue
+            tw, _ = dc.GetTextExtent(line)
+            wrapped_lines += max(1, int(tw / available_w) + 1)
+        text_h = line_h * (wrapped_lines + 1) + 20
         main_sizer.Add(text_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        text_ctrl.SetMinSize((-1, min(text_h, 3000)))
+        text_ctrl.SetMinSize((-1, text_h))
+
+        def _forward_wheel(evt):
+            pos = scroll.GetScrollPos(wx.VERTICAL)
+            delta = evt.GetWheelRotation()
+            step = 3
+            if delta > 0:
+                scroll.Scroll(0, max(0, pos - step))
+            else:
+                scroll.Scroll(0, pos + step)
+        text_ctrl.Bind(wx.EVT_MOUSEWHEEL, _forward_wheel)
 
         for idx, image_path in enumerate(images):
             try:
@@ -16061,6 +16078,8 @@ class HelpDialog(wx.Dialog):
         main_sizer.Add(button_panel, 0, wx.EXPAND | wx.TOP, 8)
 
         scroll.SetSizer(main_sizer)
+        scroll.SetupScrolling(scroll_x=False, scroll_y=True, rate_y=20)
+        scroll.FitInside()
 
         dialog_sizer = wx.BoxSizer(wx.VERTICAL)
         dialog_sizer.Add(scroll, 1, wx.EXPAND)
@@ -16612,3 +16631,4 @@ if __name__ == "__main__":
     frame.Show()
     wx.CallAfter(frame._init_async)
     application.MainLoop()
+战斗的
