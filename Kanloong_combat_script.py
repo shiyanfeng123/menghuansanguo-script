@@ -2178,8 +2178,14 @@ class CombatAutoScript:
                         if not g.get("pending_kick", False)
                     ]
                     # 更新免死计数
+                    _prev_verify = self.ally_undead_rounds.get(key, 0)
                     self.ally_undead_rounds[key] = 0
                     self.ally_undead_last_increment_turn[key] = -1
+                    # [DEBUG免死追踪] 替换验证成功, count重置
+                    self.report_battle_info(
+                        f"[DEBUG免死追踪] 账号{acct} region{region_idx}({gen_name}) 替换验证成功 count: {_prev_verify}→0, turn={current_turn}",
+                        "info",
+                    )
                     # 清理global_dead_units中该账号被确认上场武将(acct+region_idx)的死亡记录
                     with self._state_lock:
                         for dead_gen in self.global_dead_units["generals"][:]:
@@ -2286,11 +2292,18 @@ class CombatAutoScript:
 
             # 已死亡的武将: count=-1, 清理递增记录
             if not gen.get("alive", True):
+                _prev_dead = self.ally_undead_rounds.get(key, 0)
                 self.ally_undead_rounds[key] = -1
                 if key in self.ally_undead_last_increment_turn:
                     del self.ally_undead_last_increment_turn[key]
                 if key in self.caocao_passive_missing_rounds:
                     del self.caocao_passive_missing_rounds[key]
+                # [DEBUG免死追踪] 死亡清理
+                if _prev_dead != -1:
+                    self.report_battle_info(
+                        f"[DEBUG免死追踪] 账号{acct} region{region_idx}({gen_name}) 死亡清理 count: {_prev_dead}→-1, turn={current_turn}",
+                        "info",
+                    )
                 continue
 
             region = self.hp_bar_regions[region_idx]
@@ -2361,6 +2374,15 @@ class CombatAutoScript:
                         self.ally_undead_rounds[key] = prev + 1
                         self.ally_undead_last_increment_turn[key] = current_turn
                     # else: prev==0 → 被动还没触发(新刘备刚上场), count保持0
+
+            # [DEBUG免死追踪] count发生变化时打印, 用于排查region与武将对应关系
+            _new_count = self.ally_undead_rounds.get(key, 0)
+            if _new_count != prev:
+                _missing = self.caocao_passive_missing_rounds.get(key, 0)
+                self.report_battle_info(
+                    f"[DEBUG免死追踪] 账号{acct} region{region_idx}({gen_name}) count: {prev}→{_new_count}, missing={_missing}, turn={current_turn}",
+                    "info",
+                )
 
     def _find_region_by_position(self, account_index, position):
         """根据武将position坐标找到对应的血条区域索引(region_idx)
