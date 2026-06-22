@@ -867,7 +867,7 @@ class CombatAutoScript:
         self.low_hp_indicator_image = f"{self.get_resource_path('serveAssets/images/auto/xueliangbuzu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/mubei2.bmp')}|{self.get_resource_path('serveAssets/images/auto/xueliangbuzu2.bmp')}"  # 血量低的标识图片
 
         # 9个血量条检测区域（3个账号，每个账号1个主角+2个武将）
-        # 顺序：账号1主角、账号0主角、账号2主角、账号1武将1、账号0武将1、账号2武将1、账号1武将2、账号0武将2、账号2武将2
+        # 顺序：账号1主角、账号0主角、账号2主角、账号1武将1(后排)、账号0武将1(后排)、账号2武将1(后排)、账号1武将2(前排)、账号0武将2(前排)、账号2武将2(前排)
         # 格式：[(x1, y1, w1, h1), (x2, y2, w2, h2), ...]
         # 基于900x580游戏界面，血量条通常显示在角色头顶上方
         # 账号1在上排，账号0在中间排，账号2在下排
@@ -875,12 +875,12 @@ class CombatAutoScript:
             (721, 159, 801, 219),  # 账号1主角血量条（上排）
             (750, 251, 829, 315),  # 账号0主角血量条（中间排）
             (784, 359, 859, 420),  # 账号2主角血量条（下排）
-            (544, 159, 621, 220),  # 账号1武将1血量条（上排）
-            (559, 252, 639, 319),  # 账号0武将1血量条（中间排）
-            (581, 363, 664, 419),  # 账号2武将1血量条（下排）
-            (631, 151, 710, 219),  # 账号1武将2血量条（上排）
-            (656, 251, 737, 316),  # 账号0武将2血量条（中间排）
-            (680, 361, 762, 418),  # 账号2武将2血量条（下排）
+            (631, 151, 710, 219),  # 账号1武将1血量条（后排）
+            (656, 251, 737, 316),  # 账号0武将1血量条（后排）
+            (680, 361, 762, 418),  # 账号2武将1血量条（后排）
+            (544, 159, 621, 220),  # 账号1武将2血量条（前排）
+            (559, 252, 639, 319),  # 账号0武将2血量条（前排）
+            (581, 363, 664, 419),  # 账号2武将2血量条（前排）
         ]  # 9个血量条区域列表
 
         # 血量条区域到单位的映射关系
@@ -907,8 +907,8 @@ class CombatAutoScript:
             0: {
                 "main_char": (795, 389),  # 账号0主角中心点（中间排）
                 "generals": [
-                    ("武将1", 611, 390),  # 账号0武将1中心点（中间排，前排）
-                    ("武将2", 691, 381),  # 账号0武将2中心点（中间排，后排）
+                    ("武将1", 691, 381),  # 账号0武将1中心点（后排）
+                    ("武将2", 611, 390),  # 账号0武将2中心点（前排）
                 ],
                 "enemies": [
                     # 敌人中心点需要通过set_fixed_enemy_positions设置
@@ -919,8 +919,8 @@ class CombatAutoScript:
             1: {
                 "main_char": (764, 288),  # 账号1主角中心点（上排）
                 "generals": [
-                    ("武将1", 580, 278),  # 账号1武将1中心点（上排，前排）
-                    ("武将2", 674, 282),  # 账号1武将2中心点（上排，后排）
+                    ("武将1", 674, 282),  # 账号1武将1中心点（后排）
+                    ("武将2", 580, 278),  # 账号1武将2中心点（前排）
                 ],
                 "enemies": [],
             },
@@ -928,8 +928,8 @@ class CombatAutoScript:
             2: {
                 "main_char": (824, 494),  # 账号2主角中心点（下排）
                 "generals": [
-                    ("武将1", 624, 496),  # 账号2武将1中心点（下排，前排）
-                    ("武将2", 719, 487),  # 账号2武将2中心点（下排，后排）
+                    ("武将1", 719, 487),  # 账号2武将1中心点（后排）
+                    ("武将2", 624, 496),  # 账号2武将2中心点（前排）
                 ],
                 "enemies": [],
             },
@@ -1714,10 +1714,10 @@ class CombatAutoScript:
                 self.hp_bar_unit_mapping[i] = {}
                 # 映射9个血量条区域到单位
                 # 区域索引映射：账号1主角(0), 账号0主角(1), 账号2主角(2),
-                #               账号1武将1(3), 账号0武将1(4), 账号2武将1(5),
-                #               账号1武将2(6), 账号0武将2(7), 账号2武将2(8)
+                #               账号1武将1(3,后排), 账号0武将1(4,后排), 账号2武将1(5,后排),
+                #               账号1武将2(6,前排), 账号0武将2(7,前排), 账号2武将2(8,前排)
                 if i == 0:
-                    # 账号0（中间排）：主角在region 1，武将1在region 4，武将2在region 7
+                    # 账号0（中间排）：主角在region 1，武将1在region 4（后排），武将2在region 7（前排）
                     self.hp_bar_unit_mapping[i][1] = ("main_char", "主角", self.unit_positions[i]["main_char"])
                     self.hp_bar_unit_mapping[i][4] = (
                         "general",
@@ -1738,7 +1738,7 @@ class CombatAutoScript:
                         ),
                     )
                 elif i == 1:
-                    # 账号1（上排）：主角在region 0，武将1在region 3，武将2在region 6
+                    # 账号1（上排）：主角在region 0，武将1在region 3（后排），武将2在region 6（前排）
                     self.hp_bar_unit_mapping[i][0] = ("main_char", "主角", self.unit_positions[i]["main_char"])
                     self.hp_bar_unit_mapping[i][3] = (
                         "general",
@@ -1759,7 +1759,7 @@ class CombatAutoScript:
                         ),
                     )
                 else:  # i == 2
-                    # 账号2（下排）：主角在region 2，武将1在region 5，武将2在region 8
+                    # 账号2（下排）：主角在region 2，武将1在region 5（后排），武将2在region 8（前排）
                     self.hp_bar_unit_mapping[i][2] = ("main_char", "主角", self.unit_positions[i]["main_char"])
                     self.hp_bar_unit_mapping[i][5] = (
                         "general",
@@ -2312,7 +2312,8 @@ class CombatAutoScript:
             # 本回合是否还能递增(同一回合只递增一次)
             can_increment = (last_turn != current_turn)
 
-            # === 曹操: 检测不灭雄心(被动可用), 连续4次未识别到判定被动触发 ===
+            # === 曹操: 检测不灭雄心(被动可用), 连续6次未识别到判定被动触发 ===
+            # 前置条件: 必须先识别到曹操技能图片(霸王/乱世), 确认曹操在场上
             if gen_name == "曹操":
                 busi_found = self.find_image(dm_index, self.caocaobusi_image, region, 0)
                 if busi_found:
@@ -2320,18 +2321,28 @@ class CombatAutoScript:
                     self.ally_undead_rounds[key] = 0
                     self.caocao_passive_missing_rounds[key] = 0
                 else:
-                    # 不灭雄心未识别到 → 缺失计数+1
-                    self.caocao_passive_missing_rounds[key] = self.caocao_passive_missing_rounds.get(key, 0) + 1
-                    # 连续6次未识别到 → 判定被动触发, count每回合+1(受can_increment限制)
-                    if self.caocao_passive_missing_rounds[key] >= 6:
-                        if prev == 0:
-                            # 首次触发: count 0→1
-                            self.ally_undead_rounds[key] = 1
-                            self.ally_undead_last_increment_turn[key] = current_turn
-                        elif can_increment:
-                            # 后续每回合+1
-                            self.ally_undead_rounds[key] = prev + 1
-                            self.ally_undead_last_increment_turn[key] = current_turn
+                    # 不灭雄心未识别到 → 先检查曹操是否在场（识别技能图片）
+                    caocao_on_field = self.find_image(dm_index, self.general_images["曹操"], region, 0)
+                    if caocao_on_field:
+                        # 曹操在场 → 缺失计数+1
+                        self.caocao_passive_missing_rounds[key] = self.caocao_passive_missing_rounds.get(key, 0) + 1
+                        # 连续6次未识别到不灭雄心 + 曹操在场 → 判定被动触发
+                        if self.caocao_passive_missing_rounds[key] >= 6:
+                            if prev == 0:
+                                # 首次触发: count 0→1
+                                self.ally_undead_rounds[key] = 1
+                                self.ally_undead_last_increment_turn[key] = current_turn
+                                self.report_battle_info(
+                                    f"[DEBUG免死追踪] 账号{acct} region{region_idx}(曹操) 被动触发! missing_rounds>=6, count: 0→1, turn={current_turn}",
+                                    "info",
+                                )
+                            elif can_increment:
+                                # 后续每回合+1
+                                self.ally_undead_rounds[key] = prev + 1
+                                self.ally_undead_last_increment_turn[key] = current_turn
+                    else:
+                        # 曹操不在场（或识别失败）→ 不递增 missing_rounds, 避免误判
+                        pass
 
             # === 魔化关羽: 检测miansi1(被动可用) + mianyisiwang(已触发) ===
             elif gen_name == "魔化关羽":
@@ -4855,7 +4866,39 @@ class CombatAutoScript:
                         undead_active = sum(
                             1 for k, v in self.ally_undead_rounds.items()
                             if v >= 0 and v < self.undead_threshold)
-                        self.need_proactive_replace = (undead_active == 0)
+
+                        # 检查场上是否有免死被动武将未被追踪（被动未触发）
+                        # 如果有，说明被动还没触发，不应该触发预替换
+                        has_untracked_undead = False
+                        undead_generals = ("曹操", "刘备", "魔化关羽")
+                        for acct_idx in range(self.get_account_count()):
+                            if acct_idx not in self.unit_info:
+                                continue
+                            for g in self.unit_info[acct_idx]["main_char"].get("generals", []):
+                                g_name = g.get("name", "")
+                                g_alive = g.get("alive", False) and not g.get("replacing", False)
+                                if g_alive and g_name in undead_generals:
+                                    # 检查该武将是否在 ally_undead_rounds 中
+                                    found_in_tracking = False
+                                    for k in self.ally_undead_rounds:
+                                        if k[0] == acct_idx:
+                                            # 通过 region 查找对应武将
+                                            region_idx = k[1]
+                                            mapping = self.hp_bar_unit_mapping.get(region_idx)
+                                            if mapping and mapping[1] == g_name:
+                                                found_in_tracking = True
+                                                break
+                                    if not found_in_tracking:
+                                        has_untracked_undead = True
+                                        print(f"[DEBUG预替换] 发现未追踪的免死武将: 账号{acct_idx} {g_name}, 不触发预替换")
+                                        break
+                            if has_untracked_undead:
+                                break
+
+                        if has_untracked_undead:
+                            self.need_proactive_replace = False  # 有未触发被动的武将，不触发
+                        else:
+                            self.need_proactive_replace = (undead_active == 0)
 
                     # 为每个账号创建独立的处理线程
                     # 主账号已确认是我方回合，直接创建线程，_handle_account_turn内部会自己检测和等待操作按钮

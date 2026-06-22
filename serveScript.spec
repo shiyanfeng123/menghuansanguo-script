@@ -75,5 +75,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['serveAssets\\images\\script.ico'],
+    icon=['serveAssets\\images\\script1.ico'],
 )
