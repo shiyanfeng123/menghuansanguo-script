@@ -14732,6 +14732,27 @@ class App(wx.App):
             return ""
     mac_address = property(_get_mac)
 
+    def _get_all_macs(self):
+        macs = []
+        try:
+            import uuid
+            hw = ":".join(["{:02x}".format((uuid.getnode() >> e) & 0xFF) for e in range(0, 8 * 6, 8)][::-1])
+            if hw:
+                macs.append(hw)
+        except:
+            pass
+        try:
+            import psutil
+            for addrs in psutil.net_if_addrs().values():
+                for a in addrs:
+                    if a.family == psutil.AF_LINK and a.address and a.address != "00:00:00:00:00:00":
+                        if a.address not in macs:
+                            macs.append(a.address)
+        except:
+            pass
+        return macs
+    mac_addresses = property(_get_all_macs)
+
     def _api(self, path, body=None):
         headers = {}
         if self.user_info.get("token"):
@@ -14750,6 +14771,12 @@ class App(wx.App):
                 return None
         except:
             return None
+    def do_guest_login(self):
+        resp = self._api("/api/guest-login", {"device_macs": self.mac_addresses})
+        if not resp:
+            return {"has_script": "free", "end_time": "2199-12-30 23:59:59", "need_register": False}
+        return resp
+
     def do_login(self, username, password, remember):
         resp = self._api("/api/login", {"username": username, "password": password, "device_mac": self.mac_address})
         if resp and resp.get("token"):
@@ -14780,8 +14807,11 @@ class App(wx.App):
             return {"success": True}
         return {"success": False, "error": resp.get("error", "注册失败") if resp else "网络错误"}
 
-    def do_activate(self, username, password, invite_code, remember):
-        resp = self._api("/api/activate", {"username": username, "password": password, "invite_code": invite_code, "device_mac": self.mac_address})
+    def do_activate(self, username, password, invite_code, remember, old_macs=None):
+        payload = {"username": username, "password": password, "invite_code": invite_code, "device_macs": self.mac_addresses}
+        if old_macs:
+            payload["old_macs"] = old_macs
+        resp = self._api("/api/activate", payload)
         if resp and resp.get("token"):
             self.user_info = {
                 "username": resp.get("user_name", username),
@@ -14979,6 +15009,23 @@ class LoginWindow(wx.Dialog):
             self.error_label.SetLabel(result["error"])
 
     def on_skip(self, event):
+        result = self.app.do_guest_login()
+
+        if result.get("need_register"):
+            dlg = ActivateDialog(self.app, "", "", self.remember_cb.GetValue(), old_macs=result.get("old_macs"))
+            dlg.invite_input.SetValue(result.get("invite_code", ""))
+            dlg.user_input.SetFocus()
+            if dlg.ShowModal() == wx.ID_OK:
+                self.EndModal(wx.ID_OK)
+            dlg.Destroy()
+            return
+
+        self.app.user_info = {
+            "username": "",
+            "has_script": result.get("has_script", "free"),
+            "end_time": result.get("end_time", "2199-12-30 23:59:59"),
+            "token": "",
+        }
         self.app._save_cached("", "", self.remember_cb.GetValue())
         self.EndModal(wx.ID_OK)
 
@@ -15000,11 +15047,12 @@ class LoginWindow(wx.Dialog):
 
 
 class ActivateDialog(wx.Dialog):
-    def __init__(self, app, seed_user="", seed_pass="", seed_remember=False):
+    def __init__(self, app, seed_user="", seed_pass="", seed_remember=False, old_macs=None):
         super().__init__(None, title="激活账号", size=(360, 340), pos=(200, 60),
                          style=wx.DEFAULT_DIALOG_STYLE)
         self.SetBackgroundColour(wx.Colour(243, 244, 248))
         self.app = app
+        self.old_macs = old_macs or []
 
         panel = wx.Panel(self)
         panel.SetBackgroundColour(wx.Colour(243, 244, 248))
@@ -15093,7 +15141,7 @@ class ActivateDialog(wx.Dialog):
         remember = self.remember_cb.GetValue()
 
         if invite:
-            result = self.app.do_activate(username, password, invite, remember)
+            result = self.app.do_activate(username, password, invite, remember, self.old_macs)
         else:
             result = self.app.do_register(username, password, remember)
 
