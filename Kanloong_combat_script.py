@@ -532,6 +532,7 @@ class CombatAutoScript:
         self.liubei_skill_sequence = ["控制", "加攻击", "加血"]  # 刘备技能释放顺序（循环）
         self.liubei_skill_index = {}  # {account_index: current_index} 记录每个账号当前技能索引
         self.liubei_skill_cd = {}  # {account_index: {skill_name: last_used_turn}} 记录每个账号的技能冷却时间
+        self._last_clear_attempt = {}  # {account_index: {"enemy_name": str, "turn": int}} 记录清除技能尝试
 
         # 复活任务分配：{执行账号索引: 目标死亡主角账号索引}
         # 在我方回合开始时统一分配，优先级：其他账号主角 > 随机账号武将
@@ -1039,7 +1040,7 @@ class CombatAutoScript:
                 },
                 "status_region": (60, 155, 147, 224),
                 "cast_position": (123, 350),
-                "status_duration": 3,
+                "status_duration": 2,
             },
         }
 
@@ -1377,6 +1378,10 @@ class CombatAutoScript:
                         target_pos = target.get("position") or (104, 344)
                         self.click_position(account_index, target_pos[0], target_pos[1])
                         enemy_name = target.get("enemy_name", "敌军")
+                        self._last_clear_attempt[account_index] = {
+                            "enemy_name": enemy_name,
+                            "turn": self.current_turn
+                        }
                         with self._state_lock:
                             self.global_enemies_need_clear = [
                                 e for e in self.global_enemies_need_clear if e is not target
@@ -2196,6 +2201,7 @@ class CombatAutoScript:
                     # 刘备特有: 重置技能CD
                     if gen_name == "刘备":
                         self.liubei_skill_cd[acct] = {}
+                        self._last_clear_attempt.pop(acct, None)
                     # 注意: has_liubei/has_general不在此处更新
                     # 它们表示背包里是否还有对应武将, 只有召唤操作失败时才设为False
                     self.need_proactive_replace = False
@@ -2590,6 +2596,17 @@ class CombatAutoScript:
                                     "warning",
                                 )
                                 self.enemy_status_reported[enemy_key] = True
+                        # Part1: 检查是否有账号上回合清除失败
+                        for acct_idx, attempt in list(self._last_clear_attempt.items()):
+                            if attempt["enemy_name"] == enemy_key and \
+                               self.current_turn - attempt["turn"] <= 1:
+                                if acct_idx in self.liubei_skill_cd:
+                                    self.liubei_skill_cd[acct_idx].pop("清除状态", None)
+                                self.report_battle_info(
+                                    f"账号{acct_idx} 上回合清除{enemy_key}失败，CD已重置为0",
+                                    "warning"
+                                )
+                                del self._last_clear_attempt[acct_idx]
                         break
 
     def _get_liubei_clear_cd_remaining(self, account_index):
@@ -3974,10 +3991,29 @@ class CombatAutoScript:
                                             break
                                 if _field_has_usable_liubei:
                                     break
+                            # 蛇特殊处理：未认领任务中有蛇且场上有刘备(无论CD)时，不因蛇触发预替换召唤
+                            snake_unclaimed = sum(
+                                1 for e in self.global_enemies_need_clear
+                                if e.get("claimed_by") is None and e.get("enemy_name") == "蛇"
+                            )
+                            _skip_snake_summon = False
+                            if snake_unclaimed > 0:
+                                for _i in range(self.get_account_count()):
+                                    if _i not in self.unit_info:
+                                        continue
+                                    for _g in self.unit_info[_i].get("main_char", {}).get("generals", []):
+                                        if (_g.get("name") == "刘备" and _g.get("alive", True)
+                                            and not _g.get("replacing", False) and not _g.get("pending_kick", False)):
+                                            _skip_snake_summon = True
+                                            break
+                                    if _skip_snake_summon:
+                                        break
+
                             replace_with_liubei = (self.keep_support_general
                                                    and self.has_liubei.get(account_index, False)
                                                    and any(e.get("claimed_by") is None for e in self.global_enemies_need_clear)
-                                                   and not _field_has_usable_liubei)
+                                                   and not _field_has_usable_liubei
+                                                   and not _skip_snake_summon)
                             if replace_with_liubei:
                                 if not self._liubei_summon_in_progress.get(account_index, False):
                                     self._liubei_summon_in_progress[account_index] = True
@@ -4183,6 +4219,22 @@ class CombatAutoScript:
                 effective_available = field_liubei_count - claimed_liubei_count
                 summoning_count = sum(1 for v in self._liubei_summon_in_progress.values() if v)
                 need_summon_count = unclaimed_count - effective_available - summoning_count
+
+                # 蛇特殊处理：未认领任务中有蛇且场上有刘备(无论CD)时，不因蛇触发召唤
+                snake_unclaimed = sum(
+                    1 for e in self.global_enemies_need_clear
+                    if e.get("claimed_by") is None and e.get("enemy_name") == "蛇"
+                )
+                if snake_unclaimed > 0:
+                    field_any_liubei = any(
+                        g.get("name") == "刘备" and g.get("alive", True)
+                        and not g.get("replacing", False) and not g.get("pending_kick", False)
+                        for i in range(self.get_account_count())
+                        for g in self.unit_info[i].get("main_char", {}).get("generals", [])
+                    )
+                    if field_any_liubei:
+                        need_summon_count -= snake_unclaimed
+                        need_summon_count = max(0, need_summon_count)
 
                 _cond_nsl1 = need_summon_count > 0
                 _cond_nsl2 = not has_liubei_in_account_for_clear
@@ -4515,6 +4567,33 @@ class CombatAutoScript:
 
             elif unit_type == "support":
                 # 刘备操作
+                # 修改点8: 检查清除技能是否可用（技能图标可见说明不在CD中）
+                clear_skill_pos = self.find_image(account_index, self.skill_images.get("清除状态"), self.skill_panel_region, 0)
+                if clear_skill_pos:
+                    cd_remaining_check = self._get_liubei_clear_cd_remaining(account_index)
+                    if cd_remaining_check > 0:
+                        if account_index in self.liubei_skill_cd:
+                            self.liubei_skill_cd[account_index].pop("清除状态", None)
+                        self.report_battle_info(
+                            f"账号{account_index} 清除技能可用但CD记录错误，已重置为0",
+                            "warning"
+                        )
+                # 修改点7: Part2 - 检查上回合清除是否失败
+                if account_index in self._last_clear_attempt:
+                    last = self._last_clear_attempt[account_index]
+                    if self.current_turn - last["turn"] <= 1:
+                        enemy_still_in_queue = any(
+                            e.get("enemy_name") == last["enemy_name"]
+                            for e in self.global_enemies_need_clear
+                        )
+                        if enemy_still_in_queue:
+                            if account_index in self.liubei_skill_cd:
+                                self.liubei_skill_cd[account_index].pop("清除状态", None)
+                            self.report_battle_info(
+                                f"账号{account_index} 确认清除{last['enemy_name']}失败，CD重置为0",
+                                "warning"
+                            )
+                    self._last_clear_attempt.pop(account_index, None)
                 # 认领清除任务
                 claimed_target = None
                 cd_remaining = self._get_liubei_clear_cd_remaining(account_index)
@@ -4568,6 +4647,7 @@ class CombatAutoScript:
                                     self.global_dead_units["generals"].remove(dead_gen)
                                     break
                     self._liubei_summon_in_progress[account_index] = False
+                    self._last_clear_attempt.pop(account_index, None)
                     self.need_proactive_replace = False
                     self._proactive_replace_in_progress = False
                     if not replacing_liubei.get("_lb_counted", False):
@@ -5231,6 +5311,7 @@ class CombatAutoScript:
                 self.liubei_skill_sequence = ["控制", "加攻击", "加血"]
                 self.liubei_skill_index = {}
                 self.liubei_skill_cd = {}
+                self._last_clear_attempt = {}
 
                 self.revive_assignments = {}
 
@@ -5332,6 +5413,7 @@ class CombatAutoScript:
             self.liubei_skill_sequence = ["控制", "加攻击", "加血"]
             self.liubei_skill_index = {}
             self.liubei_skill_cd = {}
+            self._last_clear_attempt = {}
 
             self.revive_assignments = {}
 
@@ -5396,6 +5478,7 @@ class CombatAutoScript:
             self.clear_zhugeliang = False
             self.global_enemies_need_clear = []
             self._claimed_clear_target = {}
+            self._last_clear_attempt = {}
             self._liubei_summon_in_progress = {}
             self.enemy_status_reported = {}
             self.zhugeliang_status1_missing_count = {}
