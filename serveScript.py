@@ -148,6 +148,7 @@ class MyThread(threading.Thread):
         self.win1_thread = threading.Thread(target=self.find_and_bing_windows1, daemon=True)
         self.win2_thread = threading.Thread(target=self.find_and_bing_windows2, daemon=True)
         self.guanDuCount = 0
+        self.invalid_xiaolvren_dots = {}
         self.hasZhengDianCount = 0
         self.daZhengDianCount = 0
         self.mojingFloor = ""
@@ -248,24 +249,29 @@ class MyThread(threading.Thread):
         else:
             print("Selected voice index is out of range.")
 
-    def _start_combat_auto(self, clear_enemy_keys=None):
+    def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None):
         try:
             if self.combat_auto_running:
                 return
             print("启动战斗自动操作")
+            _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
+            print(f"[DEBUG吃药开关] self.frame.use_heal_item={_heal_on}, hasattr={hasattr(self.frame, 'use_heal_item')}")
             self.combat_auto_running = True
 
             if not self.combat_auto_instance:
                 self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
                 self.combat_auto_instance.keep_support_general = False
-                self.combat_auto_instance.enable_main_heal = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
+                self.combat_auto_instance.enable_main_heal = _heal_on
                 self.combat_auto_instance.enable_main_summon = True
                 self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
+                if combat_scene is not None:
+                    self.combat_auto_instance.combat_scene = combat_scene
             else:
                 self.combat_auto_instance.reconfigure(
                     enemy_keys_to_detect=clear_enemy_keys,
                     liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
-                    enable_main_heal=self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False,
+                    enable_main_heal=_heal_on,
+                    combat_scene=combat_scene,
                 )
 
             if self.combat_auto_instance.battle_report_dialog:
@@ -697,6 +703,8 @@ class MyThread(threading.Thread):
                     True,
                 )
             self.sixiangWhile()
+        elif self.scriptName == "藏宝图":
+            self.cangbaotuWhile()
         elif self.scriptName == "老鼠":
             if self.zhengdianFloor not in ["全打", "走路", "龙+全打", "蛇+全打",
                                            "49整点", "49蛇+全打", "49龙+全打"]:
@@ -4688,9 +4696,9 @@ class MyThread(threading.Thread):
             if time.time() - query_time > 5:
                 return "timeout"
             if self.find_pic(
-                    self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+                    f"{self.get_resource_path('serveAssets/images/zdzd111.bmp')}|{self.get_resource_path('serveAssets/images/zdzd.bmp')}",
                     self.gameLocation, 0):
-                self.waitFor(base_image, self.dituLocation, 500)
+                self.waitFor(base_image, self.dituLocation, 600)
                 time.sleep(0.1)
                 self.confidenceNum = 0.9
                 return "success"
@@ -5077,7 +5085,9 @@ class MyThread(threading.Thread):
         picSize = picSize.split(",")
         picW, picH = int(picSize[0]), int(picSize[1])
         xiaolvren_pos_color = "07d307"
-        attacked_set = set()
+        if base_image not in self.invalid_xiaolvren_dots:
+            self.invalid_xiaolvren_dots[base_image] = set()
+        attacked_set = self.invalid_xiaolvren_dots[base_image]
         no_progress_rounds = 0
         max_no_progress = 3
 
@@ -5325,7 +5335,6 @@ class MyThread(threading.Thread):
                         time.sleep(0.1)
                         self.guanDuCount += 1
                         print(f"打完了{self.guanDuCount}个怪物")
-                        attacked_set.clear()
                         hit_any = True
                     if hit_any:
                         break
@@ -10857,13 +10866,13 @@ class MyThread(threading.Thread):
             return False
         _sixiang_auto_combat = "四象" in self.combat_auto_scenes and self.sixiang_difficulty in ("精英", "炼狱")
         if _sixiang_auto_combat:
-            self._start_combat_auto()
+            self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
             '玄水龙马',
             '玄水龙马',
             self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd111.bmp"),
+            self.get_resource_path("serveAssets/images/zdzd.bmp"),
             self.gameBottomLocation,
             "",
         )
@@ -10881,7 +10890,7 @@ class MyThread(threading.Thread):
             "814,90",
         )
         if _sixiang_auto_combat:
-            self._start_combat_auto()
+            self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
             '玄武',
@@ -10914,7 +10923,7 @@ class MyThread(threading.Thread):
             "855,65",
         )
         if _sixiang_auto_combat:
-            self._start_combat_auto()
+            self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
             '朱雀',
@@ -10947,7 +10956,7 @@ class MyThread(threading.Thread):
             "810,52",
         )
         if _sixiang_auto_combat:
-            self._start_combat_auto()
+            self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
             '青龙',
@@ -10980,7 +10989,7 @@ class MyThread(threading.Thread):
             "768,70",
         )
         if _sixiang_auto_combat:
-            self._start_combat_auto()
+            self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
             '白虎',
@@ -11000,7 +11009,41 @@ class MyThread(threading.Thread):
         )
         return True
 
-        
+    # 藏宝图脚本
+    def cangbaotuScript(self):
+        self.press_keys_until_image_found(
+            f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}",
+            f"{self.get_resource_path('serveAssets/images/cangbaotuqueding.bmp')}",
+            self.gameLocation,
+            self.gameBottomLocation,
+            "使用",
+        )
+        self.dm.MoveTo(447, 321)
+        time.sleep(0.001)
+        self.dm.LeftClick()
+        wabao_pos = self.waitFor(
+            '挖宝',
+            self.gameRightLocation
+        )
+        fei_pos = self.waitFor(
+            f"{self.get_resource_path('serveAssets/images/cangbaotufei.bmp')}",
+            (wabao_pos.x, wabao_pos.y,wabao_pos.x+110,wabao_pos.y+40)
+        )
+        self.dm.MoveTo(fei_pos.x, fei_pos.y)
+        time.sleep(0.001)
+        self.dm.LeftClick()
+        self.waitFor("挖宝", self.gameRightLocation)
+        self.dm.MoveTo(wabao_pos.x, wabao_pos.y)
+        time.sleep(0.001)
+        self.dm.LeftClick()
+
+    # 藏宝图循环
+    def cangbaotuWhile(self):
+        while True:
+            if self.overed:
+                return
+            self.cangbaotuScript()
+
     # 黑风循环
     def heifengWhile(self):
         outFbLocation = self.find_pic_or_str(
@@ -13857,7 +13900,7 @@ class MyFrame(wx.Frame):
                 "四象",
                 "龙王令",
                 "引魔符",
-                "藏宝图",
+                # "藏宝图",
                 "49日常",
                 "49战魂",
                 "49整点",
@@ -13887,7 +13930,7 @@ class MyFrame(wx.Frame):
                 "四象",
                 "龙王令",
                 "引魔符",
-                "藏宝图",
+                # "藏宝图",
                 "49日常",
                 "49战魂",
                 "49整点",
@@ -14188,10 +14231,24 @@ class MyFrame(wx.Frame):
         # 停止闪烁（如果正在运行）
         self.stop_update_notify_blink()
 
+        def _safe_hide(panel):
+            try:
+                if panel is not None:
+                    panel.Hide()
+            except Exception:
+                pass
+
+        def _safe_show(panel):
+            try:
+                if panel is not None:
+                    panel.Show()
+            except Exception:
+                pass
+
         if not self.remote_info or "version" not in self.remote_info:
             # 无法获取版本信息，隐藏提示图标
             if hasattr(self, "update_notify_panel"):
-                self.update_notify_panel.Hide()
+                _safe_hide(self.update_notify_panel)
             return
 
         latest_version = self.remote_info["version"]
@@ -14200,11 +14257,11 @@ class MyFrame(wx.Frame):
         if self.current_version != latest_version:
             # 有新版本，显示提示图标（静态显示，不闪烁）
             if hasattr(self, "update_notify_panel"):
-                self.update_notify_panel.Show()
+                _safe_show(self.update_notify_panel)
         else:
             # 已是最新版本，隐藏提示图标
             if hasattr(self, "update_notify_panel"):
-                self.update_notify_panel.Hide()
+                _safe_hide(self.update_notify_panel)
 
     # def on_factory_click(self, event):
     #     from ScriptFactory import ScriptFactoryDialog
@@ -15275,7 +15332,8 @@ class MyDialog(wx.Dialog):
         main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
         # 暂时修改
-        if has_script != "free1":
+        _show_auto_combat = has_script != "free" or datetime.now() < datetime(2026, 12, 30)
+        if _show_auto_combat:
             main_sizer.AddSpacer(8)
             sec("自动战斗")
             auto_combat_panel = wx.Panel(panel)
@@ -15490,8 +15548,8 @@ class MyDialog(wx.Dialog):
         opts = ["战", "镇", "噬", "溶", "丹", "五", "云", "名", "八", "鼠", "英", "庐", "红", "渊", "帮", "官", "镜", "卖", "四", "V", "整", "全"]
         for opt in opts:
             # 暂时注释
-            # if opt == "整" and has_script == "free":
-            #     continue
+            if opt == "整" and has_script == "free":
+                continue
             cb = wx.CheckBox(day_panel, label=opt)
             cb.SetForegroundColour(self.C_MUTED)
             cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
