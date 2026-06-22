@@ -2951,6 +2951,22 @@ class CombatAutoScript:
             self.report_battle_info(f"账号{account_index} 使用恢复药失败: {e}", "error")
             return False
 
+    def _try_use_heal_for_low_hp(self, account_index):
+        """主角没技能时，尝试用恢复药给低血单位加血
+        
+        优先级：主角 > 武将
+        use_heal_item 内部已有 CD 检查 + 2s 超时，找不到自动返回 False
+        """
+        low_units = self.low_hp_units.get(account_index, [])
+        if not low_units:
+            return False
+        
+        for u in low_units:
+            if u["unit_type"] == "main_char":
+                return self.use_heal_item(account_index, u)
+        
+        return self.use_heal_item(account_index, low_units[0])
+
     # ==================== 复活相关函数 ====================
     def _assign_revive_tasks(self):
         """在我方回合开始时，分配复活任务
@@ -4411,6 +4427,10 @@ class CombatAutoScript:
                 if self._execute_best_strategy(account_index, "main_char"):
                     return True
 
+                # 4.5 主角没技能时，尝试用恢复药给低血单位加血
+                if getattr(self, 'enable_main_heal', False) and self._try_use_heal_for_low_hp(account_index):
+                    return True
+
                 # 4.6 防御（策略引擎已包含防御兜底，此处保底兼容）
                 defense_btn = self.find_image(
                     account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
@@ -5119,11 +5139,20 @@ class CombatAutoScript:
                     acct = self._hp_scan_round % 3
                     self._hp_scan_round += 1
                     cnt = 0
+                    self.low_hp_units[acct] = []
                     for ridx, ac in self.hp_region_to_account.items():
                         if ac == acct:
                             reg = self.hp_bar_regions[ridx]
                             if self.find_image(acct, self.low_hp_indicator_image, reg, 0):
                                 cnt += 1
+                                unit_map = self.hp_bar_unit_mapping.get(acct, {})
+                                if ridx in unit_map:
+                                    unit_type, unit_name, position = unit_map[ridx]
+                                    self.low_hp_units[acct].append({
+                                        "unit_type": unit_type,
+                                        "unit_name": unit_name,
+                                        "position": position
+                                    })
                     self.low_hp_accounts[acct] = cnt
                 # 轮询间隔（非我方回合时）
                 if self.polling_running:

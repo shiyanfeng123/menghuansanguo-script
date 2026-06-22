@@ -182,6 +182,7 @@ class MyThread(threading.Thread):
         self.addBloudFlag = False
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
+        self.use_heal_item = False
         self.independent_win1 = False
         self.independent_win2 = False
         self.stoped = False
@@ -257,13 +258,14 @@ class MyThread(threading.Thread):
             if not self.combat_auto_instance:
                 self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
                 self.combat_auto_instance.keep_support_general = False
-                self.combat_auto_instance.enable_main_heal = True
+                self.combat_auto_instance.enable_main_heal = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
                 self.combat_auto_instance.enable_main_summon = True
                 self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
             else:
                 self.combat_auto_instance.reconfigure(
                     enemy_keys_to_detect=clear_enemy_keys,
                     liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
+                    enable_main_heal=self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False,
                 )
 
             if self.combat_auto_instance.battle_report_dialog:
@@ -13656,6 +13658,7 @@ class MyFrame(wx.Frame):
         self.addBloudFlag = False
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
+        self.use_heal_item = False
         self.independent_win1 = False
         self.independent_win2 = False
 
@@ -14315,6 +14318,8 @@ class MyFrame(wx.Frame):
             if hasattr(self, 'combat_auto_scenes') and hasattr(dialog, 'combat_auto_checkboxes'):
                 for scene, cb in dialog.combat_auto_checkboxes.items():
                     cb.SetValue(scene in self.combat_auto_scenes)
+            if hasattr(self, 'use_heal_item') and hasattr(dialog, 'use_heal_cb'):
+                dialog.use_heal_cb.SetValue(self.use_heal_item)
         if dialog.ShowModal() == wx.ID_OK:
             # 在对话框结束后，获取对话框中输入的数据
             print("当前游戏名称：" + self.game_name)
@@ -15305,6 +15310,12 @@ class MyDialog(wx.Dialog):
                 self.liubeiCountInputs[idx] = tc
                 auto_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
 
+            auto_row.AddSpacer(12)
+            self.use_heal_cb = wx.CheckBox(auto_combat_panel, label="吃药")
+            self.use_heal_cb.SetForegroundColour(self.C_MUTED)
+            self.use_heal_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            auto_row.Add(self.use_heal_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+
             auto_combat_panel.SetSizer(auto_row)
             main_sizer.Add(auto_combat_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         else:
@@ -15804,6 +15815,7 @@ class MyDialog(wx.Dialog):
             "zhanhun_start_floor": self.zhanhun_start_floor.GetValue(),
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
             "combat_auto_scenes": combat_auto_scenes,
+            "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
         }
 
     def apply_settings(self, settings):
@@ -15844,6 +15856,8 @@ class MyDialog(wx.Dialog):
             saved_scenes = settings.get("combat_auto_scenes", [])
             for scene, cb in self.combat_auto_checkboxes.items():
                 cb.SetValue(scene in saved_scenes)
+        if hasattr(self, 'use_heal_cb'):
+            self.use_heal_cb.SetValue(settings.get("use_heal_item", False))
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -15980,6 +15994,7 @@ class MyDialog(wx.Dialog):
                 parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
         parent.independent_win1 = self.independent_win1_on.IsShown() if hasattr(self, "independent_win1_on") else False
         parent.independent_win2 = self.independent_win2_on.IsShown() if hasattr(self, "independent_win2_on") else False
+        parent.use_heal_item = self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False
         # parent.selections = selections
         # 关闭对话框
         self.EndModal(wx.ID_OK)
