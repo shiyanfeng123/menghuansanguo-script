@@ -260,13 +260,11 @@ class MyThread(threading.Thread):
                 self.combat_auto_instance.enable_main_heal = True
                 self.combat_auto_instance.enable_main_summon = True
                 self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
-                print("战斗自动操作实例已初始化（等待进入战斗页面后自动初始化追踪）")
             else:
                 self.combat_auto_instance.reconfigure(
                     enemy_keys_to_detect=clear_enemy_keys,
                     liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
                 )
-                print("战斗自动操作实例已重置并重新配置")
 
             if self.combat_auto_instance.battle_report_dialog:
                 self.combat_auto_instance.battle_report_dialog.set_running(True)
@@ -274,10 +272,9 @@ class MyThread(threading.Thread):
             self.combat_auto_thread = threading.Thread(
                 target=self.combat_auto_instance.run_combat_loop, daemon=True)
             self.combat_auto_thread.start()
-            print("战斗自动操作线程已启动（使用内置战斗循环）")
 
         except Exception as e:
-            print(f"启动战斗自动操作失败: {e}")
+            print(f"启动战斗自动操作失败")
             import traceback
             traceback.print_exc()
             self.combat_auto_running = False
@@ -305,7 +302,7 @@ class MyThread(threading.Thread):
                     print(f"重置战斗脚本状态时出错: {e}")
 
         except Exception as e:
-            print(f"停止战斗自动操作失败: {e}")
+            print(f"停止战斗自动操作失败")
             import traceback
             traceback.print_exc()
 
@@ -5015,7 +5012,7 @@ class MyThread(threading.Thread):
         is_fei = self.go_in_ditu(
             "地图万花谷",
             self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"),
-            "野外西",
+            "万花谷",
             "",
             "",
             True,
@@ -5058,7 +5055,7 @@ class MyThread(threading.Thread):
                 self.waitFor("万花谷", self.dituLocation, 50)
                 time.sleep(1)
 
-    # 在地图通过小绿人打整点
+    # 在地图通过小绿人打整点（循环检测版本）
     def zhengdian_by_xiaolvren_for_gongcheng(self, base_image, find_dir,
                                              npc_posx=[], npc_possy=[],
                                              order=1):
@@ -5076,48 +5073,78 @@ class MyThread(threading.Thread):
             "serveAssets/images/zhengdian/xiaolvren2.bmp")
         picSize = self.dm.GetPicSize(xiaolvren)
         picSize = picSize.split(",")
-        picW, picH = picSize[0], picSize[1]
-        xiaolvren_pos = self.dm.FindPicEx(
-            int(x),
-            int(y),
-            int(w),
-            int(h),
-            self.get_resource_path(
-                "serveAssets/images/zhengdian/xiaolvren2.bmp"),
-            "",
-            0.7,
-            find_dir,
-        )
-        if xiaolvren_pos:
-            xiaolvren_pos = xiaolvren_pos.split("|")
-            # print(xiaolvren_pos, 'xiaolvren_pos')
-            xiaolvren_pos = self.sort_array_by_second_value(xiaolvren_pos,
-                                                            order)
-            # print(xiaolvren_pos, 'xiaolvren_pos111')
-            xiaolvren_pos_color = "07d307"
-            # xiaolvren_pos_color = self.dm.GetColor(int(int(xiaolvren_pos[0].split(',')[1]) + int(int(picW) * 0.5)), int(int(xiaolvren_pos[0].split(',')[2]) + int(int(picH) * 0.5)))
-            # print(xiaolvren_pos_color, 'xiaolvren_pos_color')
-            for item in xiaolvren_pos:
+        picW, picH = int(picSize[0]), int(picSize[1])
+        xiaolvren_pos_color = "07d307"
+        attacked_set = set()
+        no_progress_rounds = 0
+        max_no_progress = 3
+
+        while True:
+            if self.overed:
+                return
+            with condition:
+                if self.stoped:
+                    condition.wait()
                 if self.overed:
                     return
-                new_item = item.split(",")
-                # print(new_item[1], new_item[2], base_image, 'new_item[1]')
-                if npc_posx != 0 and int(new_item[1]) in npc_posx and int(
-                        new_item[2]) in npc_possy:
-                    continue
-                item_x = int(new_item[1]) + int(int(picW) * 0.5)
-                item_y = int(new_item[2]) + int(int(picH) * 0.5)
-                if self.dm.CmpColor(item_x, item_y, xiaolvren_pos_color,
-                                    0.7) == 1:
-                    continue
+
+            self.waitFor(base_image, self.dituLocation)
+            xiaolvren_pos = self.dm.FindPicEx(
+                int(x),
+                int(y),
+                int(w),
+                int(h),
+                xiaolvren,
+                "",
+                0.7,
+                find_dir,
+            )
+
+            target_dots = []
+            if xiaolvren_pos:
+                all_dots = xiaolvren_pos.split("|")
+                all_dots = self.sort_array_by_second_value(all_dots, order)
+                for item in all_dots:
+                    parts = item.split(",")
+                    tl_x = int(parts[1])
+                    tl_y = int(parts[2])
+                    if npc_posx != 0 and tl_x in npc_posx and tl_y in npc_possy:
+                        continue
+                    skip = False
+                    for ax, ay in attacked_set:
+                        if abs(tl_x - ax) <= 20 and abs(tl_y - ay) <= 20:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                    click_x = tl_x + picW // 2
+                    click_y = tl_y + picH // 2
+                    if self.dm.CmpColor(click_x, click_y, xiaolvren_pos_color,
+                                        0.7) == 1:
+                        continue
+                    target_dots.append((click_x, click_y, tl_x, tl_y))
+
+            if not target_dots:
+                no_progress_rounds += 1
+                if no_progress_rounds >= max_no_progress:
+                    self.confidenceNum = 0.9
+                    return
+                time.sleep(0.5)
+                continue
+
+            no_progress_rounds = 0
+            hit_any = False
+            for click_x, click_y, tl_x, tl_y in target_dots:
+                if self.overed:
+                    return
                 hasZhengDian = False
                 change_color_time = 0
                 find_zhengdian_time = time.time()
-                self.dm.MoveTo(item_x, item_y)
+                self.dm.MoveTo(click_x, click_y)
                 time.sleep(0.001)
                 self.dm.LeftClick()
                 time.sleep(0.001)
-                self.dm.MoveTo(int(item_x - 200), item_y)
+                self.dm.MoveTo(int(click_x - 200), click_y)
                 time.sleep(0.1)
                 while True:
                     if time.time() - find_zhengdian_time > 10:
@@ -5127,8 +5154,8 @@ class MyThread(threading.Thread):
                         break
                     # if not self.find_str(base_image, self.dituLocation, 0):
                     # 	break
-                    if change_color_time == 0 and self.dm.CmpColor(item_x,
-                                                                   item_y,
+                    if change_color_time == 0 and self.dm.CmpColor(click_x,
+                                                                   click_y,
                                                                    xiaolvren_pos_color,
                                                                    0.7) == 1:
                         change_color_time = time.time()
@@ -5206,7 +5233,7 @@ class MyThread(threading.Thread):
                         self.confidenceNum = 0.9
                         hasZhengDian = True
                         break
-                    self.confidenceNum = 0.6
+                    self.confidenceNum = 0.9
                     is_zhengdian = self.waitFor("攻城", self.gameBottomLocation,
                                                 0.6)
                     if is_zhengdian:
@@ -5221,86 +5248,91 @@ class MyThread(threading.Thread):
                         print("野外怪物")
                         break
                     del is_zhengdian
-                if hasZhengDian:
-                    # print(f"{base_image}有整点")
-                    find_time = time.time()
-                    dajiuda_pos = None
+                if not hasZhengDian:
+                    attacked_set.add((tl_x, tl_y))
+                    continue
+                find_time = time.time()
+                dajiuda_pos = None
+                while True:
+                    dajiuda_pos = self.find_pic(
+                        f"{self.get_resource_path('serveAssets/images/zhengdian/gongcheng.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/gongcheng1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/gongcheng2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/gongcheng3.bmp')}",
+                        self.gameBottomLocation,
+                        0,
+                    )
+                    if dajiuda_pos:
+                        break
+                    dajiuda_pos = self.find_str("攻城",
+                                                self.gameBottomLocation, 0)
+                    if dajiuda_pos:
+                        break
+                    time.sleep(0.3)
+                    if self.confidenceNum > 0.6:
+                        self.confidenceNum = self.confidenceNum - 0.1
+                    if time.time() - find_time > 4:
+                        print("没找到攻城怪物")
+                        break
+                self.confidenceNum = 0.9
+                if dajiuda_pos:
+                    self.dm.MoveTo(int(dajiuda_pos.x + 10),
+                                   int(dajiuda_pos.y + 3))
+                    time.sleep(0.001)
+                    self.dm.LeftClick()
+                    queryTime = time.time()
                     while True:
-                        dajiuda_pos = self.find_pic(
-                            f"{self.get_resource_path('serveAssets/images/zhengdian/gongcheng.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/gongcheng1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/gongcheng2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/gongcheng3.bmp')}",
+                        with condition:
+                            if self.stoped:
+                                condition.wait()
+                        if time.time() - queryTime > 8:
+                            zhengdianHas = False
+                            break
+                        if self.find_pic(
+                                self.get_resource_path(
+                                    "serveAssets/images/zdzd.bmp"),
+                                self.gameLocation,
+                                0,
+                        ):
+                            zhengdianHas = True
+                            break
+                        self.confidenceNum = 0.6
+                        yourendaLocation = self.find_str("点击",
+                                                         self.gameBottomLocation,
+                                                         0)
+                        if yourendaLocation:
+                            self.dm.MoveTo(yourendaLocation.x,
+                                           yourendaLocation.y)
+                            time.sleep(0.001)
+                            self.dm.LeftClick()
+                            zhengdianHas = False
+                            break
+                        yourendaLocation1 = self.find_pic(
+                            f"{self.get_resource_path('serveAssets/images/zhengdian/jixu.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jixu1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jixu2.bmp')}",
                             self.gameBottomLocation,
                             0,
                         )
-                        if dajiuda_pos:
+                        if yourendaLocation1:
+                            self.dm.MoveTo(yourendaLocation1.x,
+                                           yourendaLocation1.y)
+                            time.sleep(0.001)
+                            self.dm.LeftClick()
+                            zhengdianHas = False
                             break
-                        dajiuda_pos = self.find_str("攻城",
-                                                    self.gameBottomLocation, 0)
-                        if dajiuda_pos:
-                            break
-                        time.sleep(0.3)
-                        if self.confidenceNum > 0.6:
-                            self.confidenceNum = self.confidenceNum - 0.1
-                        if time.time() - find_time > 4:
-                            print("没找到打就打")
-                            break
-                    self.confidenceNum = 0.9
-                    if dajiuda_pos:
-                        self.dm.MoveTo(int(dajiuda_pos.x + 10),
-                                       int(dajiuda_pos.y + 3))
-                        time.sleep(0.001)
-                        self.dm.LeftClick()
-                        queryTime = time.time()
-                        while True:
-                            with condition:
-                                if self.stoped:
-                                    condition.wait()
-                            if time.time() - queryTime > 8:
-                                zhengdianHas = False
-                                break
-                            if self.find_pic(
-                                    self.get_resource_path(
-                                        "serveAssets/images/zdzd.bmp"),
-                                    self.gameLocation,
-                                    0,
-                            ):
-                                zhengdianHas = True
-                                break
-                            self.confidenceNum = 0.6
-                            yourendaLocation = self.find_str("点击",
-                                                             self.gameBottomLocation,
-                                                             0)
-                            if yourendaLocation:
-                                self.dm.MoveTo(yourendaLocation.x,
-                                               yourendaLocation.y)
-                                time.sleep(0.001)
-                                self.dm.LeftClick()
-                                zhengdianHas = False
-                                break
-                            yourendaLocation1 = self.find_pic(
-                                f"{self.get_resource_path('serveAssets/images/zhengdian/jixu.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jixu1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/jixu2.bmp')}",
-                                self.gameBottomLocation,
-                                0,
-                            )
-                            if yourendaLocation1:
-                                self.dm.MoveTo(yourendaLocation1.x,
-                                               yourendaLocation1.y)
-                                time.sleep(0.001)
-                                self.dm.LeftClick()
-                                zhengdianHas = False
-                                break
-                            self.confidenceNum = 0.9
-                        del dajiuda_pos
-                        if zhengdianHas:
-                            self.waitFor(base_image, self.dituLocation)
-                            time.sleep(0.1)
-                            self.guanDuCount += 1
-                            print(f"打完了{self.guanDuCount}个怪物")
+                        self.confidenceNum = 0.9
+                    del dajiuda_pos
+                    if zhengdianHas:
+                        self.waitFor(base_image, self.dituLocation)
+                        time.sleep(0.1)
+                        self.guanDuCount += 1
+                        print(f"打完了{self.guanDuCount}个怪物")
+                        attacked_set.clear()
+                        hit_any = True
+                    if hit_any:
+                        break
                 else:
-                    print("没找到怪物")
-            del xiaolvren_pos
+                    attacked_set.add((tl_x, tl_y))
 
-        else:
-            return
+            if not hit_any:
+                self.confidenceNum = 0.9
+                return
 
     # 换线
     def check_line(self, line="二线"):
@@ -5556,6 +5588,9 @@ class MyThread(threading.Thread):
             if find_address == "地图徐州":
                 find_address = "地图官渡"
                 region = (0, -18, 180, 38)
+            if find_address == "地图野外北":
+                find_address = "地图毒龙潭"
+                region = (0, -18, 180, 38)
             if find_address == "地图山洞三层":
                 find_address = "地图恶龙洞"
                 region = (0, 21, 180, 0)
@@ -5726,6 +5761,8 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
+                if self.overed:
+                    return
             self.dm.MoveTo(image_locations.x, image_locations.y)
             time.sleep(0.001)
             self.dm.LeftClick()
@@ -5743,6 +5780,8 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
+                if self.overed:
+                    return
             self.win1_dm.MoveTo(image_locations.x, image_locations.y)
             time.sleep(0.001)
             self.win1_dm.LeftClick()
@@ -5760,6 +5799,8 @@ class MyThread(threading.Thread):
             with condition:
                 if self.stoped:
                     condition.wait()
+                if self.overed:
+                    return
             self.win2_dm.MoveTo(image_locations.x, image_locations.y)
             time.sleep(0.001)
             self.win2_dm.LeftClick()
@@ -13578,11 +13619,6 @@ class MyThread(threading.Thread):
         current_minute = current_time.minute
         return 58 - current_minute
 
-    # === AUTO_SCRIPTS_METHODS_START ===
-    # 由 ScriptFactory 自动生成的脚本方法
-    # === AUTO_SCRIPTS_METHODS_END ===
-
-
 class MyFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, title="脚本", size=(370, 420),
@@ -15154,7 +15190,7 @@ class MyDialog(wx.Dialog):
         self.scheme_choice.Bind(wx.EVT_COMBOBOX, self.on_scheme_select)
         top_row.Add(self.scheme_choice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
 
-        for name, fn, tip in [("btn_save.png", self.on_save, "保存"), ("btn_edit.png", self.on_update, "编辑"), ("btn_delete.png", self.on_delete, "删除")]:
+        for name, fn, tip in [("btn_save.png", self.on_save_scheme, "保存方案"), ("btn_add.png", self.on_add, "添加方案"), ("btn_delete.png", self.on_delete, "删除方案")]:
             b = wx.Button(panel, size=(28, 28), style=wx.BORDER_NONE)
             b.SetBitmap(self._dialog_icon(name, 14))
             b.SetBackgroundColour(self.C_SURFACE)
@@ -15485,6 +15521,7 @@ class MyDialog(wx.Dialog):
 
         panel.SetSizer(main_sizer)
         self.load_current_scheme()
+        self.team_leader_text.SetFocus()
 
     def _section_header(self, sizer, panel, text):
         l = wx.StaticText(panel, label=f"▸ {text}")
@@ -15819,7 +15856,7 @@ class MyDialog(wx.Dialog):
             self.apply_settings(self.schemes[self.current_scheme])
             self.scheme_choice.SetValue(self.current_scheme)
 
-    def on_save(self, event):
+    def on_add(self, event):
         if len(self.schemes) >= self.max_schemes:
             wx.MessageBox(
                 f"最多只能保存{self.max_schemes}个方案",
@@ -15828,7 +15865,7 @@ class MyDialog(wx.Dialog):
             )
             return
 
-        dlg = wx.TextEntryDialog(self, "请输入方案名称:", "保存方案")
+        dlg = wx.TextEntryDialog(self, "请输入方案名称:", "新增方案")
         if dlg.ShowModal() == wx.ID_OK:
             scheme_name = dlg.GetValue().strip()
             if not scheme_name:
@@ -15852,23 +15889,21 @@ class MyDialog(wx.Dialog):
             self.scheme_choice.SetValue(scheme_name)
 
             self.save_config()
-            wx.MessageBox("方案保存成功", "成功", wx.OK | wx.ICON_INFORMATION)
+            wx.MessageBox("方案新增成功", "成功", wx.OK | wx.ICON_INFORMATION)
         dlg.Destroy()
 
-    def on_update(self, event):
+    def on_save_scheme(self, event):
         scheme_name = self.scheme_choice.GetValue().strip()
-        if not scheme_name:
-            wx.MessageBox("请先选择一个方案", "提示", wx.OK | wx.ICON_WARNING)
-            return
-        if scheme_name not in self.schemes:
-            wx.MessageBox(f"方案「{scheme_name}」不存在，请先保存为新方案", "提示", wx.OK | wx.ICON_WARNING)
-            return
-        settings = self.collect_settings()
-        self.schemes[scheme_name] = settings
-        self.current_scheme = scheme_name
-
-        self.save_config()
-        wx.MessageBox("方案修改成功", "成功", wx.OK | wx.ICON_INFORMATION)
+        # 有选中方案且方案存在，直接保存
+        if scheme_name and scheme_name in self.schemes:
+            settings = self.collect_settings()
+            self.schemes[scheme_name] = settings
+            self.current_scheme = scheme_name
+            self.save_config()
+            wx.MessageBox("方案保存成功", "成功", wx.OK | wx.ICON_INFORMATION)
+        else:
+            # 没有选中方案或方案不存在，走新增逻辑
+            self.on_add(event)
 
     def on_delete(self, event):
         scheme_name = self.scheme_choice.GetValue()
