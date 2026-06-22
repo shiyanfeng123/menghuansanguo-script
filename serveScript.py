@@ -661,9 +661,9 @@ class MyThread(threading.Thread):
         }
         self.beginFun()
         # 用户脚本: 📝 开头
-        if self.scriptName.startswith("📝 "):
-            self._run_user_script()
-            return
+        # if self.scriptName.startswith("📝 "):
+        #     self._run_user_script()
+        #     return
         if self.scriptName == "官渡":
             # self.go_in_ditu('地图徐州', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '徐州', '', '', True)
             self.guanduWhile()
@@ -2672,46 +2672,46 @@ class MyThread(threading.Thread):
         dlg.Destroy()
         app.MainLoop()
 
-    def _run_user_script(self):
-        """运行用户脚本：优先使用配置驱动引擎，回退到script.py"""
-        script_name = self.scriptName.replace("📝 ", "")
-
-        from ScriptEngine import ScriptEngine
-        config = ScriptEngine.load_config(script_name)
-        if config:
-            try:
-                engine = ScriptEngine(self, config)
-                engine.run()
-                return
-            except Exception as e:
-                print(f"配置驱动脚本执行失败: {e}")
-                import traceback
-                traceback.print_exc()
-                return
-
-        import importlib.util
-        script_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "user_scripts", script_name, "script.py"
-        )
-        if not os.path.exists(script_path):
-            print(f"用户脚本不存在: {script_path}")
-            return
-        try:
-            spec = importlib.util.spec_from_file_location(
-                f"user_script_{script_name}", script_path)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-            class_name = "Script_" + "".join(
-                c if c.isalnum() or c == "_" else "_" for c in script_name
-            )
-            script_cls = getattr(mod, class_name)
-            instance = script_cls(self)
-            instance.run()
-        except Exception as e:
-            print(f"运行用户脚本失败: {e}")
-            import traceback
-            traceback.print_exc()
+    # def _run_user_script(self):
+    #     """运行用户脚本：优先使用配置驱动引擎，回退到script.py"""
+    #     script_name = self.scriptName.replace("📝 ", "")
+    #
+    #     from ScriptEngine import ScriptEngine
+    #     config = ScriptEngine.load_config(script_name)
+    #     if config:
+    #         try:
+    #             engine = ScriptEngine(self, config)
+    #             engine.run()
+    #             return
+    #         except Exception as e:
+    #             print(f"配置驱动脚本执行失败: {e}")
+    #             import traceback
+    #             traceback.print_exc()
+    #             return
+    #
+    #     import importlib.util
+    #     script_path = os.path.join(
+    #         os.path.dirname(os.path.abspath(__file__)),
+    #         "user_scripts", script_name, "script.py"
+    #     )
+    #     if not os.path.exists(script_path):
+    #         print(f"用户脚本不存在: {script_path}")
+    #         return
+    #     try:
+    #         spec = importlib.util.spec_from_file_location(
+    #             f"user_script_{script_name}", script_path)
+    #         mod = importlib.util.module_from_spec(spec)
+    #         spec.loader.exec_module(mod)
+    #         class_name = "Script_" + "".join(
+    #             c if c.isalnum() or c == "_" else "_" for c in script_name
+    #         )
+    #         script_cls = getattr(mod, class_name)
+    #         instance = script_cls(self)
+    #         instance.run()
+    #     except Exception as e:
+    #         print(f"运行用户脚本失败: {e}")
+    #         import traceback
+    #         traceback.print_exc()
 
     # 找当前的路径
     def get_resource_path(self, relative_path):
@@ -13679,14 +13679,14 @@ class MyFrame(wx.Frame):
         self.btn_settings.Bind(wx.EVT_BUTTON, self.on_button_click)
         row_top.Add(self.btn_settings, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        self.btn_factory = wx.Button(self.panel, size=(30, 30), style=wx.BORDER_NONE)
-        factory_bmp = wx.Bitmap(wx.Image(self.get_resource_path("serveAssets/images/menu_factory.png")).Scale(20, 20, wx.IMAGE_QUALITY_HIGH))
-        self.btn_factory.SetBitmap(factory_bmp)
-        self.btn_factory.SetBackgroundColour(wx.Colour(215, 218, 226))
-        self.btn_factory.SetToolTip("脚本工厂")
-        self.btn_factory.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.btn_factory.Bind(wx.EVT_BUTTON, self.on_factory_click)
-        row_top.Add(self.btn_factory, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
+        # self.btn_factory = wx.Button(self.panel, size=(30, 30), style=wx.BORDER_NONE)
+        # factory_bmp = wx.Bitmap(wx.Image(self.get_resource_path("serveAssets/images/menu_factory.png")).Scale(20, 20, wx.IMAGE_QUALITY_HIGH))
+        # self.btn_factory.SetBitmap(factory_bmp)
+        # self.btn_factory.SetBackgroundColour(wx.Colour(215, 218, 226))
+        # self.btn_factory.SetToolTip("脚本工厂")
+        # self.btn_factory.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        # self.btn_factory.Bind(wx.EVT_BUTTON, self.on_factory_click)
+        # row_top.Add(self.btn_factory, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
 
         main_sizer.Add(row_top, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         main_sizer.AddSpacer(8)
@@ -13901,12 +13901,12 @@ class MyFrame(wx.Frame):
             ],
         )
         has_choices = self.has_choices[0]
-        try:
-            from ScriptFactory import get_user_script_choices
-            user_scripts = get_user_script_choices()
-            has_choices = list(has_choices) + user_scripts
-        except:
-            pass
+        # try:
+        #     from ScriptFactory import get_user_script_choices
+        #     user_scripts = get_user_script_choices()
+        #     has_choices = list(has_choices) + user_scripts
+        # except:
+        #     pass
         self.dropdown = wx.ComboBox(self.panel, size=(-1, 34),
                                     choices=has_choices)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_script, self.dropdown)
@@ -14201,10 +14201,10 @@ class MyFrame(wx.Frame):
             if hasattr(self, "update_notify_panel"):
                 self.update_notify_panel.Hide()
 
-    def on_factory_click(self, event):
-        from ScriptFactory import ScriptFactoryDialog
-        dlg = ScriptFactoryDialog(self)
-        dlg.Show()
+    # def on_factory_click(self, event):
+    #     from ScriptFactory import ScriptFactoryDialog
+    #     dlg = ScriptFactoryDialog(self)
+    #     dlg.Show()
 
     def on_update_link_click(self, event):
         # 停止闪烁

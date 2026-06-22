@@ -546,6 +546,7 @@ class GameCaptureDialog(wx.Dialog):
 
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self._overlay_bmp = None
+        self._last_refresh = 0
         self._capture_screen()
 
     def _init_game_rect(self):
@@ -586,7 +587,7 @@ class GameCaptureDialog(wx.Dialog):
             self._overlay_bmp = None
 
     def _on_paint(self, e):
-        dc = wx.PaintDC(self)
+        dc = wx.AutoBufferedPaintDC(self)
         if self._overlay_bmp:
             dc.DrawBitmap(self._overlay_bmp, 0, 0)
             dc.SetBrush(wx.Brush(wx.Colour(0, 0, 0, 120)))
@@ -662,7 +663,10 @@ class GameCaptureDialog(wx.Dialog):
         self.EndModal(wx.ID_OK)
 
     def _on_motion(self, e):
-        self.Refresh()
+        now = time.time()
+        if now - self._last_refresh > 0.05:
+            self._last_refresh = now
+            self.Refresh()
 
     def _on_key(self, e):
         if e.GetKeyCode() == wx.WXK_ESCAPE:
@@ -2189,14 +2193,18 @@ class ScriptFactoryDialog(wx.Frame):
             pf = self.parent_frame
             if pf and hasattr(pf, 'scriptName'):
                 try:
-                    if hasattr(pf, 'script_choice'):
+                    target = f"📝 {name}"
+                    if hasattr(pf, 'dropdown'):
+                        choices = pf.dropdown.GetItems()
+                        if target not in choices:
+                            choices.append(target)
+                            pf.dropdown.SetItems(choices)
+                        pf.dropdown.SetValue(target)
+                    elif hasattr(pf, 'script_choice'):
                         choices = pf.script_choice.GetItems()
-                        target = f"📝 {name}"
                         if target in choices:
                             pf.script_choice.SetValue(target)
-                        pf.scriptName = name
-                    else:
-                        pf.scriptName = name
+                    pf.scriptName = name
                 except Exception:
                     pass
             wx.MessageBox(f"✅ 脚本「{name}」已保存并设为当前脚本！\n\n👉 回到主程序点「开始」即可运行", "试运行准备就绪")
