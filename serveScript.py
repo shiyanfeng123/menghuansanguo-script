@@ -7899,6 +7899,10 @@ class MyThread(threading.Thread):
         if not isInZhanhun:
             print("战魂没次数了")
             return False
+        self.huifu_yijian_main()
+        time.sleep(1)
+        if self.zhanhunFloorNew == "27层自动战斗":
+            self._start_combat_auto()
         self.findAndClickPic(
             "战魂",
             "人参娃",
@@ -7911,6 +7915,8 @@ class MyThread(threading.Thread):
         self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"),
                      self.gameLocation)
         self.addBloud()
+        if self.zhanhunFloorNew == "27层自动战斗":
+            self._stop_combat_auto()
         waitForTwoRes = self.waitForTwo(
             "战魂",
             "洛阳",
