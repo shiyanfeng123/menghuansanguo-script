@@ -255,7 +255,6 @@ class MyThread(threading.Thread):
                 return
             print("启动战斗自动操作")
             _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
-            print(f"[DEBUG吃药开关] self.frame.use_heal_item={_heal_on}, hasattr={hasattr(self.frame, 'use_heal_item')}")
             self.combat_auto_running = True
 
             if not self.combat_auto_instance:
@@ -7912,6 +7911,8 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
             "",
         )
+        if self.zhanhunFloorNew == "27层自动战斗":
+            self._start_combat_auto()
         self.findAndClickPic(
             "魂",
             "周瑜",
@@ -7923,6 +7924,8 @@ class MyThread(threading.Thread):
         )
         self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"),
                      self.gameLocation)
+        if self.zhanhunFloorNew == "27层自动战斗":
+            self._stop_combat_auto()
         self.addBloud()
         waitForTwoRes = self.waitForTwo(
             "魂",
@@ -15451,7 +15454,7 @@ class MyDialog(wx.Dialog):
         self.zhanhun_count.SetHint("次数")
         self.zhanhun_count.SetBackgroundColour(self.C_INPUT_BG)
         self.zhanhun_count.SetForegroundColour(self.C_TEXT)
-        self.choiceZhanHunCeng = wx.ComboBox(f2, size=(-1, 28), choices=["26层", "27层"])
+        self.choiceZhanHunCeng = wx.ComboBox(f2, size=(-1, 28), choices=["26层", "27层", "27层自动战斗"])
         self.choiceZhanHunCeng.SetHint("镇魂层数")
         self.choiceZhanHunCeng.SetBackgroundColour(self.C_INPUT_BG)
         self.choiceZhanHunCeng.SetForegroundColour(self.C_TEXT)

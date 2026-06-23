@@ -824,6 +824,9 @@ class CombatAutoScript:
         # 药品CD追踪 {account_index: {item_name: last_used_turn}}
         self.item_cd_tracking = {}
 
+        # 无恢复药账号缓存（避免每回合重复2s超时查找）
+        self._no_heal_item_accounts = set()
+
         # 武将追踪信息（存储每个账号的武将信息）
         self.general_tracking = (
             {}
@@ -1464,14 +1467,14 @@ class CombatAutoScript:
 
         general_pos = None
         start_time = time.time()
-        while time.time() - start_time < 2.0:
+        while time.time() - start_time < 1.0:
             general_pos = self.find_image(account_index, general_path, self.summon_panel_region, 0)
             if general_pos:
                 break
             time.sleep(0.1)
 
         if not general_pos:
-            self.report_battle_info(f"账号{account_index} 查找武将{general_name}图片超时（2秒）", "warning")
+            self.report_battle_info(f"账号{account_index} 查找武将{general_name}图片超时", "warning")
             return False
 
         # 3. 点击武将并验证（背包武将消失即表示召唤成功）
@@ -2511,7 +2514,7 @@ class CombatAutoScript:
                             self.zhugeliang_status1_missing_count[account_idx] += 1
 
                         # 判断条件：状态1连续10次未找到（在找到状态2的前提下）
-                        if self.zhugeliang_status1_missing_count[account_idx] >= 4:
+                        if self.zhugeliang_status1_missing_count[account_idx] >= 3:
                             self.clear_zhugeliang = True
                             if not self.keep_support_general:
                                 self.keep_support_general = True
@@ -2835,7 +2838,7 @@ class CombatAutoScript:
 
             # 1. 点击道具按钮（5秒内找到，否则返回False）
             start_time = time.time()
-            timeout = 2.0
+            timeout = 1.5
             item_button_pos = None
 
             while time.time() - start_time < timeout:
@@ -2887,8 +2890,9 @@ class CombatAutoScript:
 
             if not heal_item_pos:
                 self.report_battle_info(
-                    f"账号{account_index} 道具面板中未找到恢复药（2秒超时），图片路径：{heal_item_image}", "error"
+                    f"账号{account_index} 道具面板中未找到恢复药（2秒超时）", "error"
                 )
+                self._no_heal_item_accounts.add(account_index)
                 return False
 
             self.click_position(account_index, heal_item_pos.x, heal_item_pos.y)
@@ -2927,6 +2931,8 @@ class CombatAutoScript:
         优先级：主角 > 武将
         use_heal_item 内部已有 CD 检查 + 2s 超时，找不到自动返回 False
         """
+        if account_index in self._no_heal_item_accounts:
+            return False
         low_units = self.low_hp_units.get(account_index, [])
         if not low_units:
             return False
@@ -3465,12 +3471,14 @@ class CombatAutoScript:
         # 准备张星彩辅助技能路径
         xingcai_support_skill_path = self.skill_images.get("星彩辅助")
 
-        # 同步查找：在循环中同时查找召唤按钮、攻击武将技能、刘备控制技能、张星彩辅助技能
+        # 同步查找：先检查技能面板中的技能，最后才查召唤按钮
+        # 避免召唤按钮常驻导致武将回合被误判为主角
         while time.time() - start_time < timeout:
-            # 1. 查找召唤按钮（主角特有）
-            summon_btn = self.find_image(account_index, self.button_images["召唤按钮"], self.right_button_region, 0)
-            if summon_btn:
-                return ("main_char", None)
+            # 1. 查找攻击武将技能（曹操/魔化关羽）
+            for skill_name, skill_path in attack_skill_paths.items():
+                skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
+                if skill_pos:
+                    return ("attack", skill_name)
 
             # 2. 第一回合优先检测张星彩辅助技能（确保第一回合走辅助策略）
             if self.current_turn <= 1 and xingcai_support_skill_path:
@@ -3478,13 +3486,7 @@ class CombatAutoScript:
                 if skill_pos:
                     return ("xingcai_support", "星彩辅助")
 
-            # 3. 查找攻击武将技能（曹操/魔化关羽）
-            for skill_name, skill_path in attack_skill_paths.items():
-                skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
-                if skill_pos:
-                    return ("attack", skill_name)
-
-            # 3.5 查找张星彩攻击技能（星彩群攻/星彩单攻，归类为xingcai_support）
+            # 3. 查找张星彩攻击技能（星彩群攻/星彩单攻，归类为xingcai_support）
             for skill_name, skill_path in xingcai_attack_skill_paths.items():
                 skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
                 if skill_pos:
@@ -3501,6 +3503,11 @@ class CombatAutoScript:
                 skill_pos = self.find_image(account_index, control_skill_path, self.skill_panel_region, 0)
                 if skill_pos:
                     return ("support", "控制")
+
+            # 6. 查找召唤按钮（主角特有）—— 兜底，技能都没找到才认为是主角
+            summon_btn = self.find_image(account_index, self.button_images["召唤按钮"], self.right_button_region, 0)
+            if summon_btn:
+                return ("main_char", None)
 
             time.sleep(0.1)  # 每次循环间隔0.1秒
 
@@ -3785,7 +3792,7 @@ class CombatAutoScript:
                 # 等待操作按钮出现（确保进入武将操作阶段）
                 is_finded = False
                 start_time = time.time()
-                while time.time() - start_time < 4.0 and self.polling_running:
+                while time.time() - start_time < 3.0 and self.polling_running:
                     if self.check_action_button(account_index):
                         is_finded = True
                         break
@@ -3801,7 +3808,7 @@ class CombatAutoScript:
                 # 等待第二个武将操作
                 is_finded = False
                 start_time = time.time()
-                while time.time() - start_time < 3.0:
+                while time.time() - start_time < 2.0:
                     if self.check_action_button(account_index):
                         is_finded = True
                         break
@@ -4041,10 +4048,19 @@ class CombatAutoScript:
                                         f"账号{account_index} 预替换{summon_name}操作失败, "
                                         f"下次替换账号{self.proactive_replace_account}", "warning")
 
-            # 确保技能面板已打开（点击技能按钮）
-            skill_btn = self.find_image(account_index, self.button_images["技能按钮"], self.right_button_region, 0)
+            # 确保技能面板已打开（重试查找并点击技能按钮，避免一次识别失败）
+            find_jineng_time = time.time()
+            skill_btn = None
+            while time.time() - find_jineng_time < 1.0 and not skill_btn:
+                skill_btn = self.find_image(
+                    account_index, self.button_images["技能按钮"], self.right_button_region, 0
+                )
+                if skill_btn:
+                    break
+                time.sleep(0.005)
             if skill_btn:
                 self.click_position(account_index, skill_btn.x, skill_btn.y)
+                time.sleep(0.2)
 
             # 第一回合跳过召唤判断（第一回合武将还没有出现，不需要召唤）
             is_first_turn = self.current_turn == 0 or self.current_turn == 1
@@ -4260,16 +4276,6 @@ class CombatAutoScript:
                 # and self.keep_support_general == False
                 # and self.enemies_need_clear[account_index][account_index] and self.enemies_need_clear[account_index][account_index].has_zhaohuan==False
                 # 4.1 召唤刘备（如果需要）
-                _cond_41_keep = self.keep_support_general
-                _cond_41_has_liubei = self.has_liubei.get(account_index, False)
-                _cond_41_time_ok = (time.time() - turn_start_time) < turn_timeout
-                _cond_41_has_general = self.has_general.get(account_index, False)
-                _cond_41_need = need_liubei or need_self_liubei
-                # if not (_cond_41_keep and _cond_41_has_liubei and _cond_41_time_ok and _cond_41_has_general and _cond_41_need):
-                #     self.report_battle_info(
-                #         f"账号{account_index} [DEBUG] 4.1召唤刘备条件不满足: keep_support_general={_cond_41_keep}, has_liubei={_cond_41_has_liubei}, time_ok={_cond_41_time_ok}, has_general={_cond_41_has_general}, need(need_liubei|need_self_liubei)={_cond_41_need}",
-                #         "info",
-                #     )
                 if ( self.keep_support_general
                     and self.has_liubei.get(account_index, False)
                     and (time.time() - turn_start_time) < turn_timeout
@@ -5287,6 +5293,7 @@ class CombatAutoScript:
                 self.has_liubei_on_field = True
                 self.liubei_missing_count = 0
                 self.low_hp_units = {}
+                self._no_heal_item_accounts = set()
                 self.zhugeliang_found = {}
                 self.zhugeliang_status1_missing_count = {}
                 self.zhugeliang_status2_missing_count = {}
@@ -5391,6 +5398,7 @@ class CombatAutoScript:
             self.liubei_missing_count = 0
             self.keep_support_general = False
             self.low_hp_units = {}
+            self._no_heal_item_accounts = set()
             self.zhugeliang_found = {}
             self.zhugeliang_status1_missing_count = {}
             self.zhugeliang_status2_missing_count = {}
