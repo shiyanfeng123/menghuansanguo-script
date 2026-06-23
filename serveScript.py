@@ -134,6 +134,7 @@ class MyThread(threading.Thread):
         self.guajiFlag1 = False
         self.guajiFlag2 = False
         self.huifuFlag = False
+        self._huifu_done = 0
         self.frame = None
         self.line = "二线"
         self.zhanhunFloor = ""
@@ -1830,7 +1831,7 @@ class MyThread(threading.Thread):
                 return
             if self.clickFlag:
                 self.clearBag_team1()
-            if self.huifuFlag:
+            if self.huifuFlag and self.win1_dm:
                 self.huifu_yijian(self.win1_dm)
             if self.addBloudFlag:
                 self.addBloud_team1()
@@ -2152,7 +2153,7 @@ class MyThread(threading.Thread):
             time.sleep(1)
             if self.clickFlag:
                 self.clearBag_team2()
-            if self.huifuFlag:
+            if self.huifuFlag and self.win2_dm:
                 self.huifu_yijian(self.win2_dm)
             if self.addBloudFlag:
                 self.addBloud_team2()
@@ -2728,75 +2729,93 @@ class MyThread(threading.Thread):
             return os.path.join(sys._MEIPASS, relative_path)
         return os.path.join(os.path.abspath("."), relative_path)
 
+    def huifu_yijian_main(self):
+        self._huifu_done = 0
+        self.huifuFlag = True
+        self.huifu_yijian(self.dm)
+        wait_start = time.time()
+        while self.huifuFlag:
+            if time.time() - wait_start > 30:
+                self.huifuFlag = False
+                self._huifu_done = 0
+                break
+            time.sleep(0.1)
+
     # 一键恢复
     def huifu_yijian(self, dm):
         self.huifuFlag = True
-        if self.overed:
-            return
-        while True:
-            if self.check_stop_or_over():
+        try:
+            time.sleep(1)
+            if self.overed:
                 return
-            find_res = dm.FindPicEx(0, 0, 900, 590,
-                         f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
-                         "", self.confidenceNum, 0)
-            if find_res:
-                # 找到图片，解析坐标
-                pos = find_res.split("|")
-                pos_res = pos[0].split(",")
-                pics = f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}".split("|")
-                picSize = dm.GetPicSize(pics[int(pos_res[0])])
-                picSize = picSize.split(",")
-                picW, picH = picSize[0], picSize[1]
-                posX = int(pos_res[1]) + (int(picW) * 0.5)
-                posY = int(pos_res[2]) + (int(picH) * 0.5)
+            while True:
+                if self.check_stop_or_over():
+                    return
+                find_res = dm.FindPicEx(0, 0, 900, 590,
+                             f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
+                             "", self.confidenceNum, 0)
+                if find_res:
+                    # 找到图片，解析坐标
+                    pos = find_res.split("|")
+                    pos_res = pos[0].split(",")
+                    pics = f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}".split("|")
+                    picSize = dm.GetPicSize(pics[int(pos_res[0])])
+                    picSize = picSize.split(",")
+                    picW, picH = picSize[0], picSize[1]
+                    posX = int(pos_res[1]) + (int(picW) * 0.5)
+                    posY = int(pos_res[2]) + (int(picH) * 0.5)
+                    dm.MoveTo(int(posX), int(posY))
+                    time.sleep(0.005)
+                    dm.LeftClick()
+                    break
+            query_time = time.time()
+            while True:
+                if self.check_stop_or_over():
+                    return
+                if time.time() - query_time > 10:
+                    print("一键恢复超时")
+                    return
+                find_res = dm.FindStrFastE(0, 0, 900, 580, '一键恢复', self.color_format, self.confidenceNum)
+                find_str_result = find_res.split("|")
+                if int(find_str_result[0]) < 0:
+                    continue
+                pos_res = find_str_result
+                posX = pos_res[1]
+                posY = pos_res[2]
                 dm.MoveTo(int(posX), int(posY))
-                time.sleep(0.005)
+                time.sleep(0.5)
                 dm.LeftClick()
                 break
-        query_time = time.time()
-        while True:
-            if self.check_stop_or_over():
-                return
-            if time.time() - query_time > 10:
-                print("一键恢复超时")
-                return
-            find_res = dm.FindStrFastE(0, 0, 900, 580, '一键恢复', self.color_format, self.confidenceNum)
-            find_str_result = find_res.split("|")
-            if int(find_str_result[0]) < 0:
-                continue
-            pos_res = find_str_result
-            posX = pos_res[1]
-            posY = pos_res[2]
-            dm.MoveTo(int(posX), int(posY))
-            time.sleep(0.5)
-            dm.LeftClick()
-            break
-        time.sleep(1)
-        query_time = time.time()
-        while True:
-            if self.check_stop_or_over():
-                return
-            if time.time() - query_time > 10:
-                print("一键恢复超时")
-                return
-            find_res = dm.FindPicEx(0, 0, 900, 590,
-                         f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
-                         "", self.confidenceNum, 0)
-            if find_res:
-                # 找到图片，解析坐标
-                pos = find_res.split("|")
-                pos_res = pos[0].split(",")
-                pics = f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}".split("|")
-                picSize = dm.GetPicSize(pics[int(pos_res[0])])
-                picSize = picSize.split(",")
-                picW, picH = picSize[0], picSize[1]
-                posX = int(pos_res[1]) + (int(picW) * 0.5)
-                posY = int(pos_res[2]) + (int(picH) * 0.5)
-                dm.MoveTo(int(posX), int(posY))
-                time.sleep(0.005)
-                dm.LeftClick()
-                break
-        self.huifuFlag = False
+            time.sleep(1)
+            query_time = time.time()
+            while True:
+                if self.check_stop_or_over():
+                    return
+                if time.time() - query_time > 10:
+                    print("一键恢复超时")
+                    return
+                find_res = dm.FindPicEx(0, 0, 900, 590,
+                             f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
+                             "", self.confidenceNum, 0)
+                if find_res:
+                    # 找到图片，解析坐标
+                    pos = find_res.split("|")
+                    pos_res = pos[0].split(",")
+                    pics = f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}".split("|")
+                    picSize = dm.GetPicSize(pics[int(pos_res[0])])
+                    picSize = picSize.split(",")
+                    picW, picH = picSize[0], picSize[1]
+                    posX = int(pos_res[1]) + (int(picW) * 0.5)
+                    posY = int(pos_res[2]) + (int(picH) * 0.5)
+                    dm.MoveTo(int(posX), int(posY))
+                    time.sleep(0.005)
+                    dm.LeftClick()
+                    break
+        finally:
+            self._huifu_done += 1
+            if self._huifu_done >= 3:
+                self.huifuFlag = False
+                self._huifu_done = 0
         
     
     # 自动找怪 （69 237 346 492）
@@ -7999,7 +8018,7 @@ class MyThread(threading.Thread):
         if not isInZhanhun:
             print("战魂没次数了")
             return False
-        self.huifu_yijian(self.dm)
+        self.huifu_yijian_main()
         if "战魂" in self.combat_auto_scenes:
             self._start_combat_auto(clear_enemy_keys=["赵云28"])
         self.findAndClickPic(
@@ -8029,7 +8048,7 @@ class MyThread(threading.Thread):
             # 退出副本
             self.outScript("噬魂")
             return True
-        self.huifu_yijian(self.dm)
+        self.huifu_yijian_main()
         self.findAndClickPic(
             "噬魂",
             self.get_resource_path(
@@ -10871,6 +10890,7 @@ class MyThread(threading.Thread):
         if not isInMojing:
             print("四象没次数了")
             return False
+        self.huifu_yijian_main()
         _sixiang_auto_combat = "四象" in self.combat_auto_scenes and self.sixiang_difficulty in ("精英", "炼狱")
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
@@ -10896,6 +10916,7 @@ class MyThread(threading.Thread):
             self.dituLocation,
             "814,90",
         )
+        self.huifu_yijian_main()
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
@@ -10929,6 +10950,7 @@ class MyThread(threading.Thread):
             self.dituLocation,
             "855,65",
         )
+        self.huifu_yijian_main()
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
@@ -10962,6 +10984,7 @@ class MyThread(threading.Thread):
             self.dituLocation,
             "810,52",
         )
+        self.huifu_yijian_main()
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
@@ -10995,6 +11018,7 @@ class MyThread(threading.Thread):
             self.dituLocation,
             "768,70",
         )
+        self.huifu_yijian_main()
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
@@ -13889,7 +13913,7 @@ class MyFrame(wx.Frame):
         self.user_name = "免费用户"
         self.end_time = "2199-12-30 23:59:59"
         self.remote_info = None
-        self.BASE_URL = "https://p01--script-serve--5yyh9pxyhqq4.code.run"
+        self.BASE_URL = "https://yian.syf88.top"
         self.current_version = self.get_current_version()
         self.update_notify_timer = None
         self.update_notify_visible = True
@@ -14689,7 +14713,7 @@ class MyFrame(wx.Frame):
 
 
 class App(wx.App):
-    BASE_URL = "https://p01--script-serve--5yyh9pxyhqq4.code.run"
+    BASE_URL = "https://yian.syf88.top"
 
     def __init__(self):
         super().__init__()
