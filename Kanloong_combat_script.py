@@ -1302,7 +1302,7 @@ class CombatAutoScript:
         elif cond == "ally_hp_critical":
             return self.low_hp_accounts.get(account_index, 0) >= 1
         elif cond == "ally_hp_low":
-            return self.low_hp_accounts.get(account_index, 0) >= 2
+            return sum(self.low_hp_accounts.values()) >= 2
         elif cond == "attack_buff_expired":
             return self.attack_buff_tracker.get(account_index, 0) <= 0
         elif cond == "enemy_single":
