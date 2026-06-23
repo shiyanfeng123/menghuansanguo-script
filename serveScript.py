@@ -7936,6 +7936,8 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
             "",
         )
+        self.huifu_yijian_main()
+        time.sleep(1)
         if self.zhanhunFloorNew == "27层自动战斗":
             self._start_combat_auto()
         self.findAndClickPic(

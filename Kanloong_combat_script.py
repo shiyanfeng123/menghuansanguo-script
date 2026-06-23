@@ -2031,11 +2031,11 @@ class CombatAutoScript:
 
         # 多次采样取最大值，避免回合开始瞬间蓝条未刷新导致漏检
         max_raw_positions = []
-        for _ in range(2):
+        for _ in range(3):
             raw_positions = self._find_all_lantiao(dm_index, self.enemy_region, self.enemy_target_image)
             if len(raw_positions) > len(max_raw_positions):
                 max_raw_positions = raw_positions
-            if len(max_raw_positions) >= 2:
+            if len(max_raw_positions) >= 3:
                 break
             time.sleep(0.15)
         # 四象副本的敌军蓝条与实际点击位置Y偏移不同（四象+48，其他+70）
