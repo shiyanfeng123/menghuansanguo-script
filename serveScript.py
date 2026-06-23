@@ -3451,6 +3451,8 @@ class MyThread(threading.Thread):
                 condition.wait()
         self.clear_info()
         time.sleep(0.5)
+        self.huifu_yijian_main()
+        time.sleep(1)
         while True:
             with condition:
                 if self.stoped:
@@ -3796,6 +3798,8 @@ class MyThread(threading.Thread):
         time.sleep(0.5)
         self.dm.LeftClick()
         time.sleep(0.5)
+        self.huifu_yijian_main()
+        time.sleep(1)
         while True:
             with condition:
                 if self.stoped:
@@ -4095,6 +4099,8 @@ class MyThread(threading.Thread):
         print(f"打{int(time.localtime().tm_hour) + 1}点的整点")
         zhengdian_hour = int(time.localtime().tm_hour) + 1
         self.clear_info()
+        self.huifu_yijian_main()
+        time.sleep(1)
         while True:
             with condition:
                 if self.stoped:
@@ -8019,6 +8025,7 @@ class MyThread(threading.Thread):
             print("战魂没次数了")
             return False
         self.huifu_yijian_main()
+        time.sleep(1)
         if "战魂" in self.combat_auto_scenes:
             self._start_combat_auto(clear_enemy_keys=["赵云28"])
         self.findAndClickPic(
@@ -8049,6 +8056,7 @@ class MyThread(threading.Thread):
             self.outScript("噬魂")
             return True
         self.huifu_yijian_main()
+        time.sleep(1)
         self.findAndClickPic(
             "噬魂",
             self.get_resource_path(
@@ -10891,6 +10899,7 @@ class MyThread(threading.Thread):
             print("四象没次数了")
             return False
         self.huifu_yijian_main()
+        time.sleep(1)
         _sixiang_auto_combat = "四象" in self.combat_auto_scenes and self.sixiang_difficulty in ("精英", "炼狱")
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
@@ -10917,6 +10926,7 @@ class MyThread(threading.Thread):
             "814,90",
         )
         self.huifu_yijian_main()
+        time.sleep(1)
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
@@ -10951,6 +10961,7 @@ class MyThread(threading.Thread):
             "855,65",
         )
         self.huifu_yijian_main()
+        time.sleep(1)
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
@@ -10985,6 +10996,7 @@ class MyThread(threading.Thread):
             "810,52",
         )
         self.huifu_yijian_main()
+        time.sleep(1)
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(
@@ -11019,6 +11031,7 @@ class MyThread(threading.Thread):
             "768,70",
         )
         self.huifu_yijian_main()
+        time.sleep(1)
         if _sixiang_auto_combat:
             self._start_combat_auto(combat_scene="四象")
         self.findAndClickPic(

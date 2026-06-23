@@ -1863,7 +1863,7 @@ class CombatAutoScript:
                     if key not in self.lantiao_missing_rounds:
                         self.lantiao_missing_rounds[key] = 0
                     self.lantiao_missing_rounds[key] += 1
-                    if self.lantiao_missing_rounds[key] >= 4:
+                    if self.lantiao_missing_rounds[key] >= 3:
                         if acct in self.hp_bar_unit_mapping and region_idx in self.hp_bar_unit_mapping[acct]:
                             unit_type, unit_name, position = self.hp_bar_unit_mapping[acct][region_idx]
                             fuhuobeidong_pos = self.find_image(detect_account_index, self.target_fuhuobeidong_image, region, 0)
