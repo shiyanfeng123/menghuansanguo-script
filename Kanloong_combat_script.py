@@ -766,7 +766,7 @@ class CombatAutoScript:
 
         # 物品图片
         self.item_images = {
-            "恢复药": f"{self.get_resource_path('serveAssets/images/auto/yao.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao1.bmp')}",
+            "恢复药": f"{self.get_resource_path('serveAssets/images/auto/yao.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao2.bmp')}",
             # 恢复药（加血又加蓝，2回合CD）
             "复活药": f"{self.get_resource_path('serveAssets/images/auto/fuhuo.bmp')}|{self.get_resource_path('serveAssets/images/auto/fuhuo1.bmp')}",
             # 复活药（复活阵亡单位）
@@ -796,7 +796,7 @@ class CombatAutoScript:
         self.skill_cd_config = {
             # 刘备技能
             "加血": 2,  # 2回合CD
-            "清除状态": 4,  # 4回合CD
+            "清除状态": 5,  # 5回合CD
             "加攻击": 0,  # 无CD
             "控制": 0,  # 无CD
             # 主角技能
@@ -898,9 +898,9 @@ class CombatAutoScript:
         # 右侧按钮区域定义（根据实际游戏，操作按钮在右侧）
         # 按钮包括：攻击(A)、技能(S)、道具(E)、防御(D)、重复(R)、召唤(C)、自动(W)、逃跑(P)
         self.right_button_region = (610, 203, 680, 436)  # 右侧按钮区域（中间偏右，包含操作按钮）
-        self.skill_panel_region = (480, 167, 607, 550)  # 技能面板区域（点击技能按钮后弹出的面板）
+        self.skill_panel_region = (472, 155, 607, 550)  # 技能面板区域（点击技能按钮后弹出的面板）
         self.summon_panel_region = (480, 167, 607, 550)  # 召唤面板区域（点击召唤按钮后弹出的面板）
-        self.item_panel_region = (0, 0, 900, 550)  # 道具面板区域（点击道具按钮后弹出的面板）
+        self.item_panel_region = (472, 155, 607, 550)  # 道具面板区域（点击道具按钮后弹出的面板）
 
         # 主角、武将、敌人的确切点位存储（单位外观中心位置，用于点击）
         # {account_index: {'main_char': (x, y), 'generals': [(general_name, x, y), ...], 'enemies': [(enemy_name, x, y), ...]}}
@@ -1289,7 +1289,9 @@ class CombatAutoScript:
         skill_path = self.skill_images.get(skill_name)
         if not skill_path:
             return False
+        _find_start = time.time()
         skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
+        _find_cost = round(time.time() - _find_start, 3)
         if not skill_pos:
             return False
         return self.release_skill_with_target(account_index, skill_name, skill_pos, caller_hint)
@@ -1432,7 +1434,7 @@ class CombatAutoScript:
                     self.liubei_skill_cd[account_index] = {}
                 self.liubei_skill_cd[account_index]["清除状态"] = self.current_turn
                 self.report_battle_info(
-                    f"账号{account_index} 刘备清除状态技能已使用，CD{self.skill_cd_config.get('清除状态', 4)}回合（当前回合: {self.current_turn}）",
+                    f"账号{account_index} 刘备清除状态技能已使用，CD{self.skill_cd_config.get('清除状态', 5)}回合（当前回合: {self.current_turn}）",
                     "system",
                 )
 
@@ -2579,7 +2581,7 @@ class CombatAutoScript:
                         # Part1: 检查是否有账号上回合清除失败
                         for acct_idx, attempt in list(self._last_clear_attempt.items()):
                             if attempt["enemy_name"] == enemy_key and \
-                               self.current_turn - attempt["turn"] <= 1:
+                               self.current_turn - attempt["turn"] <= 2:
                                 if acct_idx in self.liubei_skill_cd:
                                     self.liubei_skill_cd[acct_idx].pop("清除状态", None)
                                 self.report_battle_info(
@@ -2593,7 +2595,7 @@ class CombatAutoScript:
         """获取指定账号刘备清除状态技能的CD剩余回合数"""
         cd_info = self.liubei_skill_cd.get(account_index, {})
         last_use = cd_info.get("清除状态", -999)
-        cd_total = self.skill_cd_config.get("清除状态", 4)
+        cd_total = self.skill_cd_config.get("清除状态", 5)
         remaining = cd_total - (self.current_turn - last_use)
         return max(0, remaining)
 
@@ -2865,13 +2867,12 @@ class CombatAutoScript:
 
             # 5秒内循环查找恢复药，使用更大的搜索区域
             start_time = time.time()
-            timeout = 2.0
+            timeout = 3.0
             heal_item_pos = None
 
             # 尝试多个搜索区域：先尝试道具面板区域，如果找不到则尝试全屏
             search_regions = [
                 self.item_panel_region,  # 道具面板区域
-                (0, 0, 900, 580),  # 全屏区域（作为备选）
                 self.ally_region,  # 己方区域（作为备选）
             ]
 
@@ -2883,10 +2884,10 @@ class CombatAutoScript:
                     )
                     if heal_item_pos:
                         break
-                    time.sleep(0.1)  # 每个区域查找间隔0.1秒
+                    time.sleep(0.05)  # 每个区域查找间隔0.1秒
                 if heal_item_pos:
                     break
-                time.sleep(0.1)  # 每次循环间隔0.2秒
+                time.sleep(0.05)  # 每次循环间隔0.2秒
 
             if not heal_item_pos:
                 self.report_battle_info(
@@ -4551,7 +4552,7 @@ class CombatAutoScript:
                 # 修改点7: Part2 - 检查上回合清除是否失败
                 if account_index in self._last_clear_attempt:
                     last = self._last_clear_attempt[account_index]
-                    if self.current_turn - last["turn"] <= 1:
+                    if self.current_turn - last["turn"] <= 2:
                         enemy_still_in_queue = any(
                             e.get("enemy_name") == last["enemy_name"]
                             for e in self.global_enemies_need_clear
@@ -4689,7 +4690,15 @@ class CombatAutoScript:
                                 del self.revive_assignments[account_index]
 
                 # 4.2 释放技能（策略引擎：清除状态 > 加血(重伤) > 控制 > 加攻击(buff过期) > 加血 > 循环 > 防御）
+                _claimed_before = self._claimed_clear_target.get(account_index)
                 if self._execute_best_strategy(account_index, "support"):
+                    # 清除状态成功时 _claimed_clear_target 会被设为 None（release_skill_with_target中L1408）
+                    # 若仍不为None，说明降级释放了其他技能(加血/控制)，认领未消耗，需立即释放让其他账号接手
+                    if _claimed_before is not None and self._claimed_clear_target.get(account_index) is not None:
+                        with self._state_lock:
+                            if _claimed_before.get("claimed_by") == account_index:
+                                _claimed_before["claimed_by"] = None
+                        self._claimed_clear_target[account_index] = None
                     return True
                  # 安全释放认领：如果认领了但没清除，释放认领（CD没好时保留认领，下回合再试）
                 if self._claimed_clear_target.get(account_index) is not None:

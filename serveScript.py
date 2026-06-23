@@ -210,7 +210,7 @@ class MyThread(threading.Thread):
         self.richangSelection = []
         self.click_hwnd = 0
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-        self.zhengdianFb = ["官渡", "魔镜", "黑风", "战魂+红+整点",
+        self.zhengdianFb = ["官渡", "魔镜", "黑风","龙珠","龙岛", "战魂+红+整点",
                             "战魂+红+魔镜+整点"]
         self.hundianFlag = False
         self.win1_hwnd = 0
@@ -675,6 +675,8 @@ class MyThread(threading.Thread):
         if self.scriptName == "官渡":
             # self.go_in_ditu('地图徐州', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '徐州', '', '', True)
             self.guanduWhile()
+        elif self.scriptName =='清妖':
+            self.clear_yao()
         elif self.scriptName == "抢龙":
             self.zhengdianFloor = "龙+全打"
             self.new_zhengdian()
@@ -684,9 +686,10 @@ class MyThread(threading.Thread):
                 time.sleep(5)
                 self._stop_combat_auto()
         elif self.scriptName == "测试":
-            self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
-            time.sleep(5)
-            self._stop_combat_auto()
+            self.huifu_yijian_main()
+            # self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
+            # time.sleep(5)
+            # self._stop_combat_auto()
             # self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
             # time.sleep(5)
             # self._stop_combat_auto()
@@ -721,9 +724,7 @@ class MyThread(threading.Thread):
                 f"{self.get_resource_path('serveAssets/images/guaji/wokou.bmp')}|{self.get_resource_path('serveAssets/images/guaji/wokou1.bmp')}"
             )
         elif self.scriptName == "龙珠":
-            self.guajiAndzhengdianScript(
-                f"{self.get_resource_path('serveAssets/images/guaji/longchao.bmp')}|{self.get_resource_path('serveAssets/images/guaji/longchao1.bmp')}"
-            )
+            self.longzhuWhile()
         elif self.scriptName == "森罗殿":
             self.guajiAndzhengdianScript(
                 f"{self.get_resource_path('serveAssets/images/guaji/senluodian.bmp')}|{self.get_resource_path('serveAssets/images/guaji/senluodian1.bmp')}"
@@ -3622,6 +3623,25 @@ class MyThread(threading.Thread):
             time.sleep(1)
             self.mojingWhile()
             return None
+        elif self.scriptName == "龙岛":
+            time.sleep(2)
+            self.go_in_ditu(
+                "地图城西",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "城西",
+                "驿站城西",
+                "",
+                True,
+            )
+            time.sleep(1)
+            while True:
+                if self.check_stop_or_over():
+                    return
+                hasLongDao = self.longdaoScript()
+                if not hasLongDao:
+                    break
+            return None
         elif self.scriptName == "黑风":
             time.sleep(1)
             self.go_in_ditu(
@@ -3663,9 +3683,7 @@ class MyThread(threading.Thread):
                 True,
             )
             time.sleep(2)
-            self.guajiAndzhengdianScript(
-                f"{self.get_resource_path('serveAssets/images/guaji/longchao.bmp')}|{self.get_resource_path('serveAssets/images/guaji/longchao1.bmp')}"
-            )
+            self.longzhuWhile()
             return None
         elif self.scriptName == "老鼠":
             time.sleep(1)
@@ -3769,7 +3787,7 @@ class MyThread(threading.Thread):
                 f"{self.get_resource_path('serveAssets/images/zhengdian/xuluo.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xuluo1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/xuluo2.bmp')}",
                 f"{self.get_resource_path('serveAssets/images/zhengdian/luoxiang.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/luoxiang1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/luoxiang2.bmp')}",
             )
-        elif self.scriptName in ["魔镜", "倭寇", "龙珠", "森罗殿"]:
+        elif self.scriptName in ["魔镜", "倭寇", "森罗殿"]:
             self.go_in_ditu(
                 "地图老虎遗迹",
                 self.get_resource_path(
@@ -4045,9 +4063,7 @@ class MyThread(threading.Thread):
             )
             time.sleep(2)
             self.confidenceNum = 0.9
-            self.guajiAndzhengdianScript(
-                f"{self.get_resource_path('serveAssets/images/guaji/longchao.bmp')}|{self.get_resource_path('serveAssets/images/guaji/longchao1.bmp')}"
-            )
+            self.longzhuWhile()
         elif self.scriptName == "老鼠":
             time.sleep(1)
             self.go_in_ditu(
@@ -4192,9 +4208,26 @@ class MyThread(threading.Thread):
                 )
             elif self.scriptName == "龙珠":
                 time.sleep(2)
-                self.guajiAndzhengdianScript(
-                    f"{self.get_resource_path('serveAssets/images/guaji/longchao.bmp')}|{self.get_resource_path('serveAssets/images/guaji/longchao1.bmp')}"
-                )
+                self.longzhuWhile()
+        elif self.scriptName == "龙岛":
+            time.sleep(2)
+            self.go_in_ditu(
+                "地图城西",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "城西",
+                "驿站城西",
+                "",
+                True,
+            )
+            time.sleep(1)
+            while True:
+                if self.check_stop_or_over():
+                    return
+                hasLongDao = self.longdaoScript()
+                if not hasLongDao:
+                    break
+            return None
         elif self.scriptName == "森罗殿":
             time.sleep(1)
             self.go_in_ditu(
@@ -5215,13 +5248,9 @@ class MyThread(threading.Thread):
                             f"{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan3.bmp')}",
                             self.gameBottomLocation,
                             0,
-                    ):
+                    ):  
+                        hasZhengDian = True
                         print("野外怪物")
-                        self.click_image(
-                            f"{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan3.bmp')}",
-                            0.6,
-                            self.gameBottomLocation,
-                        )
                         self.confidenceNum = 0.9
                         break
                     if self.find_str("进入", self.gameBottomLocation, 0):
@@ -5373,6 +5402,309 @@ class MyThread(threading.Thread):
                 self.confidenceNum = 0.9
                 return
 
+    # 清妖
+    def clear_yao(self):
+        is_fei = self.go_in_ditu(
+            "地图万花谷",
+            self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"),
+            "万花谷",
+            "",
+            "",
+            True,
+        )
+        if is_fei:
+            self.zhengdian_by_xiaolvren_for_gongcheng("万花谷", 0, 0, [], 1)
+            is_in_bibotan = self.waitFor("万花谷", self.dituLocation, 5)
+            if is_in_bibotan:
+                self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng("万花谷", 0, 0, [], 1)
+                is_in_bibotan1 = self.waitFor("万花谷", self.dituLocation, 5)
+                if is_in_bibotan1:
+                    self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                    time.sleep(0.001)
+                    self.dm.LeftClick()
+                    time.sleep(0.5)
+                    self.zhengdian_by_xiaolvren_for_gongcheng("万花谷", 0, 0,
+                                                              [], 1)
+            time.sleep(0.5)
+        self.findAndClickPic(
+            "万花谷",
+            "嵩山",
+            "嵩山",
+            self.dituLocation,
+            "嵩山",
+            self.dituLocation,
+            "730,78",
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng("嵩山", 0,
+                                                      [740,742],
+                                                      [43], 1)
+        is_in_bibotan = self.waitFor("嵩山", self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng("嵩山", 0,
+                                                      [740,742],
+                                                      [43], 1)
+            is_in_bibotan1 = self.waitFor("嵩山", self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng("嵩山", 0,
+                                                      [740,742],
+                                                      [43], 1)
+        time.sleep(0.5)
+        self.findAndClickPic(
+            "嵩山",
+            self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"),
+            self.dituLocation,
+            "887,56",
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"), 0,
+                                                      [865],
+                                                      [52], 1)
+        is_in_bibotan = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"), self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"), 0,
+                                                      [865],
+                                                      [52], 1)
+            is_in_bibotan1 = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"), self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/songshanding.bmp"), 0,
+                                                      [865],
+                                                      [52], 1)
+        time.sleep(0.5)
+        is_fei = self.go_in_ditu(
+            "地图洛水河",
+            self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/luoshuihe.bmp"),
+            "",
+            "",
+            True,
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/luoshuihe.bmp"), 0,
+                                                      [],
+                                                      [], 1)
+        is_in_bibotan = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/luoshuihe.bmp"), self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/luoshuihe.bmp"), 0,
+                                                      [],
+                                                      [], 1)
+            is_in_bibotan1 = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/luoshuihe.bmp"), self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/luoshuihe.bmp"), 0,
+                                                      [],
+                                                      [], 1)
+        time.sleep(0.5)
+        is_fei = self.go_in_ditu(
+            "地图虎牢关内",
+            self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/hulaoguannei.bmp"),
+            "",
+            "",
+            True,
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/hulaoguannei.bmp"), 0,
+                                                      [785],
+                                                      [43], 1)
+        is_in_bibotan = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/hulaoguannei.bmp"), self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/hulaoguannei.bmp"), 0,
+                                                      [785],
+                                                      [43], 1)
+            is_in_bibotan1 = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/hulaoguannei.bmp"), self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/hulaoguannei.bmp"), 0,
+                                                      [785],
+                                                      [43], 1)
+        time.sleep(0.5)
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/qingyao/hulaoguannei.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"),
+            self.dituLocation,
+            "744,73",
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"), 0,
+                                                      [832,764,856,826,828],
+                                                      [50,52,53,61,], 1)
+        is_in_bibotan = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"), self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"), 0,
+                                                      [832,764,856],
+                                                      [50,52,53], 1)
+            is_in_bibotan1 = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"), self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"), 0,
+                                                      [832,764,856],
+                                                      [50,52,53], 1)
+        time.sleep(0.5)
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/qingyao/hulaoguan.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/xiaocun.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/xiaocun.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/qingyao/xiaocun.bmp"),
+            self.dituLocation,
+            "750,65",
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(f"{self.get_resource_path('serveAssets/images/qingyao/xiaocun.bmp')}|{self.get_resource_path('serveAssets/images/qingyao/hulaoguan.bmp')}", 0,
+                                                      [849,783],
+                                                      [45,50], 1)
+        is_in_bibotan = self.waitFor(f"{self.get_resource_path('serveAssets/images/qingyao/xiaocun.bmp')}|{self.get_resource_path('serveAssets/images/qingyao/hulaoguan.bmp')}", self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(f"{self.get_resource_path('serveAssets/images/qingyao/xiaocun.bmp')}|{self.get_resource_path('serveAssets/images/qingyao/hulaoguan.bmp')}", 0,
+                                                      [849,783],
+                                                      [45,50], 1)
+            is_in_bibotan1 = self.waitFor(f"{self.get_resource_path('serveAssets/images/qingyao/xiaocun.bmp')}|{self.get_resource_path('serveAssets/images/qingyao/hulaoguan.bmp')}", self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/xiaocun.bmp"), 0,
+                                                      [849,783],
+                                                      [45,50], 1)
+        time.sleep(0.5)
+        is_fei = self.go_in_ditu(
+            "地图荒村",
+            self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/huangcun.bmp"),
+            "",
+            "",
+            True,
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/huangcun.bmp"), 0,
+                                                      [745,817],
+                                                      [47], 1)
+        is_in_bibotan = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/huangcun.bmp"), self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/huangcun.bmp"), 0,
+                                                      [745,817],
+                                                      [47], 1)
+            is_in_bibotan1 = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/huangcun.bmp"), self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/huangcun.bmp"), 0,
+                                                      [745,817],
+                                                      [47], 1)
+        time.sleep(0.5)
+        is_fei = self.go_in_ditu(
+            "地图御花园",
+            self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/yuhuayuan.bmp"),
+            "",
+            "",
+            True,
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/yuhuayuan.bmp"), 0,
+                                                      [780,861],
+                                                      [46], 1)
+        is_in_bibotan = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/yuhuayuan.bmp"), self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/yuhuayuan.bmp"), 0,
+                                                      [780,861],
+                                                      [46], 1)
+            is_in_bibotan1 = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/yuhuayuan.bmp"), self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/yuhuayuan.bmp"), 0,
+                                                      [780,861],
+                                                      [46], 1)
+        time.sleep(0.5)
+        self.findAndClickPic(
+            self.get_resource_path("serveAssets/images/qingyao/yuhuayuan.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"),
+            self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"),
+            self.dituLocation,
+            self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"),
+            self.dituLocation,
+            "808,59",
+        )
+        self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"), 0,
+                                                      [756,765],
+                                                      [48,49], 1)
+        is_in_bibotan = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"), self.dituLocation, 5)
+        if is_in_bibotan:
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"), 0,
+                                                      [765],
+                                                      [49], 1)
+            is_in_bibotan1 = self.waitFor(self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"), self.dituLocation, 5)
+            if is_in_bibotan1:
+                self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+                time.sleep(0.001)
+                self.dm.LeftClick()
+                time.sleep(0.5)
+                self.zhengdian_by_xiaolvren_for_gongcheng(self.get_resource_path("serveAssets/images/qingyao/mudanyuan.bmp"), 0,
+                                                      [765],
+                                                      [49], 1)
+        time.sleep(0.5)
     # 换线
     def check_line(self, line="二线"):
         if not self.line:
@@ -6359,6 +6691,8 @@ class MyThread(threading.Thread):
                     "魔镜",
                     "黑风",
                     "官渡",
+                    "龙珠",
+                    "龙岛",
                 ]:
                     # 打整点
                     self.zhengdian_flag = True
@@ -10796,7 +11130,7 @@ class MyThread(threading.Thread):
                 self.get_resource_path(
                     "serveAssets/images/longzhu/longchaojingwai.bmp"),
                 "寻宝者",
-                "寻宝者",
+                f"{self.get_resource_path('serveAssets/images/longzhu/xunbaozhe1.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/xunbaozhe2.bmp')}",
                 self.gameLeftLocation,
                 self.get_resource_path("serveAssets/images/zdzd.bmp"),
                 self.gameBottomLocation,
@@ -10813,21 +11147,34 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/longzhu/longchaorukou.bmp"),
             self.dituLocation,
-            "",
+            "893,78",
         )
         longzhuPos1 = [
             "0.172,0.129",
             "0.15,0.122",
-            "0.13,0.132",
-            "0.094,0.122",
-            "0.074,0.127",
         ]
         for index, item in enumerate(longzhuPos1):
             self.findAndClickPic(
                 self.get_resource_path(
                     "serveAssets/images/longzhu/longchaorukou.bmp"),
                 "寻宝者",
+                 f"{self.get_resource_path('serveAssets/images/longzhu/xunbaozhe1.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/xunbaozhe2.bmp')}",
+                self.gameLeftLocation,
+                self.get_resource_path("serveAssets/images/zdzd.bmp"),
+                self.gameBottomLocation,
+                item,
+            )
+        longzhuPos2 = [
+            "0.13,0.132",
+            "0.094,0.122",
+            "0.074,0.127",
+        ]
+        for index, item in enumerate(longzhuPos2):
+            self.findAndClickPic(
+                self.get_resource_path(
+                    "serveAssets/images/longzhu/longchaorukou.bmp"),
                 "挖宝人",
+                 f"{self.get_resource_path('serveAssets/images/longzhu/wabaoren1.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/wabaoren2.bmp')}",
                 self.gameLeftLocation,
                 self.get_resource_path("serveAssets/images/zdzd.bmp"),
                 self.gameBottomLocation,
@@ -10844,11 +11191,26 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/longzhu/longchaojingnei.bmp"),
             self.dituLocation,
-            "",
+            "888,75",
         )
-        time.sleep(0.2)
-        self.dm.KeyPressChar("g")
-        self.waitFor("退出挂机", self.gameLocation)
+        for index, item in enumerate(longzhuPos):
+            self.findAndClickPic(
+                self.get_resource_path(
+                    "serveAssets/images/longzhu/longchaojingnei.bmp"),
+                "单龙|御剑仙女",
+                f"{self.get_resource_path('serveAssets/images/longzhu/longhufa1.bmp')}|"
+                f"{self.get_resource_path('serveAssets/images/longzhu/longhufa2.bmp')}|"
+                f"{self.get_resource_path('serveAssets/images/longzhu/yanlong1.bmp')}|"
+                f"{self.get_resource_path('serveAssets/images/longzhu/yanlong2.bmp')}|"
+                f"{self.get_resource_path('serveAssets/images/longzhu/yujianxiannv1.bmp')}|"
+                f"{self.get_resource_path('serveAssets/images/longzhu/yujianxiannv2.bmp')}|"
+                f"{self.get_resource_path('serveAssets/images/longzhu/yunlonghuwei1.bmp')}|"
+                f"{self.get_resource_path('serveAssets/images/longzhu/yunlonghuwei2.bmp')}",
+                self.gameLeftLocation,
+                self.get_resource_path("serveAssets/images/zdzd.bmp"),
+                self.gameBottomLocation,
+                item,
+            )
         self.findAndClickPic(
             self.get_resource_path(
                 "serveAssets/images/longzhu/longchaojingnei.bmp"),
@@ -10860,12 +11222,18 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/longzhu/longchaoxue.bmp"),
             self.dituLocation,
-            "",
+            "891,79",
         )
-        time.sleep(0.2)
-        self.dm.KeyPressChar("g")
-        time.sleep(5)
-        self.waitFor("退出挂机", self.gameLocation)
+        self.findAndClickPic(
+            self.get_resource_path(
+                "serveAssets/images/longzhu/longchaoxue.bmp"),
+            '金龙君王|炎龙|神龙守护者',
+            f'{self.get_resource_path("serveAssets/images/longzhu/jinlongjunwang1.bmp")}|{self.get_resource_path("serveAssets/images/longzhu/jinlongjunwang2.bmp")}|{self.get_resource_path("serveAssets/images/longzhu/shenlong1.bmp")}|{self.get_resource_path("serveAssets/images/longzhu/shenlong2.bmp")}',
+            self.gameRightLocation,
+            self.get_resource_path("serveAssets/images/zdzd.bmp"),
+            self.gameBottomLocation,
+            "881,88",
+        )
         self.outScript(
             self.get_resource_path(
                 "serveAssets/images/longzhu/longchaoxue.bmp"),
@@ -11095,6 +11463,18 @@ class MyThread(threading.Thread):
             if self.overed:
                 return
             self.cangbaotuScript()
+
+    # 龙珠循环
+    def longzhuWhile(self):
+        while True:
+            if self.overed:
+                return
+            longzhuRes = self.longzhuScript()
+            if not longzhuRes:
+                print("龙珠没次数")
+                break
+        self.scriptName = "官渡"
+        self.guanduWhile()
 
     # 黑风循环
     def heifengWhile(self):
@@ -13949,7 +14329,9 @@ class MyFrame(wx.Frame):
                 "黑风",
                 "矿产",
                 "龙岛",
+                "龙珠",
                 "四象",
+                "清妖",
                 "龙王令",
                 "引魔符",
                 # "藏宝图",
@@ -13979,6 +14361,7 @@ class MyFrame(wx.Frame):
                 "黑风",
                 "矿产",
                 "龙岛",
+                "龙珠",
                 "四象",
                 "龙王令",
                 "引魔符",
@@ -14000,7 +14383,7 @@ class MyFrame(wx.Frame):
                 # "测试",
             ],
         )
-        has_choices = self.has_choices[0]
+        has_choices = self.free_choices[0] if self.has_script == "free" else self.has_choices[0]
         # try:
         #     from ScriptFactory import get_user_script_choices
         #     user_scripts = get_user_script_choices()
@@ -14033,6 +14416,7 @@ class MyFrame(wx.Frame):
             self.token = app.user_info.get("token", "")
 
             wx.CallAfter(self._update_user_display)
+            wx.CallAfter(self._refresh_script_choices)
             print(
                 f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
             if self.is_virtual_machine() and self.user_name not in [
@@ -14049,6 +14433,18 @@ class MyFrame(wx.Frame):
 
     def _update_user_display(self):
         pass
+
+    def _refresh_script_choices(self):
+        try:
+            if not hasattr(self, "dropdown"):
+                return
+            new_choices = self.free_choices[0] if self.has_script == "free" else self.has_choices[0]
+            current = self.dropdown.GetValue()
+            self.dropdown.SetItems(new_choices)
+            if current in new_choices:
+                self.dropdown.SetValue(current)
+        except Exception as e:
+            print(f"刷新脚本列表失败: {e}")
 
     def on_change_password(self, event):
         app = wx.GetApp()
