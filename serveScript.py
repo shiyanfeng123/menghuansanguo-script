@@ -2759,7 +2759,7 @@ class MyThread(threading.Thread):
             if self.check_stop_or_over():
                 return
             if time.time() - query_time > 10:
-                self.show_error_message("一键恢复超时")
+                print("一键恢复超时")
                 return
             find_res = dm.FindStrFastE(0, 0, 900, 580, '一键恢复', self.color_format, self.confidenceNum)
             find_str_result = find_res.split("|")
@@ -2773,9 +2773,13 @@ class MyThread(threading.Thread):
             dm.LeftClick()
             break
         time.sleep(1)
+        query_time = time.time()
         while True:
             if self.check_stop_or_over():
-                returnmm
+                return
+            if time.time() - query_time > 10:
+                print("一键恢复超时")
+                return
             find_res = dm.FindPicEx(0, 0, 900, 590,
                          f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
                          "", self.confidenceNum, 0)
