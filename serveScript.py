@@ -16772,4 +16772,3 @@ if __name__ == "__main__":
     frame.Show()
     wx.CallAfter(frame._init_async)
     application.MainLoop()
-战斗的
