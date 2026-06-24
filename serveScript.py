@@ -10359,14 +10359,6 @@ class MyThread(threading.Thread):
             if r == 1:
                 return
             time.sleep(0.1)
-        # has_jixu = self.waitFor("点击继续背景", self.gameBottomLocation)
-        # self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-        # if has_jixu:
-        #     self.dm.MoveTo(has_jixu.x,has_jixu.y)
-        #     time.sleep(0.001)
-        #     self.dm.LeftClick()
-        #     time.sleep(0.5)
-        #     self.dm.LeftClick()
 
     def _click_feixie_with_wait(self, task_name, timeout=3):
         """在指定时间内等待并点击飞鞋
@@ -11318,6 +11310,16 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if _sixiang_auto_combat:
             self._stop_combat_auto()
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("玄水马龙没打过")
+            return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
@@ -11344,6 +11346,16 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if _sixiang_auto_combat:
             self._stop_combat_auto()
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("玄武没打过")
+            return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
@@ -11379,6 +11391,16 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if _sixiang_auto_combat:
             self._stop_combat_auto()
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("朱雀没打过")
+            return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
@@ -11414,6 +11436,16 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if _sixiang_auto_combat:
             self._stop_combat_auto()
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("青龙没打过")
+            return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
@@ -11449,6 +11481,16 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if _sixiang_auto_combat:
             self._stop_combat_auto()
+        self.addBloud()
+        waitForTwoRes = self.waitForTwo(
+            self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
+            self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
+            self.dituLocation,
+            self.dituLocation,
+        )
+        if waitForTwoRes == "second":
+            print("白虎没打过")
+            return True
         self.outScript(
             self.get_resource_path(
                 "serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
