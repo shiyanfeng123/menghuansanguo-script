@@ -21,6 +21,19 @@ import os
 import sys
 from collections import OrderedDict
 
+
+def _get_ca_bundle():
+    try:
+        import certifi
+        if getattr(sys, 'frozen', False):
+            bundled = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
+            if os.path.exists(bundled):
+                return bundled
+        return certifi.where()
+    except Exception:
+        return True
+
+
 # 导入战斗自动操作脚本``
 from Kanloong_combat_script import CombatAutoScript
 # e:/project/python/.venv32/Scripts/pyinstaller.exe serveScript.spec
@@ -15184,20 +15197,31 @@ class App(wx.App):
         headers = {}
         if self.user_info.get("token"):
             headers["Authorization"] = f"Bearer {self.user_info['token']}"
-        try:
-            url = f"{self.BASE_URL}{path}"
-            if body is None:
-                response = requests.get(url, timeout=10)
-            else:
-                response = requests.post(url, json=body, timeout=10)
-            if response.status_code == 200:
-                return response.json()
+        url = f"{self.BASE_URL}{path}"
+        last_error = None
+        for attempt in range(3):
             try:
-                return response.json()
-            except:
-                return None
-        except:
-            return None
+                if body is None:
+                    response = requests.get(url, timeout=10, verify=_get_ca_bundle())
+                else:
+                    response = requests.post(url, json=body, timeout=10, verify=_get_ca_bundle())
+                if response.status_code == 200:
+                    return response.json()
+                try:
+                    return response.json()
+                except:
+                    return None
+            except requests.ConnectionError:
+                last_error = "无法连接服务器，请检查网络"
+            except requests.Timeout:
+                last_error = "服务器响应超时，请稍后重试"
+            except requests.SSLError:
+                last_error = "安全连接失败，请更新系统或联系管理员"
+            except Exception as e:
+                last_error = f"网络错误({type(e).__name__})"
+            if attempt < 2:
+                time.sleep(1)
+        return {"error": last_error or "网络错误"}
     def do_login(self, username, password, remember):
         resp = self._api("/api/login", {"username": username, "password": password, "device_mac": self.mac_address})
         if resp and resp.get("token"):
@@ -15628,17 +15652,28 @@ class ChangePasswordDialog(wx.Dialog):
         token = self.app.user_info.get("token", "")
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        try:
-            url = f"{self.app.BASE_URL}{path}"
-            r = requests.post(url, json=body, headers=headers, timeout=10)
-            if r.status_code == 200:
-                return r.json()
+        url = f"{self.app.BASE_URL}{path}"
+        last_error = None
+        for attempt in range(3):
             try:
-                return r.json()
-            except:
-                return {"error": "服务器错误"}
-        except:
-            return {"error": "网络错误"}
+                r = requests.post(url, json=body, headers=headers, timeout=10, verify=_get_ca_bundle())
+                if r.status_code == 200:
+                    return r.json()
+                try:
+                    return r.json()
+                except:
+                    return {"error": "服务器错误"}
+            except requests.ConnectionError:
+                last_error = "无法连接服务器，请检查网络"
+            except requests.Timeout:
+                last_error = "服务器响应超时，请稍后重试"
+            except requests.SSLError:
+                last_error = "安全连接失败，请更新系统或联系管理员"
+            except Exception as e:
+                last_error = f"网络错误({type(e).__name__})"
+            if attempt < 2:
+                time.sleep(1)
+        return {"error": last_error or "网络错误"}
 
 
 class MyDialog(wx.Dialog):
@@ -16645,6 +16680,7 @@ class HelpDialog(wx.Dialog):
 
 
 class UpdateDialog(wx.Dialog):
+    BASE_URL = "https://yian.syf88.top"
     C_BG = wx.Colour(243, 244, 248)
     C_SURFACE = wx.Colour(240, 242, 246)
     C_GOLD = wx.Colour(50, 80, 140)
@@ -16837,7 +16873,11 @@ class UpdateDialog(wx.Dialog):
     @staticmethod
     def get_current_version():
         try:
-            version_file = os.path.join(os.getcwd(), "version.json")
+            if getattr(sys, 'frozen', False):
+                base = sys._MEIPASS
+            else:
+                base = os.getcwd()
+            version_file = os.path.join(base, "version.json")
             if os.path.exists(version_file):
                 with open(version_file, "r", encoding="utf-8") as f:
                     return json.load(f).get("version", "0.0.0")

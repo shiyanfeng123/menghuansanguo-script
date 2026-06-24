@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+import certifi
 
 comtypes_imports = collect_submodules('comtypes')
 win32ctypes_imports = collect_submodules('win32ctypes')
@@ -13,6 +14,8 @@ a = Analysis(
         ('serveAssets', 'serveAssets'),
         ('user_scripts', 'user_scripts'),
         ('version_info.txt', 'version_info.txt'),
+        ('version.json', '.'),
+        (certifi.where(), 'certifi'),
     ],
     hiddenimports=[
         'Kanloong_combat_script',
