@@ -267,6 +267,8 @@ class MyThread(threading.Thread):
         try:
             if self.combat_auto_running:
                 return
+            if self.frame.has_script == "free":
+                return
             print("启动战斗自动操作")
             _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
             self.combat_auto_running = True
@@ -15210,7 +15212,7 @@ class MyDialog(wx.Dialog):
         main_sizer.Add(tm, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
         # 暂时修改
-        _show_auto_combat = has_script != "free" or datetime.now() < datetime(2026, 12, 30)
+        _show_auto_combat = has_script != "free" or datetime.now() < datetime(2026, 9, 30)
         if _show_auto_combat:
             main_sizer.AddSpacer(8)
             sec("自动战斗")
