@@ -12387,7 +12387,7 @@ class MyThread(threading.Thread):
                 return
             self.mojingWhile()
         else:
-            if self.has_script != "vip" and not "整点" in self.has_script:
+            if self.has_script != "all" and not "整点" in self.has_script:
                 return
             print("开始整点")
             self.scriptName = "49整点"
@@ -13637,7 +13637,7 @@ class MyThread(threading.Thread):
         if not self.zhengdianFloor:
             self.show_error_message("请选择整点再启动!")
             return
-        if self.has_script != "vip" and not "整点" in self.has_script:
+        if self.has_script != "all" and not "整点" in self.has_script:
             self.show_error_message("没有整点脚本!")
             return
         self.riChangList = (
