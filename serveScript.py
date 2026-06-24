@@ -5345,12 +5345,23 @@ class MyThread(threading.Thread):
                     )
                     if dajiuda_pos:
                         break
+                    dajiuda_pos = self.find_pic(
+                            f"{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan1.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan2.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/tiaozhan3.bmp')}",
+                            self.gameBottomLocation,
+                            0,
+                    )
+                    if dajiuda_pos:
+                        break
                     dajiuda_pos = self.find_str("攻城",
                                                 self.gameBottomLocation, 0)
                     if dajiuda_pos:
                         break
+                    dajiuda_pos = self.find_str("挑战",
+                                                self.gameBottomLocation, 0)
+                    if dajiuda_pos:
+                        break
                     time.sleep(0.3)
-                    if self.confidenceNum > 0.6:
+                    if self.confidenceNum > 0.7:
                         self.confidenceNum = self.confidenceNum - 0.1
                     if time.time() - find_time > 4:
                         print("没找到攻城怪物")
