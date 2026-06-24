@@ -30,7 +30,7 @@ class CombatConstants:
     PANEL_WAIT_TIMEOUT = 0.5
 
     # 检测间隔（秒）
-    DEFAULT_CHECK_INTERVAL = 0.06
+    DEFAULT_CHECK_INTERVAL = 0.08
 
     # 回合超时时间（秒）
     TURN_TIMEOUT = 25
@@ -1501,13 +1501,9 @@ class CombatAutoScript:
             if general_count < 2:
                 is_replacement = False
         kicked = None
-
-        # DEBUG: 输出召唤时的武将列表详情（必须在is_replacement赋值之后）
-        _debug_all_generals = [{"name": g.get("name"), "alive": g.get("alive", True), "replacing": g.get("replacing", False), "pending_kick": g.get("pending_kick", False), "position": g.get("position")} for g in char_info.get("generals", [])]
-
         if is_replacement:
             # 替换优先级: 刘备 > 魔化关羽 > 曹操 (张星彩永远不在替换列表中)
-            REPLACE_PRIORITY = ["刘备", "魔化关羽", "曹操"]
+            REPLACE_PRIORITY = ["魔化关羽", "刘备", "曹操"]
             if replace_position is not None:
                 for g in alive_generals:
                     if (abs(g["position"][0] - replace_position[0]) < 50
@@ -1960,13 +1956,6 @@ class CombatAutoScript:
             tombstone_search_region = (x, int(y + 40), w, int(h + 110))
             tombstone_pos = self.find_image(detect_account_index, self.tombstone_image, tombstone_search_region, 0)
             if tombstone_pos:
-                # [DEBUG墓碑] 记录匹配到的是哪张墓碑图片
-                _tombstone_paths = self.tombstone_image.split("|")
-                _matched_path = "未知"
-                for _path in _tombstone_paths:
-                    if self.find_image(detect_account_index, _path, tombstone_search_region, 0):
-                        _matched_path = _path.split("/")[-1].split("\\")[-1]
-                        break
                 if acct in self.hp_bar_unit_mapping and region_idx in self.hp_bar_unit_mapping[acct]:
                     unit_type, unit_name, position = self.hp_bar_unit_mapping[acct][region_idx]
                     fuhuobeidong_pos = self.find_image(detect_account_index, self.target_fuhuobeidong_image, region, 0)
@@ -2381,11 +2370,6 @@ class CombatAutoScript:
                         self.ally_undead_rounds[key] = prev + 1
                         self.ally_undead_last_increment_turn[key] = current_turn
                     # else: prev==0 → 被动还没触发(新刘备刚上场), count保持0
-
-            # [DEBUG免死追踪] count发生变化时打印, 用于排查region与武将对应关系
-            _new_count = self.ally_undead_rounds.get(key, 0)
-            if _new_count != prev:
-                _missing = self.caocao_passive_missing_rounds.get(key, 0)
 
     def _find_region_by_position(self, account_index, position):
         """根据武将position坐标找到对应的血条区域索引(region_idx)
@@ -3127,11 +3111,6 @@ class CombatAutoScript:
 
         # 第二步：在锁外进行大部分检查逻辑（不持有锁）
         if alive or revive_pending or reviving:
-            # 添加调试信息
-            self.report_battle_info(
-                f"账号{target_account_index} 主角状态检查：alive={alive}, revive_pending={revive_pending}, reviving={reviving}，不能复活",
-                "debug",
-            )
             return False
 
         # 如果不在全局阵亡记录中，说明已经被其他线程复活了
@@ -3229,14 +3208,6 @@ class CombatAutoScript:
             f"账号{target_dead_account_idx} 主角复活操作完成，状态已更新（下个回合通过主角操作或蓝条检测确认是否成功）",
             "info",
         )
-        # [DEBUG复活诊断] 记录施法完成后的目标主角状态
-        with self._state_lock:
-            if target_dead_account_idx in self.unit_info:
-                _tgt_char = self.unit_info[target_dead_account_idx]["main_char"]
-                _tgt_alive = _tgt_char.get("alive", True)
-                _tgt_reviving = _tgt_char.get("reviving", False)
-                _tgt_pending = _tgt_char.get("revive_pending_verification", False)
-                _tgt_in_dead = any(d.get("account_index") == target_dead_account_idx for d in self.global_dead_units["main_chars"])
 
     # 确认复活成功（在主角操作或蓝条检测时调用）
     def _confirm_revive_success(self, account_index):
@@ -3292,9 +3263,6 @@ class CombatAutoScript:
                     if dead_char_info not in self.global_dead_units["main_chars"]:
                         self.global_dead_units["main_chars"].append(dead_char_info)
                     self.dead_units[account_index]["main_char"] = dead_char_info
-                    # [DEBUG复活诊断] 记录复活失败确认时的蓝条缺失次数
-                    _main_char_region_idx = 1 if account_index == 0 else (0 if account_index == 1 else 2)
-                    _missing_rounds = self.lantiao_missing_rounds.get((account_index, _main_char_region_idx), "N/A")
                     self.report_battle_info(
                         f"账号{account_index} 主角复活失败（下一回合未检测到蓝条），状态更新为死亡，数量不变", "warning"
                     )
@@ -4028,8 +3996,6 @@ class CombatAutoScript:
                                     summon_name = self._get_general_name_by_region(account_index, worst_key[1])
                                 else:
                                     summon_name = None
-                                # DEBUG: 输出预替换worst_key查找详情
-                                _debug_undead_for_acct = {str(k): v for k, v in self.ally_undead_rounds.items() if k[0] == account_index}
                             # summon_name为None时(本账号无免死记录或武将已阵亡), 跳过预替换
                             if summon_name is None:
                                 with self._state_lock:
@@ -4220,13 +4186,6 @@ class CombatAutoScript:
                         need_summon_count -= snake_unclaimed
                         need_summon_count = max(0, need_summon_count)
 
-                _cond_nsl1 = need_summon_count > 0
-                _cond_nsl2 = not has_liubei_in_account_for_clear
-                _cond_nsl3 = char_info.get("alive", True)
-                _cond_nsl4 = self.has_liubei.get(account_index, False)
-                _cond_nsl5 = self.has_general.get(account_index, False)
-                # [DEBUG多刘备并行] 打印need_self_liubei路径1的判定详情
-                _cd_info = {i: self._get_liubei_clear_cd_remaining(i) for i in range(self.get_account_count())}
                 if (need_summon_count > 0
                     and not has_liubei_in_account_for_clear
                     and char_info.get("alive", True)
@@ -4239,17 +4198,6 @@ class CombatAutoScript:
                             self.keep_support_general = True
 
                 any_account_has_liubei = field_liubei_count > 0
-                _cond_nsl2_1 = not need_self_liubei
-                _cond_nsl2_2 = (self.keep_support_general or self._zhugeliang_low_hp)
-                _cond_nsl2_3 = not any_account_has_liubei
-                _cond_nsl2_4 = not has_liubei_in_account_for_clear
-                _cond_nsl2_5 = char_info.get("alive", True)
-                _cond_nsl2_6 = self.has_liubei.get(account_index, False)
-                # if (_cond_nsl2_1 and not (_cond_nsl2_2 and _cond_nsl2_3 and _cond_nsl2_4 and _cond_nsl2_5 and _cond_nsl2_6)):
-                #     self.report_battle_info(
-                #         f"账号{account_index} [DEBUG] need_self_liubei(路径2)不满足: not_need_self={_cond_nsl2_1}, keep_or_zhuge={_cond_nsl2_2}, no_field_liubei={_cond_nsl2_3}, no_liubei_for_clear={_cond_nsl2_4}, char_alive={_cond_nsl2_5}, has_liubei={_cond_nsl2_6}",
-                #         "info",
-                #     )
                 if (not need_self_liubei
                     and (self.keep_support_general or self._zhugeliang_low_hp)
                     and self.global_enemies_need_clear
@@ -4354,8 +4302,6 @@ class CombatAutoScript:
 
                 # 4.3 执行分配的复活任务（如果当前账号有分配任务）
                 if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout and not skip_side_effects:
-                    # [DEBUG复活诊断] 记录施法单位状态
-                    _caster_alive = char_info.get("alive", True)
                     if self._check_and_mark_reviving(assigned_revive_target, "主角"):
                         if self.revive_main_char_with_target(account_index, assigned_revive_target):
                             # 复活任务完成，从分配列表中移除
@@ -4673,9 +4619,6 @@ class CombatAutoScript:
 
                 # 4.1 执行分配的复活任务（如果当前账号有分配任务）
                 if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout and not skip_side_effects:
-                    # [DEBUG复活诊断] 记录施法单位状态
-                    _caster_generals = char_info.get("generals", [])
-                    _caster_alive_generals = [g.get("name") for g in _caster_generals if g.get("alive", True) and not g.get("replacing", False)]
                     if self._check_and_mark_reviving(assigned_revive_target, "主角"):
                         if self.revive_main_char_with_target(account_index, assigned_revive_target):
                             if account_index in self.revive_assignments:
@@ -5128,8 +5071,6 @@ class CombatAutoScript:
                                         "position": position
                                     })
                     self.low_hp_accounts[acct] = cnt
-                    # [DEBUG低血检测] 打印每次扫描结果，便于排查吃药不触发问题
-                    _low_hp_detail = self.low_hp_units.get(acct, [])
                 # 轮询间隔（非我方回合时）
                 if self.polling_running:
                     time.sleep(CombatConstants.DEFAULT_CHECK_INTERVAL)
