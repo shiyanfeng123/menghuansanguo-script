@@ -765,11 +765,20 @@ class CombatAutoScript:
             "星彩辅助": f"{self.get_resource_path('serveAssets/images/auto/xingcaifuzhu.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaifuzhu1.bmp')}",
         }
 
+        self.gray_skill_images = {
+            "寂灭神劫": f"{self.get_resource_path('serveAssets/images/auto/jimie_gray.bmp')}",
+            "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun_gray.bmp')}",
+            "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguqun_gray.bmp')}",
+            "星彩群攻": f"{self.get_resource_path('serveAssets/images/auto/xingcaiqun_gray.bmp')}",
+            "控制":     f"{self.get_resource_path('serveAssets/images/auto/liubeikong_gray.bmp')}",
+        }
+
         # 物品图片
         self.item_images = {
             "恢复药": f"{self.get_resource_path('serveAssets/images/auto/yao.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao2.bmp')}",
             # 恢复药（加血又加蓝，2回合CD）
             "复活药": f"{self.get_resource_path('serveAssets/images/auto/fuhuo.bmp')}|{self.get_resource_path('serveAssets/images/auto/fuhuo1.bmp')}",
+            "蓝药":   f"{self.get_resource_path('serveAssets/images/auto/yao.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/yao2.bmp')}",
             # 复活药（复活阵亡单位）
         }
 
@@ -817,6 +826,7 @@ class CombatAutoScript:
         self.item_cd_config = {
             "恢复药": 3,  # 3回合CD（红药，加血又加蓝）
             "复活药": 0,  # 无CD（复活药通常无CD限制）
+            "蓝药":   3,  # 3回合CD（蓝药，回蓝）
         }
 
         # 技能CD追踪 {account_index: {skill_name: last_used_turn}}
@@ -826,6 +836,8 @@ class CombatAutoScript:
         self.item_cd_tracking = {}
 
         self._no_heal_item_missing_turn = {}
+        self._no_mana_item_missing_turn = {}
+        self._current_our_turn_call = 0
 
         # 武将追踪信息（存储每个账号的武将信息）
         self.general_tracking = (
@@ -2934,6 +2946,132 @@ class CombatAutoScript:
         
         return self.use_heal_item(account_index, low_units[0])
 
+    def _use_mana_item(self, account_index, target_unit_info):
+        last_used = self.item_cd_tracking.get(account_index, {}).get("蓝药", -999)
+        cd_config = self.item_cd_config.get("蓝药", 3)
+        if (self.current_turn - last_used) < cd_config:
+            return False
+
+        last_miss = self._no_mana_item_missing_turn.get(account_index, -999)
+        if self.current_turn - last_miss < 2:
+            return False
+
+        start_time = time.time()
+        timeout = 1.5
+        item_btn = None
+        while time.time() - start_time < timeout:
+            item_btn = self.find_image(
+                account_index, self.button_images["道具按钮"], self.right_button_region, 0
+            )
+            if item_btn:
+                break
+            time.sleep(0.1)
+        if not item_btn:
+            return False
+        self.click_position(account_index, item_btn.x, item_btn.y)
+        time.sleep(CombatConstants.PANEL_WAIT_TIMEOUT)
+
+        mana_item_img = self.item_images.get("蓝药")
+        if not mana_item_img:
+            return False
+
+        start_time = time.time()
+        timeout = 3.0
+        mana_pos = None
+        search_regions = [
+            self.item_panel_region,
+            self.ally_region,
+        ]
+        while time.time() - start_time < timeout:
+            for search_region in search_regions:
+                mana_pos = self.find_image(
+                    account_index, mana_item_img, search_region, 0, use_lower_confidence=True
+                )
+                if mana_pos:
+                    break
+                time.sleep(0.05)
+            if mana_pos:
+                break
+            time.sleep(0.05)
+        if not mana_pos:
+            self._no_mana_item_missing_turn[account_index] = self.current_turn
+            return False
+        self.click_position(account_index, mana_pos.x, mana_pos.y)
+        time.sleep(CombatConstants.ACTION_DELAY)
+
+        target_pos = target_unit_info["position"]
+        self.click_position(account_index, target_pos[0], target_pos[1])
+        time.sleep(CombatConstants.ACTION_DELAY)
+
+        if account_index not in self.item_cd_tracking:
+            self.item_cd_tracking[account_index] = {}
+        self.item_cd_tracking[account_index]["蓝药"] = self.current_turn
+        self._no_mana_item_missing_turn.pop(account_index, None)
+
+        self.report_battle_info(
+            f"账号{account_index} 使用蓝药恢复 {target_unit_info['unit_name']} 蓝量", "success"
+        )
+        return True
+
+    def _detect_gray_and_recover(self, account_index):
+        gray_icon_map = [
+            ("寂灭神劫", "main_char",        None),
+            ("剑阵灭杀", "attack",           "曹操"),
+            ("武神一怒", "attack",           "魔化关羽"),
+            ("星彩群攻", "xingcai_support",  "张星彩"),
+            ("控制",     "support",          "刘备"),
+        ]
+
+        for skill_name, unit_type, general_name in gray_icon_map:
+            gray_path = self.gray_skill_images.get(skill_name)
+            if not gray_path:
+                continue
+            pos = self.find_image(account_index, gray_path, self.skill_panel_region, 0)
+            if not pos:
+                continue
+
+            self.report_battle_info(
+                f"账号{account_index} 检测到 [{skill_name}] 灰色图标，蓝量耗尽，单位=[{general_name or '主角'}]",
+                "warning"
+            )
+
+            if general_name is None:
+                target_info = {
+                    "unit_type": "main_char",
+                    "unit_name": "主角",
+                    "position": self.unit_positions[account_index]["main_char"],
+                }
+            else:
+                char_info = self.unit_info[account_index]["main_char"]
+                call_idx = self._current_our_turn_call
+                matching = sorted(
+                    [g for g in char_info.get("generals", [])
+                     if g.get("name") == general_name and g.get("alive", True)],
+                    key=lambda g: g.get("position", (0, 0))[0],
+                    reverse=True
+                )
+                target_gen = matching[call_idx] if call_idx < len(matching) else (matching[0] if matching else None)
+                if not target_gen:
+                    self.report_battle_info(
+                        f"账号{account_index} 未找到 {general_name} 的位置信息", "error"
+                    )
+                    return False
+                target_info = {
+                    "unit_type": "general",
+                    "unit_name": general_name,
+                    "position": target_gen.get("position"),
+                }
+
+            if self._use_mana_item(account_index, target_info):
+                return True
+            else:
+                self.report_battle_info(
+                    f"账号{account_index} 蓝药不可用(CD中/找不到)，降级到防御", "warning"
+                )
+                return False
+
+        return False
+
     # ==================== 复活相关函数 ====================
     def _assign_revive_tasks(self):
         """在我方回合开始时，分配复活任务
@@ -3776,6 +3914,7 @@ class CombatAutoScript:
                     return False
                 # 进入第一个武将操作
                 self.report_battle_info(f"武将操作阶段：账号 [{account_index}]", "turn")
+                self._current_our_turn_call = 0
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
                     return False
@@ -3790,21 +3929,25 @@ class CombatAutoScript:
                     time.sleep(0.1)
                 if not is_finded:
                     return False
+                self._current_our_turn_call = 1
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
                     return False
             else:
                 # 武将操作
                 self.report_battle_info(f"武将操作阶段：账号 [{account_index}]", "turn")
+                self._current_our_turn_call = 0
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
                     return False
                 # 等待第二个武将操作
                 time.sleep(0.03)
+                self._current_our_turn_call = 1
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
                     return False
                 time.sleep(0.03)
+                self._current_our_turn_call = 2
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
                     return False
@@ -4215,7 +4358,7 @@ class CombatAutoScript:
             assigned_revive_target = self.revive_assignments.get(account_index)
 
             # 4. 识别单位类型并执行相应操作
-            unit_type, detected_skill = self.identify_unit_type(account_index, timeout=4.0)
+            unit_type, detected_skill = self.identify_unit_type(account_index, timeout=3.0)
 
             if unit_type == "main_char":
                 # 主角操作
@@ -4328,10 +4471,14 @@ class CombatAutoScript:
                 if self._execute_best_strategy(account_index, "main_char"):
                     return True
 
-                # 4.5 主角没技能时，尝试用恢复药给低血单位加血
+                # 4.5 蓝耗尽检测（仅四象模式）
+                if self.combat_scene == "四象" and self._detect_gray_and_recover(account_index):
+                    return True
+
+                # 4.6 主角没技能时，尝试用恢复药给低血单位加血（四象模式禁用）
                 _heal_enabled = getattr(self, 'enable_main_heal', False)
                 _low_hp_for_acct = self.low_hp_units.get(account_index, [])
-                if _heal_enabled and self._try_use_heal_for_low_hp(account_index):
+                if _heal_enabled and self.combat_scene != "四象" and self._try_use_heal_for_low_hp(account_index):
                     return True
 
                 # 4.6 防御（策略引擎已包含防御兜底，此处保底兼容）
@@ -4721,7 +4868,27 @@ class CombatAutoScript:
                     time.sleep(CombatConstants.ACTION_DELAY)
                     return True
             
-            # 如果未识别到单位类型，返回False
+            # 未识别到单位类型，进入兜底决策链
+            # ① 灰图标检测 → 蓝耗尽恢复（仅四象模式）
+            if self.combat_scene == "四象" and self._detect_gray_and_recover(account_index):
+                return True
+
+            # ② 防御兜底
+            defense_btn = None
+            find_defense_time = time.time()
+            while time.time() - find_defense_time < 1.0 and not defense_btn:
+                defense_btn = self.find_image(
+                    account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
+                )
+                if defense_btn:
+                    break
+                time.sleep(0.005)
+            if defense_btn:
+                self.click_position(account_index, defense_btn.x, defense_btn.y)
+                self.report_battle_info(f"账号{account_index} 未识别单位类型，执行防御兜底", "action")
+                time.sleep(CombatConstants.ACTION_DELAY)
+                return True
+
             return False
 
         except Exception as e:
@@ -5250,6 +5417,9 @@ class CombatAutoScript:
                 self.liubei_missing_count = 0
                 self.low_hp_units = {}
                 self._no_heal_item_missing_turn = {}
+                self._no_mana_item_missing_turn = {}
+                self.item_cd_tracking = {}
+                self._current_our_turn_call = 0
                 self.zhugeliang_found = {}
                 self.zhugeliang_status1_missing_count = {}
                 self.zhugeliang_status2_missing_count = {}
@@ -5356,6 +5526,9 @@ class CombatAutoScript:
             self.keep_support_general = False
             self.low_hp_units = {}
             self._no_heal_item_missing_turn = {}
+            self._no_mana_item_missing_turn = {}
+            self.item_cd_tracking = {}
+            self._current_our_turn_call = 0
             self.zhugeliang_found = {}
             self.zhugeliang_status1_missing_count = {}
             self.zhugeliang_status2_missing_count = {}
