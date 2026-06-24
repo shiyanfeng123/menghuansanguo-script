@@ -544,6 +544,7 @@ class CombatAutoScript:
         self.enemy_target_index = 0
         self.ally_target_index = 0
         self.enemy_count = 0
+        self.enemy_single_rounds = 0
         self.account_last_target_type = {}
         self.target_positions_detected = False
         # 战斗场景标识（如"四象"），用于区分不同副本的点位偏移等差异
@@ -824,8 +825,7 @@ class CombatAutoScript:
         # 药品CD追踪 {account_index: {item_name: last_used_turn}}
         self.item_cd_tracking = {}
 
-        # 无恢复药账号缓存（避免每回合重复2s超时查找）
-        self._no_heal_item_accounts = set()
+        self._no_heal_item_missing_turn = {}
 
         # 武将追踪信息（存储每个账号的武将信息）
         self.general_tracking = (
@@ -1308,7 +1308,7 @@ class CombatAutoScript:
         elif cond == "attack_buff_expired":
             return self.attack_buff_tracker.get(account_index, 0) <= 0
         elif cond == "enemy_single":
-            return self.enemy_count <= 1
+            return self.enemy_single_rounds >= 2
         elif cond == "first_turn":
             return self.current_turn <= 1
         return True
@@ -2033,7 +2033,7 @@ class CombatAutoScript:
 
         # 多次采样取最大值，避免回合开始瞬间蓝条未刷新导致漏检
         max_raw_positions = []
-        for _ in range(3):
+        for _ in range(2):
             raw_positions = self._find_all_lantiao(dm_index, self.enemy_region, self.enemy_target_image)
             if len(raw_positions) > len(max_raw_positions):
                 max_raw_positions = raw_positions
@@ -2046,6 +2046,10 @@ class CombatAutoScript:
         if not self.enemy_target_positions:
             self.enemy_target_positions = [(104, 344)]
         self.enemy_count = len(self.enemy_target_positions)
+        if self.enemy_count <= 1:
+            self.enemy_single_rounds += 1
+        else:
+            self.enemy_single_rounds = 0
 
         # 我方点位：从unit_positions取存活单位的固定点位，不依赖蓝条检测
         # 避免技能面板打开时lantiao.bmp误识别导致点位不可靠
@@ -2893,7 +2897,7 @@ class CombatAutoScript:
                 self.report_battle_info(
                     f"账号{account_index} 道具面板中未找到恢复药（2秒超时）", "error"
                 )
-                self._no_heal_item_accounts.add(account_index)
+                self._no_heal_item_missing_turn[account_index] = self.current_turn
                 return False
 
             self.click_position(account_index, heal_item_pos.x, heal_item_pos.y)
@@ -2920,6 +2924,7 @@ class CombatAutoScript:
                         break
 
             self.report_battle_info(f"账号{account_index} 使用恢复药给{target_unit_info['unit_name']}加血", "success")
+            self._no_heal_item_missing_turn.pop(account_index, None)
             return True
 
         except Exception as e:
@@ -2932,7 +2937,8 @@ class CombatAutoScript:
         优先级：主角 > 武将
         use_heal_item 内部已有 CD 检查 + 2s 超时，找不到自动返回 False
         """
-        if account_index in self._no_heal_item_accounts:
+        last_miss = self._no_heal_item_missing_turn.get(account_index, -999)
+        if self.current_turn - last_miss < 3:
             return False
         low_units = self.low_hp_units.get(account_index, [])
         if not low_units:
@@ -5302,7 +5308,7 @@ class CombatAutoScript:
                 self.has_liubei_on_field = True
                 self.liubei_missing_count = 0
                 self.low_hp_units = {}
-                self._no_heal_item_accounts = set()
+                self._no_heal_item_missing_turn = {}
                 self.zhugeliang_found = {}
                 self.zhugeliang_status1_missing_count = {}
                 self.zhugeliang_status2_missing_count = {}
@@ -5320,6 +5326,7 @@ class CombatAutoScript:
                 self.enemy_target_index = 0
                 self.ally_target_index = 0
                 self.enemy_count = 0
+                self.enemy_single_rounds = 0
                 self.account_last_target_type = {}
                 self.target_positions_detected = False
                 self._target_positions_detected_this_round = False
@@ -5407,7 +5414,7 @@ class CombatAutoScript:
             self.liubei_missing_count = 0
             self.keep_support_general = False
             self.low_hp_units = {}
-            self._no_heal_item_accounts = set()
+            self._no_heal_item_missing_turn = {}
             self.zhugeliang_found = {}
             self.zhugeliang_status1_missing_count = {}
             self.zhugeliang_status2_missing_count = {}
@@ -5423,6 +5430,7 @@ class CombatAutoScript:
             self.enemy_target_positions = []
             self.ally_target_positions = []
             self.enemy_target_index = 0
+            self.enemy_single_rounds = 0
             self.ally_target_index = 0
             self.enemy_count = 0
             self.account_last_target_type = {}
