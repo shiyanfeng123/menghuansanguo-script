@@ -767,7 +767,7 @@ class CombatAutoScript:
 
         self.gray_skill_images = {
             "寂灭神劫": f"{self.get_resource_path('serveAssets/images/auto/jimie_gray.bmp')}",
-            "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun_gray.bmp')}",
+            "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun_gray.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocaodan_gray.bmp')}",
             "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguqun_gray.bmp')}",
             "星彩群攻": f"{self.get_resource_path('serveAssets/images/auto/xingcaiqun_gray.bmp')}",
             "控制":     f"{self.get_resource_path('serveAssets/images/auto/liubeikong_gray.bmp')}",
