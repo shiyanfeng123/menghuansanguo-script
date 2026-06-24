@@ -13654,6 +13654,14 @@ class MyThread(threading.Thread):
             remaining_minutes = self.get_remaining_minutes()
             result_item = self.find_optimal_item(remaining_minutes)
             if not result_item and not self.richangIsOver():
+                if remaining_minutes >= 2:
+                    print("等整点时打官渡")
+                    self.guanduScript()
+                    continue
+                if "镜" in self.richangSelection and remaining_minutes >= 2:
+                    print("等整点时打魔镜")
+                    self.mojingScript()
+                    continue
                 print("打整点")
                 if self.zhengdianFloor in ["龙+全打", "全打", "蛇+全打"]:
                     # 打整点
