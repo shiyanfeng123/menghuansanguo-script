@@ -2741,7 +2741,7 @@ class MyThread(threading.Thread):
     def get_resource_path(self, relative_path):
         if hasattr(sys, "_MEIPASS"):
             return os.path.join(sys._MEIPASS, relative_path)
-        return os.path.join(os.path.abspath("."), relative_path)
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
     def huifu_yijian_main(self):
         self._huifu_done = 0
@@ -14258,7 +14258,7 @@ class MyFrame(wx.Frame):
         self.contact.SetForegroundColour(wx.Colour(100, 105, 115))
         self.contact.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
 
-        self.update_notify_panel = wx.Panel(self.panel, size=(8, 8))
+        self.update_notify_panel = wx.Panel(self.panel, size=(14, 14))
         self.update_notify_panel.SetBackgroundColour(wx.Colour(243, 244, 248))
         self.update_notify_panel.Hide()
         self.update_notify_panel.Bind(wx.EVT_PAINT, self.on_update_notify_paint)
@@ -14283,22 +14283,6 @@ class MyFrame(wx.Frame):
         self.help_link.Bind(wx.EVT_BUTTON, self.on_help_link_click)
         btm.Add(self.help_link, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 6)
 
-        self.changepw_btn = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
-        self.changepw_btn.SetBitmap(self._load_icon("btn_changepw.png", 18))
-        self.changepw_btn.SetBackgroundColour(wx.Colour(243, 244, 248))
-        self.changepw_btn.SetToolTip("修改密码")
-        self.changepw_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.changepw_btn.Bind(wx.EVT_BUTTON, self.on_change_password)
-        btm.Add(self.changepw_btn, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 4)
-
-        self.logout_btn = wx.Button(self.panel, size=(26, 26), style=wx.BORDER_NONE)
-        self.logout_btn.SetBitmap(self._load_icon("btn_logout.png", 18))
-        self.logout_btn.SetBackgroundColour(wx.Colour(243, 244, 248))
-        self.logout_btn.SetToolTip("退出登录")
-        self.logout_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.logout_btn.Bind(wx.EVT_BUTTON, self.on_logout)
-        btm.Add(self.logout_btn, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 4)
-
         btm.Add(self.update_notify_panel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 3)
         btm.Add(self.updateVersion, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
 
@@ -14321,18 +14305,36 @@ class MyFrame(wx.Frame):
         self.zhengdianFloor = ""
         self.afterZreo = ""
         self.richangSelection = []
-        self.mac_address = ""
-        self.mac_address1 = ""
+        self.mac_address = self.get_mac_address()
+        self.mac_address1 = ":".join(
+            ["{:02x}".format((uuid.getnode() >> elements) & 0xFF) for elements in range(0, 8 * 6, 8)][::-1]
+        )
         self.has_script = "free"
         self.user_name = "免费用户"
         self.end_time = "2199-12-30 23:59:59"
-        self.remote_info = None
-        self.BASE_URL = "https://yian.syf88.top"
+        self.remote_info = self.check_gitee_update()
         self.current_version = self.get_current_version()
         self.update_notify_timer = None
         self.update_notify_visible = True
-        self.userData = {}
-        self._init_done = False
+        if self.remote_info:
+            self.userData = self.remote_info.get("userData", {})
+        else:
+            self.userData = {}
+        self.check_and_update_notify_status()
+        is_pass = self.is_user_valid()
+        if not is_pass:
+            self.user_name = "免费用户"
+            self.end_time = "2199-12-30 23:59:59"
+            self.has_script = "free"
+        print(f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
+        if self.is_virtual_machine() and self.user_name not in [
+            "关服就离开",
+            "RInoicc",
+            "钞能力",
+        ]:
+            print("虚拟机")
+            return
+        self._init_done = True
 
         self.has_choices = (
             [
@@ -14414,101 +14416,14 @@ class MyFrame(wx.Frame):
         self.panel.Layout()
         self.Layout()
 
-    def _init_async(self):
-        def _do_init():
-            self.remote_info = self.check_server_update()
-            self.mac_address = self.get_mac_address()
-            self.mac_address1 = ":".join(
-                ["{:02x}".format((uuid.getnode() >> elements) & 0xFF) for elements
-                 in range(0, 8 * 6, 8)][::-1]
-            )
-            app = wx.GetApp()
-            self.user_name = app.user_info.get("username", "免费用户")
-            self.has_script = app.user_info.get("has_script", "free")
-            self.end_time = app.user_info.get("end_time", "2199-12-30 23:59:59")
-            self.token = app.user_info.get("token", "")
-
-            wx.CallAfter(self._update_user_display)
-            wx.CallAfter(self._refresh_script_choices)
-            print(
-                f"用户名：{self.user_name}\n有效期：{self.end_time}\n脚本权限：{self.has_script}")
-            if self.is_virtual_machine() and self.user_name not in [
-                "关服就离开",
-                "RInoicc",
-                "钞能力",
-            ]:
-                print("虚拟机")
-                wx.CallAfter(self.Close)
-                return
-            wx.CallAfter(self.check_and_update_notify_status)
-            self._init_done = True
-        threading.Thread(target=_do_init, daemon=True).start()
-
-    def _update_user_display(self):
-        pass
-
-    def _refresh_script_choices(self):
-        try:
-            if not hasattr(self, "dropdown"):
-                return
-            new_choices = self.free_choices[0] if self.has_script == "free" else self.has_choices[0]
-            current = self.dropdown.GetValue()
-            self.dropdown.SetItems(new_choices)
-            if current in new_choices:
-                self.dropdown.SetValue(current)
-        except Exception as e:
-            print(f"刷新脚本列表失败: {e}")
-
-    def on_change_password(self, event):
-        app = wx.GetApp()
-        dlg = ChangePasswordDialog(app)
-        if dlg.ShowModal() == wx.ID_OK:
-            dlg.Destroy()
-            self._restart_to_login()
-        else:
-            dlg.Destroy()
-
-    def on_logout(self, event):
-        app = wx.GetApp()
-        dlg = wx.MessageDialog(self, "退出登录将重置正在运行的脚本，是否继续？", "退出登录",
-                               wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-        if dlg.ShowModal() != wx.ID_YES:
-            dlg.Destroy()
-            return
-        dlg.Destroy()
-        app.logout()
-        self._restart_to_login()
-
-    def _restart_to_login(self):
-        try:
-            keyboard.remove_all_hotkeys()
-        except:
-            pass
-        if self.thread and self.thread.is_alive():
-            self.thread.stoped = True
-            time.sleep(0.3)
-        self._closing_soft = True
-        self.Close()
-        app = wx.GetApp()
-        login = LoginWindow(app, skip_auto=True)
-        result = login.ShowModal()
-        login.Destroy()
-        if result != wx.ID_OK:
-            app.Exit()
-            import sys
-            sys.exit(0)
-        frame = MyFrame()
-        frame.Show()
-        wx.CallAfter(frame._init_async)
-
     def _load_icon(self, name, size):
         path = self.get_resource_path("serveAssets/images/" + name)
         img = wx.Image(path).Scale(size, size, wx.IMAGE_QUALITY_HIGH)
         return wx.Bitmap(img)
 
-    def check_server_update(self):
+    def check_gitee_update(self):
         try:
-            url = f"{wx.GetApp().BASE_URL}/api/version"
+            url = "https://gitee.com/syf0910/mhsg-script-update/raw/master/version.json"
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 return response.json()
@@ -14714,8 +14629,15 @@ class MyFrame(wx.Frame):
 
         latest_version = self.remote_info["version"]
 
-        # 比较版本（确保版本字符串比较正确）
-        if self.current_version != latest_version:
+        # 比较版本号：只有远端 > 本地才提示更新
+        def _parse(v):
+            try:
+                parts = v.split(".")
+                return tuple(int(p) for p in parts)
+            except Exception:
+                return (0,)
+
+        if _parse(latest_version) > _parse(self.current_version):
             # 有新版本，显示提示图标（静态显示，不闪烁）
             if hasattr(self, "update_notify_panel"):
                 _safe_show(self.update_notify_panel)
@@ -14783,7 +14705,7 @@ class MyFrame(wx.Frame):
     def get_resource_path(self, relative_path):
         if hasattr(sys, "_MEIPASS"):
             return os.path.join(sys._MEIPASS, relative_path)
-        return os.path.join(os.path.abspath("."), relative_path)
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
     def on_button_click(self, event):
         dialog = MyDialog(self, self.has_script)
@@ -15148,533 +15070,6 @@ class App(wx.App):
     def __init__(self):
         super().__init__()
         self.user_info = {"username": "", "has_script": "free", "end_time": "2199-12-30 23:59:59", "token": ""}
-
-    def _load_cached(self):
-        try:
-            data = self._dpapi_load("mhsg_login")
-            if data:
-                return json.loads(data)
-        except:
-            pass
-        return {}
-
-    def _save_cached(self, username, password, auto_login):
-        try:
-            self._dpapi_save("mhsg_login", json.dumps({"username": username, "password": password, "auto_login": auto_login}))
-        except:
-            pass
-
-    @staticmethod
-    def _dpapi_save(name, plain):
-        import winreg
-        try:
-            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\MHSG")
-            winreg.SetValueEx(key, name, 0, winreg.REG_SZ, plain)
-            winreg.CloseKey(key)
-        except:
-            pass
-
-    @staticmethod
-    def _dpapi_load(name):
-        import winreg
-        try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\MHSG")
-            value, _ = winreg.QueryValueEx(key, name)
-            winreg.CloseKey(key)
-            return value
-        except:
-            return None
-
-    def _get_mac(self):
-        try:
-            import uuid
-            return ":".join(["{:02x}".format((uuid.getnode() >> e) & 0xFF) for e in range(0, 8 * 6, 8)][::-1])
-        except:
-            return ""
-    mac_address = property(_get_mac)
-
-    def _api(self, path, body=None):
-        headers = {}
-        if self.user_info.get("token"):
-            headers["Authorization"] = f"Bearer {self.user_info['token']}"
-        url = f"{self.BASE_URL}{path}"
-        last_error = None
-        for attempt in range(3):
-            try:
-                if body is None:
-                    response = requests.get(url, timeout=10, verify=_get_ca_bundle())
-                else:
-                    response = requests.post(url, json=body, timeout=10, verify=_get_ca_bundle())
-                if response.status_code == 200:
-                    return response.json()
-                try:
-                    return response.json()
-                except:
-                    return None
-            except requests.ConnectionError:
-                last_error = "无法连接服务器，请检查网络"
-            except requests.Timeout:
-                last_error = "服务器响应超时，请稍后重试"
-            except requests.SSLError:
-                last_error = "安全连接失败，请更新系统或联系管理员"
-            except Exception as e:
-                last_error = f"网络错误({type(e).__name__})"
-            if attempt < 2:
-                time.sleep(1)
-        return {"error": last_error or "网络错误"}
-    def do_login(self, username, password, remember):
-        resp = self._api("/api/login", {"username": username, "password": password, "device_mac": self.mac_address})
-        if resp and resp.get("token"):
-            self.user_info = {
-                "username": resp.get("user_name", username),
-                "has_script": resp.get("has_script", "free"),
-                "end_time": resp.get("end_time", "2199-12-30 23:59:59"),
-                "token": resp["token"],
-                "schemes": resp.get("schemes", {}),
-            }
-            if remember:
-                self._save_cached(username, password, True)
-            return {"success": True}
-        return {"success": False, "error": resp.get("error", "登录失败") if resp else "网络错误"}
-
-    def do_register(self, username, password, remember):
-        resp = self._api("/api/register-free", {"username": username, "password": password, "device_mac": self.mac_address})
-        if resp and resp.get("token"):
-            self.user_info = {
-                "username": resp.get("user_name", username),
-                "has_script": "free",
-                "end_time": resp.get("end_time", "2199-12-30 23:59:59"),
-                "token": resp["token"],
-                "schemes": {},
-            }
-            if remember:
-                self._save_cached(username, password, True)
-            return {"success": True}
-        return {"success": False, "error": resp.get("error", "注册失败") if resp else "网络错误"}
-
-    def do_activate(self, username, password, invite_code, remember):
-        resp = self._api("/api/activate", {"username": username, "password": password, "invite_code": invite_code, "device_mac": self.mac_address})
-        if resp and resp.get("token"):
-            self.user_info = {
-                "username": resp.get("user_name", username),
-                "has_script": resp.get("has_script", "vip"),
-                "end_time": resp.get("end_time", "2199-12-30 23:59:59"),
-                "token": resp["token"],
-                "schemes": resp.get("schemes", {}),
-            }
-            if remember:
-                self._save_cached(username, password, True)
-            return {"success": True}
-        return {"success": False, "error": resp.get("error", "激活失败") if resp else "网络错误"}
-
-    def logout(self):
-        self.user_info = {"username": "", "has_script": "free", "end_time": "2199-12-30 23:59:59", "token": ""}
-
-
-class LoginWindow(wx.Dialog):
-    def __init__(self, app, skip_auto=False):
-        super().__init__(None, title="梦幻三国脚本", size=(360, 340), pos=(200, 60),
-                         style=wx.DEFAULT_DIALOG_STYLE)
-        self.SetBackgroundColour(wx.Colour(243, 244, 248))
-        self.app = app
-        self._cancelled = False
-        self._skip_auto = skip_auto
-
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(243, 244, 248))
-        self.panel = panel
-        vs = wx.BoxSizer(wx.VERTICAL)
-
-        title = wx.StaticText(panel, label="梦幻三国脚本")
-        title.SetForegroundColour(wx.Colour(50, 80, 140))
-        title.SetFont(wx.Font(16, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        vs.Add(title, 0, wx.ALIGN_CENTER | wx.ALL, 16)
-
-        # ── Loading 遮罩 ──
-        self.loading_panel = wx.Panel(panel, size=(300, 60))
-        self.loading_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
-        lds = wx.BoxSizer(wx.HORIZONTAL)
-        self.loading_text = wx.StaticText(self.loading_panel, label="正在自动登录...")
-        self.loading_text.SetForegroundColour(wx.Colour(100, 105, 115))
-        self.loading_text.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        lds.Add(self.loading_text, 1, wx.ALIGN_CENTER | wx.ALL, 12)
-
-        self.cancel_btn = wx.Button(self.loading_panel, size=(80, 28), style=wx.BORDER_NONE, label="取消")
-        self.cancel_btn.SetBackgroundColour(wx.Colour(192, 57, 43))
-        self.cancel_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.cancel_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.cancel_btn.Bind(wx.EVT_BUTTON, self.on_cancel_auto)
-        lds.Add(self.cancel_btn, 0, wx.ALIGN_CENTER | wx.ALL, 12)
-        self.loading_panel.SetSizer(lds)
-        vs.Add(self.loading_panel, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
-        self.loading_panel.Hide()
-
-        # ── 常规输入界面 ──
-        self.main_section = wx.Panel(panel)
-        self.main_section.SetBackgroundColour(wx.Colour(243, 244, 248))
-        mvs = wx.BoxSizer(wx.VERTICAL)
-
-        input_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-        self.user_input = wx.TextCtrl(self.main_section, size=(290, 34))
-        self.user_input.SetHint("账号")
-        self.user_input.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.user_input.SetFont(input_font)
-        mvs.Add(self.user_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.pass_input = wx.TextCtrl(self.main_section, size=(290, 34), style=wx.TE_PASSWORD)
-        self.pass_input.SetHint("密码")
-        self.pass_input.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.pass_input.SetFont(input_font)
-        mvs.Add(self.pass_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
-        btn_bar = wx.BoxSizer(wx.HORIZONTAL)
-        self.login_btn = wx.Button(self.main_section, size=(141, 38), style=wx.BORDER_NONE, label="登录")
-        self.login_btn.SetBackgroundColour(wx.Colour(39, 174, 96))
-        self.login_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.login_btn.SetFont(btn_font)
-        self.login_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.login_btn.Bind(wx.EVT_BUTTON, self.on_login)
-        btn_bar.Add(self.login_btn, 0, wx.RIGHT, 8)
-
-        self.skip_btn = wx.Button(self.main_section, size=(141, 38), style=wx.BORDER_NONE, label="直接使用")
-        self.skip_btn.SetBackgroundColour(wx.Colour(240, 242, 246))
-        self.skip_btn.SetForegroundColour(wx.Colour(100, 105, 115))
-        self.skip_btn.SetFont(btn_font)
-        self.skip_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.skip_btn.Bind(wx.EVT_BUTTON, self.on_skip)
-        btn_bar.Add(self.skip_btn, 0)
-        mvs.Add(btn_bar, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
-
-        bottom_bar = wx.BoxSizer(wx.HORIZONTAL)
-        self.remember_cb = wx.CheckBox(self.main_section, label="记住密码，自动登录")
-        self.remember_cb.SetValue(False)
-        self.remember_cb.SetForegroundColour(wx.Colour(100, 105, 115))
-        self.remember_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        bottom_bar.Add(self.remember_cb, 0, wx.ALIGN_CENTER_VERTICAL)
-        bottom_bar.AddStretchSpacer()
-
-        self.activate_link = wx.StaticText(self.main_section, label="激活账号 →")
-        self.activate_link.SetForegroundColour(wx.Colour(50, 80, 140))
-        self.activate_link.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        self.activate_link.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.activate_link.Bind(wx.EVT_LEFT_DOWN, self.on_open_activate)
-        bottom_bar.Add(self.activate_link, 0, wx.ALIGN_CENTER_VERTICAL)
-        mvs.Add(bottom_bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
-
-        self.error_label = wx.StaticText(self.main_section, label="")
-        self.error_label.SetForegroundColour(wx.Colour(192, 57, 43))
-        self.error_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        mvs.Add(self.error_label, 0, wx.ALIGN_CENTER | wx.BOTTOM, 4)
-
-        self.main_section.SetSizer(mvs)
-        vs.Add(self.main_section, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 26)
-
-        panel.SetSizer(vs)
-        ds = wx.BoxSizer(wx.VERTICAL)
-        ds.Add(panel, 1, wx.EXPAND)
-        self.SetSizer(ds)
-
-        self.Bind(wx.EVT_CHAR_HOOK, self.on_key_down)
-
-        self._show_loading()
-        wx.CallAfter(self._start_auto_login)
-
-    def _show_loading(self):
-        self.main_section.Hide()
-        self.loading_panel.Show()
-        self.Layout()
-        self.Fit()
-
-    def _show_login(self):
-        self.loading_panel.Hide()
-        self.main_section.Show()
-        cached = self.app._load_cached()
-        if cached.get("username"):
-            self.user_input.SetValue(cached.get("username", ""))
-            self.pass_input.SetValue(cached.get("password", ""))
-        self.remember_cb.SetValue(cached.get("auto_login", False))
-        self.Layout()
-        self.Fit()
-
-    def on_cancel_auto(self, event):
-        self._cancelled = True
-
-    def _end_modal(self, result):
-        try:
-            self.EndModal(result)
-        except:
-            wx.CallAfter(self._end_modal, result)
-
-    def _start_auto_login(self):
-        self._cancelled = False
-        if self._skip_auto:
-            wx.CallAfter(self._show_login)
-            return
-
-        cached = self.app._load_cached()
-
-        if not cached or not cached.get("auto_login"):
-            wx.CallAfter(self._show_login)
-            return
-
-        if not cached.get("username") or not cached.get("password"):
-            self.app.user_info = {"username": "", "has_script": "free", "end_time": "2199-12-30 23:59:59", "token": ""}
-            self._end_modal(wx.ID_OK)
-            return
-
-        def do_login():
-            return self.app.do_login(cached["username"], cached["password"], True)
-
-        def on_result(result):
-            if self._cancelled:
-                self._show_login()
-                return
-            if result["success"]:
-                self.EndModal(wx.ID_OK)
-            else:
-                self._show_login()
-
-        t = threading.Thread(target=lambda: wx.CallAfter(on_result, do_login()), daemon=True)
-        t.start()
-
-    def on_login(self, event):
-        username = self.user_input.GetValue().strip()
-        password = self.pass_input.GetValue().strip()
-        if not username or not password:
-            self.error_label.SetLabel("请输入账号和密码")
-            return
-        result = self.app.do_login(username, password, self.remember_cb.GetValue())
-        if result["success"]:
-            self.EndModal(wx.ID_OK)
-        else:
-            self.error_label.SetLabel(result["error"])
-
-    def on_skip(self, event):
-        self.app._save_cached("", "", self.remember_cb.GetValue())
-        self.EndModal(wx.ID_OK)
-
-    def on_open_activate(self, event):
-        dlg = ActivateDialog(self.app, self.user_input.GetValue(), self.pass_input.GetValue(), self.remember_cb.GetValue())
-        if dlg.ShowModal() == wx.ID_OK:
-            self.EndModal(wx.ID_OK)
-        else:
-            self.user_input.SetValue(dlg.user_input.GetValue())
-            self.pass_input.SetValue(dlg.pass_input.GetValue())
-            self.remember_cb.SetValue(dlg.remember_cb.GetValue())
-        dlg.Destroy()
-
-    def on_key_down(self, event):
-        if event.GetKeyCode() == wx.WXK_RETURN:
-            self.on_login(None)
-        else:
-            event.Skip()
-
-
-class ActivateDialog(wx.Dialog):
-    def __init__(self, app, seed_user="", seed_pass="", seed_remember=False):
-        super().__init__(None, title="激活账号", size=(360, 340), pos=(200, 60),
-                         style=wx.DEFAULT_DIALOG_STYLE)
-        self.SetBackgroundColour(wx.Colour(243, 244, 248))
-        self.app = app
-
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(243, 244, 248))
-        vs = wx.BoxSizer(wx.VERTICAL)
-
-        header = wx.BoxSizer(wx.HORIZONTAL)
-        back_btn = wx.Button(panel, size=(60, 26), style=wx.BORDER_NONE, label="← 返回")
-        back_btn.SetBackgroundColour(wx.Colour(240, 242, 246))
-        back_btn.SetForegroundColour(wx.Colour(100, 105, 115))
-        back_btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        back_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        back_btn.Bind(wx.EVT_BUTTON, self.on_back)
-        header.Add(back_btn, 0, wx.ALIGN_CENTER_VERTICAL)
-
-        header.AddStretchSpacer()
-
-        title = wx.StaticText(panel, label="激活/注册账号")
-        title.SetForegroundColour(wx.Colour(50, 80, 140))
-        title.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        header.Add(title, 0, wx.ALIGN_CENTER_VERTICAL)
-        vs.Add(header, 0, wx.EXPAND | wx.ALL, 12)
-
-        input_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-
-        self.invite_input = wx.TextCtrl(panel, size=(290, 34))
-        self.invite_input.SetHint("激活码 (选填，不填则注册免费账号)")
-        self.invite_input.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.invite_input.SetFont(input_font)
-        vs.Add(self.invite_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.user_input = wx.TextCtrl(panel, size=(290, 34))
-        self.user_input.SetHint("账号")
-        self.user_input.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.user_input.SetFont(input_font)
-        vs.Add(self.user_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.pass_input = wx.TextCtrl(panel, size=(290, 34), style=wx.TE_PASSWORD)
-        self.pass_input.SetHint("密码")
-        self.pass_input.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.pass_input.SetFont(input_font)
-        vs.Add(self.pass_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.user_input.SetValue(seed_user)
-        self.pass_input.SetValue(seed_pass)
-
-        self.remember_cb = wx.CheckBox(panel, label="记住密码，自动登录")
-        self.remember_cb.SetValue(seed_remember)
-        self.remember_cb.SetForegroundColour(wx.Colour(100, 105, 115))
-        self.remember_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        vs.Add(self.remember_cb, 0, wx.ALIGN_CENTER | wx.BOTTOM, 6)
-
-        btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
-        self.action_btn = wx.Button(panel, size=(290, 38), style=wx.BORDER_NONE, label="激活/注册")
-        self.action_btn.SetBackgroundColour(wx.Colour(50, 80, 140))
-        self.action_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.action_btn.SetFont(btn_font)
-        self.action_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        self.action_btn.Bind(wx.EVT_BUTTON, self.on_action)
-        vs.Add(self.action_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.error_label = wx.StaticText(panel, label="")
-        self.error_label.SetForegroundColour(wx.Colour(192, 57, 43))
-        self.error_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        vs.Add(self.error_label, 0, wx.ALIGN_CENTER | wx.BOTTOM, 4)
-
-        panel.SetSizer(vs)
-        ds = wx.BoxSizer(wx.VERTICAL)
-        ds.Add(panel, 1, wx.EXPAND)
-        self.SetSizer(ds)
-
-    def on_back(self, event):
-        self.EndModal(wx.ID_CANCEL)
-
-    def on_action(self, event):
-        username = self.user_input.GetValue().strip()
-        password = self.pass_input.GetValue().strip()
-        invite = self.invite_input.GetValue().strip()
-
-        if not username or not password:
-            self.error_label.SetLabel("请输入账号和密码")
-            return
-        if len(username) < 3 or len(password) < 6:
-            self.error_label.SetLabel("账号至少3位，密码至少6位")
-            return
-
-        remember = self.remember_cb.GetValue()
-
-        if invite:
-            result = self.app.do_activate(username, password, invite, remember)
-        else:
-            result = self.app.do_register(username, password, remember)
-
-        if result["success"]:
-            self.EndModal(wx.ID_OK)
-        else:
-            self.error_label.SetLabel(result["error"])
-
-
-class ChangePasswordDialog(wx.Dialog):
-    def __init__(self, app):
-        super().__init__(None, title="修改密码", size=(340, 310), pos=(250, 80),
-                         style=wx.DEFAULT_DIALOG_STYLE)
-        self.SetBackgroundColour(wx.Colour(243, 244, 248))
-        self.app = app
-
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(243, 244, 248))
-        vs = wx.BoxSizer(wx.VERTICAL)
-
-        title = wx.StaticText(panel, label="修改密码")
-        title.SetForegroundColour(wx.Colour(50, 80, 140))
-        title.SetFont(wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        vs.Add(title, 0, wx.ALIGN_CENTER | wx.ALL, 16)
-
-        input_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-
-        self.user_input = wx.TextCtrl(panel, size=(260, 34))
-        self.user_input.SetHint("账号")
-        self.user_input.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.user_input.SetFont(input_font)
-        vs.Add(self.user_input, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.old_pass = wx.TextCtrl(panel, size=(260, 34), style=wx.TE_PASSWORD)
-        self.old_pass.SetHint("旧密码")
-        self.old_pass.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.old_pass.SetFont(input_font)
-        vs.Add(self.old_pass, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.new_pass = wx.TextCtrl(panel, size=(260, 34), style=wx.TE_PASSWORD)
-        self.new_pass.SetHint("新密码")
-        self.new_pass.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.new_pass.SetFont(input_font)
-        vs.Add(self.new_pass, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
-
-        btn_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
-        action_btn = wx.Button(panel, size=(260, 36), style=wx.BORDER_NONE, label="修改密码")
-        action_btn.SetBackgroundColour(wx.Colour(50, 80, 140))
-        action_btn.SetForegroundColour(wx.Colour(255, 255, 255))
-        action_btn.SetFont(btn_font)
-        action_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
-        action_btn.Bind(wx.EVT_BUTTON, self.on_change)
-        vs.Add(action_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
-
-        self.error_label = wx.StaticText(panel, label="")
-        self.error_label.SetForegroundColour(wx.Colour(192, 57, 43))
-        self.error_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        vs.Add(self.error_label, 0, wx.ALIGN_CENTER | wx.BOTTOM, 4)
-
-        panel.SetSizer(vs)
-        ds = wx.BoxSizer(wx.VERTICAL)
-        ds.Add(panel, 1, wx.EXPAND)
-        self.SetSizer(ds)
-
-    def on_change(self, event):
-        username = self.user_input.GetValue().strip()
-        old = self.old_pass.GetValue().strip()
-        new = self.new_pass.GetValue().strip()
-        if not username or not old or not new:
-            self.error_label.SetLabel("请填写所有字段")
-            return
-        if len(new) < 6:
-            self.error_label.SetLabel("新密码至少6位")
-            return
-        result = self._api("/api/change-password", {"username": username, "old_password": old, "new_password": new})
-        if result.get("message"):
-            self.app._save_cached(username, "", True)
-            self.EndModal(wx.ID_OK)
-        else:
-            self.error_label.SetLabel(result.get("error", "修改失败"))
-
-    def _api(self, path, body):
-        headers = {}
-        token = self.app.user_info.get("token", "")
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        url = f"{self.app.BASE_URL}{path}"
-        last_error = None
-        for attempt in range(3):
-            try:
-                r = requests.post(url, json=body, headers=headers, timeout=10, verify=_get_ca_bundle())
-                if r.status_code == 200:
-                    return r.json()
-                try:
-                    return r.json()
-                except:
-                    return {"error": "服务器错误"}
-            except requests.ConnectionError:
-                last_error = "无法连接服务器，请检查网络"
-            except requests.Timeout:
-                last_error = "服务器响应超时，请稍后重试"
-            except requests.SSLError:
-                last_error = "安全连接失败，请更新系统或联系管理员"
-            except Exception as e:
-                last_error = f"网络错误({type(e).__name__})"
-            if attempt < 2:
-                time.sleep(1)
-        return {"error": last_error or "网络错误"}
-
 
 class MyDialog(wx.Dialog):
     C_BG = wx.Colour(243, 244, 248)
@@ -16680,188 +16075,125 @@ class HelpDialog(wx.Dialog):
 
 
 class UpdateDialog(wx.Dialog):
-    BASE_URL = "https://yian.syf88.top"
     C_BG = wx.Colour(243, 244, 248)
-    C_SURFACE = wx.Colour(240, 242, 246)
-    C_GOLD = wx.Colour(50, 80, 140)
-    C_TEXT = wx.Colour(40, 42, 50)
-    C_MUTED = wx.Colour(70, 75, 85)
+    C_TEXT = wx.Colour(50, 80, 140)
+    C_BTN = wx.Colour(50, 80, 140)
 
     def __init__(self, parent, remote_info):
         super().__init__(parent, title="检查更新", size=(550, 560), pos=(260, 30),
                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.SetBackgroundColour(self.C_BG)
+
         self.current_version = UpdateDialog.get_current_version()
         self.remote_info = remote_info
         self.latest_version = self.remote_info["version"]
         self.download_url = self.remote_info["download_url"]
-        self.release_date = self.remote_info["release_date"]
-        self.force_update = self.remote_info.get("force_update", False)
-        self.announcement = self.remote_info.get("announcement", {})
+        self.release_date = self.remote_info.get("release_date", "")
 
         self.InitUI()
-        changelog = self.remote_info["changelog"]
+
+        changelog = self.remote_info.get("changelog", "")
         if isinstance(changelog, list):
-            changelog_text = "\n".join("• " + item for item in changelog)
+            changelog = "\n".join(changelog)
+        self.changelog_text.SetValue(changelog)
+
+        def _parse(v):
+            try:
+                parts = v.split(".")
+                return tuple(int(p) for p in parts)
+            except Exception:
+                return (0,)
+
+        if _parse(self.latest_version) > _parse(self.current_version):
+            self.update_btn.Show()
+            self.status_text.SetLabel("发现新版本！")
+            self.status_text.SetForegroundColour(wx.Colour(220, 60, 50))
         else:
-            changelog_text = changelog
-        self.changelog_text.SetValue(changelog_text)
-
-        if self.current_version != self.latest_version:
-            self.update_button.Show()
-            self.status_label.SetLabel("发现新版本！")
-            self.status_label.SetForegroundColour(wx.Colour(34, 153, 84))
-        else:
-            self.update_button.Hide()
-            self.status_label.SetLabel("已是最新版本")
-            self.status_label.SetForegroundColour(self.C_MUTED)
-
-        if self.force_update and self.current_version != self.latest_version:
-            self.close_button.Disable()
-            self.close_button.SetLabel("请先更新")
-
-        self._populate_announcement()
-        self.Layout()
+            self.status_text.SetLabel("已是最新版本")
+            self.status_text.SetForegroundColour(wx.Colour(40, 160, 80))
 
     def InitUI(self):
-        main_panel = wx.Panel(self)
-        main_panel.SetBackgroundColour(self.C_BG)
+        panel = wx.Panel(self)
+        panel.SetBackgroundColour(self.C_BG)
+        vs = wx.BoxSizer(wx.VERTICAL)
 
-        title_panel = wx.Panel(main_panel)
+        title_panel = wx.Panel(panel)
         title_panel.SetBackgroundColour(self.C_BG)
         title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         title_text = wx.StaticText(title_panel, label="检查更新")
         title_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
         title_text.SetFont(title_font)
-        title_text.SetForegroundColour(self.C_GOLD)
-        title_sizer.Add(title_text, 1, wx.ALIGN_CENTER | wx.ALL, 12)
+        title_text.SetForegroundColour(self.C_TEXT)
+        title_sizer.Add(title_text, 0, wx.ALIGN_CENTER_VERTICAL)
         title_panel.SetSizer(title_sizer)
+        vs.Add(title_panel, 0, wx.ALL | wx.EXPAND, 12)
 
-        content_panel = wx.Panel(main_panel)
-        content_panel.SetBackgroundColour(self.C_BG)
-        vbox = wx.BoxSizer(wx.VERTICAL)
+        info_panel = wx.Panel(panel)
+        info_panel.SetBackgroundColour(wx.Colour(255, 255, 255))
+        info_sizer = wx.FlexGridSizer(3, 2, 10, 10)
+        info_sizer.AddGrowableCol(1, 1)
 
-        version_panel = wx.Panel(content_panel)
-        version_panel.SetBackgroundColour(self.C_SURFACE)
-        version_sizer = wx.BoxSizer(wx.VERTICAL)
+        labels = ["当前版本:", "最新版本:", "发布日期:"]
+        values = [self.current_version, self.latest_version, self.release_date]
+        self.info_texts = []
+        for label, value in zip(labels, values):
+            lb = wx.StaticText(info_panel, label=label)
+            lb.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            lb.SetForegroundColour(wx.Colour(80, 80, 90))
+            val = wx.StaticText(info_panel, label=value)
+            val.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            val.SetForegroundColour(wx.Colour(40, 42, 50))
+            info_sizer.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL)
+            info_sizer.Add(val, 1, wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
+            self.info_texts.append(val)
 
-        version_title = wx.StaticText(version_panel, label="版本信息")
-        version_title_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
-        version_title.SetFont(version_title_font)
-        version_title.SetForegroundColour(self.C_GOLD)
-        version_sizer.Add(version_title, 0, wx.ALL, 8)
+        info_panel.SetSizer(info_sizer)
+        vs.Add(info_panel, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 12)
 
-        grid = wx.FlexGridSizer(cols=2, vgap=10, hgap=20)
-        grid.AddGrowableCol(1, 1)
-        version_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑")
-        label_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+        self.status_text = wx.StaticText(panel, label="检查中...")
+        self.status_text.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        vs.Add(self.status_text, 0, wx.LEFT | wx.RIGHT | wx.TOP, 12)
 
-        for lbl_text, target in [("当前版本", "current_version_label"), ("最新版本", "latest_version_label"),
-                                  ("状态", "status_label"), ("更新日期", "release_date_label")]:
-            if target == "status_label":
-                init_text = "检查中..."
-            else:
-                attr_name = target.replace("_label", "")
-                init_text = getattr(self, attr_name, "")
-            lb = wx.StaticText(version_panel, label=lbl_text + ":")
-            lb.SetFont(label_font)
-            lb.SetForegroundColour(self.C_MUTED)
-            grid.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 10)
-            st = wx.StaticText(version_panel, label=init_text)
-            st.SetFont(version_font)
-            st.SetForegroundColour(self.C_TEXT)
-            setattr(self, target, st)
-            grid.Add(st, 0, wx.ALIGN_CENTER_VERTICAL)
+        vs.AddSpacer(8)
 
-        self.current_version_label.SetLabel(self.current_version)
-        self.latest_version_label.SetLabel(self.latest_version)
-        self.release_date_label.SetLabel(self.release_date)
-        version_sizer.Add(grid, 0, wx.EXPAND | wx.ALL, 10)
-        version_panel.SetSizer(version_sizer)
+        changelog_label = wx.StaticText(panel, label="更新日志:")
+        changelog_label.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        changelog_label.SetForegroundColour(self.C_TEXT)
+        vs.Add(changelog_label, 0, wx.LEFT | wx.RIGHT, 12)
 
-        changelog_panel = wx.Panel(content_panel)
-        changelog_panel.SetBackgroundColour(self.C_SURFACE)
-        changelog_sizer = wx.BoxSizer(wx.VERTICAL)
-
-        changelog_title = wx.StaticText(changelog_panel, label="更新日志")
-        changelog_title.SetFont(version_title_font)
-        changelog_title.SetForegroundColour(self.C_GOLD)
-        changelog_sizer.Add(changelog_title, 0, wx.ALL, 8)
-
-        self.changelog_text = wx.TextCtrl(changelog_panel, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 120))
+        self.changelog_text = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH)
+        self.changelog_text.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
         self.changelog_text.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.changelog_text.SetForegroundColour(self.C_TEXT)
-        changelog_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
-        self.changelog_text.SetFont(changelog_font)
-        changelog_sizer.Add(self.changelog_text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
-        changelog_panel.SetSizer(changelog_sizer)
+        self.changelog_text.SetMinSize((-1, 200))
+        vs.Add(self.changelog_text, 1, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 12)
 
-        button_panel = wx.Panel(content_panel)
-        button_panel.SetBackgroundColour(self.C_BG)
-        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        button_font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.update_btn = wx.Button(panel, label="立即更新", size=(120, 36), style=wx.BORDER_NONE)
+        self.update_btn.SetBackgroundColour(wx.Colour(50, 80, 140))
+        self.update_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+        self.update_btn.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        self.update_btn.Bind(wx.EVT_BUTTON, self.on_update)
+        self.update_btn.Hide()
+        btn_sizer.Add(self.update_btn, 0, wx.ALIGN_CENTER)
 
-        self.update_button = wx.Button(button_panel, label="立即更新", size=(110, 32), style=wx.BORDER_NONE)
-        self.update_button.SetFont(button_font)
-        self.update_button.SetBackgroundColour(wx.Colour(39, 174, 96))
-        self.update_button.SetForegroundColour(wx.Colour(255, 255, 255))
-        self.update_button.Bind(wx.EVT_BUTTON, self.on_update)
+        close_btn = wx.Button(panel, label="关闭", size=(120, 36), style=wx.BORDER_NONE)
+        close_btn.SetBackgroundColour(wx.Colour(160, 165, 170))
+        close_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+        close_btn.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        close_btn.Bind(wx.EVT_BUTTON, lambda e: self.Close())
+        btn_sizer.Add(close_btn, 0, wx.ALIGN_CENTER | wx.LEFT, 12)
 
-        close_button = wx.Button(button_panel, label="关闭", size=(90, 32), style=wx.BORDER_NONE)
-        close_button.SetFont(button_font)
-        close_button.SetBackgroundColour(self.C_SURFACE)
-        close_button.SetForegroundColour(self.C_TEXT)
-        close_button.Bind(wx.EVT_BUTTON, lambda e: self.Close())
-        self.close_button = close_button
+        vs.Add(btn_sizer, 0, wx.ALIGN_CENTER | wx.ALL, 12)
 
-        button_sizer.Add(self.update_button, 0, wx.RIGHT, 8)
-        button_sizer.AddStretchSpacer()
-        button_sizer.Add(close_button, 0)
-        button_panel.SetSizer(button_sizer)
-
-        self.announcement_panel = wx.Panel(content_panel)
-        self.announcement_panel.SetBackgroundColour(wx.Colour(255, 248, 230))
-        announcement_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.announcement_label = wx.StaticText(self.announcement_panel)
-        self.announcement_label.SetFont(label_font)
-        self.announcement_label.SetForegroundColour(wx.Colour(180, 100, 0))
-        self.announcement_label.Wrap(480)
-        announcement_sizer.Add(self.announcement_label, 0, wx.EXPAND | wx.ALL, 8)
-        self.announcement_panel.SetSizer(announcement_sizer)
-        self.announcement_panel.Hide()
-
-        vbox.Add(self.announcement_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
-        vbox.Add(version_panel, 0, wx.EXPAND | wx.ALL, 8)
-        vbox.Add(changelog_panel, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        vbox.Add(button_panel, 0, wx.EXPAND | wx.ALL, 8)
-        content_panel.SetSizer(vbox)
-
-        main_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_sizer.Add(title_panel, 0, wx.EXPAND)
-        main_sizer.Add(content_panel, 1, wx.EXPAND | wx.ALL, 5)
-        main_panel.SetSizer(main_sizer)
-
-        dialog_sizer = wx.BoxSizer(wx.VERTICAL)
-        dialog_sizer.Add(main_panel, 1, wx.EXPAND)
-        self.SetSizer(dialog_sizer)
-
-    def _populate_announcement(self):
-        text = self.announcement.get("text", "")
-        if not text:
-            return
-        self.announcement_label.SetLabel(text)
-        self.announcement_label.Wrap(480)
-        self.announcement_panel.Show()
+        panel.SetSizer(vs)
 
     def on_update(self, event):
-        # 打开下载链接
         self.download_update()
-        # webbrowser.open(self.download_url)
-        self.Close()
 
-    def check_server_update(self):
+    @staticmethod
+    def check_gitee_update():
         try:
-            url = f"{self.BASE_URL}/api/version"
+            url = "https://gitee.com/syf0910/mhsg-script-update/raw/master/version.json"
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 return response.json()
@@ -16876,7 +16208,7 @@ class UpdateDialog(wx.Dialog):
             if getattr(sys, 'frozen', False):
                 base = sys._MEIPASS
             else:
-                base = os.getcwd()
+                base = os.path.dirname(os.path.abspath(__file__))
             version_file = os.path.join(base, "version.json")
             if os.path.exists(version_file):
                 with open(version_file, "r", encoding="utf-8") as f:
@@ -16886,54 +16218,40 @@ class UpdateDialog(wx.Dialog):
         return "0.0.0"
 
     def download_update(self):
-        """
-        用 urllib 下载并显示进度（以 MB 和百分比，格式示例：10%(0.00mb/20mb)）。
-        - 后台线程下载，主线程更新进度，避免卡死。
-        - 会测量下载速率，并在下载完成后在 wx 环境下弹窗提示（下载成功/可能被限速）。
-        """
-        import urllib.request, urllib.parse, http.cookiejar, time, os, \
-            webbrowser, threading, sys
+        import urllib.request, urllib.parse, http.cookiejar, time, os, webbrowser, threading, sys
+
+        try:
+            import browser_cookie3
+        except Exception:
+            browser_cookie3 = None
 
         download_url = getattr(self, "download_url", None)
         if not download_url:
             return False
-        if download_url.startswith("/"):
-            download_url = self.BASE_URL + download_url
 
-        referer = self.BASE_URL
+        referer = "https://gitee.com/syf0910/mhsg-script-update/releases"
         cj = http.cookiejar.CookieJar()
+        if browser_cookie3:
+            try:
+                bcj = browser_cookie3.load(domain_name="gitee.com")
+                cj = bcj
+            except Exception:
+                pass
 
-        opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor(cj))
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
         opener.addheaders = [
-            (
-                "User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-            ),
-            (
-                "Accept",
-                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            ),
+            ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"),
+            ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"),
             ("Accept-Language", "zh-CN,zh;q=0.9"),
             ("Connection", "keep-alive"),
             ("Referer", referer),
             ("Upgrade-Insecure-Requests", "1"),
         ]
 
-        state = {
-            "downloaded": 0,
-            "total": None,
-            "done": False,
-            "ok": False,
-            "error": None,
-            "dst": None,
-            "speed_bps": 0.0,
-        }
-
-        # 用于限速检测：记录时间点和已下载量列表（用于滑动窗口速率计算）
+        state = {"downloaded": 0, "total": None, "done": False, "ok": False, "error": None, "dst": None, "speed_bps": 0.0}
         speed_window = []
         SPEED_WINDOW_SECONDS = 8.0
-        SPEED_THRESHOLD_BPS = 10 * 1024  # 10 KB/s 视为可能限速
+        SPEED_THRESHOLD_BPS = 10 * 1024
 
         def _worker():
             try:
@@ -16941,7 +16259,6 @@ class UpdateDialog(wx.Dialog):
                     opener.open(referer, timeout=15)
                 except Exception:
                     pass
-
                 resp = opener.open(download_url, timeout=40)
                 code = getattr(resp, "status", resp.getcode())
                 ctype = resp.getheader("Content-Type", "") or ""
@@ -16949,36 +16266,18 @@ class UpdateDialog(wx.Dialog):
                     state["error"] = "non-file"
                     state["done"] = True
                     return
-
                 length = resp.getheader("Content-Length")
                 try:
                     total = int(length) if length else None
                 except Exception:
                     total = None
                 state["total"] = total
-
-                fname = None
-                cd = resp.getheader("Content-Disposition", "") or ""
-                if "filename=" in cd:
-                    try:
-                        fname = cd.split("filename=")[-1].strip().strip('"').strip("'")
-                    except Exception:
-                        pass
-                if not fname:
-                    url_basename = os.path.basename(urllib.parse.unquote(
-                        urllib.parse.urlparse(download_url).path))
-                    if url_basename and "." in url_basename:
-                        fname = url_basename
-                if not fname:
-                    fname = f"脚本v{getattr(self, 'latest_version', 'unknown')}.exe"
+                fname = os.path.basename(urllib.parse.unquote(urllib.parse.urlparse(download_url).path)) or f"脚本v{getattr(self,'latest_version','unknown')}.exe"
                 dst = os.path.join(os.getcwd(), fname)
                 state["dst"] = dst
-
-                # 优化块大小，减少调用次数
-                chunk_size = 256 * 1024  # 256KB
+                chunk_size = 256 * 1024
                 last_time = time.time()
                 last_downloaded = 0
-
                 with open(dst + ".part", "wb") as f:
                     while True:
                         chunk = resp.read(chunk_size)
@@ -16986,35 +16285,24 @@ class UpdateDialog(wx.Dialog):
                             break
                         f.write(chunk)
                         state["downloaded"] += len(chunk)
-
-                        # 更新瞬时速度（每次循环计算 delta）
                         now = time.time()
                         dt = now - last_time
                         if dt >= 0.5:
                             delta = state["downloaded"] - last_downloaded
-                            if dt > 0:
-                                inst_bps = delta / dt
-                            else:
-                                inst_bps = 0.0
-                            # 记录到滑动窗口
+                            inst_bps = delta / dt if dt > 0 else 0.0
                             speed_window.append((now, state["downloaded"]))
-                            # 去掉过期点
                             cutoff = now - SPEED_WINDOW_SECONDS
-                            while len(speed_window) > 1 and speed_window[0][
-                                0] < cutoff:
+                            while len(speed_window) > 1 and speed_window[0][0] < cutoff:
                                 speed_window.pop(0)
-                            # 计算窗口平均速度
                             if len(speed_window) >= 2:
                                 t0, d0 = speed_window[0]
                                 tn, dn = speed_window[-1]
-                                avg_bps = (dn - d0) / (tn - t0) if (
-                                                                           tn - t0) > 0 else inst_bps
+                                avg_bps = (dn - d0) / (tn - t0) if (tn - t0) > 0 else inst_bps
                             else:
                                 avg_bps = inst_bps
                             state["speed_bps"] = avg_bps
                             last_time = now
                             last_downloaded = state["downloaded"]
-
                 try:
                     os.replace(dst + ".part", dst)
                 except Exception:
@@ -17023,7 +16311,6 @@ class UpdateDialog(wx.Dialog):
                     except Exception:
                         pass
                     os.rename(dst + ".part", dst)
-
                 state["ok"] = True
             except Exception as e:
                 state["error"] = str(e)
@@ -17036,7 +16323,6 @@ class UpdateDialog(wx.Dialog):
         use_wx = False
         try:
             import wx
-
             use_wx = True
         except Exception:
             use_wx = False
@@ -17045,32 +16331,21 @@ class UpdateDialog(wx.Dialog):
         try:
             if use_wx and hasattr(self, "__class__"):
                 try:
-                    progress_dialog = wx.ProgressDialog(
-                        "下载更新",
-                        "正在下载...",
-                        maximum=100,
-                        parent=getattr(self, "GetParent", lambda: None)(),
-                        style=wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT,
-                    )
+                    progress_dialog = wx.ProgressDialog("下载更新", "正在下载...", maximum=100, parent=getattr(self, "GetParent", lambda: None)(), style=wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT)
                 except Exception:
                     progress_dialog = None
 
-            last_print = 0
             while not state["done"]:
                 dl = state["downloaded"]
                 total = state["total"]
                 dl_mb = dl / (1024.0 * 1024.0)
                 total_mb = (total / (1024.0 * 1024.0)) if total else None
                 pct = int((dl * 100 / total) if total and total > 0 else 0)
-
-                # 目标格式示例：10%(0.00mb/20mb)
                 if total_mb:
-                    display = f"{pct}%（{dl_mb:.2f}MB/{total_mb:.2f}MB）"
+                    display = f"{pct}%({dl_mb:.2f}MB/{total_mb:.2f}MB)"
                 else:
-                    display = f"资源加载中..."
-
+                    display = "资源加载中..."
                 if progress_dialog:
-                    # 更新进度条，显示自定义文本
                     cont, _ = progress_dialog.Update(pct, display)
                     if not cont:
                         try:
@@ -17082,27 +16357,11 @@ class UpdateDialog(wx.Dialog):
                         except Exception:
                             pass
                         return False
-                else:
-                    now = time.time()
-                    if now - last_print > 0.5:
-                        sys.stdout.write(f"\r{display}")
-                        sys.stdout.flush()
-                        last_print = now
-
                 time.sleep(0.12)
 
-            # 下载完成后显示最终行/弹窗
             final_dl_mb = state["downloaded"] / (1024.0 * 1024.0)
-            final_total_mb = (state["total"] / (1024.0 * 1024.0)) if state[
-                "total"] else final_dl_mb
-            final_pct = int(
-                (state["downloaded"] * 100 / state["total"]) if state[
-                                                                    "total"] and
-                                                                state[
-                                                                    "total"] > 0 else 100
-            )
-            final_display = f"{final_pct}%({final_dl_mb:.2f}mb/{final_total_mb:.2f}mb)"
-
+            final_total_mb = (state["total"] / (1024.0 * 1024.0)) if state["total"] else final_dl_mb
+            final_pct = int((state["downloaded"] * 100 / state["total"]) if state["total"] and state["total"] > 0 else 100)
             if progress_dialog:
                 try:
                     progress_dialog.Update(final_pct)
@@ -17112,11 +16371,7 @@ class UpdateDialog(wx.Dialog):
                     progress_dialog.Destroy()
                 except Exception:
                     pass
-            else:
-                sys.stdout.write(f"\r{final_display}\n")
-                sys.stdout.flush()
 
-            # 下载失败处理
             if not state["ok"]:
                 try:
                     webbrowser.open(download_url)
@@ -17124,33 +16379,24 @@ class UpdateDialog(wx.Dialog):
                     pass
                 return False
 
-            # 限速判断：若窗口平均速度低于阈值则提示可能被限速
             limited = False
             if state.get("speed_bps", 0.0) < SPEED_THRESHOLD_BPS:
-                # 进一步要求：下载不是极小文件且持续时间足够（避免误报）
                 try:
-                    # 如果 total 不为空且文件 > 200KB 并且下载耗时 > 6s，则判定可能限速
                     total_bytes = state["total"] or state["downloaded"]
                     if total_bytes > 200 * 1024:
                         limited = True
                 except Exception:
                     limited = False
 
-            # 完成弹窗提示（在 wx 环境下弹窗），并在被判定限速时追加提示
             if use_wx:
                 try:
-                    dst = state.get("dst")
-                    msg = f"下载完成：{os.path.basename(dst) if dst else ''}\n是否立即安装更新？"
+                    dst = state.get("dst") or os.path.basename(urllib.parse.unquote(urllib.parse.urlparse(download_url).path))
+                    msg = f"下载完成：{dst}"
                     if limited:
                         msg += "\n注意：下载速率较低，可能被限速。"
-                    dlg = wx.MessageDialog(None, msg, "下载完成", wx.YES_NO | wx.ICON_INFORMATION)
-                    dlg_result = dlg.ShowModal()
-                    dlg.Destroy()
-                    if dlg_result == wx.ID_YES and dst and state["ok"]:
-                        self._install_update(dst)
+                    wx.CallAfter(lambda: wx.MessageBox(msg, "下载完成", wx.OK | wx.ICON_INFORMATION))
                 except Exception:
                     pass
-
             return True
         finally:
             try:
@@ -17158,74 +16404,9 @@ class UpdateDialog(wx.Dialog):
             except Exception:
                 pass
 
-    @staticmethod
-    def _install_update(exe_path):
-        import shutil, subprocess, sys
-        try:
-            current_exe = sys.executable
-            if not current_exe.lower().endswith(".exe"):
-                wx.MessageBox("当前不是以 exe 方式运行，无法自动更新。", "提示", wx.OK | wx.ICON_WARNING)
-                return
-
-            backup_path = current_exe + ".old"
-            if os.path.exists(backup_path):
-                try:
-                    os.remove(backup_path)
-                except Exception:
-                    pass
-
-            try:
-                os.rename(current_exe, backup_path)
-            except Exception:
-                wx.MessageBox("无法替换当前程序，请手动关闭后替换。", "错误", wx.OK | wx.ICON_ERROR)
-                return
-
-            try:
-                shutil.copy2(exe_path, current_exe)
-            except Exception as e:
-                try:
-                    os.rename(backup_path, current_exe)
-                except Exception:
-                    pass
-                wx.MessageBox(f"替换失败: {e}", "错误", wx.OK | wx.ICON_ERROR)
-                return
-
-            try:
-                os.remove(exe_path)
-            except Exception:
-                pass
-
-            try:
-                os.remove(backup_path)
-            except Exception:
-                pass
-
-            version_src = os.path.join(os.path.dirname(exe_path), "version.json") if os.path.dirname(exe_path) else None
-            if version_src and os.path.exists(version_src):
-                try:
-                    shutil.copy2(version_src, os.path.join(os.getcwd(), "version.json"))
-                except Exception:
-                    pass
-
-            wx.MessageBox("更新安装完成，点击确定后将重启应用。", "安装完成", wx.OK | wx.ICON_INFORMATION)
-            subprocess.Popen([current_exe], close_fds=True)
-            os._exit(0)
-        except Exception as e:
-            wx.MessageBox(f"安装更新失败: {e}", "错误", wx.OK | wx.ICON_ERROR)
-
 
 if __name__ == "__main__":
-    application = App()
-
-    login = LoginWindow(application)
-    result = login.ShowModal()
-    login.Destroy()
-    if result != wx.ID_OK:
-        application.Exit()
-        import sys
-        sys.exit(0)
-
+    app = wx.App()
     frame = MyFrame()
     frame.Show()
-    wx.CallAfter(frame._init_async)
-    application.MainLoop()
+    app.MainLoop()
