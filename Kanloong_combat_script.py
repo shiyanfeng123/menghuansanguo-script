@@ -2239,7 +2239,7 @@ class CombatAutoScript:
                 else:
                     # 未检测到验证图片, 检查超时
                     deployed_turn = gen.get("deployed_turn", current_turn)
-                    if current_turn - deployed_turn >= 2:
+                    if current_turn - deployed_turn >= 1:
                         if acct not in self.unit_info:
                             continue
                         char_info["generals"][:] = [

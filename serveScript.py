@@ -151,9 +151,23 @@ class MyThread(threading.Thread):
         self.frame = None
         self.line = "二线"
         self.zhanhunFloor = ""
-        self.lianyu_count = ""
-        self.zhanhun_count = ""
-        self.qingyuan_count = ""
+        self.lianyu_count = 21
+        self.zhanhun_count = 21
+        self.qingyuan_count = 21
+        self.rongdong_count = 2
+        self.liandan_count = 3
+        self.wuxing_count = 2
+        self.yinhun_count = 4
+        self.sangumaolu_count = 3
+        self.hong_count = 4
+        self.yunyou_count = 1
+        self.bamen_count = 1
+        self.laoshu_count = 1
+        self.guandujy_count = 1
+        self.bangpai_enabled = True
+        self.mingjiang_count = 8
+        self.richang_zhengdian = False
+        self.richang_mojing = False
         self.zhanhunFloorNew = ""
         self.heifengFloor = ""
         self.guajiLocation = None
@@ -167,9 +181,9 @@ class MyThread(threading.Thread):
         self.daZhengDianCount = 0
         self.mojingFloor = ""
         self.zhengdianFloor = ""
-        self.shihun_count = 0
+        self.shihun_count = 21
         self.shihun_floor = ""
-        self.sixiang_count = 35
+        self.sixiang_count = 21
         self.sixiang_difficulty = ""
         self.richangFlag = ""
         self.after_zreo = ""
@@ -382,11 +396,11 @@ class MyThread(threading.Thread):
         self.end_time = self.frame.end_time
         self.zhanhunFloor = self.frame.zhanhunFloor
         self.lianyu_count = int(
-            self.frame.lianyu_count) if self.frame.lianyu_count else 5
+            self.frame.lianyu_count) if self.frame.lianyu_count else 21
         self.qingyuan_count = int(
-            self.frame.qingyuan_count) if self.frame.qingyuan_count else 5
+            self.frame.qingyuan_count) if self.frame.qingyuan_count else 21
         self.zhanhun_count = int(
-            self.frame.zhanhun_count) if self.frame.zhanhun_count else 5
+            self.frame.zhanhun_count) if self.frame.zhanhun_count else 21
         self.zhanhunFloorNew = self.frame.zhanhunFloorNew
         self.mojingFloor = self.frame.mojingFloor
         self.combat_auto_scenes = self.frame.combat_auto_scenes if hasattr(self.frame, 'combat_auto_scenes') else []
@@ -396,10 +410,35 @@ class MyThread(threading.Thread):
         self.shihun_floor = self.frame.shihun_floor
         self.zhanhun_start_floor = self.frame.zhanhun_start_floor if hasattr(self.frame, 'zhanhun_start_floor') else "1层"
         self.shihun_count = int(
-            self.frame.shihun_count) if self.frame.shihun_count else 5
+            self.frame.shihun_count) if self.frame.shihun_count else 21
         self.sixiang_count = int(
-            self.frame.sixiang_count) if self.frame.sixiang_count else 35
+            self.frame.sixiang_count) if self.frame.sixiang_count else 21
         self.sixiang_difficulty = self.frame.sixiang_difficulty if self.frame.sixiang_difficulty else "普通"
+        self.rongdong_count = int(
+            self.frame.rongdong_count) if self.frame.rongdong_count else 2
+        self.liandan_count = int(
+            self.frame.liandan_count) if self.frame.liandan_count else 3
+        self.wuxing_count = int(
+            self.frame.wuxing_count) if self.frame.wuxing_count else 2
+        self.yinhun_count = int(
+            self.frame.yinhun_count) if self.frame.yinhun_count else 4
+        self.sangumaolu_count = int(
+            self.frame.sangumaolu_count) if self.frame.sangumaolu_count else 3
+        self.hong_count = int(
+            self.frame.hong_count) if self.frame.hong_count else 4
+        self.yunyou_count = int(
+            self.frame.yunyou_count) if self.frame.yunyou_count else 1
+        self.bamen_count = int(
+            self.frame.bamen_count) if self.frame.bamen_count else 1
+        self.laoshu_count = int(
+            self.frame.laoshu_count) if self.frame.laoshu_count else 1
+        self.guandujy_count = int(
+            self.frame.guandujy_count) if self.frame.guandujy_count else 1
+        self.bangpai_enabled = self.frame.bangpai_enabled if hasattr(self.frame, 'bangpai_enabled') else True
+        self.mingjiang_count = int(
+            self.frame.mingjiang_count) if self.frame.mingjiang_count else 8
+        self.richang_zhengdian = self.frame.richang_zhengdian if hasattr(self.frame, 'richang_zhengdian') else False
+        self.richang_mojing = self.frame.richang_mojing if hasattr(self.frame, 'richang_mojing') else False
         self.heifengFloor = self.frame.heifengFloor
         self.teammate1_pos = self.frame.teammate1_pos
         self.teammate2_pos = self.frame.teammate2_pos
@@ -740,6 +779,19 @@ class MyThread(threading.Thread):
                     True,
                 )
             self.sixiangWhile()
+        elif self.scriptName == "青渊":
+            if not self.find_pic(self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"), self.dituLocation, 0):
+                self.go_in_ditu(
+                    "地图虎牢关外",
+                    self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                    '虎牢关外',
+                    "",
+                    "",
+                    True,
+                )
+                isInGuanDu = self.waitFor("虎牢关外", self.dituLocation, 5)
+            self.qingyuanWhile()
         elif self.scriptName == "藏宝图":
             self.cangbaotuWhile()
         elif self.scriptName == "老鼠":
@@ -952,7 +1004,7 @@ class MyThread(threading.Thread):
             if not self.zhanhunFloor:
                 self.zhanhunFloor = "25层"
                 print("未选择层数，自动打25层")
-            for i in range(6):
+            for i in range(int(self.zhanhun_count)):
                 if self.check_stop_or_over():
                     return
                 self.zhanhun49Script()
@@ -7388,6 +7440,17 @@ class MyThread(threading.Thread):
         )
         return True
 
+    def qingyuanWhile(self):
+        for i in range(int(self.qingyuan_count)):
+            if self.overed:
+                return
+            qingyuanRes = self.qingyuanScript()
+            if not qingyuanRes:
+                print("青渊没次数")
+                break
+        self.scriptName = "官渡"
+        self.guanduWhile()
+    
     # 青渊
     def qingyuanScript(self):
         print("青渊")
@@ -10248,7 +10311,7 @@ class MyThread(threading.Thread):
 
     # 一直执行天外天
     def mingjiangtiaozhanWhile(self):
-        for i in range(8):
+        for i in range(int(self.mingjiang_count)):
             if self.overed:
                 return
             zhanhunRes = self.mingjiangtiaozhan()
@@ -11702,7 +11765,7 @@ class MyThread(threading.Thread):
 
     # 一直执行英魂
     def hongWhile(self):
-        for i in range(7):
+        for i in range(int(self.hong_count)):
             if self.overed:
                 return
             hongRes = self.hongScript()
@@ -11729,7 +11792,7 @@ class MyThread(threading.Thread):
 
     # 一直执行英魂
     def yinghunWhile(self):
-        for i in range(7):
+        for i in range(int(self.yinhun_count)):
             if self.overed:
                 return
             hongRes = self.yinhunScript()
@@ -11813,11 +11876,9 @@ class MyThread(threading.Thread):
         # 战魂
         if self.overed:
             return
-        times = 7 if "V" in self.richangSelection else 5
-        times1 = 6 if "V" in self.richangSelection else 5
-        if "整" in self.richangSelection:
+        if self.richang_zhengdian:
             self.richangAndZhengDian()
-        if "战" in self.richangSelection:
+        if int(self.zhanhun_count) > 0:
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -11835,7 +11896,7 @@ class MyThread(threading.Thread):
                 hongRes = self.zhanhunScript()
                 if not hongRes:
                     break
-        if "镇" in self.richangSelection:
+        if int(self.lianyu_count) > 0:
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -11853,7 +11914,7 @@ class MyThread(threading.Thread):
                 hongRes = self.zhenhun_lianyu_script()
                 if not hongRes:
                     break
-        if "噬" in self.richangSelection:
+        if int(self.shihun_count) > 0:
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -11874,7 +11935,7 @@ class MyThread(threading.Thread):
         # 飞溶洞
         if self.overed:
             return
-        if "溶" in self.richangSelection:
+        if int(self.rongdong_count) > 0:
             if not self.find_str("绿林路", self.dituLocation, 0):
                 # self.feiFb('副本龙天啸', False)
                 self.go_in_ditu(
@@ -11887,7 +11948,7 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(3):
+            for i in range(int(self.rongdong_count)):
                 if self.overed:
                     return
                 hasRongdong = self.rongdongScript()
@@ -11897,7 +11958,7 @@ class MyThread(threading.Thread):
         # 飞炼丹
         if self.overed:
             return
-        if "丹" in self.richangSelection:
+        if int(self.liandan_count) > 0:
             if not self.find_str("五指峡谷", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图五指峡谷",
@@ -11908,7 +11969,7 @@ class MyThread(threading.Thread):
                     "",
                     True,
                 )
-            for i in range(5):
+            for i in range(int(self.liandan_count)):
                 if self.overed:
                     return
                 liandanHas = self.liandanScript()
@@ -11918,7 +11979,7 @@ class MyThread(threading.Thread):
         # 飞五行
         if self.overed:
             return
-        if "五" in self.richangSelection:
+        if int(self.wuxing_count) > 0:
             if not self.find_str("野外西", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图野外西",
@@ -11930,7 +11991,7 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(3):
+            for i in range(int(self.wuxing_count)):
                 if self.overed:
                     return
                 hasWuxing = self.wuxingScript()
@@ -11940,7 +12001,7 @@ class MyThread(threading.Thread):
         # 飞四象
         if self.overed:
             return
-        if "四" in self.richangSelection:
+        if int(self.sixiang_count) > 0:
             if not self.find_pic(
                     self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
                     self.dituLocation,
@@ -11965,9 +12026,9 @@ class MyThread(threading.Thread):
                     break
             time.sleep(1)
         # 飞云游精英
-        if self.overed:
-            return
-        if "云" in self.richangSelection:
+        if int(self.yunyou_count) > 0:
+            if self.overed:
+                return
             if not self.find_str("嵩山", self.dituLocation, 0):
                 # self.feiFb('副本仙人', True)
                 self.go_in_ditu(
@@ -11979,15 +12040,11 @@ class MyThread(threading.Thread):
                     "",
                     True,
                 )
-            # if '飞' in self.richangSelection:
-            # self.feiFb('副本仙人', True)
-            # else:
-            # self.go_in_ditu('地图嵩山', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '嵩山', '', '')
             time.sleep(1)
             self.yunyouJyScript()
             time.sleep(1)
         # 飞名将挑战赛
-        if "名" in self.richangSelection:
+        if int(self.mingjiang_count) > 0:
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -11999,7 +12056,7 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(8):
+            for i in range(int(self.mingjiang_count)):
                 if self.overed:
                     return
                 zhanhunRes = self.mingjiangtiaozhan()
@@ -12008,15 +12065,10 @@ class MyThread(threading.Thread):
                     break
             time.sleep(1)
 
-        # 卖藏宝图
-        if "卖" in self.richangSelection:
-            time.sleep(1)
-            self.clear_hide_map()
-            time.sleep(1)
         # 飞80精英
-        if self.overed:
-            return
-        if "八" in self.richangSelection:
+        if int(self.bamen_count) > 0:
+            if self.overed:
+                return
             if not self.find_str("许昌", self.dituLocation, 0):
                 # self.feiFb('副本分身', True)
                 self.go_in_ditu(
@@ -12028,15 +12080,11 @@ class MyThread(threading.Thread):
                     "",
                     True,
                 )
-            # if '飞' in self.richangSelection:
-            # 	self.feiFb('副本分身', True)
-            # else:
-            # 	self.go_in_ditu('地图许昌城', self.get_resource_path("serveAssets/images/zhengdian/xuchang.bmp"), '许昌', '驿站许昌', '')
             time.sleep(1)
             self.bamenScript()
             time.sleep(1)
         # 飞100精英
-        if "鼠" in self.richangSelection:
+        if int(self.laoshu_count) > 0:
             if not self.find_str("碧水地穴", self.dituLocation, 0):
                 # self.feiFb('副本猎鼠人', True)
                 self.go_in_ditu(
@@ -12048,17 +12096,11 @@ class MyThread(threading.Thread):
                     "",
                     True,
                 )
-            # if '飞' in self.richangSelection:
-            # 	self.feiFb('副本猎鼠人', True)
-            # else:
-            # 	self.go_in_ditu('地图城西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '城西', "驿站城西", '')
-            # 	time.sleep(1)
-            # 	self.go_in_ditu('地图碧水地穴', self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"), '碧水地穴', '驿站襄阳', '')
             time.sleep(1)
             self.laoshuJyScript()
             time.sleep(1)
         # 飞100精英
-        if "英" in self.richangSelection:
+        if int(self.yinhun_count) > 0:
             if not self.find_pic(
                     self.get_resource_path(
                         "serveAssets/images/hong/luanshipo.bmp"),
@@ -12077,13 +12119,13 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(times):
+            for i in range(int(self.yinhun_count)):
                 if self.overed:
                     return
                 hongRes = self.yinhunScript()
                 if not hongRes:
                     break
-        if "庐" in self.richangSelection:
+        if int(self.sangumaolu_count) > 0:
             if not self.find_pic(
                     self.get_resource_path(
                         "serveAssets/images/sangumaolu/xinye.bmp"),
@@ -12101,7 +12143,7 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(5):
+            for i in range(int(self.sangumaolu_count)):
                 if self.overed:
                     return
                 hongRes = self.sangumaoluScript()
@@ -12110,7 +12152,7 @@ class MyThread(threading.Thread):
         # 红
         if self.overed:
             return
-        if "红" in self.richangSelection:
+        if int(self.hong_count) > 0:
             if not self.find_str("虎牢关外", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图虎牢关外",
@@ -12122,13 +12164,13 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(times):
+            for i in range(int(self.hong_count)):
                 if self.overed:
                     return
                 hongRes = self.hongScript()
                 if not hongRes:
                     break
-        if "渊" in self.richangSelection:
+        if int(self.qingyuan_count) > 0:
             if not self.find_str("虎牢关外", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图虎牢关外",
@@ -12146,7 +12188,7 @@ class MyThread(threading.Thread):
                 hongRes = self.qingyuanScript()
                 if not hongRes:
                     break
-        if "帮" in self.richangSelection:
+        if self.bangpai_enabled:
             if not self.find_str("城西", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图城西",
@@ -12172,7 +12214,6 @@ class MyThread(threading.Thread):
             for i in range(22):
                 if self.check_stop_or_over():
                     return
-                # 根据循环次数传入不同的任务名称
                 if i == 0:
                     rw_name = "抓捕异兽"
                 elif i == 1:
@@ -12181,9 +12222,9 @@ class MyThread(threading.Thread):
                     rw_name = "帮派声誉"
                 self.bangpaiRW(rw_name)
         # 飞官渡精英
-        if self.overed:
-            return
-        if "官" in self.richangSelection:
+        if int(self.guandujy_count) > 0:
+            if self.overed:
+                return
             if not self.find_str("官渡", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图官渡",
@@ -12196,10 +12237,10 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             self.guanduJyScript()
-        time.sleep(1)
+            time.sleep(1)
         if self.overed:
             return
-        if "镜" in self.richangSelection:
+        if self.richang_mojing:
             self.scriptName = "魔镜"
             if self.overed:
                 return
@@ -12212,7 +12253,7 @@ class MyThread(threading.Thread):
 
     # 五行
     def wuxingWhile(self):
-        for i in range(3):
+        for i in range(int(self.wuxing_count)):
             if self.overed:
                 return
             hasWuxing = self.wuxingScript()
@@ -12224,7 +12265,7 @@ class MyThread(threading.Thread):
 
     # 溶洞
     def rongdongWhile(self):
-        for i in range(3):
+        for i in range(int(self.rongdong_count)):
             if self.overed:
                 return
             hasRongdong = self.rongdongScript()
@@ -12236,7 +12277,7 @@ class MyThread(threading.Thread):
 
     # 炼丹
     def liandanWhile(self):
-        for i in range(5):
+        for i in range(int(self.liandan_count)):
             if self.overed:
                 return
             liandanHas = self.liandanScript()
@@ -12252,11 +12293,9 @@ class MyThread(threading.Thread):
         print("日常")
         if self.overed:
             return
-        times = 7 if "V" in self.richangSelection else 5
-        times1 = 6 if "V" in self.richangSelection else 5
-        if "整" in self.richangSelection:
+        if self.richang_zhengdian:
             self.richangAndZhengDian()
-        if "战" in self.richangSelection:
+        if int(self.zhanhun_count) > 0:
             if not self.find_str("涿郡野外", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图野外东",
@@ -12272,7 +12311,7 @@ class MyThread(threading.Thread):
                 hongRes = self.zhanhun49Script()
                 if not hongRes:
                     break
-        if "镇" in self.richangSelection:
+        if int(self.lianyu_count) > 0:
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -12290,7 +12329,7 @@ class MyThread(threading.Thread):
                 hongRes = self.zhenhun_lianyu_script()
                 if not hongRes:
                     break
-        if "噬" in self.richangSelection:
+        if int(self.shihun_count) > 0:
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -12309,7 +12348,7 @@ class MyThread(threading.Thread):
                 if not hongRes:
                     break
         # 飞溶洞
-        if "溶" in self.richangSelection:
+        if int(self.rongdong_count) > 0:
             if not self.find_str("绿林路", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图绿林路",
@@ -12321,7 +12360,7 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(3):
+            for i in range(int(self.rongdong_count)):
                 hasRongdong = self.rongdongScript()
                 if not hasRongdong:
                     break
@@ -12329,7 +12368,7 @@ class MyThread(threading.Thread):
         # 飞炼丹
         if self.overed:
             return
-        if "丹" in self.richangSelection:
+        if int(self.liandan_count) > 0:
             if not self.find_str("五指峡谷", self.dituLocation, 0):
                 if "飞" in self.richangSelection:
                     self.go_in_ditu(
@@ -12344,7 +12383,7 @@ class MyThread(threading.Thread):
             # 	self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '驿站五指峡谷', True)
             # else:
             # 	self.go_in_ditu('地图五指峡谷', self.get_resource_path("serveAssets/images/zhengdian/zhuojun.bmp"), '五指峡谷', '驿站五指峡谷', '')
-            for i in range(5):
+            for i in range(int(self.liandan_count)):
                 liandanHas = self.liandanScript()
                 if not liandanHas:
                     break
@@ -12352,7 +12391,7 @@ class MyThread(threading.Thread):
         # 飞五行
         if self.overed:
             return
-        if "五" in self.richangSelection:
+        if int(self.wuxing_count) > 0:
             if not self.find_str("野外西", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图野外西",
@@ -12368,7 +12407,7 @@ class MyThread(threading.Thread):
             # else:
             # 	self.go_in_ditu('地图野外西', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '野外西', '驿站城西', '')
             time.sleep(1)
-            for i in range(3):
+            for i in range(int(self.wuxing_count)):
                 hasWuxing = self.wuxingScript()
                 if not hasWuxing:
                     break
@@ -12376,7 +12415,7 @@ class MyThread(threading.Thread):
         # 飞四象
         if self.overed:
             return
-        if "四" in self.richangSelection:
+        if int(self.sixiang_count) > 0:
             if not self.find_pic(
                     self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
                     self.dituLocation,
@@ -12403,7 +12442,7 @@ class MyThread(threading.Thread):
         # 飞名将挑战赛
         if self.overed:
             return
-        if "名" in self.richangSelection:
+        if int(self.mingjiang_count) > 0:
             if not self.find_str("洛阳", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图洛阳大道",
@@ -12419,23 +12458,16 @@ class MyThread(threading.Thread):
             # else:
             # 	self.go_in_ditu('地图洛阳大道', self.get_resource_path("serveAssets/images/zhengdian/luoyang.bmp"), '洛阳', '', '')
             time.sleep(1)
-            for i in range(8):
+            for i in range(int(self.mingjiang_count)):
                 zhanhunRes = self.mingjiangtiaozhan()
                 if not zhanhunRes:
                     print("名将没次数")
                     break
             time.sleep(1)
-        # 卖藏宝图
-        if self.overed:
-            return
-        if "卖" in self.richangSelection:
-            time.sleep(1)
-            self.clear_hide_map()
-            time.sleep(1)
         # 红
         if self.overed:
             return
-        if "红" in self.richangSelection:
+        if int(self.hong_count) > 0:
             if not self.find_str("虎牢关外", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图虎牢关外",
@@ -12447,11 +12479,11 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(times):
+            for i in range(int(self.hong_count)):
                 hongRes = self.hongScript()
                 if not hongRes:
                     break
-        if "渊" in self.richangSelection:
+        if int(self.qingyuan_count) > 0:
             if not self.find_str("虎牢关外", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图虎牢关外",
@@ -12463,13 +12495,13 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(int(self.lianyu_count)):
+            for i in range(int(self.qingyuan_count)):
                 if self.overed:
                     return
                 hongRes = self.qingyuanScript()
                 if not hongRes:
                     break
-        if "帮" in self.richangSelection:
+        if self.bangpai_enabled:
             if not self.find_str("城西", self.dituLocation, 0):
                 self.go_in_ditu(
                     "地图城西",
@@ -12514,7 +12546,7 @@ class MyThread(threading.Thread):
             "驿站城西",
             "",
         )
-        if "镜" in self.richangSelection:
+        if self.richang_mojing:
             self.scriptName = "魔镜"
             if self.overed:
                 return
@@ -13773,10 +13805,21 @@ class MyThread(threading.Thread):
         if self.has_script != "all" and not "整点" in self.has_script:
             self.show_error_message("没有整点脚本!")
             return
+        filter_list = []
+        for name, count in [("战", self.zhanhun_count), ("镇", self.lianyu_count),
+                            ("噬", self.shihun_count), ("溶", self.rongdong_count),
+                            ("丹", self.liandan_count), ("五", self.wuxing_count),
+                            ("四", self.sixiang_count), ("云", self.yunyou_count), ("名", self.mingjiang_count),
+                            ("八", self.bamen_count), ("鼠", self.laoshu_count), ("英", self.yinhun_count),
+                            ("庐", self.sangumaolu_count), ("红", self.hong_count),
+                            ("渊", self.qingyuan_count), ("帮", 22 if self.bangpai_enabled else 0),
+                            ("官", self.guandujy_count), ("镜", 1)]:
+            if int(count) > 0:
+                filter_list.append(name)
         self.riChangList = (
-            self.process_data(self.riChangList, self.richangSelection)
+            self.process_data(self.riChangList, filter_list)
             if self.scriptName == "日常"
-            else self.process_data(self.riChang49List, self.richangSelection)
+            else self.process_data(self.riChang49List, filter_list)
         )
         while not self.richangIsOver():
             if self.overed:
@@ -13791,7 +13834,7 @@ class MyThread(threading.Thread):
                     print("等整点时打官渡")
                     self.guanduScript()
                     continue
-                if "镜" in self.richangSelection and remaining_minutes >= 2:
+                if self.richang_mojing and remaining_minutes >= 2:
                     print("等整点时打魔镜")
                     self.mojingScript()
                     continue
@@ -13813,7 +13856,7 @@ class MyThread(threading.Thread):
                     self.go_zhengdian49()
             else:
                 self.run_script(result_item)
-        if "镜" in self.richangSelection:
+        if self.richang_mojing:
             self.scriptName = "魔镜"
             if self.overed:
                 return
@@ -13915,7 +13958,7 @@ class MyThread(threading.Thread):
                     True,
                 )
             time.sleep(1)
-            for i in range(3):
+            for i in range(int(self.rongdong_count)):
                 if self.overed:
                     return
                 hasRongdong = self.rongdongScript()
@@ -14194,41 +14237,31 @@ class MyThread(threading.Thread):
                 item["time"] = use_minute
 
     def process_data(self, source_list, filter_names):
-        """
-        处理数据筛选与条件修改的复合操作
-
-        参数：
-        source_list -- 原始数据列表，格式为[{'name':, 'count':, 'time':}, ...]
-        filter_names -- 筛选用的名称列表
-
-        返回：
-        处理后的新数组（不影响原始数据）
-        """
-        # 转换筛选列表为集合提升查询效率
         filter_set = set(filter_names)
-        # 判断是否需要修改特定项
-        need_modify = "V" not in filter_set
-
-        # 创建新数组
         result = []
-
         for item in source_list:
-            # 仅处理名称在筛选列表中的项
             if item["name"] in filter_set:
-                # 创建副本避免修改原始数据
-                new_item = item.copy()  # 或使用 new_item = {**item}
-
-                # 条件修改：当筛选列表没有'V'时调整特定名称的count
-                if need_modify:
-                    if new_item["name"] == "红":
-                        new_item["count"] = 5
-                    elif new_item["name"] == "英":
-                        new_item["count"] = 5
-
+                new_item = item.copy()
                 if new_item["name"] == "镇":
                     new_item["count"] = self.lianyu_count
                 elif new_item["name"] == "渊":
                     new_item["count"] = self.qingyuan_count
+                elif new_item["name"] == "溶":
+                    new_item["count"] = 1  # 调度用count=1，循环次数在执行时取
+                elif new_item["name"] == "丹":
+                    new_item["count"] = self.liandan_count
+                elif new_item["name"] == "五":
+                    new_item["count"] = self.wuxing_count
+                elif new_item["name"] == "英":
+                    new_item["count"] = self.yinhun_count
+                elif new_item["name"] == "庐":
+                    new_item["count"] = self.sangumaolu_count
+                elif new_item["name"] == "红":
+                    new_item["count"] = self.hong_count
+                elif new_item["name"] == "帮":
+                    new_item["count"] = 22 if self.bangpai_enabled else 0
+                elif new_item["name"] == "名":
+                    new_item["count"] = self.mingjiang_count
                 if new_item["name"] == "战":
                     new_item["count"] = self.zhanhun_count
                 if new_item["name"] == "噬":
@@ -14284,8 +14317,22 @@ class MyFrame(wx.Frame):
         self.shihun_count = ""
         self.shihun_floor = ""
         self.zhanhun_start_floor = "1层"
-        self.sixiang_count = "35"
+        self.sixiang_count = "21"
         self.sixiang_difficulty = ""
+        self.rongdong_count = ""
+        self.liandan_count = ""
+        self.wuxing_count = ""
+        self.yinhun_count = ""
+        self.sangumaolu_count = ""
+        self.hong_count = ""
+        self.yunyou_count = ""
+        self.bamen_count = ""
+        self.laoshu_count = ""
+        self.guandujy_count = ""
+        self.bangpai_enabled = False
+        self.mingjiang_count = ""
+        self.richang_zhengdian = False
+        self.richang_mojing = False
         self.addBloudFlag = False
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
@@ -14341,33 +14388,118 @@ class MyFrame(wx.Frame):
             vs.Add(lb, 0, wx.ALIGN_CENTER | wx.TOP, 2)
             return vs, btn
 
-        bar = wx.BoxSizer(wx.HORIZONTAL)
+        button_col = wx.BoxSizer(wx.VERTICAL)
         vs1, self.button_start = _ctrl_btn("btn_start.png", wx.Colour(39, 174, 96), "F1")
         self.Bind(wx.EVT_BUTTON, self.button_start_click, self.button_start)
-        bar.Add(vs1, 0, wx.ALIGN_CENTER_VERTICAL)
+        button_col.Add(vs1, 0, wx.ALIGN_CENTER)
         self.button_start.SetToolTip("开始")
-        bar.AddStretchSpacer()
+        button_col.AddSpacer(8)
         vs2, self.button_pause = _ctrl_btn("btn_pause.png", wx.Colour(192, 57, 43), "F2")
         self.Bind(wx.EVT_BUTTON, self.button_pause_click, self.button_pause)
-        bar.Add(vs2, 0, wx.ALIGN_CENTER_VERTICAL)
-        bar.AddStretchSpacer()
+        button_col.Add(vs2, 0, wx.ALIGN_CENTER)
+        button_col.AddSpacer(8)
         self.button_pause.SetToolTip("暂停")
         vs3, self.button_resume = _ctrl_btn("btn_resume.png", wx.Colour(41, 128, 185), "F3")
         self.Bind(wx.EVT_BUTTON, self.button_resume_click, self.button_resume)
-        bar.Add(vs3, 0, wx.ALIGN_CENTER_VERTICAL)
-        bar.AddStretchSpacer()
+        button_col.Add(vs3, 0, wx.ALIGN_CENTER)
+        button_col.AddSpacer(8)
         self.button_resume.SetToolTip("继续")
         vs4, self.button_stop = _ctrl_btn("btn_reset.png", wx.Colour(215, 218, 226), "F4")
         self.Bind(wx.EVT_BUTTON, self.button_stop_click, self.button_stop)
-        bar.Add(vs4, 0, wx.ALIGN_CENTER_VERTICAL)
+        button_col.Add(vs4, 0, wx.ALIGN_CENTER)
         self.button_stop.SetToolTip("重置")
-        main_sizer.Add(bar, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
-        main_sizer.AddSpacer(10)
+
+        content_row = wx.BoxSizer(wx.HORIZONTAL)
+        content_row.Add(button_col, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 4)
 
         # ── 日志 ──
         log_card = wx.Panel(self.panel)
         log_card.SetBackgroundColour(wx.Colour(240, 242, 246))
         lcs = wx.BoxSizer(wx.VERTICAL)
+
+        # ── 副本统计面板（四象/噬魂） ──
+        _C_WIN      = wx.Colour(34, 184, 100)
+        _C_FAIL     = wx.Colour(235, 64, 52)
+        _C_DONE     = wx.Colour(130, 135, 145)
+        _C_CARD_BG  = wx.Colour(248, 250, 252)
+        _C_SEP      = wx.Colour(226, 230, 236)
+
+        self.stats_panel = wx.Panel(log_card)
+        self.stats_panel.SetBackgroundColour(wx.Colour(236, 240, 245))
+        stats_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        def _make_card(label):
+            card = wx.Panel(self.stats_panel)
+            card.SetBackgroundColour(_C_CARD_BG)
+            vs = wx.BoxSizer(wx.VERTICAL)
+
+            # 标题行 — 左标题 + 右进度
+            title_row = wx.BoxSizer(wx.HORIZONTAL)
+            title = wx.StaticText(card, label=label)
+            title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            title.SetForegroundColour(wx.Colour(40, 45, 55))
+            title_row.Add(title, 0, wx.ALIGN_CENTER_VERTICAL)
+            title_row.AddStretchSpacer()
+            done_num = wx.StaticText(card, label="0/0")
+            done_num.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            done_num.SetForegroundColour(_C_DONE)
+            title_row.Add(done_num, 0, wx.ALIGN_CENTER_VERTICAL)
+            vs.Add(title_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 2)
+            vs.AddSpacer(1)
+
+            # 分隔线
+            sep = wx.Panel(card, size=(-1, 1))
+            sep.SetBackgroundColour(_C_SEP)
+            vs.Add(sep, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 2)
+            vs.AddSpacer(1)
+
+            # 数据行 — 胜 | 败 (1:1)
+            row = wx.BoxSizer(wx.HORIZONTAL)
+
+            left_box = wx.BoxSizer(wx.HORIZONTAL)
+            left_box.AddStretchSpacer()
+            wl = wx.StaticText(card, label="胜")
+            wl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            wl.SetForegroundColour(_C_WIN)
+            left_box.Add(wl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 2)
+            w_num = wx.StaticText(card, label="0")
+            w_num.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            w_num.SetForegroundColour(_C_WIN)
+            left_box.Add(w_num, 0, wx.ALIGN_CENTER_VERTICAL)
+            left_box.AddStretchSpacer()
+            row.Add(left_box, 1, wx.ALIGN_CENTER_VERTICAL)
+
+            vsep = wx.Panel(card, size=(1, 16))
+            vsep.SetBackgroundColour(_C_SEP)
+            row.Add(vsep, 0, wx.ALIGN_CENTER_VERTICAL)
+
+            right_box = wx.BoxSizer(wx.HORIZONTAL)
+            right_box.AddStretchSpacer()
+            fl = wx.StaticText(card, label="败")
+            fl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            fl.SetForegroundColour(_C_FAIL)
+            right_box.Add(fl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 2)
+            f_num = wx.StaticText(card, label="0")
+            f_num.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            f_num.SetForegroundColour(_C_FAIL)
+            right_box.Add(f_num, 0, wx.ALIGN_CENTER_VERTICAL)
+            right_box.AddStretchSpacer()
+            row.Add(right_box, 1, wx.ALIGN_CENTER_VERTICAL)
+
+            vs.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 2)
+            card.SetSizer(vs)
+            return card, w_num, f_num, done_num
+
+        sx_card, self.stats_sx_win, self.stats_sx_fail, self.stats_sx_done = _make_card("四象")
+        self._sx_card = sx_card
+        stats_sizer.Add(sx_card, 1, wx.EXPAND | wx.RIGHT, 6)
+        sh_card, self.stats_sh_win, self.stats_sh_fail, self.stats_sh_done = _make_card("噬魂")
+        self._sh_card = sh_card
+        stats_sizer.Add(sh_card, 1, wx.EXPAND)
+
+        self.stats_panel.SetSizer(stats_sizer)
+        self.stats_panel.Hide()
+        lcs.Add(self.stats_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         log_header = wx.BoxSizer(wx.HORIZONTAL)
         log_lbl = wx.StaticText(log_card, label="● 运行日志")
@@ -14375,78 +14507,23 @@ class MyFrame(wx.Frame):
         log_lbl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
         log_header.Add(log_lbl, 0, wx.ALIGN_CENTER_VERTICAL)
         log_header.AddStretchSpacer()
-        log_ts = wx.StaticText(log_card, label=datetime.now().strftime("%H:%M"))
+        log_ts = wx.StaticText(log_card, label=datetime.now().strftime("%H:%M:%S"))
         log_ts.SetForegroundColour(wx.Colour(140, 145, 155))
         log_ts.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         log_header.Add(log_ts, 0, wx.ALIGN_CENTER_VERTICAL)
+        self.log_ts = log_ts
 
-        lcs.Add(log_header, 0, wx.EXPAND | wx.ALL, 8)
-        lcs.AddSpacer(2)
+        lcs.Add(log_header, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, 4)
 
-        # ── 副本统计面板（四象/噬魂） ──
-        _C_WIN = wx.Colour(34, 153, 84)
-        _C_FAIL = wx.Colour(220, 60, 50)
-        _C_DONE = wx.Colour(100, 105, 115)
-        _C_CARD_BG = wx.Colour(255, 255, 255)
-
-        self.stats_panel = wx.Panel(log_card)
-        self.stats_panel.SetBackgroundColour(wx.Colour(240, 242, 246))
-        stats_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        def _make_card(label):
-            card = wx.Panel(self.stats_panel)
-            card.SetBackgroundColour(_C_CARD_BG)
-            vs = wx.BoxSizer(wx.VERTICAL)
-            # 标题
-            title = wx.StaticText(card, label=label)
-            title.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-            title.SetForegroundColour(wx.Colour(50, 80, 140))
-            vs.Add(title, 0, wx.BOTTOM, 2)
-            # 数据行
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            wl = wx.StaticText(card, label="胜")
-            wl.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            wl.SetForegroundColour(_C_WIN)
-            row.Add(wl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 1)
-            w_num = wx.StaticText(card, label="0")
-            w_num.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-            w_num.SetForegroundColour(_C_WIN)
-            row.Add(w_num, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
-            fl = wx.StaticText(card, label="败")
-            fl.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            fl.SetForegroundColour(_C_FAIL)
-            row.Add(fl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 1)
-            f_num = wx.StaticText(card, label="0")
-            f_num.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-            f_num.SetForegroundColour(_C_FAIL)
-            row.Add(f_num, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-            done_num = wx.StaticText(card, label="0/0")
-            done_num.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            done_num.SetForegroundColour(_C_DONE)
-            row.Add(done_num, 0, wx.ALIGN_CENTER_VERTICAL)
-            vs.Add(row, 0)
-            card.SetSizer(vs)
-            return card, w_num, f_num, done_num
-
-        sx_card, self.stats_sx_win, self.stats_sx_fail, self.stats_sx_done = _make_card("四象")
-        self._sx_card = sx_card
-        stats_sizer.Add(sx_card, 1, wx.EXPAND | wx.RIGHT, 4)
-        sh_card, self.stats_sh_win, self.stats_sh_fail, self.stats_sh_done = _make_card("噬魂")
-        self._sh_card = sh_card
-        stats_sizer.Add(sh_card, 1, wx.EXPAND)
-
-        self.stats_panel.SetSizer(stats_sizer)
-        self.stats_panel.Hide()
-        lcs.Add(self.stats_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
-
-        self.text_ctrl = wx.TextCtrl(log_card, size=(-1, 140), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
+        self.text_ctrl = wx.TextCtrl(log_card, size=(-1, 200), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
         self.text_ctrl.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.text_ctrl.SetForegroundColour(wx.Colour(40, 42, 50))
         self.text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         lcs.Add(self.text_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         log_card.SetSizer(lcs)
 
-        main_sizer.Add(log_card, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        content_row.Add(log_card, 1, wx.EXPAND)
+        main_sizer.Add(content_row, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
         main_sizer.AddSpacer(8)
 
         # ── 底部 ──
@@ -14545,6 +14622,7 @@ class MyFrame(wx.Frame):
                 "龙岛",
                 "龙珠",
                 "四象",
+                "青渊",
                 "清妖",
                 "龙王令",
                 "引魔符",
@@ -14577,6 +14655,7 @@ class MyFrame(wx.Frame):
                 "龙岛",
                 "龙珠",
                 "四象",
+                "青渊",
                 "龙王令",
                 "引魔符",
                 # "藏宝图",
@@ -14614,6 +14693,11 @@ class MyFrame(wx.Frame):
         self.dropdown.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
         self.panel.Layout()
         self.Layout()
+
+        # 时钟实时更新
+        self._clock_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self._update_clock, self._clock_timer)
+        self._clock_timer.Start(1000)
 
     def _load_icon(self, name, size):
         path = self.get_resource_path("serveAssets/images/" + name)
@@ -14769,16 +14853,15 @@ class MyFrame(wx.Frame):
             "4.请将游戏画面缩放到900*580（使用键盘Ctrl+鼠标滚轮调整）,",
             "5.脚本如果出现被杀毒软件清掉，可以新建一个文件夹，将脚本放到文件夹中，给文件夹添加信任即可。",
             "脚本说明：",
-            "1.日常勾选了的就会去打，镜勾选之后日常结束会去打魔镜，卖是卖藏宝图操作，V勾选红跟英魂打7次，不勾选打5次，",
-            "整勾选是新模式日常，要选择整点才能启动，会自动去打整点，不会退出副本，49日常结束默认打49整点，日常结束默认打官渡；",
+            "1.日常根据填入的次数来打，对应的副本，也是根据日常中填入的次数打；",
             "2.0点后执行的脚本选了之后，晚上0点整点打完之后会去执行对应脚本，选择名将闯关下午3点，晚上9点整点之后会去打名将闯关；",
             "3.队友名称在多开并且多开的号已经拆分了的情况下再填，填的是360游戏大厅设置的小号名称，绑定成功的小号会在队友对话框发送1；",
             "4.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
             "6.挂机+整点，使用之前打开查看副本，点一下需要打的副本，然后启动脚本即可；",
-            "7.保存数据之后会在脚本同级文件夹生成一个data.txt，下次使用脚本直接点击读取即可自动填入；",
-            "8.日常顺序是：战魂楼精英=>炼狱战魂楼=>溶洞=>炼丹=>五行=>云游精英=>名将挑战赛=>八门精英=>老鼠精英=>英魂=>三顾茅庐=>红=>青渊=>帮派任务=>官渡精英;",
-            "9.自动战斗选择了对应的副本/整点，到打的时候会自动开启，刘备数量为账号内拥有的刘备数量总和，包括出战的，自动战斗多开，队友1要在队伍中第二位，队友2在队伍中第三位；",
-            "10.整点全打为飞过去打页面上能找到的怪物，走路打九黎族祭坛，魔魂山，魔谷西三个地图的怪物。",
+            "7.保存数据之后会在脚本同级文件夹生成一个setting.json，下次使用脚本会自动读入数据；",
+            "8.整点全打为飞过去打页面上能找到的怪物，走路打九黎族祭坛，魔魂山，魔谷西三个地图的怪物；",
+            "9.自动战斗选择了对应的副本/整点，到打的时候会自动开启，刘备数量为账号内拥有的刘备数量总和，包括出战的，自动战斗多开，脚本队友1要在游戏队伍中第二位，脚本队友2在游戏队伍中第三位，吃药功能为吃恢复药；",
+            "10.窗口绑定的独立方法如：原平台两个号，新平台一个号，那么新平台的小号勾选独立并且填入360游戏大厅对应的游戏名称。",
             "常见问题：",
             "1.点开始脚本没任何反应：使用管理员打开脚本；",
             "2.点开始之后提示无效窗口：务必保证输入的没问题，360最新版的只能绑定第一个打开的窗口；",
@@ -14910,7 +14993,7 @@ class MyFrame(wx.Frame):
         dialog = MyDialog(self, self.has_script)
         if self.game_name:
             dialog.team_leader_text.SetValue(self.game_name)
-            dialog.number_input.SetValue(self.heifengCount)
+            dialog.heifeng_count.SetValue(self.heifengCount)
             dialog.choiceCeng.SetValue(self.zhanhunFloor)
             dialog.choiceZhanHunCeng.SetValue(self.zhanhunFloorNew)
             dialog.choiceMojing.SetValue(self.mojingFloor)
@@ -14932,6 +15015,22 @@ class MyFrame(wx.Frame):
                 dialog.zhanhun_start_floor.SetValue(self.zhanhun_start_floor)
             dialog.sixiang_count.SetValue(self.sixiang_count)
             dialog.sixiang_difficulty.SetValue(self.sixiang_difficulty)
+            dialog.rongdong_count.SetValue(self.rongdong_count)
+            dialog.liandan_count.SetValue(self.liandan_count)
+            dialog.wuxing_count.SetValue(self.wuxing_count)
+            dialog.yinhun_count.SetValue(self.yinhun_count)
+            dialog.sangumaolu_count.SetValue(self.sangumaolu_count)
+            dialog.hong_count.SetValue(self.hong_count)
+            dialog.yunyou_count.SetValue(self.yunyou_count)
+            dialog.bamen_count.SetValue(self.bamen_count)
+            dialog.laoshu_count.SetValue(self.laoshu_count)
+            dialog.guandujy_count.SetValue(self.guandujy_count)
+            dialog.cb_bangpai.SetValue(self.bangpai_enabled)
+            dialog.mingjiang_count.SetValue(self.mingjiang_count)
+            if hasattr(self, 'richang_zhengdian'):
+                dialog.cb_zhengdian.SetValue(self.richang_zhengdian)
+            if hasattr(self, 'richang_mojing'):
+                dialog.cb_mojing.SetValue(self.richang_mojing)
             if hasattr(self, "liubeiCounts") and hasattr(dialog, "liubeiCountInputs"):
                 for idx, val in self.liubeiCounts.items():
                     if idx in dialog.liubeiCountInputs:
@@ -14950,21 +15049,18 @@ class MyFrame(wx.Frame):
                 else:
                     dialog.independent_win2_on.Hide()
                     dialog.independent_win2_off.Show()
-            if self.richangSelection:
-                for cb in dialog.check_boxes:
-                    if cb.GetLabel() in self.richangSelection:
-                        cb.SetValue(True)
-                    else:
-                        cb.SetValue(False)
             if hasattr(self, 'combat_auto_scenes') and hasattr(dialog, 'combat_auto_checkboxes'):
                 for scene, cb in dialog.combat_auto_checkboxes.items():
                     cb.SetValue(scene in self.combat_auto_scenes)
             if hasattr(self, 'use_heal_item') and hasattr(dialog, 'use_heal_cb'):
                 dialog.use_heal_cb.SetValue(self.use_heal_item)
         if dialog.ShowModal() == wx.ID_OK:
-            # 在对话框结束后，获取对话框中输入的数据
             print("当前游戏名称：" + self.game_name)
         dialog.Destroy()
+
+    def _update_clock(self, event):
+        if hasattr(self, 'log_ts') and self.log_ts:
+            self.log_ts.SetLabel(datetime.now().strftime("%H:%M:%S"))
 
     def _refresh_dungeon_stats(self):
         """从当前脚本线程同步副本统计数据到UI（主线程中调用）"""
@@ -15500,128 +15596,195 @@ class MyDialog(wx.Dialog):
             self.liubeiCountInputs = {0: 1, 1: 0, 2: 0}
             self.combat_auto_checkboxes = {}
 
-        # ── 三栏：副本 | 战魂 | 整点 ──
+        # ── 三栏：日常次数 | 层数/难度 | 整点 ──
         cols = wx.BoxSizer(wx.HORIZONTAL)
 
-        # 副本栏
-        f1 = wx.Panel(panel)
-        f1.SetBackgroundColour(self.C_SURFACE)
-        fs = wx.BoxSizer(wx.VERTICAL)
-        t0 = wx.StaticText(f1, label="副本")
+        # 日常次数列
+        f_daily = wx.Panel(panel)
+        f_daily.SetBackgroundColour(self.C_SURFACE)
+        fds = wx.BoxSizer(wx.VERTICAL)
+        t0 = wx.StaticText(f_daily, label="日常次数")
         t0.SetForegroundColour(self.C_GOLD)
         t0.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        fs.Add(t0, 0, wx.ALL, 6)
+        fds.Add(t0, 0, wx.ALL, 6)
 
-        self.choiceHeifeng = wx.ComboBox(f1, size=(-1, 28), choices=["大/80", "二/50", "刷龙珠", "大全程", "二全程"])
-        self.choiceHeifeng.SetHint("黑风/龙岛")
-        self.choiceHeifeng.SetBackgroundColour(self.C_INPUT_BG)
-        self.choiceHeifeng.SetForegroundColour(self.C_TEXT)
-        self.choiceMojing = wx.ComboBox(f1, size=(-1, 28), choices=["迷幻境（虚实）", "狱境（黑白无常）", "刷张辽", "炎冰境"])
+        daily_grid = wx.FlexGridSizer(cols=2, vgap=2, hgap=4)
+
+        self.zhanhun_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.zhanhun_count.SetHint("21")
+        self.zhanhun_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.zhanhun_count.SetForegroundColour(self.C_TEXT)
+        self.qingyuan_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.qingyuan_count.SetHint("21")
+        self.qingyuan_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.qingyuan_count.SetForegroundColour(self.C_TEXT)
+        self.lianyu_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.lianyu_count.SetHint("21")
+        self.lianyu_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.lianyu_count.SetForegroundColour(self.C_TEXT)
+        self.shihun_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.shihun_count.SetHint("21")
+        self.shihun_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.shihun_count.SetForegroundColour(self.C_TEXT)
+        self.sixiang_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.sixiang_count.SetHint("21")
+        self.sixiang_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.sixiang_count.SetForegroundColour(self.C_TEXT)
+        self.rongdong_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.rongdong_count.SetHint("2")
+        self.rongdong_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.rongdong_count.SetForegroundColour(self.C_TEXT)
+        self.mingjiang_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.mingjiang_count.SetHint("8")
+        self.mingjiang_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.mingjiang_count.SetForegroundColour(self.C_TEXT)
+        self.liandan_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.liandan_count.SetHint("3")
+        self.liandan_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.liandan_count.SetForegroundColour(self.C_TEXT)
+        self.yinhun_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.yinhun_count.SetHint("4")
+        self.yinhun_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.yinhun_count.SetForegroundColour(self.C_TEXT)
+        self.wuxing_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.wuxing_count.SetHint("2")
+        self.wuxing_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.wuxing_count.SetForegroundColour(self.C_TEXT)
+        self.sangumaolu_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.sangumaolu_count.SetHint("3")
+        self.sangumaolu_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.sangumaolu_count.SetForegroundColour(self.C_TEXT)
+        self.hong_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.hong_count.SetHint("4")
+        self.hong_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.hong_count.SetForegroundColour(self.C_TEXT)
+
+        self.yunyou_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.yunyou_count.SetHint("1")
+        self.yunyou_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.yunyou_count.SetForegroundColour(self.C_TEXT)
+        self.bamen_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.bamen_count.SetHint("1")
+        self.bamen_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.bamen_count.SetForegroundColour(self.C_TEXT)
+        self.laoshu_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.laoshu_count.SetHint("1")
+        self.laoshu_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.laoshu_count.SetForegroundColour(self.C_TEXT)
+        self.guandujy_count = wx.TextCtrl(f_daily, size=(50, 26), validator=NumberValidator())
+        self.guandujy_count.SetHint("1")
+        self.guandujy_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.guandujy_count.SetForegroundColour(self.C_TEXT)
+
+        daily_items = [
+            ("战魂", self.zhanhun_count), ("青渊", self.qingyuan_count),
+            ("镇魂", self.lianyu_count), ("噬魂", self.shihun_count),
+            ("四象", self.sixiang_count), ("溶洞", self.rongdong_count),
+            ("名将", self.mingjiang_count), ("炼丹", self.liandan_count),
+            ("英魂", self.yinhun_count), ("五行", self.wuxing_count),
+            ("茅庐", self.sangumaolu_count), ("红", self.hong_count),
+            ("云游", self.yunyou_count), ("八门", self.bamen_count),
+            ("老鼠", self.laoshu_count), ("官渡", self.guandujy_count),
+        ]
+        bold_labels = {"战魂", "镇魂", "噬魂", "青渊", "四象"}
+        for label_text, ctrl in daily_items:
+            rs = wx.BoxSizer(wx.HORIZONTAL)
+            lb = wx.StaticText(f_daily, label=label_text)
+            lb.SetForegroundColour(self.C_MUTED)
+            lb.SetMinSize((28, -1))
+            if label_text in bold_labels:
+                lb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 2)
+            rs.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL)
+            daily_grid.Add(rs, 0, wx.ALIGN_CENTER_VERTICAL)
+        fds.Add(daily_grid, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
+
+        sep = wx.StaticLine(f_daily, size=(-1, 1))
+        fds.Add(sep, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+        fds.AddSpacer(4)
+        # 第一行: 帮派任务 + 打完魔镜
+        row1 = wx.BoxSizer(wx.HORIZONTAL)
+        self.cb_bangpai = wx.CheckBox(f_daily, label="帮派任务")
+        self.cb_bangpai.SetForegroundColour(self.C_MUTED)
+        self.cb_bangpai.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        row1.Add(self.cb_bangpai, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
+        self.cb_mojing = wx.CheckBox(f_daily, label="打完魔镜")
+        self.cb_mojing.SetForegroundColour(self.C_MUTED)
+        self.cb_mojing.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        row1.Add(self.cb_mojing, 0, wx.ALIGN_CENTER_VERTICAL)
+        fds.Add(row1, 0, wx.LEFT | wx.RIGHT, 6)
+
+        # 第二行: 日常穿插整点
+        self.cb_zhengdian = wx.CheckBox(f_daily, label="日常穿插整点")
+        self.cb_zhengdian.SetForegroundColour(self.C_MUTED)
+        self.cb_zhengdian.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        if has_script != "all":
+            self.cb_zhengdian.Hide()
+        fds.Add(self.cb_zhengdian, 0, wx.LEFT | wx.RIGHT, 6)
+
+        f_daily.SetSizer(fds)
+        cols.Add(f_daily, 1, wx.EXPAND | wx.RIGHT, 4)
+
+        # 层数/难度列
+        f_floor = wx.Panel(panel)
+        f_floor.SetBackgroundColour(self.C_SURFACE)
+        ffs = wx.BoxSizer(wx.VERTICAL)
+        t2 = wx.StaticText(f_floor, label="层数/难度")
+        t2.SetForegroundColour(self.C_GOLD)
+        t2.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+        ffs.Add(t2, 0, wx.ALL, 6)
+
+        self.choiceMojing = wx.ComboBox(f_floor, size=(-1, 28), choices=["迷幻境（虚实）", "狱境（黑白无常）", "刷张辽", "炎冰境"])
         self.choiceMojing.SetHint("魔镜层数")
         self.choiceMojing.SetBackgroundColour(self.C_INPUT_BG)
         self.choiceMojing.SetForegroundColour(self.C_TEXT)
-        self.number_input = wx.TextCtrl(f1, size=(-1, 28), validator=NumberValidator())
-        self.number_input.SetHint("次数")
-        self.number_input.SetBackgroundColour(self.C_INPUT_BG)
-        self.number_input.SetForegroundColour(self.C_TEXT)
-        self.qingyuan_count = wx.TextCtrl(f1, size=(-1, 28), validator=NumberValidator())
-        self.qingyuan_count.SetHint("青渊次数")
-        self.qingyuan_count.SetBackgroundColour(self.C_INPUT_BG)
-        self.qingyuan_count.SetForegroundColour(self.C_TEXT)
-        self.sixiang_difficulty = wx.ComboBox(f1, size=(-1, 28), choices=["普通", "精英", "炼狱"])
+        self.choiceHeifeng = wx.ComboBox(f_floor, size=(-1, 28), choices=["大/80", "二/50", "刷龙珠", "大全程", "二全程"])
+        self.choiceHeifeng.SetHint("黑风/龙岛")
+        self.choiceHeifeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceHeifeng.SetForegroundColour(self.C_TEXT)
+        self.heifeng_count = wx.TextCtrl(f_floor, size=(50, 26), validator=NumberValidator())
+        self.heifeng_count.SetHint("0")
+        self.heifeng_count.SetBackgroundColour(self.C_INPUT_BG)
+        self.heifeng_count.SetForegroundColour(self.C_TEXT)
+        self.choiceCeng = wx.ComboBox(f_floor, size=(-1, 28), choices=["20层", "21层", "22层", "23层", "24层", "25层"])
+        self.choiceCeng.SetHint("战魂层数")
+        self.choiceCeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceCeng.SetForegroundColour(self.C_TEXT)
+        self.zhanhun_start_floor = wx.ComboBox(f_floor, size=(-1, 28), choices=[f"{i}层" for i in range(1, 21)])
+        self.zhanhun_start_floor.SetValue("1层")
+        self.zhanhun_start_floor.SetBackgroundColour(self.C_INPUT_BG)
+        self.zhanhun_start_floor.SetForegroundColour(self.C_TEXT)
+        self.choiceZhanHunCeng = wx.ComboBox(f_floor, size=(-1, 28), choices=["26层", "27层", "27层自动战斗"])
+        self.choiceZhanHunCeng.SetHint("镇魂层数")
+        self.choiceZhanHunCeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceZhanHunCeng.SetForegroundColour(self.C_TEXT)
+        self.choiceShiHunCeng = wx.ComboBox(f_floor, size=(-1, 28), choices=["28层", "29层"])
+        self.choiceShiHunCeng.SetHint("噬魂层数")
+        self.choiceShiHunCeng.SetBackgroundColour(self.C_INPUT_BG)
+        self.choiceShiHunCeng.SetForegroundColour(self.C_TEXT)
+        self.sixiang_difficulty = wx.ComboBox(f_floor, size=(-1, 28), choices=["普通", "精英", "炼狱"])
         self.sixiang_difficulty.SetHint("四象难度")
         self.sixiang_difficulty.SetBackgroundColour(self.C_INPUT_BG)
         self.sixiang_difficulty.SetForegroundColour(self.C_TEXT)
-        self.sixiang_count = wx.TextCtrl(f1, size=(-1, 28), validator=NumberValidator())
-        self.sixiang_count.SetHint("次数")
-        self.sixiang_count.SetBackgroundColour(self.C_INPUT_BG)
-        self.sixiang_count.SetForegroundColour(self.C_TEXT)
 
-        for lbl_text, ctrl in [("魔镜", self.choiceMojing), ("类型", self.choiceHeifeng), ("次数", self.number_input), ("青渊", self.qingyuan_count), ("四象", self.sixiang_difficulty), ("次数", self.sixiang_count)]:
+        for lbl_text, ctrl in [
+            ("魔镜", self.choiceMojing), ("黑风", self.choiceHeifeng),
+            ("次数", self.heifeng_count),
+            ("战魂", self.choiceCeng), ("开始", self.zhanhun_start_floor),
+            ("镇魂", self.choiceZhanHunCeng), ("噬魂", self.choiceShiHunCeng),
+            ("四象", self.sixiang_difficulty),
+        ]:
             rs = wx.BoxSizer(wx.HORIZONTAL)
-            lb = wx.StaticText(f1, label=lbl_text)
+            lb = wx.StaticText(f_floor, label=lbl_text)
             lb.SetForegroundColour(self.C_MUTED)
             lb.SetMinSize((28, -1))
             rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
             rs.Add(ctrl, 1, wx.EXPAND)
-            fs.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
-        f1.SetSizer(fs)
-        cols.Add(f1, 1, wx.EXPAND | wx.RIGHT, 4)
+            ffs.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
+        f_floor.SetSizer(ffs)
+        cols.Add(f_floor, 1, wx.EXPAND | wx.RIGHT, 4)
 
-        # 战魂栏
-        f2 = wx.Panel(panel)
-        f2.SetBackgroundColour(self.C_SURFACE)
-        fs2 = wx.BoxSizer(wx.VERTICAL)
-        t2 = wx.StaticText(f2, label="战魂")
-        t2.SetForegroundColour(self.C_GOLD)
-        t2.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
-        fs2.Add(t2, 0, wx.ALL, 6)
-
-        self.choiceCeng = wx.ComboBox(f2, size=(-1, 28), choices=["20层", "21层", "22层", "23层", "24层", "25层"])
-        self.choiceCeng.SetHint("战魂层数")
-        self.choiceCeng.SetBackgroundColour(self.C_INPUT_BG)
-        self.choiceCeng.SetForegroundColour(self.C_TEXT)
-        self.zhanhun_count = wx.TextCtrl(f2, size=(55, 26), validator=NumberValidator())
-        self.zhanhun_count.SetHint("次数")
-        self.zhanhun_count.SetBackgroundColour(self.C_INPUT_BG)
-        self.zhanhun_count.SetForegroundColour(self.C_TEXT)
-        self.choiceZhanHunCeng = wx.ComboBox(f2, size=(-1, 28), choices=["26层", "27层", "27层自动战斗"])
-        self.choiceZhanHunCeng.SetHint("镇魂层数")
-        self.choiceZhanHunCeng.SetBackgroundColour(self.C_INPUT_BG)
-        self.choiceZhanHunCeng.SetForegroundColour(self.C_TEXT)
-        self.lianyu_count = wx.TextCtrl(f2, size=(55, 26), validator=NumberValidator())
-        self.lianyu_count.SetHint("次数")
-        self.lianyu_count.SetBackgroundColour(self.C_INPUT_BG)
-        self.lianyu_count.SetForegroundColour(self.C_TEXT)
-        self.choiceShiHunCeng = wx.ComboBox(f2, size=(-1, 28), choices=["28层", "29层"])
-        self.choiceShiHunCeng.SetHint("噬魂层数")
-        self.choiceShiHunCeng.SetBackgroundColour(self.C_INPUT_BG)
-        self.choiceShiHunCeng.SetForegroundColour(self.C_TEXT)
-        self.shihun_count = wx.TextCtrl(f2, size=(55, 26), validator=NumberValidator())
-        self.shihun_count.SetHint("次数")
-        self.shihun_count.SetBackgroundColour(self.C_INPUT_BG)
-        self.shihun_count.SetForegroundColour(self.C_TEXT)
-        self.zhanhun_start_floor = wx.ComboBox(f2, size=(-1, 28), choices=[f"{i}层" for i in range(1, 21)])
-        self.zhanhun_start_floor.SetValue("1层")
-        self.zhanhun_start_floor.SetBackgroundColour(self.C_INPUT_BG)
-        self.zhanhun_start_floor.SetForegroundColour(self.C_TEXT)
-
-        rs = wx.BoxSizer(wx.HORIZONTAL)
-        lb = wx.StaticText(f2, label="战魂")
-        lb.SetForegroundColour(self.C_MUTED)
-        lb.SetMinSize((28, -1))
-        rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
-        rs.Add(self.choiceCeng, 1, wx.EXPAND)
-        fs2.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
-
-        rs = wx.BoxSizer(wx.HORIZONTAL)
-        lb = wx.StaticText(f2, label="次数")
-        lb.SetForegroundColour(self.C_MUTED)
-        lb.SetMinSize((28, -1))
-        rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
-        rs.Add(self.zhanhun_count, 1, wx.EXPAND)
-        lb3 = wx.StaticText(f2, label="从")
-        lb3.SetForegroundColour(self.C_MUTED)
-        lb3.SetMinSize((16, -1))
-        rs.Add(lb3, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.LEFT, 4)
-        rs.Add(self.zhanhun_start_floor, 1, wx.EXPAND)
-        fs2.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
-
-        for lbl_text, ctrl, narrow in [
-            ("镇魂", self.choiceZhanHunCeng, False), ("次数", self.lianyu_count, True),
-            ("噬魂", self.choiceShiHunCeng, False), ("次数", self.shihun_count, True),
-        ]:
-            rs = wx.BoxSizer(wx.HORIZONTAL)
-            lb = wx.StaticText(f2, label=lbl_text)
-            lb.SetForegroundColour(self.C_MUTED)
-            lb.SetMinSize((28, -1))
-            rs.Add(lb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
-            rs.Add(ctrl, 1 if not narrow else 0, wx.EXPAND)
-            fs2.Add(rs, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 4)
-        f2.SetSizer(fs2)
-        cols.Add(f2, 1, wx.EXPAND | wx.RIGHT, 4)
-
-        # 整点栏
+        # 整点列
         f3 = wx.Panel(panel)
         f3.SetBackgroundColour(self.C_SURFACE)
         fs3 = wx.BoxSizer(wx.VERTICAL)
@@ -15654,33 +15817,6 @@ class MyDialog(wx.Dialog):
         main_sizer.Add(cols, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         main_sizer.AddSpacer(8)
 
-        # ── 日常 ──
-        sec("日常")
-        day_panel = wx.Panel(panel)
-        day_panel.SetBackgroundColour(self.C_BG)
-        grid = wx.FlexGridSizer(cols=11, vgap=4, hgap=3)
-        grid.SetFlexibleDirection(wx.BOTH)
-        grid.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_SPECIFIED)
-
-        self.check_boxes = []
-        opts = ["战", "镇", "噬", "溶", "丹", "五", "云", "名", "八", "鼠", "英", "庐", "红", "渊", "帮", "官", "镜", "卖", "四", "V", "整", "全"]
-        for opt in opts:
-            # 暂时注释
-            if opt == "整" and has_script == "free":
-                continue
-            cb = wx.CheckBox(day_panel, label=opt)
-            cb.SetForegroundColour(self.C_MUTED)
-            cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            if opt not in ["镜", "名", "卖", "噬", "整", "渊", "庐"]:
-                cb.SetValue(True)
-            self.check_boxes.append(cb)
-            grid.Add(cb, 0, wx.ALIGN_CENTER_VERTICAL)
-            if opt == "全":
-                cb.Bind(wx.EVT_CHECKBOX, self.on_any_checkbox_change)
-        day_panel.SetSizer(grid)
-        main_sizer.Add(day_panel, 0, wx.LEFT | wx.RIGHT, 12)
-        main_sizer.AddSpacer(6)
-
         # ── 确定按钮 ──
         self.button = wx.Button(panel, label="✓ 确定", size=(-1, 36), style=wx.BORDER_NONE)
         self.button.SetBackgroundColour(self.C_GOLD)
@@ -15704,9 +15840,6 @@ class MyDialog(wx.Dialog):
         self.teammate1_pos.Hide()
         self.teammate2_pos = wx.ComboBox(panel, size=(60, 28), choices=["1", "2", "3", "4"])
         self.teammate2_pos.Hide()
-
-        self.text_ctrl = wx.TextCtrl(panel, size=(1, 1), style=wx.TE_MULTILINE)
-        self.text_ctrl.Hide()
 
         panel.SetSizer(main_sizer)
         self.load_current_scheme()
@@ -15745,22 +15878,11 @@ class MyDialog(wx.Dialog):
     # 	self.zhanhunFloor = self.choiceCeng.GetValue()
 
     def on_any_checkbox_change(self, event):
-        cb = event.GetEventObject()
-        if cb.GetValue():
-            for cbItem in self.check_boxes:
-                cbItem.SetValue(True)
-        else:
-            for cbItem in self.check_boxes:
-                cbItem.SetValue(False)
+        pass
 
     def on_save_data(self, event):
-        # 获取用户输入的数据
-        selected_options = []
-        for cb in self.check_boxes:
-            if cb.GetValue():
-                selected_options.append(cb.GetLabel())
         game_name = self.team_leader_text.GetValue()
-        heifeng_count = self.number_input.GetValue()
+        heifeng_count = self.heifeng_count.GetValue()
         zhanhun_floor = self.choiceCeng.GetValue()
         mojing_floor = self.choiceMojing.GetValue()
         zhengdian_floor = self.choiceZhengdian.GetValue()
@@ -15781,6 +15903,20 @@ class MyDialog(wx.Dialog):
         sixiang_count = self.sixiang_count.GetValue()
         sixiang_difficulty = self.sixiang_difficulty.GetValue()
         zhanhun_start_floor = self.zhanhun_start_floor.GetValue()
+        rongdong_count = self.rongdong_count.GetValue()
+        liandan_count = self.liandan_count.GetValue()
+        wuxing_count = self.wuxing_count.GetValue()
+        yinhun_count = self.yinhun_count.GetValue()
+        sangumaolu_count = self.sangumaolu_count.GetValue()
+        hong_count = self.hong_count.GetValue()
+        mingjiang_count = self.mingjiang_count.GetValue()
+        yunyou_count = self.yunyou_count.GetValue()
+        bamen_count = self.bamen_count.GetValue()
+        laoshu_count = self.laoshu_count.GetValue()
+        guandujy_count = self.guandujy_count.GetValue()
+        richang_zhengdian = self.cb_zhengdian.GetValue()
+        richang_mojing = self.cb_mojing.GetValue()
+        bangpai_enabled = self.cb_bangpai.GetValue()
 
         # 保存数据到文件
         self.save_to_file(
@@ -15797,7 +15933,6 @@ class MyDialog(wx.Dialog):
             heifeng_floor,
             after_zreo,
             choiceZhanHunCeng,
-            selected_options,
             choice_line,
             lianyu_count,
             zhanhun_count,
@@ -15807,6 +15942,20 @@ class MyDialog(wx.Dialog):
             sixiang_count,
             sixiang_difficulty,
             zhanhun_start_floor,
+            rongdong_count,
+            liandan_count,
+            wuxing_count,
+            yinhun_count,
+            sangumaolu_count,
+            hong_count,
+            mingjiang_count,
+            yunyou_count,
+            bamen_count,
+            laoshu_count,
+            guandujy_count,
+            richang_zhengdian,
+            richang_mojing,
+            bangpai_enabled,
         )
 
     def save_to_file(
@@ -15824,7 +15973,6 @@ class MyDialog(wx.Dialog):
             heifeng_floor,
             after_zreo,
             choiceZhanHunCeng,
-            selected_options,
             choice_line,
             lianyu_count,
             zhanhun_count,
@@ -15834,6 +15982,20 @@ class MyDialog(wx.Dialog):
             sixiang_count,
             sixiang_difficulty,
             zhanhun_start_floor,
+            rongdong_count,
+            liandan_count,
+            wuxing_count,
+            yinhun_count,
+            sangumaolu_count,
+            hong_count,
+            mingjiang_count,
+            yunyou_count,
+            bamen_count,
+            laoshu_count,
+            guandujy_count,
+            richang_zhengdian,
+            richang_mojing,
+            bangpai_enabled,
     ):
         # 获取脚本文件的同级目录
         exe_path = sys.executable
@@ -15852,7 +16014,6 @@ class MyDialog(wx.Dialog):
             file.write(f"heifeng_floor: {heifeng_floor}\n")
             file.write(f"after_zreo: {after_zreo}\n")
             file.write(f"choiceZhanHunCeng: {choiceZhanHunCeng}\n")
-            file.write(f"selected_options: {selected_options}\n")
             file.write(f"choice_line: {choice_line}\n")
             file.write(f"teammate1_pos: {teammate1_pos}\n")
             file.write(f"teammate2_pos: {teammate2_pos}\n")
@@ -15865,6 +16026,20 @@ class MyDialog(wx.Dialog):
             file.write(f"sixiang_count: {sixiang_count}\n")
             file.write(f"sixiang_difficulty: {sixiang_difficulty}\n")
             file.write(f"zhanhun_start_floor: {zhanhun_start_floor}\n")
+            file.write(f"rongdong_count: {rongdong_count}\n")
+            file.write(f"liandan_count: {liandan_count}\n")
+            file.write(f"wuxing_count: {wuxing_count}\n")
+            file.write(f"yinhun_count: {yinhun_count}\n")
+            file.write(f"sangumaolu_count: {sangumaolu_count}\n")
+            file.write(f"hong_count: {hong_count}\n")
+            file.write(f"mingjiang_count: {mingjiang_count}\n")
+            file.write(f"yunyou_count: {yunyou_count}\n")
+            file.write(f"bamen_count: {bamen_count}\n")
+            file.write(f"laoshu_count: {laoshu_count}\n")
+            file.write(f"guandujy_count: {guandujy_count}\n")
+            file.write(f"richang_zhengdian: {richang_zhengdian}\n")
+            file.write(f"richang_mojing: {richang_mojing}\n")
+            file.write(f"bangpai_enabled: {bangpai_enabled}\n")
         wx.MessageBox("数据已保存", "成功", wx.OK | wx.ICON_INFORMATION)
 
     def get_file_info(self, event):
@@ -15894,7 +16069,6 @@ class MyDialog(wx.Dialog):
         teammate1_text = data.get("teammate1_text", "")
         teammate2_text = data.get("teammate2_text", "")
         choiceZhanHunCeng = data.get("choiceZhanHunCeng", "")
-        selected_options = data.get("selected_options", "")
         choice_line = data.get("choice_line", "")
         teammate1_pos = data.get("teammate1_pos", "")
         teammate2_pos = data.get("teammate2_pos", "")
@@ -15904,16 +16078,22 @@ class MyDialog(wx.Dialog):
         zhanhun_count = data.get("zhanhun_count", "")
         shihun_count = data.get("shihun_count", "")
         shihun_floor = data.get("shihun_floor", "")
-        sixiang_count = data.get("sixiang_count", "35")
+        sixiang_count = data.get("sixiang_count", "21")
         sixiang_difficulty = data.get("sixiang_difficulty", "")
         zhanhun_start_floor = data.get("zhanhun_start_floor", "1层")
-        for cb in self.check_boxes:
-            if cb.GetLabel() in selected_options:
-                cb.SetValue(True)
-            else:
-                cb.SetValue(False)
+        rongdong_count = data.get("rongdong_count", "")
+        liandan_count = data.get("liandan_count", "")
+        wuxing_count = data.get("wuxing_count", "")
+        yinhun_count = data.get("yinhun_count", "")
+        sangumaolu_count = data.get("sangumaolu_count", "")
+        hong_count = data.get("hong_count", "")
+        mingjiang_count = data.get("mingjiang_count", "")
+        yunyou_count = data.get("yunyou_count", "")
+        bamen_count = data.get("bamen_count", "")
+        laoshu_count = data.get("laoshu_count", "")
+        guandujy_count = data.get("guandujy_count", "")
         self.team_leader_text.SetValue(game_name)
-        self.number_input.SetValue(heifeng_count)
+        self.heifeng_count.SetValue(heifeng_count)
         self.choiceCeng.SetValue(zhanhun_floor)
         self.choiceMojing.SetValue(mojing_floor)
         self.choiceZhengdian.SetValue(zhengdian_floor)
@@ -15934,6 +16114,20 @@ class MyDialog(wx.Dialog):
         self.sixiang_count.SetValue(sixiang_count)
         self.sixiang_difficulty.SetValue(sixiang_difficulty)
         self.zhanhun_start_floor.SetValue(zhanhun_start_floor)
+        self.rongdong_count.SetValue(rongdong_count)
+        self.liandan_count.SetValue(liandan_count)
+        self.wuxing_count.SetValue(wuxing_count)
+        self.yinhun_count.SetValue(yinhun_count)
+        self.sangumaolu_count.SetValue(sangumaolu_count)
+        self.hong_count.SetValue(hong_count)
+        self.mingjiang_count.SetValue(mingjiang_count)
+        self.yunyou_count.SetValue(yunyou_count)
+        self.bamen_count.SetValue(bamen_count)
+        self.laoshu_count.SetValue(laoshu_count)
+        self.guandujy_count.SetValue(guandujy_count)
+        self.cb_zhengdian.SetValue(data.get("richang_zhengdian", "False") == "True")
+        self.cb_mojing.SetValue(data.get("richang_mojing", "False") == "True")
+        self.cb_bangpai.SetValue(data.get("bangpai_enabled", "False") == "True")
 
     def on_text_change(self, event):
         if self.team_leader_text.GetValue():
@@ -15958,19 +16152,14 @@ class MyDialog(wx.Dialog):
             json.dump(data, f, indent=2)
 
     def collect_settings(self):
-        selected_options = []
-        for cb in self.check_boxes:
-            if cb.GetValue():
-                selected_options.append(cb.GetLabel())
         combat_auto_scenes = []
         if hasattr(self, 'combat_auto_checkboxes'):
             for scene, cb in self.combat_auto_checkboxes.items():
                 if cb.GetValue():
                     combat_auto_scenes.append(scene)
         return {
-            "selected_options": selected_options,
             "game_name": self.team_leader_text.GetValue(),
-            "heifeng_count": self.number_input.GetValue(),
+            "heifeng_count": self.heifeng_count.GetValue(),
             "zhanhun_floor": self.choiceCeng.GetValue(),
             "mojing_floor": self.choiceMojing.GetValue(),
             "zhengdian_floor": self.choiceZhengdian.GetValue(),
@@ -15991,19 +16180,28 @@ class MyDialog(wx.Dialog):
             "sixiang_count": self.sixiang_count.GetValue(),
             "sixiang_difficulty": self.sixiang_difficulty.GetValue(),
             "zhanhun_start_floor": self.zhanhun_start_floor.GetValue(),
+            "rongdong_count": self.rongdong_count.GetValue(),
+            "liandan_count": self.liandan_count.GetValue(),
+            "wuxing_count": self.wuxing_count.GetValue(),
+            "yinhun_count": self.yinhun_count.GetValue(),
+            "sangumaolu_count": self.sangumaolu_count.GetValue(),
+            "hong_count": self.hong_count.GetValue(),
+            "yunyou_count": self.yunyou_count.GetValue(),
+            "bamen_count": self.bamen_count.GetValue(),
+            "laoshu_count": self.laoshu_count.GetValue(),
+            "guandujy_count": self.guandujy_count.GetValue(),
+            "mingjiang_count": self.mingjiang_count.GetValue(),
+            "richang_zhengdian": self.cb_zhengdian.GetValue(),
+            "richang_mojing": self.cb_mojing.GetValue(),
+            "bangpai_enabled": self.cb_bangpai.GetValue(),
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
             "combat_auto_scenes": combat_auto_scenes,
             "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
         }
 
     def apply_settings(self, settings):
-        for cb in self.check_boxes:
-            if cb.GetLabel() in settings.get("selected_options", ""):
-                cb.SetValue(True)
-            else:
-                cb.SetValue(False)
         self.team_leader_text.SetValue(str(settings.get("game_name", "")))
-        self.number_input.SetValue(str(settings.get("heifeng_count", "")))
+        self.heifeng_count.SetValue(str(settings.get("heifeng_count", "")))
         self.choiceCeng.SetValue(settings.get("zhanhun_floor", ""))
         self.choiceMojing.SetValue(settings.get("mojing_floor", ""))
         self.choiceZhengdian.SetValue(settings.get("zhengdian_floor", ""))
@@ -16021,9 +16219,23 @@ class MyDialog(wx.Dialog):
         self.zhanhun_count.SetValue(settings.get("zhanhun_count", ""))
         self.shihun_count.SetValue(settings.get("shihun_count", ""))
         self.choiceShiHunCeng.SetValue(settings.get("shihun_floor", ""))
-        self.sixiang_count.SetValue(settings.get("sixiang_count", "35"))
+        self.sixiang_count.SetValue(settings.get("sixiang_count", "21"))
         self.sixiang_difficulty.SetValue(settings.get("sixiang_difficulty", ""))
         self.zhanhun_start_floor.SetValue(settings.get("zhanhun_start_floor", "1层"))
+        self.rongdong_count.SetValue(settings.get("rongdong_count", ""))
+        self.liandan_count.SetValue(settings.get("liandan_count", ""))
+        self.wuxing_count.SetValue(settings.get("wuxing_count", ""))
+        self.yinhun_count.SetValue(settings.get("yinhun_count", ""))
+        self.sangumaolu_count.SetValue(settings.get("sangumaolu_count", ""))
+        self.hong_count.SetValue(settings.get("hong_count", ""))
+        self.yunyou_count.SetValue(settings.get("yunyou_count", ""))
+        self.bamen_count.SetValue(settings.get("bamen_count", ""))
+        self.laoshu_count.SetValue(settings.get("laoshu_count", ""))
+        self.guandujy_count.SetValue(settings.get("guandujy_count", ""))
+        self.mingjiang_count.SetValue(settings.get("mingjiang_count", ""))
+        self.cb_zhengdian.SetValue(settings.get("richang_zhengdian", False))
+        self.cb_mojing.SetValue(settings.get("richang_mojing", False))
+        self.cb_bangpai.SetValue(settings.get("bangpai_enabled", False))
         liubei_counts = settings.get("liubei_counts", {"0": "1", "1": "0", "2": "0"})
         for idx in self.liubeiCountInputs:
             key = str(idx)
@@ -16127,36 +16339,43 @@ class MyDialog(wx.Dialog):
         if not self.team_leader_text.GetValue().strip():
             wx.MessageBox("请先输入游戏名称", "提示", wx.OK | wx.ICON_WARNING)
             return
-        # 获取文本框中的值并保存在父窗口(MyFrame)中
         parent = self.GetParent()
-        selected_options = []
-        for cb in self.check_boxes:
-            if cb.GetValue():
-                selected_options.append(cb.GetLabel())
-        # selections = [self.checklist.GetString(i) for i in range(self.checklist.GetCount()) if self.checklist.IsChecked(i)]
         parent.game_name = self.team_leader_text.GetValue()
-        parent.heifengCount = self.number_input.GetValue() if self.number_input.GetValue() else ""
+        parent.heifengCount = self.heifeng_count.GetValue() or "0"
         parent.zhanhunFloor = self.choiceCeng.GetValue()
         parent.zhanhunFloorNew = self.choiceZhanHunCeng.GetValue()
         parent.heifengFloor = self.choiceHeifeng.GetValue()
         parent.afterZreo = self.choiceAfterZreo.GetValue()
         parent.mojingFloor = self.choiceMojing.GetValue()
         parent.zhengdianFloor = self.choiceZhengdian.GetValue()
-        parent.richangSelection = selected_options
         parent.teammate1_name = self.teammate1_text.GetValue()
         parent.teammate2_name = self.teammate2_text.GetValue()
         parent.choice_line = self.choice_line.GetValue()
         parent.teammate1_pos = self.teammate1_pos.GetValue()
         parent.teammate2_pos = self.teammate2_pos.GetValue()
         parent.team_leader_pos = self.team_leader_pos.GetValue()
-        parent.lianyu_count = self.lianyu_count.GetValue()
-        parent.qingyuan_count = self.qingyuan_count.GetValue()
-        parent.zhanhun_count = self.zhanhun_count.GetValue()
-        parent.shihun_count = self.shihun_count.GetValue()
+        parent.lianyu_count = self.lianyu_count.GetValue() or "21"
+        parent.qingyuan_count = self.qingyuan_count.GetValue() or "21"
+        parent.zhanhun_count = self.zhanhun_count.GetValue() or "21"
+        parent.shihun_count = self.shihun_count.GetValue() or "21"
         parent.shihun_floor = self.choiceShiHunCeng.GetValue()
-        parent.sixiang_count = self.sixiang_count.GetValue()
+        parent.sixiang_count = self.sixiang_count.GetValue() or "21"
         parent.sixiang_difficulty = self.sixiang_difficulty.GetValue()
         parent.zhanhun_start_floor = self.zhanhun_start_floor.GetValue()
+        parent.rongdong_count = self.rongdong_count.GetValue() or "2"
+        parent.liandan_count = self.liandan_count.GetValue() or "3"
+        parent.wuxing_count = self.wuxing_count.GetValue() or "2"
+        parent.yinhun_count = self.yinhun_count.GetValue() or "4"
+        parent.sangumaolu_count = self.sangumaolu_count.GetValue() or "3"
+        parent.hong_count = self.hong_count.GetValue() or "4"
+        parent.yunyou_count = self.yunyou_count.GetValue() or "1"
+        parent.bamen_count = self.bamen_count.GetValue() or "1"
+        parent.laoshu_count = self.laoshu_count.GetValue() or "1"
+        parent.guandujy_count = self.guandujy_count.GetValue() or "1"
+        parent.bangpai_enabled = self.cb_bangpai.GetValue()
+        parent.mingjiang_count = self.mingjiang_count.GetValue() or "8"
+        parent.richang_zhengdian = self.cb_zhengdian.GetValue()
+        parent.richang_mojing = self.cb_mojing.GetValue()
         parent.combat_auto_scenes = []
         if hasattr(self, 'combat_auto_checkboxes'):
             for scene, cb in self.combat_auto_checkboxes.items():
@@ -16173,17 +16392,32 @@ class MyDialog(wx.Dialog):
         parent.independent_win1 = self.independent_win1_on.IsShown() if hasattr(self, "independent_win1_on") else False
         parent.independent_win2 = self.independent_win2_on.IsShown() if hasattr(self, "independent_win2_on") else False
         parent.use_heal_item = self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False
-        # parent.selections = selections
-        # 关闭对话框
-        self.EndModal(wx.ID_OK)
+        if self.IsModal():
+            self.EndModal(wx.ID_OK)
 
 
 class NumberValidator(wx.Validator):
     def __init__(self):
         wx.Validator.__init__(self)
+        self.Bind(wx.EVT_CHAR, self.OnChar)
 
     def Clone(self):
         return NumberValidator()
+
+    def OnChar(self, event):
+        key = event.GetKeyCode()
+        # 允许控制键（退格、删除、方向键、Tab等）
+        if key < wx.WXK_SPACE or key == wx.WXK_DELETE:
+            event.Skip()
+            return
+        # 只允许数字
+        if wx.WXK_NUMPAD0 <= key <= wx.WXK_NUMPAD9:
+            event.Skip()
+            return
+        if chr(key).isdigit():
+            event.Skip()
+            return
+        # 其他字符（英文等）直接拦截，不调用 Skip
 
     def Validate(self, win):
         text_ctrl = self.GetWindow()
