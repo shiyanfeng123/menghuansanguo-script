@@ -1058,6 +1058,14 @@ class CombatAutoScript:
                 "cast_position": (123, 350),
                 "status_duration": 1,
             },
+            "玄武": {
+                "status_images": {
+                    "状态1": f"{self.get_resource_path('serveAssets/images/auto/shengsijing.bmp')}|{self.get_resource_path('serveAssets/images/auto/shengsijing1.bmp')}",
+                },
+                "status_region": (55, 232, 137, 314),
+                "cast_position": (98, 360),
+                "status_duration": 3,
+            },
         }
 
         # 按钮图片路径
@@ -2057,11 +2065,6 @@ class CombatAutoScript:
             self.enemy_single_rounds += 1
         else:
             self.enemy_single_rounds = 0
-        self.report_battle_info(
-            f"[敌军检测] enemy_count={self.enemy_count}, single_rounds={self.enemy_single_rounds}, "
-            f"positions={self.enemy_target_positions}",
-            "info"
-        )
 
         # 我方点位：从unit_positions取存活单位的固定点位，不依赖蓝条检测
         # 避免技能面板打开时lantiao.bmp误识别导致点位不可靠
@@ -2931,6 +2934,7 @@ class CombatAutoScript:
                         break
 
             self.report_battle_info(f"账号{account_index} 使用恢复药给{target_unit_info['unit_name']}加血", "success")
+            self.click_position(account_index,12,12)
             self._no_heal_item_missing_turn.pop(account_index, None)
             return True
 
@@ -4064,12 +4068,6 @@ class CombatAutoScript:
             # 轮转规则: proactive_replace_account依次0→1→2→0, 每次只有匹配的账号执行替换
             # 有replacing武将时跳过(等确认结果)
             if self.need_proactive_replace and not skip_side_effects:
-                self.report_battle_info(
-                    f"[预替换诊断] 账号{account_index} 进入预替换检查: "
-                    f"proactive_replace_account={self.proactive_replace_account}, "
-                    f"_proactive_replace_in_progress={self._proactive_replace_in_progress}",
-                    "info"
-                )
                 has_own_replacing = False
                 char_info_check = self.unit_info[account_index]["main_char"]
                 for g in char_info_check.get("generals", []):
@@ -4120,12 +4118,6 @@ class CombatAutoScript:
                                 summon_name = self._get_general_name_by_region(account_index, worst_key[1])
                             else:
                                 summon_name = None
-                            self.report_battle_info(
-                                f"[预替换诊断] 账号{account_index} 准备召唤: summon_name={summon_name}, "
-                                f"replace_pos={replace_pos}, "
-                                f"账号武将={[g.get('name')+('(alive)' if g.get('alive',True) else '(dead)') for g in char_info.get('generals', [])]}",
-                                "info"
-                            )
                             # summon_name为None时(本账号无免死记录或武将已阵亡), 跳过预替换
                             if summon_name is None:
                                 # 只有主角操作才有意义推进，武将操作保持等待主角Call
@@ -4405,12 +4397,6 @@ class CombatAutoScript:
                     and self.has_general[account_index]
                     and not skip_side_effects
                 ):
-                    self.report_battle_info(
-                        f"[召唤诊断] 账号{account_index} 进入4.2召唤: need_summon_general={need_summon_general}, "
-                        f"has_general={self.has_general.get(account_index, False)}, turn_timeout={turn_timeout}, "
-                        f"elapsed={round(time.time() - turn_start_time, 1)}",
-                        "info"
-                    )
                     general_order = ["曹操", "魔化关羽", "张星彩", "刘备"]
                     _summon_not_found_count = 0
                     for general_name in general_order:
@@ -4429,12 +4415,6 @@ class CombatAutoScript:
                             "warning",
                         )
                 elif need_summon_general:
-                    self.report_battle_info(
-                        f"[召唤诊断] 账号{account_index} 4.2被跳过: "
-                        f"turn_timeout={turn_timeout}, elapsed={round(time.time() - turn_start_time, 1)}, "
-                        f"has_general={self.has_general.get(account_index, False)}, skip_side_effects={skip_side_effects}",
-                        "warning"
-                    )
                     # 确保技能面板已打开（点击技能按钮）
                     find_jineng_time = time.time()
                     skill_btn = None
@@ -5091,18 +5071,8 @@ class CombatAutoScript:
                             self.need_proactive_replace = (undead_active == 0)
                             if self.need_proactive_replace:
                                 _debug_undead = {str(k): v for k, v in self.ally_undead_rounds.items()}
-                                self.report_battle_info(
-                                    f"[预替换诊断] 触发预替换: undead_active={undead_active}, ally_undead_rounds={_debug_undead}, threshold={self.undead_threshold}",
-                                    "warning"
-                                )
                         # 汇总日志
                         _active_summary = {str(k): v for k, v in self.ally_undead_rounds.items()}
-                        self.report_battle_info(
-                            f"[预替换诊断] 回合{self.current_turn} 预替换状态: need={self.need_proactive_replace}, "
-                            f"undead_active={undead_active}, rounds={_active_summary}, "
-                            f"has_untracked={has_untracked_undead}",
-                            "info"
-                        )
 
                     # 为每个账号创建独立的处理线程
                     # 主账号已确认是我方回合，直接创建线程，_handle_account_turn内部会自己检测和等待操作按钮
@@ -5598,8 +5568,6 @@ class CombatAutoScript:
                     self.battle_report_dialog.add_log("── 新一轮战斗 ──", "system")
                 except Exception:
                     pass
-
-            print("reset_state: 状态已重置，窗口已保留")
         except Exception as e:
             print(f"reset_state 出错: {e}")
 
@@ -5642,7 +5610,6 @@ class CombatAutoScript:
                     self.battle_report_dialog.Raise()
                 except Exception:
                     pass
-            print("reconfigure: 配置已更新")
         except Exception as e:
             print(f"reconfigure 出错: {e}")
 

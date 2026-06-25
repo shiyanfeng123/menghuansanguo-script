@@ -301,7 +301,6 @@ class MyThread(threading.Thread):
                 return
             if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
                 return
-            print("启动战斗自动操作")
             _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
             self.combat_auto_running = True
 
@@ -338,7 +337,6 @@ class MyThread(threading.Thread):
         try:
             if not self.combat_auto_running:
                 return
-            print("停止战斗自动操作")
             self.combat_auto_running = False
 
             if self.combat_auto_instance:
@@ -1690,7 +1688,7 @@ class MyThread(threading.Thread):
             if self.check_stop_or_over():
                 return
             # 关闭右边
-            if self.scriptName != "帮派任务" and self.scriptName != "测试":
+            if self.scriptName != "帮派任务" and self.scriptName != "日常":
                 closeRight = self.click_image(
                     self.get_resource_path("serveAssets/images/closeRight.bmp"),
                     self.confidenceNum,
@@ -1813,11 +1811,12 @@ class MyThread(threading.Thread):
             #     #     self.gameLocation,
             #     # )
             # else:
-            #     self.click_image(
-            #         self.get_resource_path("serveAssets/images/zidong.bmp"),
-            #         0.8,
-            #         self.gameLocation,
-            #     )
+            if not self.combat_auto_running:
+                self.click_image(
+                    self.get_resource_path("serveAssets/images/zidong.bmp"),
+                    0.8,
+                    self.gameLocation,
+                )
             time.sleep(2)
 
     # 绑定第一个窗口
@@ -1963,63 +1962,12 @@ class MyThread(threading.Thread):
                 )
             if self.refreshFlag:
                 self.refresh_view_team1()
-            # if self.scriptName in ["官渡", "魔镜", "黑风", "矿产"]:
-            #     if not self.guajiFlag1:
-            #         if self.find_pic_team1(
-            #                 self.get_resource_path(
-            #                     "serveAssets/images/zhaohuan.bmp"),
-            #                 self.gameBottomLocation,
-            #                 0,
-            #         ):
-            #             self.click_image_team1(
-            #                 self.get_resource_path(
-            #                     "serveAssets/images/fangyu.bmp"),
-            #                 0.8,
-            #                 self.gameLocation,
-            #             )
-            #         jineng = self.find_pic_team1(
-            #             f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
-            #             self.gameBottomLocation,
-            #             0,
-            #         )
-            #         if jineng:
-            #             self.win1_dm.MoveTo(jineng.x, jineng.y)
-            #             time.sleep(0.001)
-            #             self.win1_dm.LeftClick()
-            #             time.sleep(0.5)
-            #             # self.auto_move_and_click_team1()
-            #             if self.scriptName in ["官渡", "魔镜", "黑风"]:
-            #                 self.win1_dm.MoveTo(196, 255)
-            #             else:
-            #                 self.win1_dm.MoveTo(190, 383)
-            #             time.sleep(0.001)
-            #             self.win1_dm.LeftClick()
-            #             time.sleep(2)
-            #         jineng1 = self.find_pic_team1(
-            #             f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
-            #             self.gameBottomLocation,
-            #             0,
-            #         )
-            #         if jineng1:
-            #             self.win1_dm.MoveTo(jineng1.x, jineng1.y)
-            #             time.sleep(0.001)
-            #             self.win1_dm.LeftClick()
-            #             time.sleep(0.5)
-            #             # self.auto_move_and_click_team1()
-            #             if self.scriptName in ["官渡", "魔镜", "黑风"]:
-            #                 self.win1_dm.MoveTo(196, 255)
-            #             else:
-            #                 self.win1_dm.MoveTo(190, 383)
-            #             time.sleep(0.001)
-            #             self.win1_dm.LeftClick()
-            #         if jineng1 or jineng:
-            #             self.guajiFlag1 = True
-            #     else:
-            #         self.click_image_team1(
-            #             self.get_resource_path("serveAssets/images/zidong.bmp"),
-            #             0.8,
-            #             self.gameLocation,
-            #         )
+            if not self.combat_auto_running:
+                self.click_image_team1(
+                    self.get_resource_path("serveAssets/images/zidong.bmp"),
+                    0.8,
+                    self.gameLocation,
+                )
             time.sleep(1)
 
     def refresh_view_team1(self):
@@ -2283,68 +2231,12 @@ class MyThread(threading.Thread):
                     (self.locationX, 120, self.locationWidth,
                      self.locationHeight),
                 )
-            # if (
-            #         self.scriptName == "官渡"
-            #         or self.scriptName == "魔镜"
-            #         or self.scriptName == "黑风"
-            #         or self.scriptName == "矿产"
-            # ):
-                # if not self.guajiFlag2:
-                #     if self.find_pic_team2(
-                #             self.get_resource_path(
-                #                 "serveAssets/images/zhaohuan.bmp"),
-                #             self.gameBottomLocation,
-                #             0,
-                #     ):
-                #         self.click_image_team2(
-                #             self.get_resource_path(
-                #                 "serveAssets/images/fangyu.bmp"),
-                #             0.8,
-                #             self.gameLocation,
-                #         )
-                #     jineng = self.find_pic_team2(
-                #         f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
-                #         self.gameBottomLocation,
-                #         0,
-                #     )
-                #     if jineng:
-                #         self.win2_dm.MoveTo(jineng.x, jineng.y)
-                #         time.sleep(0.001)
-                #         self.win2_dm.LeftClick()
-                #         time.sleep(0.5)
-                #         # self.auto_move_and_click_team2()
-                #         if self.scriptName in ["官渡", "魔镜", "黑风"]:
-                #             self.win2_dm.MoveTo(196, 255)
-                #         else:
-                #             self.win2_dm.MoveTo(190, 383)
-                #         time.sleep(0.001)
-                #         self.win2_dm.LeftClick()
-                #         time.sleep(2)
-                #     jineng1 = self.find_pic_team2(
-                #         f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
-                #         self.gameBottomLocation,
-                #         0,
-                #     )
-                #     if jineng1:
-                #         self.win2_dm.MoveTo(jineng1.x, jineng1.y)
-                #         time.sleep(0.001)
-                #         self.win2_dm.LeftClick()
-                #         time.sleep(0.5)
-                #         # self.auto_move_and_click_team2()
-                #         if self.scriptName in ["官渡", "魔镜", "黑风"]:
-                #             self.win2_dm.MoveTo(196, 255)
-                #         else:
-                #             self.win2_dm.MoveTo(190, 383)
-                #         time.sleep(0.001)
-                #         self.win2_dm.LeftClick()
-                #     if jineng1 or jineng:
-                #         self.guajiFlag2 = True
-                # else:
-                #     self.click_image_team2(
-                #         self.get_resource_path("serveAssets/images/zidong.bmp"),
-                #         0.8,
-                #         self.gameLocation,
-                #     )
+            if not self.combat_auto_running:
+                self.click_image_team2(
+                    self.get_resource_path("serveAssets/images/zidong.bmp"),
+                    0.8,
+                    self.gameLocation,
+                )
             if self.refreshFlag:
                 self.refresh_view_team2()
 
@@ -8539,7 +8431,7 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if "战魂" in self.combat_auto_scenes:
             self._stop_combat_auto()
-        self.addBloud()
+        # self.addBloud()
         waitForTwoRes = self.waitForTwo(
             "噬魂",
             "洛阳",
@@ -11302,11 +11194,11 @@ class MyThread(threading.Thread):
             "888,75",
         )
         longzhuPos3 = [
-            "0.161,0.127",
-            "0.134,0.134",
-            "0.078,0.12",
-            "0.063,0.136",
-            "0.028,0.122",
+            "755,77",
+            "779,72",
+            "808,79",
+            "829,77",
+            "868,79",
         ]
         for index, item in enumerate(longzhuPos3):
             self.findAndClickPic(
@@ -11430,7 +11322,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if _sixiang_auto_combat:
-            self._start_combat_auto(combat_scene="四象")
+            self._start_combat_auto(combat_scene="四象",clear_enemy_keys=["玄武"])
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
             '玄武',
@@ -14410,7 +14302,6 @@ class MyFrame(wx.Frame):
         self.button_stop.SetToolTip("重置")
 
         content_row = wx.BoxSizer(wx.HORIZONTAL)
-        content_row.Add(button_col, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 4)
 
         # ── 日志 ──
         log_card = wx.Panel(self.panel)
@@ -14523,6 +14414,7 @@ class MyFrame(wx.Frame):
         log_card.SetSizer(lcs)
 
         content_row.Add(log_card, 1, wx.EXPAND)
+        content_row.Add(button_col, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
         main_sizer.Add(content_row, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
         main_sizer.AddSpacer(8)
 
@@ -15159,7 +15051,7 @@ class MyFrame(wx.Frame):
 
     def pause_script(self):
         if not self.scriptName:
-            self.thread.show_error_message("请先选择脚本！")
+            print("请先选择脚本！")
             return
         print("暂停脚本！")
         if self.thread is not None:
@@ -15168,7 +15060,7 @@ class MyFrame(wx.Frame):
 
     def resume_script(self):
         if not self.scriptName:
-            self.thread.show_error_message("请先选择脚本！")
+            print("请先选择脚本！")
             return
         print("继续执行脚本！")
         if self.thread is not None:
@@ -15714,13 +15606,33 @@ class MyDialog(wx.Dialog):
         row1.Add(self.cb_mojing, 0, wx.ALIGN_CENTER_VERTICAL)
         fds.Add(row1, 0, wx.LEFT | wx.RIGHT, 6)
 
-        # 第二行: 日常穿插整点
-        self.cb_zhengdian = wx.CheckBox(f_daily, label="日常穿插整点")
+        # 第二行: 穿插整点 + 清空/重置按钮
+        row2 = wx.BoxSizer(wx.HORIZONTAL)
+        self.cb_zhengdian = wx.CheckBox(f_daily, label="穿插整点")
         self.cb_zhengdian.SetForegroundColour(self.C_MUTED)
         self.cb_zhengdian.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
         if has_script != "all":
             self.cb_zhengdian.Hide()
-        fds.Add(self.cb_zhengdian, 0, wx.LEFT | wx.RIGHT, 6)
+        row2.Add(self.cb_zhengdian, 0, wx.ALIGN_CENTER_VERTICAL)
+        row2.AddStretchSpacer()
+
+        _btn_bg = wx.Colour(215, 218, 226)
+        self.btn_clear = wx.Button(f_daily, label="清空", size=(44, 24), style=wx.BORDER_NONE)
+        self.btn_clear.SetBackgroundColour(_btn_bg)
+        self.btn_clear.SetForegroundColour(self.C_MUTED)
+        self.btn_clear.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        self.btn_clear.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.btn_clear.Bind(wx.EVT_BUTTON, self.on_clear_click)
+        row2.Add(self.btn_clear, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+
+        self.btn_reset = wx.Button(f_daily, label="重置", size=(44, 24), style=wx.BORDER_NONE)
+        self.btn_reset.SetBackgroundColour(_btn_bg)
+        self.btn_reset.SetForegroundColour(self.C_MUTED)
+        self.btn_reset.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        self.btn_reset.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+        self.btn_reset.Bind(wx.EVT_BUTTON, self.on_reset_click)
+        row2.Add(self.btn_reset, 0, wx.ALIGN_CENTER_VERTICAL)
+        fds.Add(row2, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
 
         f_daily.SetSizer(fds)
         cols.Add(f_daily, 1, wx.EXPAND | wx.RIGHT, 4)
@@ -15844,6 +15756,32 @@ class MyDialog(wx.Dialog):
         panel.SetSizer(main_sizer)
         self.load_current_scheme()
         self.team_leader_text.SetFocus()
+
+        # 日常次数控件列表 + 默认值（用于清空/重置）
+        self._daily_defaults = {
+            self.zhanhun_count: "21", self.qingyuan_count: "21", self.lianyu_count: "21",
+            self.shihun_count: "21", self.sixiang_count: "21", self.rongdong_count: "2",
+            self.mingjiang_count: "8", self.liandan_count: "3", self.yinhun_count: "4",
+            self.wuxing_count: "2", self.sangumaolu_count: "3", self.hong_count: "4",
+            self.yunyou_count: "1", self.bamen_count: "1", self.laoshu_count: "1",
+            self.guandujy_count: "1",
+        }
+
+    def on_clear_click(self, event):
+        for ctrl in self._daily_defaults:
+            ctrl.SetValue("0")
+        self.cb_mojing.SetValue(False)
+        self.cb_bangpai.SetValue(False)
+        if hasattr(self, 'cb_zhengdian') and self.cb_zhengdian.IsShown():
+            self.cb_zhengdian.SetValue(False)
+
+    def on_reset_click(self, event):
+        for ctrl, default in self._daily_defaults.items():
+            ctrl.SetValue(default)
+        self.cb_mojing.SetValue(False)
+        self.cb_bangpai.SetValue(False)
+        if hasattr(self, 'cb_zhengdian') and self.cb_zhengdian.IsShown():
+            self.cb_zhengdian.SetValue(False)
 
     def _section_header(self, sizer, panel, text):
         l = wx.StaticText(panel, label=f"▸ {text}")
