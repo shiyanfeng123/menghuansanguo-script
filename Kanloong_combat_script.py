@@ -1056,7 +1056,7 @@ class CombatAutoScript:
                 },
                 "status_region": (60, 155, 147, 224),
                 "cast_position": (123, 350),
-                "status_duration": 2,
+                "status_duration": 1,
             },
         }
 
