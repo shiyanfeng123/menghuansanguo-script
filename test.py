@@ -55,7 +55,7 @@ def enum_child_windows_callback(hwnd, lParam):
 enum_child_windows_callback_func = ENUMWINDOWSPROC(enum_child_windows_callback)
 
 # 查找目标窗口句柄
-target_window_title = "1"
+target_window_title = "小号3"
 target_window_class = "DUIWindow"  # 如果不知道类名，可以设为 None
 # target_window_title = "Path of Exile"
 # target_window_class = 'POEWindowClass'  # 如果不知道类名，可以设为 None
@@ -368,7 +368,7 @@ def get_resource_path(self, relative_path):
 # dm.KeyDownChar('right')
 # time.sleep(5)
 dm_ret = dm.FindPicEx(0, 0, x, y,
-                      r"E:\project\python\serveAssets\images\zhengdian/xiaolvren2.bmp",
+                      r"E:\project\python\serveAssets\images/cangbaotu.bmp",
                       "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
 # print(dm_ret1)

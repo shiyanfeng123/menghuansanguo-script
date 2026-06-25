@@ -245,6 +245,9 @@ class MyThread(threading.Thread):
         self.combat_auto_instance = None
         self.combat_auto_thread = None
         self.combat_auto_running = False
+        # 副本统计：四象/噬魂 的成功、失败、已打、总次数
+        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
+        self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
         self.combat_loop_thread = None  # 循环战斗线程
         self.click_delay = 0.5  # 点击延迟（秒）
         # 初始化 pyttsx3 引擎
@@ -263,11 +266,25 @@ class MyThread(threading.Thread):
         else:
             print("Selected voice index is out of range.")
 
+    def _update_dungeon_stats(self, dungeon, result):
+        """更新副本统计并刷新UI
+        :param dungeon: "四象" 或 "噬魂"
+        :param result: "win" 或 "fail"
+        """
+        try:
+            stats = self.sixiang_stats if dungeon == "四象" else self.shihun_stats
+            stats[result] += 1
+            stats["done"] += 1
+            if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
+                wx.CallAfter(self.frame._refresh_dungeon_stats)
+        except Exception:
+            pass
+
     def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None):
         try:
             if self.combat_auto_running:
                 return
-            if self.frame.has_script == "free":
+            if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
                 return
             print("启动战斗自动操作")
             _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
@@ -701,7 +718,8 @@ class MyThread(threading.Thread):
                 time.sleep(5)
                 self._stop_combat_auto()
         elif self.scriptName == "测试":
-            self.huifu_yijian_main()
+            # self.huifu_yijian_main()
+            self.cangbaotuWhile()
             # self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
             # time.sleep(5)
             # self._stop_combat_auto()
@@ -828,6 +846,9 @@ class MyThread(threading.Thread):
             if not self.shihun_floor:
                 self.shihun_floor = "29层"
                 print("未选择层数，自动打29层")
+            self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": self.shihun_count}
+            if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
+                wx.CallAfter(self.frame._refresh_dungeon_stats)
             for i in range(self.shihun_count):
                 if self.check_stop_or_over():
                     return
@@ -1620,7 +1641,7 @@ class MyThread(threading.Thread):
             # self.click_image(self.get_resource_path("serveAssets/images/dialog3.bmp"), self.confidenceNum, self.gameBottomLocation)
             # self.click_image(self.get_resource_path("serveAssets/images/fubenzudui.bmp"), self.confidenceNum, self.gameBottomLocation)
             # 关闭右边
-            if self.scriptName != "帮派任务":
+            if self.scriptName != "帮派任务" and self.scriptName != "测试":
                 closeRight = self.click_image(
                     self.get_resource_path("serveAssets/images/closeRight.bmp"),
                     self.confidenceNum,
@@ -2829,7 +2850,8 @@ class MyThread(threading.Thread):
                     break
         finally:
             self._huifu_done += 1
-            if self._huifu_done >= 3:
+            _expected = 1 + (1 if self.win1_dm else 0) + (1 if self.win2_dm else 0)
+            if self._huifu_done >= _expected:
                 self.huifuFlag = False
                 self._huifu_done = 0
         
@@ -8418,10 +8440,12 @@ class MyThread(threading.Thread):
         )
         if waitForTwoRes == "second":
             print("28层没打过")
+            self._update_dungeon_stats("噬魂", "fail")
             return True
         if self.shihun_floor == "28层":
             # 退出副本
             self.outScript("噬魂")
+            self._update_dungeon_stats("噬魂", "win")
             return True
         self.huifu_yijian_main()
         time.sleep(1)
@@ -8460,9 +8484,11 @@ class MyThread(threading.Thread):
         )
         if waitForTwoRes == "second":
             print("29层没打过")
+            self._update_dungeon_stats("噬魂", "fail")
             return True
         # 退出副本
         self.outScript("噬魂")
+        self._update_dungeon_stats("噬魂", "win")
         return True
 
     # 魔镜脚本
@@ -11224,7 +11250,7 @@ class MyThread(threading.Thread):
                 f"{self.get_resource_path('serveAssets/images/longzhu/yujianxiannv2.bmp')}|"
                 f"{self.get_resource_path('serveAssets/images/longzhu/yunlonghuwei1.bmp')}|"
                 f"{self.get_resource_path('serveAssets/images/longzhu/yunlonghuwei2.bmp')}",
-                self.gameLeftLocation,
+                self.gameBottomLocation,
                 self.get_resource_path("serveAssets/images/zdzd.bmp"),
                 self.gameBottomLocation,
                 item,
@@ -11235,7 +11261,7 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/longzhu/chuansongmen.bmp"),
             self.get_resource_path(
-                "serveAssets/images/longzhu/chuansongmen.bmp"),
+                "serveAssets/images/chuansongmen.bmp"),
             self.dituLocation,
             self.get_resource_path(
                 "serveAssets/images/longzhu/longchaoxue.bmp"),
@@ -11319,6 +11345,7 @@ class MyThread(threading.Thread):
         )
         if waitForTwoRes == "second":
             print("玄水马龙没打过")
+            self._update_dungeon_stats("四象", "fail")
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
@@ -11355,6 +11382,7 @@ class MyThread(threading.Thread):
         )
         if waitForTwoRes == "second":
             print("玄武没打过")
+            self._update_dungeon_stats("四象", "fail")
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
@@ -11400,6 +11428,7 @@ class MyThread(threading.Thread):
         )
         if waitForTwoRes == "second":
             print("朱雀没打过")
+            self._update_dungeon_stats("四象", "fail")
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
@@ -11445,6 +11474,7 @@ class MyThread(threading.Thread):
         )
         if waitForTwoRes == "second":
             print("青龙没打过")
+            self._update_dungeon_stats("四象", "fail")
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
@@ -11490,40 +11520,79 @@ class MyThread(threading.Thread):
         )
         if waitForTwoRes == "second":
             print("白虎没打过")
+            self._update_dungeon_stats("四象", "fail")
             return True
         self.outScript(
             self.get_resource_path(
                 "serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
         )
+        self._update_dungeon_stats("四象", "win")
         return True
 
     # 藏宝图脚本
     def cangbaotuScript(self):
-        self.press_keys_until_image_found(
-            f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}",
-            f"{self.get_resource_path('serveAssets/images/cangbaotuqueding.bmp')}",
-            self.gameLocation,
-            self.gameBottomLocation,
-            "使用",
-        )
-        self.dm.MoveTo(447, 321)
-        time.sleep(0.001)
-        self.dm.LeftClick()
-        wabao_pos = self.waitFor(
-            '挖宝',
-            self.gameRightLocation
-        )
-        fei_pos = self.waitFor(
-            f"{self.get_resource_path('serveAssets/images/cangbaotufei.bmp')}",
-            (wabao_pos.x, wabao_pos.y,wabao_pos.x+110,wabao_pos.y+40)
-        )
-        self.dm.MoveTo(fei_pos.x, fei_pos.y)
-        time.sleep(0.001)
-        self.dm.LeftClick()
-        self.waitFor("挖宝", self.gameRightLocation)
-        self.dm.MoveTo(wabao_pos.x, wabao_pos.y)
-        time.sleep(0.001)
-        self.dm.LeftClick()
+        # cangbaotu_pos = None
+        # shiyong_pos = None
+        # queding_pos = None
+        # cangbaotu_pos = None
+        while True:
+            self.click_image(
+                f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}",
+                0.8,
+                self.gameLocation,
+            )
+            self.click_image(
+                f"{self.get_resource_path('serveAssets/images/shiyong.bmp')}|{self.get_resource_path('serveAssets/images/shiyong1.bmp')}",
+                0.8,
+                self.gameLocation,
+            )
+            self.click_image(
+                f"{self.get_resource_path('serveAssets/images/cangbaotuqueding.bmp')}",
+                0.8,
+                self.gameBottomLocation,
+            )
+            wabao_pos = self.waitFor(
+                '挖宝',
+                self.gameRightLocation,0.1
+            )
+            if not wabao_pos:
+                continue
+            fei_pos = self.waitFor(
+                f"{self.get_resource_path('serveAssets/images/cangbaotufei.bmp')}",
+                (wabao_pos.x, wabao_pos.y,wabao_pos.x+110,wabao_pos.y+40)
+            )
+            self.dm.MoveTo(fei_pos.x, fei_pos.y)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            self.dm.MoveTo(wabao_pos.x, wabao_pos.y)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+
+        # self.press_keys_until_image_found(
+        #     f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}",
+        #     f"{self.get_resource_path('serveAssets/images/cangbaotuqueding.bmp')}",
+        #     self.gameLocation,
+        #     self.gameBottomLocation,
+        #     "使用",
+        # )
+        # self.dm.MoveTo(447, 321)
+        # time.sleep(0.001)
+        # self.dm.LeftClick()
+        # wabao_pos = self.waitFor(
+        #     '挖宝',
+        #     self.gameRightLocation
+        # )
+        # fei_pos = self.waitFor(
+        #     f"{self.get_resource_path('serveAssets/images/cangbaotufei.bmp')}",
+        #     (wabao_pos.x, wabao_pos.y,wabao_pos.x+110,wabao_pos.y+40)
+        # )
+        # self.dm.MoveTo(fei_pos.x, fei_pos.y)
+        # time.sleep(0.001)
+        # self.dm.LeftClick()
+        # self.waitFor("挖宝", self.gameRightLocation)
+        # self.dm.MoveTo(wabao_pos.x, wabao_pos.y)
+        # time.sleep(0.001)
+        # self.dm.LeftClick()
 
     # 藏宝图循环
     def cangbaotuWhile(self):
@@ -11637,6 +11706,9 @@ class MyThread(threading.Thread):
 
     # 一直执行四象
     def sixiangWhile(self):
+        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": int(self.sixiang_count)}
+        if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
+            wx.CallAfter(self.frame._refresh_dungeon_stats)
         for i in range(int(self.sixiang_count)):
             if self.overed:
                 return
@@ -14303,6 +14375,62 @@ class MyFrame(wx.Frame):
         lcs.Add(log_header, 0, wx.EXPAND | wx.ALL, 8)
         lcs.AddSpacer(2)
 
+        # ── 副本统计面板（四象/噬魂） ──
+        _C_WIN = wx.Colour(34, 153, 84)
+        _C_FAIL = wx.Colour(220, 60, 50)
+        _C_DONE = wx.Colour(100, 105, 115)
+        _C_CARD_BG = wx.Colour(255, 255, 255)
+
+        self.stats_panel = wx.Panel(log_card)
+        self.stats_panel.SetBackgroundColour(wx.Colour(240, 242, 246))
+        stats_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        def _make_card(label):
+            card = wx.Panel(self.stats_panel)
+            card.SetBackgroundColour(_C_CARD_BG)
+            vs = wx.BoxSizer(wx.VERTICAL)
+            # 标题
+            title = wx.StaticText(card, label=label)
+            title.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            title.SetForegroundColour(wx.Colour(50, 80, 140))
+            vs.Add(title, 0, wx.BOTTOM, 2)
+            # 数据行
+            row = wx.BoxSizer(wx.HORIZONTAL)
+            wl = wx.StaticText(card, label="胜")
+            wl.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            wl.SetForegroundColour(_C_WIN)
+            row.Add(wl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 1)
+            w_num = wx.StaticText(card, label="0")
+            w_num.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            w_num.SetForegroundColour(_C_WIN)
+            row.Add(w_num, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+            fl = wx.StaticText(card, label="败")
+            fl.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            fl.SetForegroundColour(_C_FAIL)
+            row.Add(fl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 1)
+            f_num = wx.StaticText(card, label="0")
+            f_num.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            f_num.SetForegroundColour(_C_FAIL)
+            row.Add(f_num, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+            done_num = wx.StaticText(card, label="0/0")
+            done_num.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            done_num.SetForegroundColour(_C_DONE)
+            row.Add(done_num, 0, wx.ALIGN_CENTER_VERTICAL)
+            vs.Add(row, 0)
+            card.SetSizer(vs)
+            return card, w_num, f_num, done_num
+
+        sx_card, self.stats_sx_win, self.stats_sx_fail, self.stats_sx_done = _make_card("四象")
+        self._sx_card = sx_card
+        stats_sizer.Add(sx_card, 1, wx.EXPAND | wx.RIGHT, 4)
+        sh_card, self.stats_sh_win, self.stats_sh_fail, self.stats_sh_done = _make_card("噬魂")
+        self._sh_card = sh_card
+        stats_sizer.Add(sh_card, 1, wx.EXPAND)
+
+        self.stats_panel.SetSizer(stats_sizer)
+        self.stats_panel.Hide()
+        lcs.Add(self.stats_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+
         self.text_ctrl = wx.TextCtrl(log_card, size=(-1, 140), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
         self.text_ctrl.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.text_ctrl.SetForegroundColour(wx.Colour(40, 42, 50))
@@ -14830,6 +14958,42 @@ class MyFrame(wx.Frame):
             print("当前游戏名称：" + self.game_name)
         dialog.Destroy()
 
+    def _refresh_dungeon_stats(self):
+        """从当前脚本线程同步副本统计数据到UI（主线程中调用）"""
+        try:
+            if not hasattr(self, 'stats_panel') or not self.stats_panel:
+                return
+            show_sx = show_sh = False
+            t = self.thread
+
+            if t is not None:
+                sx = getattr(t, 'sixiang_stats', None)
+                if sx and sx.get('total', 0) > 0:
+                    self.stats_sx_win.SetLabel(str(sx['win']))
+                    self.stats_sx_fail.SetLabel(str(sx['fail']))
+                    self.stats_sx_done.SetLabel("{}/{}".format(sx['done'], sx.get('total', 0)))
+                    show_sx = True
+            if hasattr(self, '_sx_card') and self._sx_card:
+                self._sx_card.Show(show_sx)
+
+            if t is not None:
+                sh = getattr(t, 'shihun_stats', None)
+                if sh and sh.get('total', 0) > 0:
+                    self.stats_sh_win.SetLabel(str(sh['win']))
+                    self.stats_sh_fail.SetLabel(str(sh['fail']))
+                    self.stats_sh_done.SetLabel("{}/{}".format(sh['done'], sh.get('total', 0)))
+                    show_sh = True
+            if hasattr(self, '_sh_card') and self._sh_card:
+                self._sh_card.Show(show_sh)
+
+            if show_sx or show_sh:
+                self.stats_panel.Show()
+            else:
+                self.stats_panel.Hide()
+            self.stats_panel.GetParent().Layout()
+        except Exception:
+            pass
+
     def write(self, text):
         # 使用 wx.CallAfter 确保 GUI 操作在主线程中执行（线程安全）
         if wx.GetApp() and wx.GetApp().IsMainLoopRunning():
@@ -15000,6 +15164,11 @@ class MyFrame(wx.Frame):
             self.text_ctrl.SetValue("")
             if self.dropdown:
                 self.dropdown.SetSelection(-1)
+
+            # 隐藏副本统计面板
+            if hasattr(self, 'stats_panel') and self.stats_panel:
+                self.stats_panel.Hide()
+                self.stats_panel.GetParent().Layout()
 
             # 重置所有相关变量
 

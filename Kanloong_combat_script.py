@@ -512,7 +512,7 @@ class CombatAutoScript:
         self.ally_undead_rounds = {}
         self.ally_undead_last_increment_turn = {}
         self.caocao_passive_missing_rounds = {}
-        self.undead_threshold = 4  # count>=4时认为被动耗尽, 不再计入安全武将数
+        self.undead_threshold = 3  # count>=4时认为被动耗尽, 不再计入安全武将数
         self.proactive_replace_account = 0
         self.need_proactive_replace = False
         self._proactive_replace_in_progress = False
@@ -768,9 +768,9 @@ class CombatAutoScript:
         self.gray_skill_images = {
             "寂灭神劫": f"{self.get_resource_path('serveAssets/images/auto/jimie_gray.bmp')}",
             "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun_gray.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocaodan_gray.bmp')}",
-            "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguqun_gray.bmp')}",
-            "星彩群攻": f"{self.get_resource_path('serveAssets/images/auto/xingcaiqun_gray.bmp')}",
-            "控制":     f"{self.get_resource_path('serveAssets/images/auto/liubeikong_gray.bmp')}",
+            "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguanqun_gray.bmp')}|{self.get_resource_path('serveAssets/images/auto/moguandan_gray.bmp')}",
+            "星彩群攻": f"{self.get_resource_path('serveAssets/images/auto/xingcaiqun_gray.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaidan_gray.bmp')}",
+            "控制":     f"{self.get_resource_path('serveAssets/images/auto/liubeikong_gray.bmp')}|{self.get_resource_path('serveAssets/images/auto/jiasu_gray.bmp')}",
         }
 
         # 物品图片
@@ -786,7 +786,7 @@ class CombatAutoScript:
         # self.liubei_target_image = f"{self.get_resource_path('serveAssets/images/auto/jifangliubei.bmp')}|{self.get_resource_path('serveAssets/images/auto/jifangmoguan.bmp')}|{self.get_resource_path('serveAssets/images/auto/jifangcaocao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhangxingcai3.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeixuruo.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaixuruo.bmp')}"
         self.liubei_target_image = f"{self.get_resource_path('serveAssets/images/auto/lantiao.bmp')}"
         # 敌军技能目标图片（用于选择目标）
-        self.enemy_target_image = f"{self.get_resource_path('serveAssets/images/auto/lantiao.bmp')}"
+        self.enemy_target_image = f"{self.get_resource_path('serveAssets/images/auto/lantiao.bmp')}|{self.get_resource_path('serveAssets/images/zhengdian/zhaoyunlantiao.bmp')}"
 
         # 技能目标选择图片（蓝色条）
         self.target_lantiao_image = f"{self.get_resource_path('serveAssets/images/auto/lantiao.bmp')}|{self.get_resource_path('serveAssets/images/auto/lantiao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/xuetiao.bmp')}"
@@ -1320,7 +1320,7 @@ class CombatAutoScript:
         elif cond == "attack_buff_expired":
             return self.attack_buff_tracker.get(account_index, 0) <= 0
         elif cond == "enemy_single":
-            return self.enemy_single_rounds >= 2
+            return self.enemy_single_rounds >= 3
         elif cond == "first_turn":
             return self.current_turn <= 1
         return True
@@ -2051,6 +2051,11 @@ class CombatAutoScript:
             self.enemy_single_rounds += 1
         else:
             self.enemy_single_rounds = 0
+        self.report_battle_info(
+            f"[敌军检测] enemy_count={self.enemy_count}, single_rounds={self.enemy_single_rounds}, "
+            f"positions={self.enemy_target_positions}",
+            "info"
+        )
 
         # 我方点位：从unit_positions取存活单位的固定点位，不依赖蓝条检测
         # 避免技能面板打开时lantiao.bmp误识别导致点位不可靠
@@ -2328,7 +2333,7 @@ class CombatAutoScript:
                         # 曹操在场 → 缺失计数+1
                         self.caocao_passive_missing_rounds[key] = self.caocao_passive_missing_rounds.get(key, 0) + 1
                         # 连续6次未识别到不灭雄心 + 曹操在场 → 判定被动触发
-                        if self.caocao_passive_missing_rounds[key] >= 6:
+                        if self.caocao_passive_missing_rounds[key] >= 4:
                             if prev == 0:
                                 # 首次触发: count 0→1
                                 self.ally_undead_rounds[key] = 1
@@ -2516,7 +2521,7 @@ class CombatAutoScript:
                             self.zhugeliang_status1_missing_count[account_idx] += 1
 
                         # 判断条件：状态1连续10次未找到（在找到状态2的前提下）
-                        if self.zhugeliang_status1_missing_count[account_idx] >= 3:
+                        if self.zhugeliang_status1_missing_count[account_idx] >= 2:
                             self.clear_zhugeliang = True
                             if not self.keep_support_general:
                                 self.keep_support_general = True
@@ -4053,6 +4058,12 @@ class CombatAutoScript:
             # 轮转规则: proactive_replace_account依次0→1→2→0, 每次只有匹配的账号执行替换
             # 有replacing武将时跳过(等确认结果)
             if self.need_proactive_replace and not skip_side_effects:
+                self.report_battle_info(
+                    f"[预替换诊断] 账号{account_index} 进入预替换检查: "
+                    f"proactive_replace_account={self.proactive_replace_account}, "
+                    f"_proactive_replace_in_progress={self._proactive_replace_in_progress}",
+                    "info"
+                )
                 has_own_replacing = False
                 char_info_check = self.unit_info[account_index]["main_char"]
                 for g in char_info_check.get("generals", []):
@@ -4107,6 +4118,14 @@ class CombatAutoScript:
                             if replace_with_liubei:
                                 if not self._liubei_summon_in_progress.get(account_index, False):
                                     self._liubei_summon_in_progress[account_index] = True
+                            # 诊断日志
+                            _unclaimed = [e.get("enemy_name") for e in self.global_enemies_need_clear if e.get("claimed_by") is None]
+                            self.report_battle_info(
+                                f"[预替换诊断] 账号{account_index} 轮到: keep_support={self.keep_support_general}, "
+                                f"field_usable_liubei={_field_has_usable_liubei}, replace_with_liubei={replace_with_liubei}, "
+                                f"unclaimed={_unclaimed}, proactive_replace_account={self.proactive_replace_account}",
+                                "info"
+                            )
                 if my_turn:
                     char_info = self.unit_info[account_index]["main_char"]
                     if not char_info.get("alive", True):
@@ -4139,6 +4158,13 @@ class CombatAutoScript:
                                     summon_name = self._get_general_name_by_region(account_index, worst_key[1])
                                 else:
                                     summon_name = None
+                            # 诊断：是什么替换路径
+                            self.report_battle_info(
+                                f"[预替换诊断] 账号{account_index} 准备召唤: summon_name={summon_name}, "
+                                f"replace_with_liubei={replace_with_liubei}, replace_pos={replace_pos}, "
+                                f"账号武将={[g.get('name')+('(alive)' if g.get('alive',True) else '(dead)') for g in char_info.get('generals', [])]}",
+                                "info"
+                            )
                             # summon_name为None时(本账号无免死记录或武将已阵亡), 跳过预替换
                             if summon_name is None:
                                 with self._state_lock:
@@ -4157,7 +4183,11 @@ class CombatAutoScript:
                                     self._proactive_replace_in_progress = False
                                     self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
                                 if replace_with_liubei and summon_name == "刘备":
-                                    # 召唤失败不设has_liubei=False/liubei_remaining=0，武将回到背包，下回合可重试
+                                    self.report_battle_info(
+                                        f"[预替换诊断] 账号{account_index} 预替换刘备召唤失败: "
+                                        f"replace_pos={replace_pos}, 账号已有武将={[g.get('name') for g in char_info.get('generals', [])]}",
+                                        "warning"
+                                    )
                                     self._liubei_summon_in_progress[account_index] = False
                                 else:
                                     self.report_battle_info(
@@ -4256,9 +4286,7 @@ class CombatAutoScript:
                     # 如果场上没有刘备（含召唤中），且当前账号没有存活的刘备，优先召唤刘备
                     if not field_has_liubei and not has_liubei_in_account:
                         need_liubei = True
-                        # 背包无刘备时, 4.1无法召唤刘备, 回退到召唤其他武将
-                        if not self.has_liubei.get(account_index, False):
-                            need_summon_general = True
+                        need_summon_general = True
                         self.report_battle_info(
                             f"账号{account_index} 判断需要召唤刘备（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 场上无刘备={not field_has_liubei}, 账号无刘备={not has_liubei_in_account}, 背包有刘备={self.has_liubei.get(account_index, False)}, 主角存活={char_info.get('alive', True)}）",
                             "info",
@@ -4340,7 +4368,7 @@ class CombatAutoScript:
                         if not self.keep_support_general:
                             self.keep_support_general = True
 
-                any_account_has_liubei = field_liubei_count > 0
+                any_account_has_liubei = field_liubei_count > 0 or summoning_count > 0
                 if (not need_self_liubei
                     and (self.keep_support_general or self._zhugeliang_low_hp)
                     and self.global_enemies_need_clear
@@ -4374,12 +4402,11 @@ class CombatAutoScript:
                 # and self.keep_support_general == False
                 # and self.enemies_need_clear[account_index][account_index] and self.enemies_need_clear[account_index][account_index].has_zhaohuan==False
                 # 4.1 召唤刘备（如果需要）
-                if ( self.keep_support_general
-                    and self.has_liubei.get(account_index, False)
+                if ( self.has_liubei.get(account_index, False)
                     and (time.time() - turn_start_time) < turn_timeout
                     and self.has_general[account_index]
                     and (need_liubei
-                        or need_self_liubei)
+                        or (self.keep_support_general and need_self_liubei))
                     and not skip_side_effects
                 ):
                     # 需要force_replace时, 用_find_best_replace_position选择被踢武将
@@ -4413,6 +4440,12 @@ class CombatAutoScript:
                     and self.has_general[account_index]
                     and not skip_side_effects
                 ):
+                    self.report_battle_info(
+                        f"[召唤诊断] 账号{account_index} 进入4.2召唤: need_summon_general={need_summon_general}, "
+                        f"has_general={self.has_general.get(account_index, False)}, turn_timeout={turn_timeout}, "
+                        f"elapsed={round(time.time() - turn_start_time, 1)}",
+                        "info"
+                    )
                     general_order = ["曹操", "魔化关羽", "张星彩", "刘备"]
                     _summon_not_found_count = 0
                     for general_name in general_order:
@@ -4429,7 +4462,14 @@ class CombatAutoScript:
                             f"账号{account_index} 背包已无可用武将（{len(general_order)}个武将均召唤失败），本战斗不再尝试召唤",
                             "warning",
                         )
-                    # 确保技能面板已打开（点击技能按钮）
+                elif need_summon_general:
+                    self.report_battle_info(
+                        f"[召唤诊断] 账号{account_index} 4.2被跳过: "
+                        f"turn_timeout={turn_timeout}, elapsed={round(time.time() - turn_start_time, 1)}, "
+                        f"has_general={self.has_general.get(account_index, False)}, skip_side_effects={skip_side_effects}",
+                        "warning"
+                    )
+                # 确保技能面板已打开（点击技能按钮）
                     find_jineng_time = time.time()
                     skill_btn = None
                     while time.time() - find_jineng_time < 2.0 and not skill_btn:
@@ -5083,6 +5123,20 @@ class CombatAutoScript:
                             self.need_proactive_replace = False  # 有未触发被动的武将，不触发
                         else:
                             self.need_proactive_replace = (undead_active == 0)
+                            if self.need_proactive_replace:
+                                _debug_undead = {str(k): v for k, v in self.ally_undead_rounds.items()}
+                                self.report_battle_info(
+                                    f"[预替换诊断] 触发预替换: undead_active={undead_active}, ally_undead_rounds={_debug_undead}, threshold={self.undead_threshold}",
+                                    "warning"
+                                )
+                        # 汇总日志
+                        _active_summary = {str(k): v for k, v in self.ally_undead_rounds.items()}
+                        self.report_battle_info(
+                            f"[预替换诊断] 回合{self.current_turn} 预替换状态: need={self.need_proactive_replace}, "
+                            f"undead_active={undead_active}, rounds={_active_summary}, "
+                            f"has_untracked={has_untracked_undead}",
+                            "info"
+                        )
 
                     # 为每个账号创建独立的处理线程
                     # 主账号已确认是我方回合，直接创建线程，_handle_account_turn内部会自己检测和等待操作按钮

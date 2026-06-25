@@ -64,7 +64,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='脚本v26.6.1',
+    name='脚本v26.6.3',
     version='version_info.txt',  # 元组格式
     debug=False,
     bootloader_ignore_signals=False,
