@@ -1637,10 +1637,6 @@ class MyThread(threading.Thread):
         while True:
             if self.check_stop_or_over():
                 return
-            # self.click_image(self.get_resource_path("serveAssets/images/guandu/dialog.bmp"), self.confidenceNum, self.gameBottomLocation)
-            # self.click_image(self.get_resource_path("serveAssets/images/guandu/dialog1.bmp"), self.confidenceNum, self.gameBottomLocation)
-            # self.click_image(self.get_resource_path("serveAssets/images/dialog3.bmp"), self.confidenceNum, self.gameBottomLocation)
-            # self.click_image(self.get_resource_path("serveAssets/images/fubenzudui.bmp"), self.confidenceNum, self.gameBottomLocation)
             # 关闭右边
             if self.scriptName != "帮派任务" and self.scriptName != "测试":
                 closeRight = self.click_image(
@@ -1727,7 +1723,6 @@ class MyThread(threading.Thread):
             #     #     0,
             #     # )
             #     # if jineng:
-
             #     #     self.dm.MoveTo(jineng.x, jineng.y)
             #     #     time.sleep(0.001)
             #     #     self.dm.LeftClick()
