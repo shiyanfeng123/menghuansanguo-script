@@ -173,6 +173,7 @@ class MyThread(threading.Thread):
         self.sixiang_difficulty = ""
         self.richangFlag = ""
         self.after_zreo = ""
+        self._zhengdian_early_waited = False
         self.teammate1_name = ""
         self.teammate2_name = ""
         self.teammate1_pos = ""
@@ -3491,24 +3492,16 @@ class MyThread(threading.Thread):
         time.sleep(0.5)
         self.huifu_yijian_main()
         time.sleep(1)
-        while True:
-            with condition:
-                if self.stoped:
-                    condition.wait()
-            current_time = time.localtime()
-            if (current_time.tm_min == 59 and current_time.tm_sec == 58) or (
-                    current_time.tm_min == 59 and current_time.tm_sec == 59
-            ):
-                break
-            time.sleep(1)  # 每秒钟检查一次
+        self._zhengdian_early_waited = False
+        # 提前飞到第一张随机地图，在 zhengdian_all_inview 中等待整点并直接搜索
         # 蛇+全打/全打：蛇时辰走路搜索蛇
         if self.zhengdianFloor in ["蛇+全打"] and self._is_snake_hour(zhengdian_hour):
-            self.zhengdian_all_inview(zd_groups=self.she_groups, auto_combat_key="蛇")
+            self.zhengdian_all_inview(zd_groups=self.she_groups, auto_combat_key="蛇", early_first=True)
         # 龙+全打/蛇+全打/全打：龙时辰走路搜索龙
         if self.zhengdianFloor in ["龙+全打", "蛇+全打"] and self._is_dragon_hour(zhengdian_hour):
-            self.zhengdian_all_inview(zd_groups=self.long_groups)
+            self.zhengdian_all_inview(zd_groups=self.long_groups, early_first=True)
         # 龙/蛇时辰：视野搜索普通整点，避免小绿人误打龙/蛇
-        self.zhengdian_all_inview(zd_groups=self.normal_zd_groups_no_boss)
+        self.zhengdian_all_inview(zd_groups=self.normal_zd_groups_no_boss, early_first=True)
         time.sleep(0.5)
         self.zhengdian_flag = False
         if self.scriptName == "抢龙":
@@ -3782,7 +3775,18 @@ class MyThread(threading.Thread):
             return False
         return True
 
-    def zhengdian_all_inview(self, zd_list=None, zd_groups=None, auto_combat_key=None):
+    def _wait_for_zhengdian_time(self):
+        """等待整点时刻：分钟=0，秒=0或1"""
+        while True:
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            ct = time.localtime()
+            if ct.tm_min == 0 and ct.tm_sec in [0, 1]:
+                break
+            time.sleep(0.1)
+
+    def zhengdian_all_inview(self, zd_list=None, zd_groups=None, auto_combat_key=None, early_first=False):
         if zd_list is None:
             zd_list = self.zdList
         if zd_groups is None:
@@ -3802,7 +3806,11 @@ class MyThread(threading.Thread):
                 True,
             )
             if is_fei:
-                if not self._has_zd_in_map(last_item, zd_groups):
+                if early_first and i == 0 and not self._zhengdian_early_waited:
+                    # 首次调用第一张随机地图：等待整点，跳过小绿人检测
+                    self._wait_for_zhengdian_time()
+                    self._zhengdian_early_waited = True
+                elif not self._has_zd_in_map(last_item, zd_groups):
                     continue
                 self.find_zd_in_view(
                     last_item["findAddress"], zd_groups, auto_combat_key, last_item["ditu"], last_item["city"]
@@ -4154,24 +4162,16 @@ class MyThread(threading.Thread):
         self.clear_info()
         self.huifu_yijian_main()
         time.sleep(1)
-        while True:
-            with condition:
-                if self.stoped:
-                    condition.wait()
-            current_time = time.localtime()
-            if (current_time.tm_min == 59 and current_time.tm_sec == 58) or (
-                    current_time.tm_min == 59 and current_time.tm_sec == 59
-            ):
-                break
-            time.sleep(1)
+        self._zhengdian_early_waited = False
+        # 提前飞到第一张随机地图，在 zhengdian_all_inview 中等待整点并直接搜索
         # 49蛇+全打/49整点/49龙+全打：蛇时辰走路搜索蛇
         if self.zhengdianFloor in ["49蛇+全打", "49整点", "49龙+全打"] and self._is_snake_hour(zhengdian_hour):
-            self.zhengdian_all_inview(zd_list=self.zd49List, zd_groups=self.she_groups, auto_combat_key="蛇")
+            self.zhengdian_all_inview(zd_list=self.zd49List, zd_groups=self.she_groups, auto_combat_key="蛇", early_first=True)
         # 49蛇+全打/49龙+全打/49整点：龙时辰走路搜索龙
         if self.zhengdianFloor in ["49蛇+全打", "49龙+全打", "49整点"] and self._is_dragon_hour(zhengdian_hour):
-            self.zhengdian_all_inview(zd_list=self.zd49List, zd_groups=self.long_groups)
+            self.zhengdian_all_inview(zd_list=self.zd49List, zd_groups=self.long_groups, early_first=True)
         # 全部选项：走路搜索普通整点
-        self.zhengdian_all_inview(zd_list=self.zd49List, zd_groups=self.normal_zd_groups)
+        self.zhengdian_all_inview(zd_list=self.zd49List, zd_groups=self.normal_zd_groups, early_first=True)
         self.zhengdian_flag = False
         gc.collect()
         if int(time.localtime().tm_hour) == 0:
@@ -4404,6 +4404,7 @@ class MyThread(threading.Thread):
             self.dm.FreePic(image_path)
             return ResXy(int(posX), int(posY))
 
+        just_attacked = False
         while True:
             if self.overed:
                 return
@@ -4438,10 +4439,15 @@ class MyThread(threading.Thread):
                     if result == "success":
                         self.daZhengDianCount += 1
                         print(f"打了第{self.daZhengDianCount}个整点")
+                        just_attacked = True
                     elif result == "challenged":
                         challenged_positions.append((sx_pos.x, sx_pos.y, time.time(), current_map))
             if ditu_name and city_img:
                 self._ensure_on_map(ditu_name, city_img, base_image)
+            if just_attacked:
+                just_attacked = False
+                time.sleep(0.3)
+                continue
             self.confidenceNum = 0.8
             left_x = random.randint(742, 758)
             rand_y = 80
