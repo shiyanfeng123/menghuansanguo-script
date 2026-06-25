@@ -512,7 +512,7 @@ class CombatAutoScript:
         self.ally_undead_rounds = {}
         self.ally_undead_last_increment_turn = {}
         self.caocao_passive_missing_rounds = {}
-        self.undead_threshold = 3  # count>=4时认为被动耗尽, 不再计入安全武将数
+        self.undead_threshold = 4  # count>=4时认为被动耗尽, 不再计入安全武将数
         self.proactive_replace_account = 0
         self.need_proactive_replace = False
         self._proactive_replace_in_progress = False
@@ -1191,7 +1191,12 @@ class CombatAutoScript:
                         except Exception:
                             continue
                 if positions:
-                    return positions
+                    # 去重：同一敌军的蓝条匹配多张图片时距离很近，用欧氏距离区分
+                    deduped = []
+                    for pos in sorted(positions):
+                        if not deduped or ((pos[0] - deduped[-1][0]) ** 2 + (pos[1] - deduped[-1][1]) ** 2) ** 0.5 > 5:
+                            deduped.append(pos)
+                    return deduped
             time.sleep(0.02)
         return []
 
@@ -1320,7 +1325,7 @@ class CombatAutoScript:
         elif cond == "attack_buff_expired":
             return self.attack_buff_tracker.get(account_index, 0) <= 0
         elif cond == "enemy_single":
-            return self.enemy_single_rounds >= 3
+            return self.enemy_single_rounds >= 2
         elif cond == "first_turn":
             return self.current_turn <= 1
         return True
@@ -1456,6 +1461,7 @@ class CombatAutoScript:
             self.report_battle_info(f"账号{account_index} 释放技能{skill_name}时发生异常: {e}", "error")
             return False
 
+    # 召唤武将
     def summon_general_with_verification(self, account_index, general_name, force_replace=False, replace_position=None):
         """召唤武将并验证是否成功
         :param account_index: 账号索引
@@ -2332,8 +2338,8 @@ class CombatAutoScript:
                     if caocao_on_field:
                         # 曹操在场 → 缺失计数+1
                         self.caocao_passive_missing_rounds[key] = self.caocao_passive_missing_rounds.get(key, 0) + 1
-                        # 连续6次未识别到不灭雄心 + 曹操在场 → 判定被动触发
-                        if self.caocao_passive_missing_rounds[key] >= 4:
+                        # 连续3次未识别到不灭雄心 + 曹操在场 → 判定被动触发
+                        if self.caocao_passive_missing_rounds[key] >= 3:
                             if prev == 0:
                                 # 首次触发: count 0→1
                                 self.ally_undead_rounds[key] = 1
@@ -4071,61 +4077,19 @@ class CombatAutoScript:
                         has_own_replacing = True
                         break
                 my_turn = False
-                replace_with_liubei = False
                 if not has_own_replacing:
-                    with self._state_lock:
-                        if (self.need_proactive_replace
-                            and not self._proactive_replace_in_progress
-                            and account_index == self.proactive_replace_account):
-                            self._proactive_replace_in_progress = True
-                            my_turn = True
-                            # 检查场上是否有可用刘备(CD<=2), 有则不需要预替换召唤刘备
-                            _field_has_usable_liubei = False
-                            for _i in range(self.get_account_count()):
-                                if _i not in self.unit_info:
-                                    continue
-                                for _g in self.unit_info[_i].get("main_char", {}).get("generals", []):
-                                    if (_g.get("name") == "刘备" and _g.get("alive", True)
-                                        and not _g.get("replacing", False) and not _g.get("pending_kick", False)):
-                                        if self._get_liubei_clear_cd_remaining(_i) <= 2:
-                                            _field_has_usable_liubei = True
-                                            break
-                                if _field_has_usable_liubei:
-                                    break
-                            # 蛇特殊处理：未认领任务中有蛇且场上有刘备(无论CD)时，不因蛇触发预替换召唤
-                            snake_unclaimed = sum(
-                                1 for e in self.global_enemies_need_clear
-                                if e.get("claimed_by") is None and e.get("enemy_name") == "蛇"
-                            )
-                            _skip_snake_summon = False
-                            if snake_unclaimed > 0:
-                                for _i in range(self.get_account_count()):
-                                    if _i not in self.unit_info:
-                                        continue
-                                    for _g in self.unit_info[_i].get("main_char", {}).get("generals", []):
-                                        if (_g.get("name") == "刘备" and _g.get("alive", True)
-                                            and not _g.get("replacing", False) and not _g.get("pending_kick", False)):
-                                            _skip_snake_summon = True
-                                            break
-                                    if _skip_snake_summon:
-                                        break
-
-                            replace_with_liubei = (self.keep_support_general
-                                                   and self.has_liubei.get(account_index, False)
-                                                   and any(e.get("claimed_by") is None for e in self.global_enemies_need_clear)
-                                                   and not _field_has_usable_liubei
-                                                   and not _skip_snake_summon)
-                            if replace_with_liubei:
-                                if not self._liubei_summon_in_progress.get(account_index, False):
-                                    self._liubei_summon_in_progress[account_index] = True
-                            # 诊断日志
-                            _unclaimed = [e.get("enemy_name") for e in self.global_enemies_need_clear if e.get("claimed_by") is None]
-                            self.report_battle_info(
-                                f"[预替换诊断] 账号{account_index} 轮到: keep_support={self.keep_support_general}, "
-                                f"field_usable_liubei={_field_has_usable_liubei}, replace_with_liubei={replace_with_liubei}, "
-                                f"unclaimed={_unclaimed}, proactive_replace_account={self.proactive_replace_account}",
-                                "info"
-                            )
+                    # 跳过背包中无可用武将的账号，避免浪费预替换轮转
+                    if not self.has_general.get(account_index, False):
+                        if self.need_proactive_replace and account_index == self.proactive_replace_account:
+                            with self._state_lock:
+                                self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
+                    else:
+                        with self._state_lock:
+                            if (self.need_proactive_replace
+                                and not self._proactive_replace_in_progress
+                                and account_index == self.proactive_replace_account):
+                                self._proactive_replace_in_progress = True
+                                my_turn = True
                 if my_turn:
                     char_info = self.unit_info[account_index]["main_char"]
                     if not char_info.get("alive", True):
@@ -4143,53 +4107,68 @@ class CombatAutoScript:
                             self.report_battle_info(
                                 f"账号{account_index} 预替换跳过(无可替换位置), 下次替换账号{self.proactive_replace_account}", "action")
                         else:
-                            if replace_with_liubei:
-                                summon_name = "刘备"
+                            # 查找免死耗尽最严重的武将
+                            worst_key = None
+                            worst_count = -1
+                            for key, count in self.ally_undead_rounds.items():
+                                if key[0] != account_index:
+                                    continue
+                                if count > worst_count:
+                                    worst_count = count
+                                    worst_key = key
+                            if worst_key:
+                                summon_name = self._get_general_name_by_region(account_index, worst_key[1])
                             else:
-                                worst_key = None
-                                worst_count = -1
-                                for key, count in self.ally_undead_rounds.items():
-                                    if key[0] != account_index:
-                                        continue
-                                    if count > worst_count:
-                                        worst_count = count
-                                        worst_key = key
-                                if worst_key:
-                                    summon_name = self._get_general_name_by_region(account_index, worst_key[1])
-                                else:
-                                    summon_name = None
-                            # 诊断：是什么替换路径
+                                summon_name = None
                             self.report_battle_info(
                                 f"[预替换诊断] 账号{account_index} 准备召唤: summon_name={summon_name}, "
-                                f"replace_with_liubei={replace_with_liubei}, replace_pos={replace_pos}, "
+                                f"replace_pos={replace_pos}, "
                                 f"账号武将={[g.get('name')+('(alive)' if g.get('alive',True) else '(dead)') for g in char_info.get('generals', [])]}",
                                 "info"
                             )
                             # summon_name为None时(本账号无免死记录或武将已阵亡), 跳过预替换
                             if summon_name is None:
-                                with self._state_lock:
-                                    self._proactive_replace_in_progress = False
-                                    self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
-                                self.report_battle_info(
-                                    f"账号{account_index} 预替换跳过(无可替换武将), 下次替换账号{self.proactive_replace_account}", "info")
-                            elif summon_name and self.summon_general_with_verification(
-                                account_index, summon_name, force_replace=True,
-                                replace_position=replace_pos):
-                                self.report_battle_info(
-                                    f"账号{account_index} 预替换{summon_name}操作完成, 等待验证确认", "action")
-                                return True
-                            else:
-                                with self._state_lock:
-                                    self._proactive_replace_in_progress = False
-                                    self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
-                                if replace_with_liubei and summon_name == "刘备":
+                                # 只有主角操作才有意义推进，武将操作保持等待主角Call
+                                _find_start = time.time()
+                                _btn = None
+                                while time.time() - _find_start < 0.5 and not _btn:
+                                    _btn = self.find_image(account_index, self.button_images["召唤按钮"],
+                                                            self.right_button_region, 0)
+                                    if _btn:
+                                        break
+                                    time.sleep(0.005)
+                                if _btn:
+                                    with self._state_lock:
+                                        self._proactive_replace_in_progress = False
+                                        self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
                                     self.report_battle_info(
-                                        f"[预替换诊断] 账号{account_index} 预替换刘备召唤失败: "
-                                        f"replace_pos={replace_pos}, 账号已有武将={[g.get('name') for g in char_info.get('generals', [])]}",
-                                        "warning"
-                                    )
-                                    self._liubei_summon_in_progress[account_index] = False
+                                        f"账号{account_index} 预替换跳过(无可替换武将), 下次替换账号{self.proactive_replace_account}", "info")
                                 else:
+                                    with self._state_lock:
+                                        self._proactive_replace_in_progress = False
+                            else:
+                                # 仅主角操作有召唤按钮，非主角阶段不推进，保持当前proactive等主角Call
+                                _find_start = time.time()
+                                summon_btn = None
+                                while time.time() - _find_start < 0.5 and not summon_btn:
+                                    summon_btn = self.find_image(account_index, self.button_images["召唤按钮"],
+                                                                  self.right_button_region, 0)
+                                    if summon_btn:
+                                        break
+                                    time.sleep(0.005)
+                                if not summon_btn:
+                                    with self._state_lock:
+                                        self._proactive_replace_in_progress = False
+                                elif self.summon_general_with_verification(
+                                    account_index, summon_name, force_replace=True,
+                                    replace_position=replace_pos):
+                                    self.report_battle_info(
+                                        f"账号{account_index} 预替换{summon_name}操作完成, 等待验证确认", "action")
+                                    return True
+                                else:
+                                    with self._state_lock:
+                                        self._proactive_replace_in_progress = False
+                                        self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
                                     self.report_battle_info(
                                         f"账号{account_index} 预替换{summon_name}操作失败, "
                                         f"下次替换账号{self.proactive_replace_account}", "warning")
@@ -4208,180 +4187,7 @@ class CombatAutoScript:
                 self.click_position(account_index, skill_btn.x, skill_btn.y)
                 time.sleep(0.2)
 
-            # 第一回合跳过召唤判断（第一回合武将还没有出现，不需要召唤）
-            is_first_turn = self.current_turn == 0 or self.current_turn == 1
-
-            char_info = self.unit_info[account_index]["main_char"]
-            need_liubei = False
-            need_summon_general = False
-            need_self_liubei = False
-
-            # 默认每个账号有2个武将，不需要第一回合检测
-            # 第一回合不召唤
-            if not is_first_turn and not skip_side_effects:
-                # 检查当前账号是否有武将处于死亡状态（召唤的必要条件）
-                # 方法1：检查global_dead_units中是否有当前账号的武将
-                has_dead_general_in_account = False
-                with self._state_lock:
-                    for dead_gen in self.global_dead_units["generals"]:
-                        if dead_gen.get("account_index") == account_index:
-                            has_dead_general_in_account = True
-                            break
-
-                # 方法2：检查武将列表中是否有死亡状态的武将（排除replacing）
-                has_dead_general_in_list = False
-                for gen_info in char_info.get("generals", []):
-                    if not gen_info.get("alive", True) and not gen_info.get("replacing", False):
-                        has_dead_general_in_list = True
-                        break
-
-                # 方法3：检查实际存活的武将数量（排除replacing和pending_kick）
-                alive_generals_count = 0
-                for gen_info in char_info.get("generals", []):
-                    if gen_info.get("alive", True) and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False):
-                        alive_generals_count += 1
-                # 判断是否需要召唤：
-                # 1. 主角必须存活
-                # 2. 实际存活武将数量必须小于2
-                # 3. 账号下有武将处于死亡状态（在global_dead_units中或alive=False）
-                has_replacing_general = any(
-                    g.get("replacing", False)
-                    for g in char_info.get("generals", [])
-                )
-                in_cooldown = (account_index in self.replace_fail_cooldown
-                               and self.current_turn <= self.replace_fail_cooldown[account_index])
-                if char_info.get("alive", True):
-                    need_summon = (has_dead_general_in_list or alive_generals_count < 2) and not has_replacing_general and not in_cooldown
-                else:
-                    need_summon = False
-
-                if need_summon:
-                    # 第二步：判断场上有无刘备（遍历所有账号的generals列表实时计算，与清除任务判断同款数据源）
-                    # 不再使用 has_liubei_on_field（图片识别全局标志，非我方回合易失败且更新滞后）
-                    with self._state_lock:
-                        field_liubei_count_for_summon = 0
-                        for _acct in range(self.get_account_count()):
-                            if _acct not in self.unit_info:
-                                continue
-                            for _g in self.unit_info[_acct]["main_char"].get("generals", []):
-                                if (_g.get("name") == "刘备" and _g.get("alive", True)
-                                    and not _g.get("replacing", False) and not _g.get("pending_kick", False)):
-                                    if self._get_liubei_clear_cd_remaining(_acct) > 2:
-                                        continue
-                                    field_liubei_count_for_summon += 1
-                        summoning_count_for_summon = sum(
-                            1 for _v in self._liubei_summon_in_progress.values() if _v
-                        )
-                        field_has_liubei = (field_liubei_count_for_summon + summoning_count_for_summon) > 0
-
-                    # 检查当前账号是否有存活的刘备（排除replacing和pending_kick）
-                    has_liubei_in_account = False
-                    for gen_info in char_info.get("generals", []):
-                        if (gen_info.get("name") == "刘备" and gen_info.get("alive", True)
-                            and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
-                            has_liubei_in_account = True
-                            break
-
-                    # 第三步：根据场上有无刘备决定召唤什么武将
-                    # 如果场上没有刘备（含召唤中），且当前账号没有存活的刘备，优先召唤刘备
-                    if not field_has_liubei and not has_liubei_in_account:
-                        need_liubei = True
-                        need_summon_general = True
-                        self.report_battle_info(
-                            f"账号{account_index} 判断需要召唤刘备（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 场上无刘备={not field_has_liubei}, 账号无刘备={not has_liubei_in_account}, 背包有刘备={self.has_liubei.get(account_index, False)}, 主角存活={char_info.get('alive', True)}）",
-                            "info",
-                        )
-                    else:
-                        # 场上有刘备或当前账号有刘备，召唤其他武将
-                        need_summon_general = True
-                        self.report_battle_info(
-                            f"账号{account_index} 判断需要召唤其他武将（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 场上有刘备={field_has_liubei}, 账号有刘备={has_liubei_in_account}, 主角存活={char_info.get('alive', True)}）",
-                            "info",
-                        )
-                else:
-                    self.report_battle_info(
-                        f"账号{account_index} 判断不需要召唤（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 主角存活={char_info.get('alive', True)}）",
-                        "info",
-                    )
-            else:
-                if skip_side_effects:
-                    self.report_battle_info(f"账号{account_index} [retry] 跳过召唤判断（skip_side_effects）", "info")
-                else:
-                    self.report_battle_info(f"账号{account_index} 第一回合，跳过召唤判断", "info")
-
-            # 多刘备并行：计算是否需要召唤刘备来清除状态
-            if not skip_side_effects:
-              with self._state_lock:
-                has_liubei_in_account_for_clear = False
-                for gen_info in char_info.get("generals", []):
-                    if (gen_info.get("name") == "刘备" and gen_info.get("alive", True)
-                        and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
-                        if self._get_liubei_clear_cd_remaining(account_index) > 2:
-                            continue
-                        has_liubei_in_account_for_clear = True
-                        break
-
-                unclaimed_count = sum(1 for e in self.global_enemies_need_clear if e.get("claimed_by") is None)
-
-                field_liubei_count = 0
-                claimed_liubei_count = 0
-                for i in range(self.get_account_count()):
-                    if i not in self.unit_info:
-                        continue
-                    for g in self.unit_info[i].get("main_char", {}).get("generals", []):
-                        if (g.get("name") == "刘备" and g.get("alive", True)
-                            and not g.get("replacing", False) and not g.get("pending_kick", False)):
-                            if self._get_liubei_clear_cd_remaining(i) > 2:
-                                continue
-                            field_liubei_count += 1
-                            if any(e.get("claimed_by") == i for e in self.global_enemies_need_clear):
-                                claimed_liubei_count += 1
-
-                effective_available = field_liubei_count - claimed_liubei_count
-                summoning_count = sum(1 for v in self._liubei_summon_in_progress.values() if v)
-                need_summon_count = unclaimed_count - effective_available - summoning_count
-
-                # 蛇特殊处理：未认领任务中有蛇且场上有刘备(无论CD)时，不因蛇触发召唤
-                snake_unclaimed = sum(
-                    1 for e in self.global_enemies_need_clear
-                    if e.get("claimed_by") is None and e.get("enemy_name") == "蛇"
-                )
-                if snake_unclaimed > 0:
-                    field_any_liubei = any(
-                        g.get("name") == "刘备" and g.get("alive", True)
-                        and not g.get("replacing", False) and not g.get("pending_kick", False)
-                        for i in range(self.get_account_count())
-                        for g in self.unit_info[i].get("main_char", {}).get("generals", [])
-                    )
-                    if field_any_liubei:
-                        need_summon_count -= snake_unclaimed
-                        need_summon_count = max(0, need_summon_count)
-
-                if (need_summon_count > 0
-                    and not has_liubei_in_account_for_clear
-                    and char_info.get("alive", True)
-                    and self.has_liubei.get(account_index, False)
-                    and self.has_general.get(account_index, False)):
-                    if not self._liubei_summon_in_progress.get(account_index, False):
-                        self._liubei_summon_in_progress[account_index] = True
-                        need_self_liubei = True
-                        if not self.keep_support_general:
-                            self.keep_support_general = True
-
-                any_account_has_liubei = field_liubei_count > 0 or summoning_count > 0
-                if (not need_self_liubei
-                    and (self.keep_support_general or self._zhugeliang_low_hp)
-                    and self.global_enemies_need_clear
-                    and not any_account_has_liubei
-                    and not has_liubei_in_account_for_clear
-                    and char_info.get("alive", True)
-                    and self.has_liubei.get(account_index, False)):
-                    # 注意: 此处已在 L3930 的 with self._state_lock 块内，不可再次获取锁(死锁)
-                    if not self._liubei_summon_in_progress.get(account_index, False):
-                        self._liubei_summon_in_progress[account_index] = True
-                        need_self_liubei = True
-
-            # 3. 检查是否有分配到的复活任务
+            # 检查是否有分配到的复活任务
             # 复活任务在我方回合开始时已统一分配，这里只需要检查当前账号是否有任务
             assigned_revive_target = self.revive_assignments.get(account_index)
 
@@ -4392,6 +4198,165 @@ class CombatAutoScript:
                 # 主角操作
                 # 识别到主角操作，说明该主角存活，确认复活成功（如果有待验证的复活）
                 self._confirm_revive_success(account_index)
+                # === 召唤判断（仅主角操作执行） ===
+                char_info = self.unit_info[account_index]["main_char"]
+                need_liubei = False
+                need_summon_general = False
+                need_self_liubei = False
+                is_first_turn = self.current_turn == 0 or self.current_turn == 1
+
+                if not is_first_turn and not skip_side_effects:
+                    has_dead_general_in_account = False
+                    with self._state_lock:
+                        for dead_gen in self.global_dead_units["generals"]:
+                            if dead_gen.get("account_index") == account_index:
+                                has_dead_general_in_account = True
+                                break
+
+                    has_dead_general_in_list = False
+                    for gen_info in char_info.get("generals", []):
+                        if not gen_info.get("alive", True) and not gen_info.get("replacing", False):
+                            has_dead_general_in_list = True
+                            break
+
+                    alive_generals_count = 0
+                    for gen_info in char_info.get("generals", []):
+                        if gen_info.get("alive", True) and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False):
+                            alive_generals_count += 1
+
+                    has_replacing_general = any(
+                        g.get("replacing", False)
+                        for g in char_info.get("generals", [])
+                    )
+                    in_cooldown = (account_index in self.replace_fail_cooldown
+                                   and self.current_turn <= self.replace_fail_cooldown[account_index])
+                    if char_info.get("alive", True):
+                        need_summon = (has_dead_general_in_list or alive_generals_count < 2) and not has_replacing_general and not in_cooldown
+                    else:
+                        need_summon = False
+
+                    if need_summon:
+                        with self._state_lock:
+                            field_liubei_count_for_summon = 0
+                            for _acct in range(self.get_account_count()):
+                                if _acct not in self.unit_info:
+                                    continue
+                                for _g in self.unit_info[_acct]["main_char"].get("generals", []):
+                                    if (_g.get("name") == "刘备" and _g.get("alive", True)
+                                        and not _g.get("replacing", False) and not _g.get("pending_kick", False)):
+                                        if self._get_liubei_clear_cd_remaining(_acct) > 2:
+                                            continue
+                                        field_liubei_count_for_summon += 1
+                            summoning_count_for_summon = sum(
+                                1 for _v in self._liubei_summon_in_progress.values() if _v
+                            )
+                            field_has_liubei = (field_liubei_count_for_summon + summoning_count_for_summon) > 0
+                            if (not field_has_liubei and self.keep_support_general
+                                    and not self._liubei_summon_in_progress.get(account_index, False)):
+                                self._liubei_summon_in_progress[account_index] = True
+
+                        has_liubei_in_account = False
+                        for gen_info in char_info.get("generals", []):
+                            if (gen_info.get("name") == "刘备" and gen_info.get("alive", True)
+                                and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
+                                has_liubei_in_account = True
+                                break
+
+                        if not field_has_liubei and not has_liubei_in_account and self.keep_support_general:
+                            need_liubei = True
+                            need_summon_general = True
+                            self.report_battle_info(
+                                f"账号{account_index} 判断需要召唤刘备（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 场上无刘备={not field_has_liubei}, 账号无刘备={not has_liubei_in_account}, 背包有刘备={self.has_liubei.get(account_index, False)}, 主角存活={char_info.get('alive', True)}）",
+                                "info",
+                            )
+                        else:
+                            need_summon_general = True
+                            self.report_battle_info(
+                                f"账号{account_index} 判断需要召唤其他武将（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 场上有刘备={field_has_liubei}, 账号有刘备={has_liubei_in_account}, 主角存活={char_info.get('alive', True)}）",
+                                "info",
+                            )
+                    else:
+                        self.report_battle_info(
+                            f"账号{account_index} 判断不需要召唤（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 主角存活={char_info.get('alive', True)}）",
+                            "info",
+                        )
+                else:
+                    if skip_side_effects:
+                        self.report_battle_info(f"账号{account_index} [retry] 跳过召唤判断（skip_side_effects）", "info")
+                    else:
+                        self.report_battle_info(f"账号{account_index} 第一回合，跳过召唤判断", "info")
+
+                # 多刘备并行
+                if not skip_side_effects:
+                  with self._state_lock:
+                    has_liubei_in_account_for_clear = False
+                    for gen_info in char_info.get("generals", []):
+                        if (gen_info.get("name") == "刘备" and gen_info.get("alive", True)
+                            and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
+                            if self._get_liubei_clear_cd_remaining(account_index) > 2:
+                                continue
+                            has_liubei_in_account_for_clear = True
+                            break
+
+                    unclaimed_count = sum(1 for e in self.global_enemies_need_clear if e.get("claimed_by") is None)
+
+                    field_liubei_count = 0
+                    claimed_liubei_count = 0
+                    for i in range(self.get_account_count()):
+                        if i not in self.unit_info:
+                            continue
+                        for g in self.unit_info[i].get("main_char", {}).get("generals", []):
+                            if (g.get("name") == "刘备" and g.get("alive", True)
+                                and not g.get("replacing", False) and not g.get("pending_kick", False)):
+                                if self._get_liubei_clear_cd_remaining(i) > 2:
+                                    continue
+                                field_liubei_count += 1
+                                if any(e.get("claimed_by") == i for e in self.global_enemies_need_clear):
+                                    claimed_liubei_count += 1
+
+                    effective_available = field_liubei_count - claimed_liubei_count
+                    summoning_count = sum(1 for v in self._liubei_summon_in_progress.values() if v)
+                    need_summon_count = unclaimed_count - effective_available - summoning_count
+
+                    snake_unclaimed = sum(
+                        1 for e in self.global_enemies_need_clear
+                        if e.get("claimed_by") is None and e.get("enemy_name") == "蛇"
+                    )
+                    if snake_unclaimed > 0:
+                        field_any_liubei = any(
+                            g.get("name") == "刘备" and g.get("alive", True)
+                            and not g.get("replacing", False) and not g.get("pending_kick", False)
+                            for i in range(self.get_account_count())
+                            for g in self.unit_info[i].get("main_char", {}).get("generals", [])
+                        )
+                        if field_any_liubei:
+                            need_summon_count -= snake_unclaimed
+                            need_summon_count = max(0, need_summon_count)
+
+                    if (need_summon_count > 0
+                        and not has_liubei_in_account_for_clear
+                        and char_info.get("alive", True)
+                        and self.has_liubei.get(account_index, False)
+                        and self.has_general.get(account_index, False)):
+                        if not self._liubei_summon_in_progress.get(account_index, False):
+                            self._liubei_summon_in_progress[account_index] = True
+                            need_self_liubei = True
+                            if not self.keep_support_general:
+                                self.keep_support_general = True
+
+                    any_account_has_liubei = field_liubei_count > 0 or summoning_count > 0
+                    if (not need_self_liubei
+                        and (self.keep_support_general or self._zhugeliang_low_hp)
+                        and self.global_enemies_need_clear
+                        and not any_account_has_liubei
+                        and not has_liubei_in_account_for_clear
+                        and char_info.get("alive", True)
+                        and self.has_liubei.get(account_index, False)):
+                        if not self._liubei_summon_in_progress.get(account_index, False):
+                            self._liubei_summon_in_progress[account_index] = True
+                            need_self_liubei = True
+                # === 召唤判断结束 ===
+
                 # 可以加一个开关，如果需要清除状态，开关打开，召唤刘备 通过zhaohuan_index去控制召唤账号
                 # (self.beidong_huihe >= 5 and self.zhaohuan_index == account_index) 刘备没免死了
                 # need_liubei 场上没有刘备
@@ -4455,6 +4420,7 @@ class CombatAutoScript:
                             time.sleep(0.1)
                             return True
                         else:
+                            self.click_position(account_index, 12, 12)
                             _summon_not_found_count += 1
                     if _summon_not_found_count == len(general_order):
                         self.has_general[account_index] = False
@@ -4469,7 +4435,7 @@ class CombatAutoScript:
                         f"has_general={self.has_general.get(account_index, False)}, skip_side_effects={skip_side_effects}",
                         "warning"
                     )
-                # 确保技能面板已打开（点击技能按钮）
+                    # 确保技能面板已打开（点击技能按钮）
                     find_jineng_time = time.time()
                     skill_btn = None
                     while time.time() - find_jineng_time < 2.0 and not skill_btn:

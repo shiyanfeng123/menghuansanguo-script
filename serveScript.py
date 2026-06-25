@@ -11237,7 +11237,14 @@ class MyThread(threading.Thread):
             self.dituLocation,
             "888,75",
         )
-        for index, item in enumerate(longzhuPos):
+        longzhuPos3 = [
+            "0.161,0.127",
+            "0.134,0.134",
+            "0.078,0.12",
+            "0.063,0.136",
+            "0.028,0.122",
+        ]
+        for index, item in enumerate(longzhuPos3):
             self.findAndClickPic(
                 self.get_resource_path(
                     "serveAssets/images/longzhu/longchaojingnei.bmp"),
@@ -11250,7 +11257,7 @@ class MyThread(threading.Thread):
                 f"{self.get_resource_path('serveAssets/images/longzhu/yujianxiannv2.bmp')}|"
                 f"{self.get_resource_path('serveAssets/images/longzhu/yunlonghuwei1.bmp')}|"
                 f"{self.get_resource_path('serveAssets/images/longzhu/yunlonghuwei2.bmp')}",
-                self.gameBottomLocation,
+                self.gameLeftLocation,
                 self.get_resource_path("serveAssets/images/zdzd.bmp"),
                 self.gameBottomLocation,
                 item,
