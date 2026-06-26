@@ -1001,7 +1001,7 @@ class CombatAutoScript:
                 "status_images": {
                     "状态1": f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
                 },
-                "status_region": (54, 360, 280, 541),
+                "status_region": (54, 360, 174, 541),
                 "cast_position": (115, 446),
                 "status_duration": 4,
             },
