@@ -567,8 +567,6 @@ class CombatAutoScript:
         self.zhaohuan_index = 0
         # 清除诸葛亮标志
         self.clear_zhugeliang = False
-        # 赵云29是否在场（全队公共变量，每轮非我方回合更新）
-        self.zhaoyun_alive = False
         # 开始召唤刘备标志
         self.start_summon_liubei = False
         # 刘备是否常驻（True=死了重召，False=一次性模式，清完状态回6曹操）
@@ -601,7 +599,6 @@ class CombatAutoScript:
                 {"priority": -1,  "skill": "防御",       "condition": "always"},
             ],
             "xingcai_support": [
-                {"priority": 105, "skill": "星彩单攻",   "condition": "zhaoyun_alive"},
                 {"priority": 100, "skill": "星彩辅助",   "condition": "always"},
                 {"priority": 95,  "skill": "星彩单攻",   "condition": "enemy_single"},
                 {"priority": 90,  "skill": "星彩群攻",   "condition": "always"},
@@ -1337,8 +1334,6 @@ class CombatAutoScript:
             return self.attack_buff_tracker.get(account_index, 0) <= 0
         elif cond == "enemy_single":
             return self.enemy_single_rounds >= 2
-        elif cond == "zhaoyun_alive":
-            return self.zhaoyun_alive
         elif cond == "first_turn":
             return self.current_turn <= 1
         return True
@@ -1402,12 +1397,8 @@ class CombatAutoScript:
                         f"账号{account_index} 释放{skill_name}，目标位置: {target_pos}", "action"
                     )
                 elif skill_name in ["星彩群攻", "星彩单攻"]:
-                    if skill_name == "星彩单攻" and self.zhaoyun_alive:
-                        # 赵云存活 → 单攻锁定赵云
-                        target_pos = self.enemy_general_config.get("赵云29", {}).get("cast_position", (115, 446))
-                    else:
-                        positions = self.enemy_target_positions
-                        target_pos = positions[self.enemy_target_index] if self.enemy_target_index < len(positions) else (104, 344)
+                    positions = self.enemy_target_positions
+                    target_pos = positions[self.enemy_target_index] if self.enemy_target_index < len(positions) else (104, 344)
                     self.account_last_target_type[account_index] = "enemy"
                     self.click_position(account_index, target_pos[0], target_pos[1])
                     self.report_battle_info(
@@ -2251,7 +2242,7 @@ class CombatAutoScript:
                 else:
                     # 未检测到验证图片, 检查超时
                     deployed_turn = gen.get("deployed_turn", current_turn)
-                    if current_turn - deployed_turn >= 1:
+                    if current_turn - deployed_turn >= 2:
                         if acct not in self.unit_info:
                             continue
                         char_info["generals"][:] = [
@@ -2613,11 +2604,6 @@ class CombatAutoScript:
                                 )
                                 del self._last_clear_attempt[acct_idx]
                         break
-
-            # 赵云29存活检测（检查蓝条是否存在，每轮非我方回合更新）
-            if enemy_key == "赵云29":
-                zhaoyun_found = self.find_image(dm_index, self.enemy_target_image, status_region, 0)
-                self.zhaoyun_alive = zhaoyun_found is not None
 
     def _get_liubei_clear_cd_remaining(self, account_index):
         """获取指定账号刘备清除状态技能的CD剩余回合数"""
@@ -4258,6 +4244,8 @@ class CombatAutoScript:
                             )
                             field_has_liubei = (field_liubei_count_for_summon + summoning_count_for_summon) > 0
                             if (not field_has_liubei and self.keep_support_general
+                                    and self.has_liubei.get(account_index, False)
+                                    and self.has_general.get(account_index, False)
                                     and not self._liubei_summon_in_progress.get(account_index, False)):
                                 self._liubei_summon_in_progress[account_index] = True
 
@@ -4368,7 +4356,8 @@ class CombatAutoScript:
                         and not any_account_has_liubei
                         and not has_liubei_in_account_for_clear
                         and char_info.get("alive", True)
-                        and self.has_liubei.get(account_index, False)):
+                        and self.has_liubei.get(account_index, False)
+                        and self.has_general.get(account_index, False)):
                         if not self._liubei_summon_in_progress.get(account_index, False):
                             self._liubei_summon_in_progress[account_index] = True
                             need_self_liubei = True
@@ -4685,18 +4674,38 @@ class CombatAutoScript:
                 claimed_target = None
                 cd_remaining = self._get_liubei_clear_cd_remaining(account_index)
                 if cd_remaining <= 2:
-                    with self._state_lock:
-                        for e in self.global_enemies_need_clear:
-                            if e.get("claimed_by") is None and e.get("enemy_name") == "诸葛亮":
-                                claimed_target = e
-                                break
-                        if claimed_target is None:
+                    # 如果其他账号有CD更短的刘备，让位
+                    should_defer = False
+                    if cd_remaining > 0:
+                        for i in range(self.get_account_count()):
+                            if i == account_index:
+                                continue
+                            if i not in self.unit_info:
+                                continue
+                            other_cd = self._get_liubei_clear_cd_remaining(i)
+                            if other_cd < cd_remaining:
+                                char_i = self.unit_info[i]["main_char"]
+                                has_lb = any(
+                                    g.get("name") == "刘备" and g.get("alive", True)
+                                    and not g.get("replacing", False) and not g.get("pending_kick", False)
+                                    for g in char_i.get("generals", [])
+                                )
+                                if has_lb:
+                                    should_defer = True
+                                    break
+                    if not should_defer:
+                        with self._state_lock:
                             for e in self.global_enemies_need_clear:
-                                if e.get("claimed_by") is None:
+                                if e.get("claimed_by") is None and e.get("enemy_name") == "诸葛亮":
                                     claimed_target = e
                                     break
-                        if claimed_target is not None:
-                            claimed_target["claimed_by"] = account_index
+                            if claimed_target is None:
+                                for e in self.global_enemies_need_clear:
+                                    if e.get("claimed_by") is None:
+                                        claimed_target = e
+                                        break
+                            if claimed_target is not None:
+                                claimed_target["claimed_by"] = account_index
                 self._claimed_clear_target[account_index] = claimed_target
 
                 # 识别刘备并添加到列表（如果不在列表中）
@@ -5466,7 +5475,6 @@ class CombatAutoScript:
                 self.beidong_huihe = 0
                 self.zhaohuan_index = 0
                 self.clear_zhugeliang = False
-                self.zhaoyun_alive = False
                 self.enable_persistent_liubei = True
                 self._last_kicked_info = None
                 self.ally_undead_rounds = {}
@@ -5576,7 +5584,6 @@ class CombatAutoScript:
             self.beidong_huihe = 0
             self.zhaohuan_index = 0
             self.clear_zhugeliang = False
-            self.zhaoyun_alive = False
             self.attack_buff_tracker = {}
             self.low_hp_accounts = {}
             self._zhugeliang_low_hp = False
@@ -5623,7 +5630,6 @@ class CombatAutoScript:
             self.combat_scene = combat_scene
             self.current_turn = 0
             self.clear_zhugeliang = False
-            self.zhaoyun_alive = False
             self.global_enemies_need_clear = []
             self._claimed_clear_target = {}
             self._last_clear_attempt = {}

@@ -98,7 +98,6 @@ class MyThread(threading.Thread):
             {"name": "战", "count": 6, "time": 25},
             {"name": "镇", "count": 6, "time": 10},
             {"name": "噬", "count": 6, "time": 15},
-            {"name": "帮", "count": 1, "time": 15},
             {"name": "英", "count": 7, "time": 10},
             {"name": "红", "count": 7, "time": 10},
             {"name": "渊", "count": 6, "time": 10},
@@ -118,7 +117,6 @@ class MyThread(threading.Thread):
             {"name": "镇", "count": 6, "time": 10},
             {"name": "噬", "count": 6, "time": 15},
             {"name": "红", "count": 7, "time": 10},
-            {"name": "帮", "count": 1, "time": 15},
             {"name": "渊", "count": 6, "time": 10},
             {"name": "溶", "count": 1, "time": 10},
             {"name": "名", "count": 8, "time": 4},
@@ -164,7 +162,6 @@ class MyThread(threading.Thread):
         self.bamen_count = 1
         self.laoshu_count = 1
         self.guandujy_count = 1
-        self.bangpai_enabled = True
         self.mingjiang_count = 8
         self.richang_zhengdian = False
         self.richang_mojing = False
@@ -432,7 +429,6 @@ class MyThread(threading.Thread):
             self.frame.laoshu_count) if self.frame.laoshu_count else 1
         self.guandujy_count = int(
             self.frame.guandujy_count) if self.frame.guandujy_count else 1
-        self.bangpai_enabled = self.frame.bangpai_enabled if hasattr(self.frame, 'bangpai_enabled') else True
         self.mingjiang_count = int(
             self.frame.mingjiang_count) if self.frame.mingjiang_count else 8
         self.richang_zhengdian = self.frame.richang_zhengdian if hasattr(self.frame, 'richang_zhengdian') else False
@@ -1040,6 +1036,43 @@ class MyThread(threading.Thread):
                 if self.check_stop_or_over():
                     return
                 self.chuansongfuScript()
+        elif self.scriptName == "帮派浩劫":
+            if not self.find_str("城西", self.dituLocation, 0):
+                self.go_in_ditu(
+                    "地图城西",
+                    self.get_resource_path(
+                        "serveAssets/images/zhengdian/luoyang.bmp"),
+                    "城西",
+                    "",
+                    "",
+                    True,
+                )
+            # 进入帮派大本营
+            self.findAndClickPic(
+                "城西",
+                f"{self.get_resource_path('serveAssets/images/longdao/bangpai.bmp')}|{self.get_resource_path('serveAssets/images/longdao/bangpai1.bmp')}",
+                "帮派大本营",
+                self.gameBottomLocation,
+                self.get_resource_path(
+                    "serveAssets/images/longdao/dabenying.bmp"),
+                self.dituLocation,
+                "0.107,0.156",
+            )
+            time.sleep(1)
+            self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True)
+            self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True)
+            self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
+            time.sleep(0.001)
+            self.dm.LeftClick()
+            time.sleep(0.5)
+            self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True)
         elif self.scriptName == "帮派任务":
             if not self.find_str("城西", self.dituLocation, 0):
                 self.go_in_ditu(
@@ -3825,10 +3858,7 @@ class MyThread(threading.Thread):
         # 打老虎
         time.sleep(1)
         # 走路模式：小绿人预检+走路搜索；非走路模式：小绿人导航
-        if self.zhengdianFloor == "走路":
-            self.find_zd_in_view("九黎族祭坛", self.normal_zd_groups_no_boss, None, "地图老虎遗迹", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
-        else:
-            self.find_zd_xiaolvren_v3("九黎族祭坛", 0, [], None, "地图老虎", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
+        self.find_zd_in_view("九黎族祭坛", self.normal_zd_groups_no_boss, None, "地图老虎遗迹", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         time.sleep(0.5)
         # 去魔魂山
         self.go_in_ditu(
@@ -3839,10 +3869,7 @@ class MyThread(threading.Thread):
             "",
             "",
         )
-        if self.zhengdianFloor == "走路":
-            self.find_zd_in_view("魔魂山", self.normal_zd_groups_no_boss, None, "地图牛", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
-        else:
-            self.find_zd_xiaolvren_v3("魔魂山", 0, [], None, "地图牛", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
+        self.find_zd_in_view("魔魂山", self.normal_zd_groups_no_boss, None, "地图牛", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         # 去魔谷西
         self.go_in_ditu(
             "地图羊",
@@ -3855,10 +3882,7 @@ class MyThread(threading.Thread):
         # 打羊
         time.sleep(1)
         # 魔谷西有2个NPC，需传入npc_count和npc_zones
-        if self.zhengdianFloor == "走路":
-            self.find_zd_in_view("魔谷西", self.normal_zd_groups_no_boss, None, "地图羊", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
-        else:
-            self.find_zd_xiaolvren_v3("魔谷西", 2, [(int(856 + self.locationX), int(46 + self.locationY)), (int(857 + self.locationX), int(46 + self.locationY))], None, "地图羊", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
+        self.find_zd_in_view("魔谷西", self.normal_zd_groups_no_boss, None, "地图羊", self.get_resource_path("serveAssets/images/zhengdian/xiangyang.bmp"))
         time.sleep(0.5)
         self.zhengdian_flag = False
         gc.collect()
@@ -4721,10 +4745,10 @@ class MyThread(threading.Thread):
         self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
         time.sleep(0.001)
         self.dm.LeftClick()
-        if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
-            self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
+        if auto_combat_key is not None:
+            self._start_combat_auto()
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
-        if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
+        if auto_combat_key is not None:
             self._stop_combat_auto()
         return combat_result
 
@@ -4934,17 +4958,8 @@ class MyThread(threading.Thread):
                 change_color_time = 0
                 found_btn = False
                 npc_images = (
-                    f"{self.get_resource_path('serveAssets/images/zhengdian/dianwei.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dianwei1.bmp')}"
                     f"|{self.get_resource_path('serveAssets/images/zhengdian/jixu.bmp')}"
                     f"|{self.get_resource_path('serveAssets/images/zhengdian/jixu1.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/jixu2.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/liwu.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/liwu1.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/liwu2.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dengmi.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dengmi1.bmp')}"
-                    f"|{self.get_resource_path('serveAssets/images/zhengdian/dengmi2.bmp')}"
                 )
 
                 while time.time() - start_time < 8:
@@ -4958,16 +4973,7 @@ class MyThread(threading.Thread):
                     if change_color_time > 0 and time.time() - change_color_time > 5:
                         break
 
-                    self.color_format = "b@ffff00-000000|fff200-000000"
-                    zhengdian_btn = self.find_str("打就打1", self.gameBottomLocation, 1)
-                    self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-                    if zhengdian_btn:
-                        self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
-                        time.sleep(0.001)
-                        self.dm.LeftClick()
-                        found_btn = True
-                        break
-                    zhengdian_btn1 = self.find_str("打就打", self.gameBottomLocation, 1)
+                    zhengdian_btn1 = self.find_str("挑战", self.gameBottomLocation, 1)
                     if zhengdian_btn1:
                         self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
                         time.sleep(0.001)
@@ -4987,7 +4993,7 @@ class MyThread(threading.Thread):
                     self._stop_combat_auto()
                 if combat_ok == "success":
                     self.daZhengDianCount += 1
-                    print(f"打了第{self.daZhengDianCount}个整点")
+                    print(f"打了第{self.daZhengDianCount}个boss")
                     self.waitFor(base_image, self.dituLocation)
                     self._wait_xiaolvren_stable()
                     attacked_set.clear()
@@ -9845,8 +9851,8 @@ class MyThread(threading.Thread):
             self.dituLocation,
             self.gameBottomLocation,
         )
-        self.confidenceNum = 0.6
-        self.color_format = "b@ffff00-000000|0ff000-000000|00ff00-000000|fff200-000000"
+        self.confidenceNum = 0.7
+        self.color_format = "b@ffff00-000000|fff200-000000"
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/xinye.bmp"),
             f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang2.bmp')}",
@@ -9856,11 +9862,11 @@ class MyThread(threading.Thread):
             self.dituLocation,
             "",
         )
-
+        self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
             f"{self.get_resource_path('serveAssets/images/sangumaolu/tongzi1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/tongzi2.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru2.bmp')}",
-            "进入阵法",
+            "进入",
             self.gameBottomLocation,
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
@@ -9919,12 +9925,11 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
             "0.076,0.115",
         )
-        self.confidenceNum = 0.6
-        self.color_format = "b@ffff00-000000|0ff000-000000|00ff00-000000|fff200-000000"
+        self.confidenceNum = 0.7
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/xinye.bmp"),
             f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang2.bmp')}",
-            "再次前往茅庐",
+            "前往",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
             self.dituLocation,
@@ -9934,7 +9939,7 @@ class MyThread(threading.Thread):
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
             f"{self.get_resource_path('serveAssets/images/sangumaolu/tongzi1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/tongzi2.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru2.bmp')}",
-            "进入阵法",
+            "进入",
             self.gameBottomLocation,
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/baguaqunmozhen.bmp"),
@@ -9973,12 +9978,11 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
             "0.101,0.122",
         )
-        # self.confidenceNum = 0.6
-        self.color_format = "b@ffff00-000000|0ff000-000000|00ff00-000000|fff200-000000"
+        self.confidenceNum = 0.7
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/xinye.bmp"),
             f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang2.bmp')}",
-            "再次前往茅庐",
+            "前往",
             self.gameBottomLocation,
             self.get_resource_path("serveAssets/images/sangumaolu/zhugelu.bmp"),
             self.dituLocation,
@@ -12080,39 +12084,6 @@ class MyThread(threading.Thread):
                 hongRes = self.qingyuanScript()
                 if not hongRes:
                     break
-        if self.bangpai_enabled:
-            if not self.find_str("城西", self.dituLocation, 0):
-                self.go_in_ditu(
-                    "地图城西",
-                    self.get_resource_path(
-                        "serveAssets/images/zhengdian/luoyang.bmp"),
-                    "城西",
-                    "",
-                    "",
-                    True,
-                )
-            time.sleep(1)
-            # 进入帮派大本营
-            self.findAndClickPic(
-                "城西",
-                f"{self.get_resource_path('serveAssets/images/longdao/bangpai.bmp')}|{self.get_resource_path('serveAssets/images/longdao/bangpai1.bmp')}",
-                "帮派大本营",
-                self.gameBottomLocation,
-                self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),
-                self.dituLocation,
-                "0.107,0.156",
-            )
-            for i in range(22):
-                if self.check_stop_or_over():
-                    return
-                if i == 0:
-                    rw_name = "抓捕异兽"
-                elif i == 1:
-                    rw_name = "挑战者黄"
-                else:
-                    rw_name = "帮派声誉"
-                self.bangpaiRW(rw_name)
         # 飞官渡精英
         if int(self.guandujy_count) > 0:
             if self.overed:
@@ -12393,39 +12364,6 @@ class MyThread(threading.Thread):
                 hongRes = self.qingyuanScript()
                 if not hongRes:
                     break
-        if self.bangpai_enabled:
-            if not self.find_str("城西", self.dituLocation, 0):
-                self.go_in_ditu(
-                    "地图城西",
-                    self.get_resource_path(
-                        "serveAssets/images/zhengdian/luoyang.bmp"),
-                    "城西",
-                    "",
-                    "",
-                    True,
-                )
-            time.sleep(1)
-            # 进入帮派大本营
-            self.findAndClickPic(
-                "城西",
-                f"{self.get_resource_path('serveAssets/images/longdao/bangpai.bmp')}|{self.get_resource_path('serveAssets/images/longdao/bangpai1.bmp')}",
-                "帮派大本营",
-                self.gameBottomLocation,
-                self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),
-                self.dituLocation,
-                "0.107,0.156",
-            )
-            for i in range(22):
-                if self.check_stop_or_over():
-                    return
-                if i == 0:
-                    rw_name = "抓捕异兽"
-                elif i == 1:
-                    rw_name = "挑战者黄"
-                else:
-                    rw_name = "帮派声誉"
-                self.bangpaiRW(rw_name)
         # 战魂
         if self.overed:
             return
@@ -13704,8 +13642,7 @@ class MyThread(threading.Thread):
                             ("四", self.sixiang_count), ("云", self.yunyou_count), ("名", self.mingjiang_count),
                             ("八", self.bamen_count), ("鼠", self.laoshu_count), ("英", self.yinhun_count),
                             ("庐", self.sangumaolu_count), ("红", self.hong_count),
-                            ("渊", self.qingyuan_count), ("帮", 22 if self.bangpai_enabled else 0),
-                            ("官", self.guandujy_count), ("镜", 1)]:
+                            ("渊", self.qingyuan_count), ("官", self.guandujy_count), ("镜", 1)]:
             if int(count) > 0:
                 filter_list.append(name)
         self.riChangList = (
@@ -14054,43 +13991,6 @@ class MyThread(threading.Thread):
         # 飞官渡精英
         if self.overed:
             return
-        elif "帮" == result_item["name"]:
-            if not self.waitFor("城西", self.dituLocation, 2):
-                self.go_in_ditu(
-                    "地图城西",
-                    self.get_resource_path(
-                        "serveAssets/images/zhengdian/luoyang.bmp"),
-                    "城西",
-                    "",
-                    "",
-                    True,
-                )
-            time.sleep(1)
-            # 进入帮派大本营
-            self.findAndClickPic(
-                "城西",
-                f"{self.get_resource_path('serveAssets/images/longdao/bangpai.bmp')}|{self.get_resource_path('serveAssets/images/longdao/bangpai1.bmp')}",
-                "帮派大本营",
-                self.gameBottomLocation,
-                self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),
-                self.dituLocation,
-                "0.107,0.156",
-            )
-            for i in range(22):
-                if self.check_stop_or_over():
-                    return
-                # 根据循环次数传入不同的任务名称
-                if i == 0:
-                    rw_name = "抓捕异兽"
-                elif i == 1:
-                    rw_name = "挑战者黄"
-                else:
-                    rw_name = "帮派声誉"
-                self.bangpaiRW(rw_name)
-        # 飞官渡精英
-        if self.overed:
-            return
         elif "四" == result_item["name"]:
             if not self.find_pic(self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"), self.dituLocation, 0):
                 self.go_in_ditu(
@@ -14150,8 +14050,6 @@ class MyThread(threading.Thread):
                     new_item["count"] = self.sangumaolu_count
                 elif new_item["name"] == "红":
                     new_item["count"] = self.hong_count
-                elif new_item["name"] == "帮":
-                    new_item["count"] = 22 if self.bangpai_enabled else 0
                 elif new_item["name"] == "名":
                     new_item["count"] = self.mingjiang_count
                 if new_item["name"] == "战":
@@ -14221,7 +14119,6 @@ class MyFrame(wx.Frame):
         self.bamen_count = ""
         self.laoshu_count = ""
         self.guandujy_count = ""
-        self.bangpai_enabled = False
         self.mingjiang_count = ""
         self.richang_zhengdian = False
         self.richang_mojing = False
@@ -14523,6 +14420,7 @@ class MyFrame(wx.Frame):
                 "49战魂",
                 "49整点",
                 "帮派任务",
+                "帮派浩劫",
                 "名将闯关",
                 "怪物攻城",
                 "挂机+整点",
@@ -14917,7 +14815,6 @@ class MyFrame(wx.Frame):
             dialog.bamen_count.SetValue(self.bamen_count)
             dialog.laoshu_count.SetValue(self.laoshu_count)
             dialog.guandujy_count.SetValue(self.guandujy_count)
-            dialog.cb_bangpai.SetValue(self.bangpai_enabled)
             dialog.mingjiang_count.SetValue(self.mingjiang_count)
             if hasattr(self, 'richang_zhengdian'):
                 dialog.cb_zhengdian.SetValue(self.richang_zhengdian)
@@ -15594,12 +15491,8 @@ class MyDialog(wx.Dialog):
         sep = wx.StaticLine(f_daily, size=(-1, 1))
         fds.Add(sep, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
         fds.AddSpacer(4)
-        # 第一行: 帮派任务 + 打完魔镜
+        # 第一行: 打完魔镜
         row1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.cb_bangpai = wx.CheckBox(f_daily, label="帮派任务")
-        self.cb_bangpai.SetForegroundColour(self.C_MUTED)
-        self.cb_bangpai.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        row1.Add(self.cb_bangpai, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
         self.cb_mojing = wx.CheckBox(f_daily, label="打完魔镜")
         self.cb_mojing.SetForegroundColour(self.C_MUTED)
         self.cb_mojing.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
@@ -15771,7 +15664,6 @@ class MyDialog(wx.Dialog):
         for ctrl in self._daily_defaults:
             ctrl.SetValue("0")
         self.cb_mojing.SetValue(False)
-        self.cb_bangpai.SetValue(False)
         if hasattr(self, 'cb_zhengdian') and self.cb_zhengdian.IsShown():
             self.cb_zhengdian.SetValue(False)
 
@@ -15779,7 +15671,6 @@ class MyDialog(wx.Dialog):
         for ctrl, default in self._daily_defaults.items():
             ctrl.SetValue(default)
         self.cb_mojing.SetValue(False)
-        self.cb_bangpai.SetValue(False)
         if hasattr(self, 'cb_zhengdian') and self.cb_zhengdian.IsShown():
             self.cb_zhengdian.SetValue(False)
 
@@ -15854,7 +15745,6 @@ class MyDialog(wx.Dialog):
         guandujy_count = self.guandujy_count.GetValue()
         richang_zhengdian = self.cb_zhengdian.GetValue()
         richang_mojing = self.cb_mojing.GetValue()
-        bangpai_enabled = self.cb_bangpai.GetValue()
 
         # 保存数据到文件
         self.save_to_file(
@@ -15893,7 +15783,6 @@ class MyDialog(wx.Dialog):
             guandujy_count,
             richang_zhengdian,
             richang_mojing,
-            bangpai_enabled,
         )
 
     def save_to_file(
@@ -15933,7 +15822,6 @@ class MyDialog(wx.Dialog):
             guandujy_count,
             richang_zhengdian,
             richang_mojing,
-            bangpai_enabled,
     ):
         # 获取脚本文件的同级目录
         exe_path = sys.executable
@@ -15977,7 +15865,6 @@ class MyDialog(wx.Dialog):
             file.write(f"guandujy_count: {guandujy_count}\n")
             file.write(f"richang_zhengdian: {richang_zhengdian}\n")
             file.write(f"richang_mojing: {richang_mojing}\n")
-            file.write(f"bangpai_enabled: {bangpai_enabled}\n")
         wx.MessageBox("数据已保存", "成功", wx.OK | wx.ICON_INFORMATION)
 
     def get_file_info(self, event):
@@ -16065,7 +15952,6 @@ class MyDialog(wx.Dialog):
         self.guandujy_count.SetValue(guandujy_count)
         self.cb_zhengdian.SetValue(data.get("richang_zhengdian", "False") == "True")
         self.cb_mojing.SetValue(data.get("richang_mojing", "False") == "True")
-        self.cb_bangpai.SetValue(data.get("bangpai_enabled", "False") == "True")
 
     def on_text_change(self, event):
         if self.team_leader_text.GetValue():
@@ -16131,7 +16017,6 @@ class MyDialog(wx.Dialog):
             "mingjiang_count": self.mingjiang_count.GetValue(),
             "richang_zhengdian": self.cb_zhengdian.GetValue(),
             "richang_mojing": self.cb_mojing.GetValue(),
-            "bangpai_enabled": self.cb_bangpai.GetValue(),
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
             "combat_auto_scenes": combat_auto_scenes,
             "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
@@ -16173,7 +16058,6 @@ class MyDialog(wx.Dialog):
         self.mingjiang_count.SetValue(settings.get("mingjiang_count", ""))
         self.cb_zhengdian.SetValue(settings.get("richang_zhengdian", False))
         self.cb_mojing.SetValue(settings.get("richang_mojing", False))
-        self.cb_bangpai.SetValue(settings.get("bangpai_enabled", False))
         liubei_counts = settings.get("liubei_counts", {"0": "1", "1": "0", "2": "0"})
         for idx in self.liubeiCountInputs:
             key = str(idx)
@@ -16310,7 +16194,6 @@ class MyDialog(wx.Dialog):
         parent.bamen_count = self.bamen_count.GetValue() or "1"
         parent.laoshu_count = self.laoshu_count.GetValue() or "1"
         parent.guandujy_count = self.guandujy_count.GetValue() or "1"
-        parent.bangpai_enabled = self.cb_bangpai.GetValue()
         parent.mingjiang_count = self.mingjiang_count.GetValue() or "8"
         parent.richang_zhengdian = self.cb_zhengdian.GetValue()
         parent.richang_mojing = self.cb_mojing.GetValue()
