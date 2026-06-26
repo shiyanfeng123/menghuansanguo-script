@@ -8379,7 +8379,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if "战魂" in self.combat_auto_scenes:
-            self._start_combat_auto(clear_enemy_keys=["赵云28"])
+            self._start_combat_auto(clear_enemy_keys=["赵云28","刘备28"])
         self.findAndClickPic(
             "噬魂",
             "马超",
@@ -8423,7 +8423,7 @@ class MyThread(threading.Thread):
             "",
         )
         if "战魂" in self.combat_auto_scenes:
-            self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
+            self._start_combat_auto(clear_enemy_keys=["赵云29","刘备29","诸葛亮"])
         self.findAndClickPic(
             "噬魂",
             "诸葛亮",
