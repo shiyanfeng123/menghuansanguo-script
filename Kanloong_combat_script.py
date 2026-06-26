@@ -567,6 +567,8 @@ class CombatAutoScript:
         self.zhaohuan_index = 0
         # 清除诸葛亮标志
         self.clear_zhugeliang = False
+        # 赵云29是否在场（全队公共变量，每轮非我方回合更新）
+        self.zhaoyun_alive = False
         # 开始召唤刘备标志
         self.start_summon_liubei = False
         # 刘备是否常驻（True=死了重召，False=一次性模式，清完状态回6曹操）
@@ -599,6 +601,7 @@ class CombatAutoScript:
                 {"priority": -1,  "skill": "防御",       "condition": "always"},
             ],
             "xingcai_support": [
+                {"priority": 105, "skill": "星彩单攻",   "condition": "zhaoyun_alive"},
                 {"priority": 100, "skill": "星彩辅助",   "condition": "always"},
                 {"priority": 95,  "skill": "星彩单攻",   "condition": "enemy_single"},
                 {"priority": 90,  "skill": "星彩群攻",   "condition": "always"},
@@ -1334,6 +1337,8 @@ class CombatAutoScript:
             return self.attack_buff_tracker.get(account_index, 0) <= 0
         elif cond == "enemy_single":
             return self.enemy_single_rounds >= 2
+        elif cond == "zhaoyun_alive":
+            return self.zhaoyun_alive
         elif cond == "first_turn":
             return self.current_turn <= 1
         return True
@@ -1397,8 +1402,12 @@ class CombatAutoScript:
                         f"账号{account_index} 释放{skill_name}，目标位置: {target_pos}", "action"
                     )
                 elif skill_name in ["星彩群攻", "星彩单攻"]:
-                    positions = self.enemy_target_positions
-                    target_pos = positions[self.enemy_target_index] if self.enemy_target_index < len(positions) else (104, 344)
+                    if skill_name == "星彩单攻" and self.zhaoyun_alive:
+                        # 赵云存活 → 单攻锁定赵云
+                        target_pos = self.enemy_general_config.get("赵云29", {}).get("cast_position", (115, 446))
+                    else:
+                        positions = self.enemy_target_positions
+                        target_pos = positions[self.enemy_target_index] if self.enemy_target_index < len(positions) else (104, 344)
                     self.account_last_target_type[account_index] = "enemy"
                     self.click_position(account_index, target_pos[0], target_pos[1])
                     self.report_battle_info(
@@ -2604,6 +2613,11 @@ class CombatAutoScript:
                                 )
                                 del self._last_clear_attempt[acct_idx]
                         break
+
+            # 赵云29存活检测（检查蓝条是否存在，每轮非我方回合更新）
+            if enemy_key == "赵云29":
+                zhaoyun_found = self.find_image(dm_index, self.enemy_target_image, status_region, 0)
+                self.zhaoyun_alive = zhaoyun_found is not None
 
     def _get_liubei_clear_cd_remaining(self, account_index):
         """获取指定账号刘备清除状态技能的CD剩余回合数"""
@@ -5184,9 +5198,6 @@ class CombatAutoScript:
 
                         self.update_status_panel()
 
-                        # 操作完成后，短暂延迟
-                        time.sleep(0.1)
-
                 # 非我方回合：检测场上的墓碑和敌军状态
                 # 使用主账号（账号0）检测所有账号的状态
                 main_account_index = 0
@@ -5438,6 +5449,7 @@ class CombatAutoScript:
                 self.beidong_huihe = 0
                 self.zhaohuan_index = 0
                 self.clear_zhugeliang = False
+                self.zhaoyun_alive = False
                 self.enable_persistent_liubei = True
                 self._last_kicked_info = None
                 self.ally_undead_rounds = {}
@@ -5547,6 +5559,7 @@ class CombatAutoScript:
             self.beidong_huihe = 0
             self.zhaohuan_index = 0
             self.clear_zhugeliang = False
+            self.zhaoyun_alive = False
             self.attack_buff_tracker = {}
             self.low_hp_accounts = {}
             self._zhugeliang_low_hp = False
@@ -5593,6 +5606,7 @@ class CombatAutoScript:
             self.combat_scene = combat_scene
             self.current_turn = 0
             self.clear_zhugeliang = False
+            self.zhaoyun_alive = False
             self.global_enemies_need_clear = []
             self._claimed_clear_target = {}
             self._last_clear_attempt = {}
