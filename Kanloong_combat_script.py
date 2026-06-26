@@ -1010,16 +1010,16 @@ class CombatAutoScript:
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
                 },
-                "status_region": (165, 258, 246, 291),
-                "cast_position": (203, 346),
+                "status_region": (253, 234, 336, 316),
+                "cast_position": (306, 380),
                 "status_duration": 4,
             },
             "刘备29": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
                 },
-                "status_region": (165, 258, 246, 291),
-                "cast_position": (203, 346),
+                "status_region": (157, 234, 243, 316),
+                "cast_position": (206, 383),
                 "status_duration": 4,
             },
             "诸葛亮": {
@@ -1033,7 +1033,7 @@ class CombatAutoScript:
             },
             "赵云29": {
                 "status_images": {
-                    "状态1": f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
+                    "状态1": f"{self.get_resource_path('serveAssets/images/auto/moshen.bmp')}|{self.get_resource_path('serveAssets/images/auto/moshen1.bmp')}",
                     "状态2": f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
                 },
                 "status_region": (54, 360, 174, 541),
@@ -1082,7 +1082,7 @@ class CombatAutoScript:
             },
             "赵云28": {
                 "status_images": {
-                    "状态1": f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
+                    "状态1": f"{self.get_resource_path('serveAssets/images/auto/moshen.bmp')}|{self.get_resource_path('serveAssets/images/auto/moshen1.bmp')}",
                     "状态2": f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
                 },
                 "status_region": (156, 235, 242, 319),
@@ -4195,7 +4195,29 @@ class CombatAutoScript:
                                 with self._state_lock:
                                     self._proactive_replace_in_progress = False
                             else:
-                                general_order = ["曹操", "魔化关羽", "张星彩", "刘备"]
+                                # === 新增逻辑：保底替换时场上无刘备则优先召唤刘备 ===
+                                # 检查全场是否有刘备（含存活 + 替换中待确认 + 补位召唤中）
+                                # 与补位召唤逻辑对齐：场无刘备→优先刘备；场有刘备→原顺序
+                                with self._state_lock:  # 跨账号遍历 unit_info 需加锁，防并发修改
+                                    _field_lb = False
+                                    for _acct in range(self.get_account_count()):
+                                        if _acct not in self.unit_info:
+                                            continue
+                                        for _g in self.unit_info[_acct]["main_char"].get("generals", []):
+                                            if (_g.get("name") == "刘备"
+                                                and not _g.get("pending_kick", False)   # 正被踢出的不算
+                                                and (_g.get("alive", True) or _g.get("replacing", False))):
+                                                # alive: 正常存活 | replacing: 替换中待确认（防止重复召唤）
+                                                _field_lb = True
+                                                break
+                                        if _field_lb:
+                                            break
+                                # 根据检查结果决定召唤优先级
+                                if not _field_lb:
+                                    general_order = ["刘备", "曹操", "魔化关羽", "张星彩"]   # 无刘备→优先
+                                else:
+                                    general_order = ["曹操", "魔化关羽", "张星彩", "刘备"]   # 有刘备→原顺序
+                                # === 新增逻辑结束 ===
                                 for summon_name in general_order:
                                     if self.summon_general_with_verification(
                                         account_index, summon_name, force_replace=True,
