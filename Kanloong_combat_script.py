@@ -4182,65 +4182,33 @@ class CombatAutoScript:
                             self.report_battle_info(
                                 f"账号{account_index} 预替换跳过(无可替换位置), 下次替换账号{self.proactive_replace_account}", "action")
                         else:
-                            # 查找免死耗尽最严重的武将
-                            worst_key = None
-                            worst_count = -1
-                            for key, count in self.ally_undead_rounds.items():
-                                if key[0] != account_index:
-                                    continue
-                                if count > worst_count:
-                                    worst_count = count
-                                    worst_key = key
-                            if worst_key:
-                                summon_name = self._get_general_name_by_region(account_index, worst_key[1])
+                            # 仅主角操作有召唤按钮，非主角阶段不推进，保持当前proactive等主角Call
+                            _find_start = time.time()
+                            summon_btn = None
+                            while time.time() - _find_start < 0.5 and not summon_btn:
+                                summon_btn = self.find_image(account_index, self.button_images["召唤按钮"],
+                                                              self.right_button_region, 0)
+                                if summon_btn:
+                                    break
+                                time.sleep(0.005)
+                            if not summon_btn:
+                                with self._state_lock:
+                                    self._proactive_replace_in_progress = False
                             else:
-                                summon_name = None
-                            # summon_name为None时(本账号无免死记录或武将已阵亡), 跳过预替换
-                            if summon_name is None:
-                                # 只有主角操作才有意义推进，武将操作保持等待主角Call
-                                _find_start = time.time()
-                                _btn = None
-                                while time.time() - _find_start < 0.5 and not _btn:
-                                    _btn = self.find_image(account_index, self.button_images["召唤按钮"],
-                                                            self.right_button_region, 0)
-                                    if _btn:
-                                        break
-                                    time.sleep(0.005)
-                                if _btn:
-                                    with self._state_lock:
-                                        self._proactive_replace_in_progress = False
-                                        self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
-                                    self.report_battle_info(
-                                        f"账号{account_index} 预替换跳过(无可替换武将), 下次替换账号{self.proactive_replace_account}", "info")
-                                else:
-                                    with self._state_lock:
-                                        self._proactive_replace_in_progress = False
-                            else:
-                                # 仅主角操作有召唤按钮，非主角阶段不推进，保持当前proactive等主角Call
-                                _find_start = time.time()
-                                summon_btn = None
-                                while time.time() - _find_start < 0.5 and not summon_btn:
-                                    summon_btn = self.find_image(account_index, self.button_images["召唤按钮"],
-                                                                  self.right_button_region, 0)
-                                    if summon_btn:
-                                        break
-                                    time.sleep(0.005)
-                                if not summon_btn:
-                                    with self._state_lock:
-                                        self._proactive_replace_in_progress = False
-                                elif self.summon_general_with_verification(
-                                    account_index, summon_name, force_replace=True,
-                                    replace_position=replace_pos):
-                                    self.report_battle_info(
-                                        f"账号{account_index} 预替换{summon_name}操作完成, 等待验证确认", "action")
-                                    return True
-                                else:
-                                    with self._state_lock:
-                                        self._proactive_replace_in_progress = False
-                                        self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
-                                    self.report_battle_info(
-                                        f"账号{account_index} 预替换{summon_name}操作失败, "
-                                        f"下次替换账号{self.proactive_replace_account}", "warning")
+                                general_order = ["曹操", "魔化关羽", "张星彩", "刘备"]
+                                for summon_name in general_order:
+                                    if self.summon_general_with_verification(
+                                        account_index, summon_name, force_replace=True,
+                                        replace_position=replace_pos):
+                                        self.report_battle_info(
+                                            f"账号{account_index} 预替换{summon_name}操作完成, 等待验证确认", "action")
+                                        return True
+                                with self._state_lock:
+                                    self._proactive_replace_in_progress = False
+                                    self.proactive_replace_account = (self.proactive_replace_account + 1) % 3
+                                self.report_battle_info(
+                                    f"账号{account_index} 预替换失败(无可用武将), "
+                                    f"下次替换账号{self.proactive_replace_account}", "warning")
 
             # 确保技能面板已打开（重试查找并点击技能按钮，避免一次识别失败）
             find_jineng_time = time.time()
