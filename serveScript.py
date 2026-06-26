@@ -8527,7 +8527,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if "战魂" in self.combat_auto_scenes:
-            self._start_combat_auto(clear_enemy_keys=["赵云28"])
+            self._start_combat_auto(clear_enemy_keys=["赵云28","刘备28"])
         self.findAndClickPic(
             "噬魂",
             "马超",
@@ -8571,7 +8571,7 @@ class MyThread(threading.Thread):
             "",
         )
         if "战魂" in self.combat_auto_scenes:
-            self._start_combat_auto(clear_enemy_keys=["赵云29", "诸葛亮"])
+            self._start_combat_auto(clear_enemy_keys=["赵云29","刘备29","诸葛亮"])
         self.findAndClickPic(
             "噬魂",
             "诸葛亮",
@@ -9999,171 +9999,179 @@ class MyThread(threading.Thread):
             self.dituLocation,
             self.gameBottomLocation,
         )
-        self.confidenceNum = 0.7
-        self.color_format = "b@ffff00-000000|fff200-000000"
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/xinye.bmp"),
-            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang2.bmp')}",
-            "前往茅庐",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}",
             self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
-            self.dituLocation,
+            "前往茅庐新",
+            self.gameBottomLocation,
             "",
         )
-        self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+        self.waitForAAndClickB1(
+            self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
+            "前往茅庐新",
+            self.dituLocation,
+            self.gameBottomLocation,
+        )
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
-            f"{self.get_resource_path('serveAssets/images/sangumaolu/tongzi1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/tongzi2.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru2.bmp')}",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/tongzi2.bmp')}",
+            self.get_resource_path('serveAssets/images/sangumaolu/tongzi1.bmp'),
+            self.gameBottomLocation,
             "进入",
             self.gameBottomLocation,
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
+            "",
+        )
+        self.waitForAAndClickB1(
+            self.get_resource_path("serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
+            "进入",
             self.dituLocation,
-            "",
+            self.gameBottomLocation,
         )
-        self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-        self.confidenceNum = 0.9
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
-            "七星灯",
-            "七星灯",
+        self.waitFor(self.get_resource_path("serveAssets/images/sangumaolu/yanminzhenfa.bmp"), self.dituLocation)
+        time.sleep(1)
+        gitji_pos = self.waitFor(
+            self.get_resource_path("serveAssets/images/guaji.bmp"),
             self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "",
         )
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
-            "占卜币",
-            f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
-            self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "",
-        )
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
-            "巨石阵兽",
-            "巨石阵兽",
-            self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "0.076,0.115",
-        )
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
-            "占卜币",
-            f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
-            self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "0.076,0.115",
-        )
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
-            "七星灯",
-            "七星灯",
-            self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "0.076,0.115",
-        )
-        self.confidenceNum = 0.7
+        self.dm.MoveTo(gitji_pos.x,gitji_pos.y)
+        time.sleep(0.001)
+        self.dm.LeftClick()
+        # self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+        # self.confidenceNum = 0.9
+        # self.findAndClickPic(
+        #     self.get_resource_path(
+        #         "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
+        #     "七星灯",
+        #     "七星灯",
+        #     self.gameBottomLocation,
+        #     self.get_resource_path("serveAssets/images/zdzd.bmp"),
+        #     self.gameBottomLocation,
+        #     "",
+        # )
+        
+        # self.findAndClickPic(
+        #     self.get_resource_path(
+        #         "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
+        #     "占卜币",
+        #     f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
+        #     self.gameBottomLocation,
+        #     self.get_resource_path("serveAssets/images/zdzd.bmp"),
+        #     self.gameBottomLocation,
+        #     "",
+        # )
+        # self.findAndClickPic(
+        #     self.get_resource_path(
+        #         "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
+        #     "巨石阵兽",
+        #     "巨石阵兽",
+        #     self.gameBottomLocation,
+        #     self.get_resource_path("serveAssets/images/zdzd.bmp"),
+        #     self.gameBottomLocation,
+        #     "0.076,0.115",
+        # )
+        # self.findAndClickPic(
+        #     self.get_resource_path(
+        #         "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
+        #     "占卜币",
+        #     f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
+        #     self.gameBottomLocation,
+        #     self.get_resource_path("serveAssets/images/zdzd.bmp"),
+        #     self.gameBottomLocation,
+        #     "0.076,0.115",
+        # )
+        # self.findAndClickPic(
+        #     self.get_resource_path(
+        #         "serveAssets/images/sangumaolu/yanminzhenfa.bmp"),
+        #     "七星灯",
+        #     "七星灯",
+        #     self.gameBottomLocation,
+        #     self.get_resource_path("serveAssets/images/zdzd.bmp"),
+        #     self.gameBottomLocation,
+        #     "0.076,0.115",
+        # )
+        # self.confidenceNum = 0.7
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/xinye.bmp"),
-            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang2.bmp')}",
-            "前往",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}",
             self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
-            self.dituLocation,
+            "前往茅庐新",
+            self.gameBottomLocation,
             "",
         )
-        self.confidenceNum = 0.9
+        self.waitForAAndClickB1(
+            self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
+            "前往茅庐新",
+            self.dituLocation,
+            self.gameBottomLocation,
+        )
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
-            f"{self.get_resource_path('serveAssets/images/sangumaolu/tongzi1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/tongzi2.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/jinru2.bmp')}",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/tongzi2.bmp')}",
+            self.get_resource_path('serveAssets/images/sangumaolu/tongzi1.bmp'),
+            self.gameBottomLocation,
             "进入",
             self.gameBottomLocation,
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/baguaqunmozhen.bmp"),
-            self.dituLocation,
             "",
         )
-        self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
-        self.confidenceNum = 0.9
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/baguaqunmozhen.bmp"),
-            "七星灯",
-            "七星灯",
+        self.waitForAAndClickB1(
+            self.get_resource_path("serveAssets/images/sangumaolu/baguaqunmozhen.bmp"),
+            "进入",
+            self.dituLocation,
             self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "0.143,0.117",
         )
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/baguaqunmozhen.bmp"),
-            "占卜币",
-            f"{self.get_resource_path('serveAssets/images/richang/tongqian1.bmp')}|{self.get_resource_path('serveAssets/images/richang/tongqian2.bmp')}",
+        self.waitFor(self.get_resource_path("serveAssets/images/sangumaolu/baguaqunmozhen.bmp"), self.dituLocation)
+        time.sleep(1)
+        gitji_pos = self.waitFor(
+            self.get_resource_path("serveAssets/images/guaji.bmp"),
             self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "0.125,0.127",
         )
-        self.findAndClickPic(
-            self.get_resource_path(
-                "serveAssets/images/sangumaolu/baguaqunmozhen.bmp"),
-            "八卦阵灵",
-            "八卦阵灵",
-            self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/zdzd.bmp"),
-            self.gameBottomLocation,
-            "0.101,0.122",
-        )
-        self.confidenceNum = 0.7
+        self.dm.MoveTo(gitji_pos.x,gitji_pos.y)
+        time.sleep(0.001)
+        self.dm.LeftClick()
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/xinye.bmp"),
-            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/qianwang2.bmp')}",
-            "前往",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei4.bmp')}",
+            f"{self.get_resource_path('serveAssets/images/sangumaolu/liubei3.bmp')}",
             self.gameBottomLocation,
-            self.get_resource_path("serveAssets/images/sangumaolu/zhugelu.bmp"),
-            self.dituLocation,
+            "前往茅庐新",
+            self.gameBottomLocation,
             "",
         )
-        self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
+        self.waitForAAndClickB1(
+            self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
+            "前往茅庐新",
+            self.dituLocation,
+            self.gameBottomLocation,
+        )
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sangumaolu/zhugelu.bmp"),
             "孔明",
             self.get_resource_path(
                 "serveAssets/images/sangumaolu/zhugeliang1.bmp"),
             self.gameLocation,
-            # '一言为定',
-            f"{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding2.bmp')}",
+            '一言为定新',
             self.gameBottomLocation,
             "0.076,0.16",
         )
-        self.confidenceNum = 0.9
-        self.dm.MoveTo(279, 347)
-        while not self.find_pic_or_str(
-                f"{self.get_resource_path('serveAssets/images/zdzd111.bmp')}|{self.get_resource_path('serveAssets/images/zdzd11.bmp')}",
-                self.gameBottomLocation,
-                0,
-        ):
-            time.sleep(0.001)
-            self.dm.LeftClick()
-            self.click_image(
-                f"{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding1.bmp')}|{self.get_resource_path('serveAssets/images/sangumaolu/yiyanweiding2.bmp')}",
-                0.6,
-                self.gameBottomLocation,
-            )
-            time.sleep(0.5)
-        self.confidenceNum = 0.9
+        self.waitForAAndClickB1(
+            self.get_resource_path("serveAssets/images/sangumaolu/maolu.bmp"),
+            "一言为定新",
+            self.dituLocation,
+            self.gameBottomLocation,
+        )
+        # self.findAndClickPic(
+        #     self.get_resource_path("serveAssets/images/sangumaolu/zhugelu.bmp"),
+        #     "一言为定新",
+        #     "一言为定新",
+        #     self.gameBottomLocation,
+        #     self.get_resource_path("serveAssets/images/zdzd.bmp"),
+        #     self.gameBottomLocation,
+        #     "",
+        # )
+        self.waitFor(self.get_resource_path("serveAssets/images/zdzd.bmp"), self.gameBottomLocation)
         self.outScript(
             self.get_resource_path("serveAssets/images/sangumaolu/zhugelu.bmp"))
         return True
