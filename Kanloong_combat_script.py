@@ -4236,8 +4236,6 @@ class CombatAutoScript:
                                 for _g in self.unit_info[_acct]["main_char"].get("generals", []):
                                     if (_g.get("name") == "刘备" and _g.get("alive", True)
                                         and not _g.get("replacing", False) and not _g.get("pending_kick", False)):
-                                        if self._get_liubei_clear_cd_remaining(_acct) > 2:
-                                            continue
                                         field_liubei_count_for_summon += 1
                             summoning_count_for_summon = sum(
                                 1 for _v in self._liubei_summon_in_progress.values() if _v
