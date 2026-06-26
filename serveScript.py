@@ -1721,7 +1721,7 @@ class MyThread(threading.Thread):
             if self.check_stop_or_over():
                 return
             # 关闭右边
-            if self.scriptName != "帮派任务":
+            if self.scriptName not in ["帮派任务","测试","藏宝图"]:
                 closeRight = self.click_image(
                     self.get_resource_path("serveAssets/images/closeRight.bmp"),
                     self.confidenceNum,
@@ -11506,68 +11506,31 @@ class MyThread(threading.Thread):
 
     # 藏宝图脚本
     def cangbaotuScript(self):
-        # cangbaotu_pos = None
-        # shiyong_pos = None
-        # queding_pos = None
-        # cangbaotu_pos = None
+        cangbaotu_pos = ResXy(575,172)
+        shiyong_pos = ResXy(604,193)
+        queding_pos = ResXy(451,323)
+        wabao_pos = ResXy(788,192)
+        fei_pos = ResXy(871,217)
+        renwu_pos = ResXy(746,151)
         while True:
-            self.click_image(
-                f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}",
-                0.8,
-                self.gameLocation,
-            )
-            self.click_image(
-                f"{self.get_resource_path('serveAssets/images/shiyong.bmp')}|{self.get_resource_path('serveAssets/images/shiyong1.bmp')}",
-                0.8,
-                self.gameLocation,
-            )
-            self.click_image(
-                f"{self.get_resource_path('serveAssets/images/cangbaotuqueding.bmp')}",
-                0.8,
-                self.gameBottomLocation,
-            )
-            wabao_pos = self.waitFor(
-                '挖宝',
-                self.gameRightLocation,0.1
-            )
-            if not wabao_pos:
-                continue
-            fei_pos = self.waitFor(
-                f"{self.get_resource_path('serveAssets/images/cangbaotufei.bmp')}",
-                (wabao_pos.x, wabao_pos.y,wabao_pos.x+110,wabao_pos.y+40)
-            )
-            self.dm.MoveTo(fei_pos.x, fei_pos.y)
-            time.sleep(0.001)
-            self.dm.LeftClick()
+            self.dm.MoveTo(cangbaotu_pos.x,cangbaotu_pos.y)
+            self.dm.LeftDoubleClick()
+            self.dm.LeftDoubleClick()
+            self.click_image(self.get_resource_path(
+                "serveAssets/images/yijierenwu.bmp"),0.8,self.gameRightLocation
+                )
             self.dm.MoveTo(wabao_pos.x, wabao_pos.y)
-            time.sleep(0.001)
+            self.dm.LeftDoubleClick()
+            self.dm.MoveTo(queding_pos.x,queding_pos.y)
             self.dm.LeftClick()
-
-        # self.press_keys_until_image_found(
-        #     f"{self.get_resource_path('serveAssets/images/cangbaotu.bmp')}|{self.get_resource_path('serveAssets/images/cangbaotu1.bmp')}",
-        #     f"{self.get_resource_path('serveAssets/images/cangbaotuqueding.bmp')}",
-        #     self.gameLocation,
-        #     self.gameBottomLocation,
-        #     "使用",
-        # )
-        # self.dm.MoveTo(447, 321)
-        # time.sleep(0.001)
-        # self.dm.LeftClick()
-        # wabao_pos = self.waitFor(
-        #     '挖宝',
-        #     self.gameRightLocation
-        # )
-        # fei_pos = self.waitFor(
-        #     f"{self.get_resource_path('serveAssets/images/cangbaotufei.bmp')}",
-        #     (wabao_pos.x, wabao_pos.y,wabao_pos.x+110,wabao_pos.y+40)
-        # )
-        # self.dm.MoveTo(fei_pos.x, fei_pos.y)
-        # time.sleep(0.001)
-        # self.dm.LeftClick()
-        # self.waitFor("挖宝", self.gameRightLocation)
-        # self.dm.MoveTo(wabao_pos.x, wabao_pos.y)
-        # time.sleep(0.001)
-        # self.dm.LeftClick()
+            self.click_image(self.get_resource_path(
+                "serveAssets/images/yijierenwu.bmp"),0.8,self.gameRightLocation
+                )
+            if self.find_str("位置不对", self.gameBottomLocation, 0) and self.find_pic(self.get_resource_path(
+                "serveAssets/images/yijierenwu2.bmp"), self.gameRightFullLocation, 1):
+                self.click_image(self.get_resource_path(
+                "serveAssets/images/cangbaotufei.bmp"),0.8,self.gameRightLocation
+                )
 
     # 藏宝图循环
     def cangbaotuWhile(self):
@@ -14421,9 +14384,9 @@ class MyFrame(wx.Frame):
                 "四象",
                 "青渊",
                 "清妖",
-                "龙王令",
-                "引魔符",
-                # "藏宝图",
+                # "龙王令",
+                # "引魔符",
+                "藏宝图",
                 "49日常",
                 "49战魂",
                 "49整点",
@@ -14436,7 +14399,7 @@ class MyFrame(wx.Frame):
                 "战魂楼(精英)",
                 "战魂楼(镇魂)",
                 "战魂楼(噬魂)",
-                "天外天传送符",
+                # "天外天传送符",
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "整点",
@@ -14454,9 +14417,10 @@ class MyFrame(wx.Frame):
                 "龙珠",
                 "四象",
                 "青渊",
-                "龙王令",
-                "引魔符",
-                # "藏宝图",
+                "清妖",
+                # "龙王令",
+                # "引魔符",
+                "藏宝图",
                 "49日常",
                 "49战魂",
                 "49整点",
@@ -14468,7 +14432,7 @@ class MyFrame(wx.Frame):
                 "战魂楼(精英)",
                 "战魂楼(镇魂)",
                 "战魂楼(噬魂)",
-                "天外天传送符",
+                # "天外天传送符",
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
                 # "测试",
