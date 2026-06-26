@@ -5307,6 +5307,126 @@ class CombatAutoScript:
         self.polling_running = True
         self._polling_loop()
 
+    # ==================== 三态自动战斗系统新增方法 ====================
+
+    def run_single_skill_round(self):
+        """Mode 1: 执行一轮完整技能释放（等待操作按钮 → 处理所有账号回合）
+        阻塞方法，会等待操作按钮出现后执行技能释放
+        """
+        try:
+            # 递增回合数（用于CD判断和状态过期逻辑）
+            self.current_turn += 1
+
+            # 等待操作按钮出现（最多等待15秒）
+            action_found = False
+            start_time = time.time()
+            while time.time() - start_time < 15.0:
+                for account_index in range(self.get_account_count()):
+                    dm = self.get_account_dm(account_index)
+                    if not dm:
+                        continue
+                    if self.check_action_button(account_index):
+                        action_found = True
+                        break
+                if action_found:
+                    break
+                time.sleep(0.3)
+
+            if not action_found:
+                return
+
+            # 检测zdzd弹窗并取消
+            for account_index in range(self.get_account_count()):
+                dm = self.get_account_dm(account_index)
+                if not dm:
+                    continue
+                zdzd_pos = self.find_image(account_index, self.zdzd_image, self.zdzd_region, 0)
+                if zdzd_pos:
+                    cancel_button_pos = self.find_image(
+                        account_index, self.button_images["取消按钮"], self.zdzd_region, 0
+                    )
+                    if cancel_button_pos:
+                        self.click_position(account_index, cancel_button_pos.x, cancel_button_pos.y)
+                        time.sleep(0.5)
+
+            # 为每个账号执行技能释放
+            account_threads = {}
+            for account_index in range(self.get_account_count()):
+                dm = self.get_account_dm(account_index)
+                if not dm:
+                    continue
+                if not self.check_action_button(account_index):
+                    continue
+                thread = threading.Thread(
+                    target=self._handle_account_turn,
+                    args=(account_index,),
+                    daemon=True
+                )
+                thread.start()
+                account_threads[account_index] = thread
+
+            # 等待所有账号操作完成（最多等待30秒）
+            for thread in account_threads.values():
+                thread.join(timeout=30.0)
+
+        except Exception as e:
+            print(f"run_single_skill_round 出错: {e}")
+
+    def check_any_action_button(self):
+        """检测任意账号是否可见操作按钮（技能/召唤/道具/防御/操作/重复）
+        :return: True 如果任意账号有操作按钮可见
+        """
+        for account_index in range(self.get_account_count()):
+            dm = self.get_account_dm(account_index)
+            if not dm:
+                continue
+            if self.check_action_button(account_index):
+                return True
+        return False
+
+    def exit_system_auto(self):
+        """退出系统自动战斗（点击取消自动按钮）"""
+        try:
+            for account_index in range(self.get_account_count()):
+                dm = self.get_account_dm(account_index)
+                if not dm:
+                    continue
+                cancel_pos = self.find_image(
+                    account_index,
+                    self.button_images["取消按钮"],
+                    self.zdzd_region,
+                    0
+                )
+                if cancel_pos:
+                    self.click_position(account_index, cancel_pos.x, cancel_pos.y)
+                    time.sleep(0.5)
+        except Exception as e:
+            print(f"exit_system_auto 出错: {e}")
+
+    def detect_enemy_status_for_hybrid(self, enemy_keys):
+        """Mode 3: 检测指定敌方状态列表，返回第一个检测到的敌方key
+        :param enemy_keys: 需要检测的敌方状态key列表，例如 ["羊人参娃", "诸葛亮"]
+        :return: 检测到的敌方key，或None
+        """
+        if not enemy_keys:
+            return None
+
+        for enemy_key in enemy_keys:
+            if enemy_key not in self.enemy_general_config:
+                continue
+
+            config = self.enemy_general_config[enemy_key]
+            status_region = config["status_region"]
+            status_images = config["status_images"]
+
+            for status_name, status_image in status_images.items():
+                # 使用主账号(dm_index=0)检测
+                status_pos = self.find_image(0, status_image, status_region, 0)
+                if status_pos:
+                    return enemy_key
+
+        return None
+
     # 清理资源
     def cleanup(self, join_timeout: float = 2.0):
         """

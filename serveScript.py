@@ -257,6 +257,11 @@ class MyThread(threading.Thread):
         self.combat_auto_instance = None
         self.combat_auto_thread = None
         self.combat_auto_running = False
+        # 三态自动战斗系统状态
+        self._auto_mode_state = "IDLE"  # IDLE / LITE_WAIT
+        self._pending_enemy_keys = []   # 整点时设置的需要检测的敌方状态列表
+        self._combat_state_reset = True # 一次性重置标志（True=已重置，待下次进入战斗）
+        self._mode3_triggered = False   # Mode 3 是否已触发（防重复）
         # 副本统计：四象/噬魂 的成功、失败、已打、总次数
         self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
         self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
@@ -355,6 +360,92 @@ class MyThread(threading.Thread):
             print(f"停止战斗自动操作失败")
             import traceback
             traceback.print_exc()
+
+    # ==================== 三态自动战斗系统辅助方法 ====================
+
+    def _detect_scene(self):
+        """检测当前场景：combat=战斗中, town=城镇, unknown=未知"""
+        if self.find_pic_or_str(
+            self.get_resource_path("serveAssets/images/zdzd.bmp"),
+            self.gameLocation,
+            0,
+        ):
+            return "combat"
+        if self.find_pic_or_str(
+            self.get_resource_path("serveAssets/images/beibao.bmp"),
+            self.gameLocation,
+            0,
+        ):
+            return "town"
+        return "unknown"
+
+    def _ensure_combat_script(self):
+        """确保 CombatAutoScript 实例存在（Mode 1/3 用）"""
+        if not self.combat_auto_instance:
+            self.combat_auto_instance = CombatAutoScript(self)
+        return self.combat_auto_instance
+
+    def _run_auto_skill_release(self):
+        """Mode 1: 执行一轮完整技能释放（阻塞，等待操作按钮出现后执行）"""
+        script = self._ensure_combat_script()
+        script.polling_running = True
+        script.run_single_skill_round()
+        script.polling_running = False
+
+    def _check_enemy_status(self):
+        """Mode 1 LITE_WAIT: 检测敌方状态，返回触发的敌方 key 或 None"""
+        if not self._pending_enemy_keys:
+            return None
+        script = self._ensure_combat_script()
+        return script.detect_enemy_status_for_hybrid(self._pending_enemy_keys)
+
+    def _run_mode3_response(self, enemy_key):
+        """Mode 3: 退出系统自动 → 清除状态 → 技能释放 → 恢复系统自动"""
+        script = self._ensure_combat_script()
+        # 1. 检查操作按钮是否可见，可见则不需要退出系统自动
+        if not script.check_any_action_button():
+            script.exit_system_auto()
+            time.sleep(0.5)
+        # 2. 将敌方状态加入 global_enemies_need_clear，让 handle_our_turn 的
+        #    刘备清除状态流程自动处理（先选技能再点目标）
+        config = script.enemy_general_config.get(enemy_key)
+        if config:
+            status_images = config.get("status_images", {})
+            first_status_name = next(iter(status_images), "未知状态")
+            with script._state_lock:
+                # 避免重复添加同一个敌方
+                already_exists = any(
+                    e.get("enemy_name") == enemy_key
+                    for e in script.global_enemies_need_clear
+                )
+                if not already_exists:
+                    script.global_enemies_need_clear.insert(
+                        0,
+                        {
+                            "enemy_name": enemy_key,
+                            "position": config["cast_position"],
+                            "status_name": first_status_name,
+                            "claimed_by": None,
+                            "detected_turn": script.current_turn,
+                        },
+                    )
+        # 3. 执行一轮技能释放（handle_our_turn 会自动使用刘备清除状态）
+        self._run_auto_skill_release()
+        # 4. 恢复系统自动
+        self.click_image(
+            self.get_resource_path("serveAssets/images/zidong.bmp"),
+            0.8,
+            self.gameLocation,
+        )
+        self._mode3_triggered = True
+
+    def _reset_auto_combat_state(self):
+        """一次性重置所有自动战斗状态（检测到非战斗/城镇时调用，防重复重置）"""
+        if not self._combat_state_reset:
+            self._auto_mode_state = "IDLE"
+            self._pending_enemy_keys = []
+            self._mode3_triggered = False
+            self._combat_state_reset = True
 
     def print_and_speak(self, text):
         self.engine.say(text)
@@ -1845,11 +1936,30 @@ class MyThread(threading.Thread):
             #     # )
             # else:
             if not self.combat_auto_running:
-                self.click_image(
-                    self.get_resource_path("serveAssets/images/zidong.bmp"),
-                    0.8,
-                    self.gameLocation,
-                )
+                scene = self._detect_scene()
+                if scene == "town":
+                    self._reset_auto_combat_state()
+                elif scene == "combat":
+                    self._combat_state_reset = False
+                    if self._auto_mode_state == "IDLE":
+                        found = self.click_image(
+                            self.get_resource_path("serveAssets/images/zidong.bmp"),
+                            0.8,
+                            self.gameLocation,
+                        )
+                        if found:
+                            self._run_auto_skill_release()
+                            self._auto_mode_state = "LITE_WAIT"
+                    elif self._auto_mode_state == "LITE_WAIT":
+                        enemy_key = self._check_enemy_status()
+                        if enemy_key:
+                            self._run_mode3_response(enemy_key)
+                        else:
+                            self.click_image(
+                                self.get_resource_path("serveAssets/images/zidong.bmp"),
+                                0.8,
+                                self.gameLocation,
+                            )
             time.sleep(2)
 
     # 绑定第一个窗口
@@ -1996,11 +2106,30 @@ class MyThread(threading.Thread):
             if self.refreshFlag:
                 self.refresh_view_team1()
             if not self.combat_auto_running:
-                self.click_image_team1(
-                    self.get_resource_path("serveAssets/images/zidong.bmp"),
-                    0.8,
-                    self.gameLocation,
-                )
+                scene = self._detect_scene()
+                if scene == "town":
+                    self._reset_auto_combat_state()
+                elif scene == "combat":
+                    self._combat_state_reset = False
+                    if self._auto_mode_state == "IDLE":
+                        found = self.click_image_team1(
+                            self.get_resource_path("serveAssets/images/zidong.bmp"),
+                            0.8,
+                            self.gameLocation,
+                        )
+                        if found:
+                            self._run_auto_skill_release()
+                            self._auto_mode_state = "LITE_WAIT"
+                    elif self._auto_mode_state == "LITE_WAIT":
+                        enemy_key = self._check_enemy_status()
+                        if enemy_key:
+                            self._run_mode3_response(enemy_key)
+                        else:
+                            self.click_image_team1(
+                                self.get_resource_path("serveAssets/images/zidong.bmp"),
+                                0.8,
+                                self.gameLocation,
+                            )
             time.sleep(1)
 
     def refresh_view_team1(self):
@@ -2265,11 +2394,30 @@ class MyThread(threading.Thread):
                      self.locationHeight),
                 )
             if not self.combat_auto_running:
-                self.click_image_team2(
-                    self.get_resource_path("serveAssets/images/zidong.bmp"),
-                    0.8,
-                    self.gameLocation,
-                )
+                scene = self._detect_scene()
+                if scene == "town":
+                    self._reset_auto_combat_state()
+                elif scene == "combat":
+                    self._combat_state_reset = False
+                    if self._auto_mode_state == "IDLE":
+                        found = self.click_image_team2(
+                            self.get_resource_path("serveAssets/images/zidong.bmp"),
+                            0.8,
+                            self.gameLocation,
+                        )
+                        if found:
+                            self._run_auto_skill_release()
+                            self._auto_mode_state = "LITE_WAIT"
+                    elif self._auto_mode_state == "LITE_WAIT":
+                        enemy_key = self._check_enemy_status()
+                        if enemy_key:
+                            self._run_mode3_response(enemy_key)
+                        else:
+                            self.click_image_team2(
+                                self.get_resource_path("serveAssets/images/zidong.bmp"),
+                                0.8,
+                                self.gameLocation,
+                            )
             if self.refreshFlag:
                 self.refresh_view_team2()
 
