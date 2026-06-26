@@ -1013,7 +1013,7 @@ class CombatAutoScript:
                 "cast_position": (112, 372),
                 "status_duration": 4,
             },
-            "龙/羊人参娃": {
+            "羊人参娃": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
                 },
@@ -4339,6 +4339,17 @@ class CombatAutoScript:
                             need_summon_count -= snake_unclaimed
                             need_summon_count = max(0, need_summon_count)
 
+                    self.report_battle_info(
+                        f"账号{account_index} 多刘备并行: need_cnt={need_summon_count} "
+                        f"unclaimed={unclaimed_count} field_lb={field_liubei_count} "
+                        f"avail={effective_available} summoning={summoning_count} "
+                        f"no_own_lb={not has_liubei_in_account_for_clear} "
+                        f"alive={char_info.get('alive', True)} "
+                        f"has_lb={self.has_liubei.get(account_index)} "
+                        f"has_gen={self.has_general.get(account_index)} "
+                        f"in_progress={self._liubei_summon_in_progress}",
+                        "info",
+                    )
                     if (need_summon_count > 0
                         and not has_liubei_in_account_for_clear
                         and char_info.get("alive", True)
@@ -4380,6 +4391,12 @@ class CombatAutoScript:
                         or (self.keep_support_general and need_self_liubei))
                     and not skip_side_effects
                 ):
+                    self.report_battle_info(
+                        f"账号{account_index} 多刘备触发召唤: need_liubei={need_liubei} "
+                        f"need_self_liubei={need_self_liubei} "
+                        f"keep_support={self.keep_support_general}",
+                        "info",
+                    )
                     # 需要force_replace时, 用_find_best_replace_position选择被踢武将
                     # 该方法会跳过张星彩, 选择count最高的武将位置
                     replace_pos = None

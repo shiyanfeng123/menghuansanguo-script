@@ -1688,7 +1688,7 @@ class MyThread(threading.Thread):
             if self.check_stop_or_over():
                 return
             # 关闭右边
-            if self.scriptName != "帮派任务" and self.scriptName != "日常":
+            if self.scriptName != "帮派任务":
                 closeRight = self.click_image(
                     self.get_resource_path("serveAssets/images/closeRight.bmp"),
                     self.confidenceNum,
