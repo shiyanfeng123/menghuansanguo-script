@@ -11520,8 +11520,12 @@ class MyThread(threading.Thread):
             self.click_image(self.get_resource_path(
                 "serveAssets/images/yijierenwu.bmp"),0.8,self.gameRightLocation
                 )
+            self.dm.MoveTo(queding_pos.x,queding_pos.y)
+            self.dm.LeftClick()
             self.dm.MoveTo(wabao_pos.x, wabao_pos.y)
             self.dm.LeftDoubleClick()
+            self.dm.LeftClick()
+            self.dm.LeftClick()
             self.dm.MoveTo(queding_pos.x,queding_pos.y)
             self.dm.LeftClick()
             self.click_image(self.get_resource_path(
