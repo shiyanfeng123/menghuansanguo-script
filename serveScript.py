@@ -1151,19 +1151,19 @@ class MyThread(threading.Thread):
             )
             time.sleep(1)
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True)
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.5)
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True)
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.5)
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True)
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
         elif self.scriptName == "帮派任务":
             if not self.find_str("城西", self.dituLocation, 0):
                 self.go_in_ditu(
@@ -5031,7 +5031,6 @@ class MyThread(threading.Thread):
                               ditu_name=None, city_img=None):
         if npc_zones is None:
             npc_zones = []
-        self.confidenceNum = 0.6
         base_image_res = self.waitFor(base_image, self.dituLocation, 3)
         if not base_image_res:
             return
@@ -5114,14 +5113,16 @@ class MyThread(threading.Thread):
                     if self.find_pic(npc_images, self.gameBottomLocation, 0):
                         print(f"点击到NPC，跳过")
                         break
-
+                    if self.find_str("进入|退出帮派", self.gameBottomLocation, 0):
+                        print(f"点击到NPC，跳过")
+                        break
                     if change_color_time == 0 and self.dm.CmpColor(
                             click_x, click_y, "07d307", 0.7) == 1:
                         change_color_time = time.time()
                     if change_color_time > 0 and time.time() - change_color_time > 5:
                         break
 
-                    zhengdian_btn1 = self.find_str("挑战", self.gameBottomLocation, 1)
+                    zhengdian_btn1 = self.find_str("血债血偿|敢犯我帮|恐惧", self.gameBottomLocation, 1)
                     if zhengdian_btn1:
                         self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
                         time.sleep(0.001)
