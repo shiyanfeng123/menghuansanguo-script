@@ -345,7 +345,7 @@ import time
 # res121 = get_mac_address()
 # print(res121)
 # longLocation = (0, 0, 900, 580)
-similarity = 0.7  # 相似度阈值
+similarity = 0.9  # 相似度阈值
 
 
 # # dm.EnableDisplayDebug(1)
@@ -367,9 +367,9 @@ def get_resource_path(self, relative_path):
 # dm.KeyUpChar('left')
 # dm.KeyDownChar('right')
 # time.sleep(5)
-# dm_ret = dm.FindPicEx(0, 0, x, y,
-#                       r"E:\project\python\serveAssets\images/cangbaotu.bmp",
-#                       "", similarity, 0)
+dm_ret = dm.FindPicEx(0, 0, x, y,
+                      r"E:\project\python\serveAssets\images/zhengdian/xiaolvren.bmp",
+                      "", similarity, 0)
 # dm_ret1 = dm.FindPicEx(420, 0, 465, 580, r"E:\project\python\name.bmp", "", similarity, 0)
 # print(dm_ret1)
 # dm_ret3 = dm.FindPicEx(530, 0, 589, 580, r"E:\project\python\name1.bmp", "", similarity, 0)
@@ -415,7 +415,7 @@ def search_all_images(dm, region, similarity=0.6):
             print(f"[{name}] 未找到")
 
 
-# print(dm_ret, 'dm_ret')
+print(dm_ret, 'dm_ret')
 # search_all_images(dm, (0, 0, x, y), similarity)
 # x, y, r = dm_ret
 # print(x, y, r)
@@ -686,8 +686,8 @@ sim = 0.9  # 相似度阈值，可以根据实际情况调整
 # print(dm_ret)
 
 # dm.CapturePng(0, 0, x, y, f"wait_for_more_than_22_seconds.png") 534 368
-find_str_result = dm.FindStrFastE(0, 0, x, y, "一言为定新", color_format, sim)
-print(f"FindStrFast 返回结果: {find_str_result}")
+# find_str_result = dm.FindStrFastE(0, 0, x, y, "一言为定新", color_format, sim)
+# print(f"FindStrFast 返回结果: {find_str_result}")
 # find_str_result = find_str_result.split(',')
 # print(find_str_result)
 # print(find_str_result[0])
