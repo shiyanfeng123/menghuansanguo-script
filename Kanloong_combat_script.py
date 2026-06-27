@@ -5407,6 +5407,17 @@ class CombatAutoScript:
             if not action_found:
                 return
 
+            # 清理已过期的清除任务
+            self._cleanup_expired_clear_targets()
+
+            # 重置并识别目标点位（与 _polling_loop 一致的前置流程）
+            self.target_positions_detected = False
+            self._target_positions_detected_this_round = True
+            self.detect_target_positions()
+
+            # 分配复活任务
+            self.revive_assignments = self._assign_revive_tasks()
+
             # 检测zdzd弹窗并取消
             for account_index in range(self.get_account_count()):
                 dm = self.get_account_dm(account_index)
