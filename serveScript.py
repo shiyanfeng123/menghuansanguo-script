@@ -4966,14 +4966,16 @@ class MyThread(threading.Thread):
                     if self.find_pic(npc_images, self.gameBottomLocation, 0):
                         print(f"点击到NPC，跳过")
                         break
-
+                    if self.find_str("进入|退出帮派", self.gameBottomLocation, 0):
+                        print(f"点击到NPC，跳过")
+                        break
                     if change_color_time == 0 and self.dm.CmpColor(
                             click_x, click_y, "07d307", 0.7) == 1:
                         change_color_time = time.time()
                     if change_color_time > 0 and time.time() - change_color_time > 5:
                         break
 
-                    zhengdian_btn1 = self.find_str("挑战", self.gameBottomLocation, 1)
+                    zhengdian_btn1 = self.find_str("血债血偿|敢犯我帮|恐惧", self.gameBottomLocation, 1)
                     if zhengdian_btn1:
                         self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
                         time.sleep(0.001)
