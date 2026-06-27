@@ -4423,12 +4423,12 @@ class MyThread(threading.Thread):
                         0,
                 ):
                     self.dm.MoveTo(right_x, rand_y)
-                    time.sleep(0.001)
+                    time.sleep(0.5)
                     self.dm.LeftClick()
                     find_left_flag = True
                 else:
                     self.dm.MoveTo(left_x, rand_y)
-                    time.sleep(0.001)
+                    time.sleep(0.5)
                     self.dm.LeftClick()
             else:
                 if self.find_pic_or_str(
@@ -4440,7 +4440,7 @@ class MyThread(threading.Thread):
                     break
                 else:
                     self.dm.MoveTo(right_x, rand_y)
-                    time.sleep(0.001)
+                    time.sleep(0.5)
                     self.dm.LeftClick()
             self.confidenceNum = 0.9
             time.sleep(0.6)
