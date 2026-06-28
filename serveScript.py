@@ -6976,7 +6976,7 @@ class MyThread(threading.Thread):
         # 0.091,0.118  f"{self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp')}"
         self.findAndClickPic(
             "曹袁战场",
-            self.get_resource_path("serveAssets/images/guandu/yanliang.bmp"),
+            "官渡颜良",
             f"{self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp')}",
             self.gameBottomLocation,
             f"{self.get_resource_path('serveAssets/images/zdzd111.bmp')}|{self.get_resource_path('serveAssets/images/zdzd.bmp')}",
