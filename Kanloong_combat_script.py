@@ -1068,16 +1068,16 @@ class CombatAutoScript:
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
                 },
-                "status_region": (61, 257, 145, 312),
-                "cast_position": (112, 372),
+                "status_region": (56, 257, 145, 319),
+                "cast_position": (113, 302),
                 "status_duration": 4,
             },
             "猴子狮": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
                 },
-                "status_region": (146, 177, 227, 225),
-                "cast_position": (150, 300),
+                "status_region": (146, 154, 230, 221),
+                "cast_position": (225, 258),
                 "status_duration": 4,
             },
             "赵云28": {

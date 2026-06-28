@@ -1947,7 +1947,7 @@ class MyThread(threading.Thread):
                         if not script.check_any_action_button():
                             script.exit_system_auto()
                             time.sleep(0.5)
-                        self._start_combat_auto(clear_enemy_keys=[enemy_key])
+                        self._start_combat_auto(clear_enemy_keys=self._pending_enemy_keys)
                         self._mode3_triggered = True
                     else:
                         zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
