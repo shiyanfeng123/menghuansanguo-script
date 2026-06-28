@@ -13637,9 +13637,30 @@ class MyThread(threading.Thread):
             if not result_item and not self.richangIsOver():
                 if remaining_minutes >= 2:
                     print("等整点时打官渡")
+                    if not self.waitFor("官渡", self.dituLocation, 2):
+                        self.go_in_ditu(
+                            "地图官渡",
+                            self.get_resource_path(
+                                "serveAssets/images/zhengdian/xuchang.bmp"),
+                            "官渡",
+                            "驿站城西",
+                            "驿站许昌",
+                            True,
+                        )
                     self.guanduScript()
                     continue
                 if self.richang_mojing and remaining_minutes >= 2:
+                    isInGuanDu = self.waitFor("城西", self.dituLocation, 3)
+                    if not isInGuanDu:
+                        self.go_in_ditu(
+                                "地图城西",
+                                self.get_resource_path(
+                                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                                "城西",
+                                "驿站城西",
+                                "",
+                                True,
+                            )
                     print("等整点时打魔镜")
                     self.mojingScript()
                     continue
