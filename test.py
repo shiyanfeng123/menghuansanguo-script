@@ -69,6 +69,11 @@ if hwnd == 0:
     print("目标窗口未找到")
 else:
     print("找到目标窗口")
+
+    # 设置窗口客户区大小为 900×580
+    result = dm.SetClientSize(hwnd, 900, 630)
+    print(f"设置窗口大小 900×580: {'成功' if result == 1 else '失败'}")
+
     #
     # 使用 Windows API 的 EnumChildWindows
     user32 = ctypes.WinDLL("user32", use_last_error=True)

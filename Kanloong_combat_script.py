@@ -99,7 +99,7 @@ class BattleReportDialog(wx.Frame):
 
     def __init__(self, parent=None):
         super().__init__(
-            parent, title="战斗实时播报", size=(520, 500), pos=(450, 50),
+            parent, title="战斗实时播报", size=(520, 500), pos=(0, 580),
             style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
         )
         self.SetBackgroundColour(self.C_BG)
