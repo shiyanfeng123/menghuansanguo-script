@@ -938,7 +938,7 @@ class CombatAutoScript:
             "魔化关羽": f"{self.get_resource_path('serveAssets/images/auto/mogu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/mogu1.bmp')}",
             "曹操": f"{self.get_resource_path('serveAssets/images/auto/caocao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocao2.bmp')}",
             "张星彩": f"{self.get_resource_path('serveAssets/images/auto/zhangxingcai.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhangxingcai1.bmp')}",
-            "诸葛亮": f"{self.get_resource_path('serveAssets/images/auto/zhugeliang_bag.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugeliang_bag1.bmp')}",
+            "诸葛亮": f"{self.get_resource_path('serveAssets/images/auto/beibaozhugeliang1.bmp')}|{self.get_resource_path('serveAssets/images/auto/beibaozhugeliang2.bmp')}",
         }
 
         # 血量条图片（用于检测血量低的单位）
@@ -4777,8 +4777,7 @@ class CombatAutoScript:
                     if "generals" not in char_info:
                         char_info["generals"] = []
                     char_info["generals"].append(new_general)
-                    # 武将通过技能识别被动添加(非召唤流程), 需清理global_dead_units中该账号同名死亡记录
-                    # 否则has_dead_general_in_account永久为True, 导致每回合重复召唤
+                    # 恢复路径添加刘备后清理global_dead_units残留记录, 避免影响后续判断
                     with self._state_lock:
                         for dead_gen in self.global_dead_units["generals"][:]:
                             if (dead_gen.get("account_index") == account_index
@@ -5031,8 +5030,7 @@ class CombatAutoScript:
                     if "generals" not in char_info:
                         char_info["generals"] = []
                     char_info["generals"].append(new_general)
-                    # 武将通过技能识别被动添加(非召唤流程), 需清理global_dead_units中该账号同名死亡记录
-                    # 否则has_dead_general_in_account永久为True, 导致每回合重复召唤
+                    # 恢复路径添加后清理global_dead_units残留记录, 避免影响后续判断
                     with self._state_lock:
                         for dead_gen in self.global_dead_units["generals"][:]:
                             if (dead_gen.get("account_index") == account_index
@@ -5108,6 +5106,7 @@ class CombatAutoScript:
                     if "generals" not in char_info:
                         char_info["generals"] = []
                     char_info["generals"].append(new_general)
+                    # 注: 张星彩不进入召唤流程, 不会出现在global_dead_units中, 无需清理
 
                 # 4.1 执行分配的复活任务（如果当前账号有分配任务）
                 if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout:
@@ -5170,6 +5169,8 @@ class CombatAutoScript:
                     if "generals" not in char_info:
                         char_info["generals"] = []
                     char_info["generals"].append(new_general)
+                    # 注: 恢复路径不清理global_dead_units。召唤判断用generals[]的alive字段,
+                    # 不依赖global_dead_units; 如有残留, 下一轮HP扫描/墓碑检测会自修正
 
                 # 4.1 执行分配的复活任务（如果当前账号有分配任务）
                 if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout:
