@@ -898,6 +898,7 @@ class CombatAutoScript:
         self._no_heal_item_missing_turn = {}
         self._no_mana_item_missing_turn = {}
         self._healed_positions_this_turn = set()  # 本回合已加血的位置集合，防止同回合重复加同一目标
+        self._assisted_positions_this_turn = set()  # 本回合诸葛辅助已选中的位置，防止双诸葛重复辅助同一目标
         self._current_our_turn_call = 0
 
         # 武将追踪信息（存储每个账号的武将信息）
@@ -999,7 +1000,7 @@ class CombatAutoScript:
                 "main_char": (764, 288),  # 账号1主角中心点（上排）
                 "generals": [
                     ("武将1", 674, 282),  # 账号1武将1中心点（后排）
-                    ("武将2", 580, 278),  # 账号1武将2中心点（前排）
+                    ("武将2", 584, 289),  # 账号1武将2中心点（前排）
                 ],
                 "enemies": [],
             },
@@ -1079,7 +1080,7 @@ class CombatAutoScript:
                 },
                 "status_region": (54, 360, 174, 541),
                 "cast_position": (115, 446),
-                "status_duration": 3,
+                "status_duration": 4,
             },
             "龙/猴子": {
                 "status_images": {
@@ -1128,7 +1129,7 @@ class CombatAutoScript:
                 },
                 "status_region": (156, 235, 242, 319),
                 "cast_position": (202, 337),
-                "status_duration": 3,
+                "status_duration": 4,
             },
             "蛇": {
                 "status_images": {
@@ -1150,12 +1151,12 @@ class CombatAutoScript:
 
         # 按钮图片路径
         self.button_images = {
-            "技能按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}",
-            "召唤按钮": f"{self.get_resource_path('serveAssets/images/auto/zhaohuan.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhaohuan1.bmp')}",
-            "道具按钮": f"{self.get_resource_path('serveAssets/images/auto/yaopin.bmp')}|{self.get_resource_path('serveAssets/images/auto/yaopin1.bmp')}",
-            "防御按钮": f"{self.get_resource_path('serveAssets/images/auto/fangyu.bmp')}",  # 防御按钮
-            "操作按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}",  # 操作按钮(检测是否在战斗页面)
-            "重复按钮": f"{self.get_resource_path('serveAssets/images/auto/chongfu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu2.bmp')}",  # 重复按钮(重复上回合操作)
+            "技能按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng_active.bmp')}",
+            "召唤按钮": f"{self.get_resource_path('serveAssets/images/auto/zhaohuan.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhaohuan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhaohuan_active.bmp')}",
+            "道具按钮": f"{self.get_resource_path('serveAssets/images/auto/yaopin.bmp')}|{self.get_resource_path('serveAssets/images/auto/yaopin1.bmp')}|{self.get_resource_path('serveAssets/images/auto/daoju_active.bmp')}",
+            "防御按钮": f"{self.get_resource_path('serveAssets/images/auto/fangyu.bmp')}|{self.get_resource_path('serveAssets/images/auto/fangyu_active.bmp')}",  # 防御按钮
+            "操作按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng_active.bmp')}",  # 操作按钮(检测是否在战斗页面)
+            "重复按钮": f"{self.get_resource_path('serveAssets/images/auto/chongfu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu_active.bmp')}",  # 重复按钮(重复上回合操作)
             "取消按钮": self.get_resource_path("serveAssets/images/quxiaozdzd.bmp"),  # 取消按钮
         }
 
@@ -1397,6 +1398,9 @@ class CombatAutoScript:
             with self._state_lock:
                 if any(t > 0 for t in self.attack_buff_tracker.values()):
                     return False
+                # 立即抢占tracker，封堵其他刘备线程的竞争窗口
+                for acct in range(self.get_account_count()):
+                    self.attack_buff_tracker[acct] = 3
 
         skill_path = self.skill_images.get(skill_name)
         if not skill_path:
@@ -1408,12 +1412,6 @@ class CombatAutoScript:
             return False
 
         result = self.release_skill_with_target(account_index, skill_name, skill_pos, caller_hint)
-
-        # 加攻击释放成功后，更新全局tracker防止其他刘备重复释放
-        if result and skill_name == "加攻击":
-            with self._state_lock:
-                for acct in range(self.get_account_count()):
-                    self.attack_buff_tracker[acct] = 3
 
         return result
 
@@ -2214,6 +2212,7 @@ class CombatAutoScript:
         """诸葛亮辅助技能目标优先级: 曹操 > 张星彩 > 魔化关羽 > 刘备 > 主角 > 诸葛亮
         
         点位来源和存活判断与 detect_target_positions 的 ally_target_positions 完全一致
+        额外通过蓝条实时验证目标存活，防止 unit_info 状态滞后导致点死目标
         """
         priority_order = ["曹操", "张星彩", "魔化关羽", "刘备", "主角", "诸葛亮"]
 
@@ -2224,14 +2223,14 @@ class CombatAutoScript:
             char_info = self.unit_info[acct]["main_char"]
             # 主角：使用 unit_positions 固定点位（与 ally_target_positions 一致）
             if char_info.get("alive", False):
-                allies.append(("主角", self.unit_positions[acct]["main_char"]))
+                allies.append(("主角", self.unit_positions[acct]["main_char"], acct))
             # 武将：使用 gen["position"]（与 ally_target_positions 一致）
             for gen in char_info.get("generals", []):
                 if gen.get("alive", False) and not gen.get("replacing", False):
                     pos = gen.get("position")
                     name = gen.get("name", "")
                     if pos and name:
-                        allies.append((name, pos))
+                        allies.append((name, pos, acct))
 
         def sort_key(ally):
             try:
@@ -2240,7 +2239,22 @@ class CombatAutoScript:
                 return len(priority_order)
 
         allies.sort(key=sort_key)
-        return allies[0][1] if allies else (764, 380)
+
+        # 按优先级逐个做蓝条存活验证，跳过已阵亡单位；同时抢占标记防双诸葛重复辅助
+        for name, pos, acct in allies:
+            region_idx = self._find_region_by_position(acct, pos)
+            if region_idx is not None:
+                region = self.hp_bar_regions[region_idx]
+                if self.find_image(account_index, self.target_lantiao_image, region, 0):
+                    with self._state_lock:
+                        if pos in self._assisted_positions_this_turn:
+                            continue
+                        self._assisted_positions_this_turn.add(pos)
+                    return pos
+            # 找不到区域或蓝条的，继续下一个候选
+
+        # 所有候选都不存活，返回兜底坐标
+        return (764, 380)
 
     def _detect_liubei_on_field(self):
         """在我方回合开始时，由大漠对象0检测场上是否有刘备
@@ -2733,6 +2747,12 @@ class CombatAutoScript:
                         continue
                     status_pos = self.find_image(dm_index, status_image, status_region, 0)
                     if status_pos:
+                        # 刚被清除过（同敌人同状态，1回合内）→ 跳过入队，等待游戏结算清除效果
+                        if any(a["enemy_name"] == enemy_key and \
+                               a.get("status_name") == status_name and \
+                               self.current_turn - a["turn"] <= 1
+                               for a in self._last_clear_attempt.values()):
+                            continue
                         # 检测到状态，在6曹操阵容下需要开始召唤刘备
                         if not self.keep_support_general:
                             self.keep_support_general = True
@@ -2765,11 +2785,11 @@ class CombatAutoScript:
                                     "warning",
                                 )
                                 self.enemy_status_reported[enemy_key] = True
-                        # Part1: 检查是否有账号上回合清除失败
+                        # Part1: 检查是否有账号上回合清除失败（gap>1才判定，跳过刚释放时的画面残留）
                         for acct_idx, attempt in list(self._last_clear_attempt.items()):
                             if attempt["enemy_name"] == enemy_key and \
                                attempt.get("status_name") == status_name and \
-                               self.current_turn - attempt["turn"] <= 2:
+                               self.current_turn - attempt["turn"] > 1:
                                 if acct_idx in self.liubei_skill_cd:
                                     self.liubei_skill_cd[acct_idx].pop("清除状态", None)
                                 self.report_battle_info(
@@ -4736,8 +4756,8 @@ class CombatAutoScript:
                 if self._execute_best_strategy(account_index, "main_char"):
                     return True
 
-                # 4.5 蓝耗尽检测（仅四象模式）
-                if self.combat_scene == "四象" and self._detect_gray_and_recover(account_index):
+                # 4.5 蓝耗尽检测
+                if self._detect_gray_and_recover(account_index):
                     return True
 
                 # 4.6 主角没技能时，尝试用恢复药给低血单位加血（四象模式禁用）
@@ -4912,10 +4932,10 @@ class CombatAutoScript:
                             f"账号{account_index} 清除技能可用但CD记录错误，已重置为0",
                             "warning"
                         )
-                # 修改点7: Part2 - 检查上回合清除是否失败
+                # 修改点7: Part2 - 检查上回合清除是否失败（gap>1才判定）
                 if account_index in self._last_clear_attempt:
                     last = self._last_clear_attempt[account_index]
-                    if self.current_turn - last["turn"] <= 2:
+                    if self.current_turn - last["turn"] > 1:
                         enemy_still_in_queue = any(
                             e.get("enemy_name") == last["enemy_name"] and
                             e.get("status_name") == last.get("status_name")
@@ -4928,7 +4948,7 @@ class CombatAutoScript:
                                 f"账号{account_index} 确认清除{last['enemy_name']}失败，CD重置为0",
                                 "warning"
                             )
-                    self._last_clear_attempt.pop(account_index, None)
+                        self._last_clear_attempt.pop(account_index, None)
                 # 认领清除任务
                 claimed_target = None
                 cd_remaining = self._get_liubei_clear_cd_remaining(account_index)
@@ -5215,7 +5235,7 @@ class CombatAutoScript:
             
             # 未识别到单位类型，进入兜底决策链
             # ① 灰图标检测 → 蓝耗尽恢复（仅四象模式）
-            if self.combat_scene == "四象" and self._detect_gray_and_recover(account_index):
+            if self._detect_gray_and_recover(account_index):
                 return True
 
             # ② 防御兜底
@@ -5357,6 +5377,7 @@ class CombatAutoScript:
 
                     # 新回合开始，重置加血位置记录
                     self._healed_positions_this_turn.clear()
+                    self._assisted_positions_this_turn.clear()
 
                     # 重置目标点位识别标志（只识别一次）
                     if (
@@ -5776,6 +5797,7 @@ class CombatAutoScript:
                 self._no_heal_item_missing_turn = {}
                 self._no_mana_item_missing_turn = {}
                 self._healed_positions_this_turn = set()
+                self._assisted_positions_this_turn = set()
                 self.item_cd_tracking = {}
                 self._current_our_turn_call = 0
                 self.zhugeliang_found = {}
@@ -5897,6 +5919,7 @@ class CombatAutoScript:
             self._no_heal_item_missing_turn = {}
             self._no_mana_item_missing_turn = {}
             self._healed_positions_this_turn = set()
+            self._assisted_positions_this_turn = set()
             self.item_cd_tracking = {}
             self._current_our_turn_call = 0
             self.zhugeliang_found = {}
