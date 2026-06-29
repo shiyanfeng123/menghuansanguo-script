@@ -573,6 +573,7 @@ class CombatAutoScript:
 
         # 轮询监听控制
         self.polling_running = False  # 轮询监听运行标志
+        self._polling_generation = 0  # 线程代际计数器，旧线程检测到不匹配时自行退出
         self.polling_thread = None  # 轮询监听线程
         self.account_threads = {}  # 账户处理线程引用：{account_index: thread}
 
@@ -1563,6 +1564,8 @@ class CombatAutoScript:
             return False
         time.sleep(0.1)
         # 4. 更新武将信息（背包武将已消失，但施法可能被取消，需延迟确认）
+        if account_index not in self.unit_info:
+            return False
         char_info = self.unit_info[account_index]["main_char"]
 
         alive_generals = [g for g in char_info.get("generals", [])
@@ -1686,7 +1689,7 @@ class CombatAutoScript:
         # 1. 点击道具按钮
         item_btn = None
         start_time = time.time()
-        while time.time() - start_time < 1.5:
+        while time.time() - start_time < 1.5 and self.polling_running:
             item_btn = self.find_image(account_index, self.button_images["道具按钮"], self.right_button_region, 0)
             if item_btn:
                 break
@@ -2934,7 +2937,7 @@ class CombatAutoScript:
             timeout = 1.5
             item_button_pos = None
 
-            while time.time() - start_time < timeout:
+            while time.time() - start_time < timeout and self.polling_running:
                 item_button_pos = self.find_image(
                     account_index, self.button_images["道具按钮"], self.right_button_region, 0
                 )
@@ -3510,7 +3513,7 @@ class CombatAutoScript:
             timeout = 5.0
             item_button_pos = None
 
-            while time.time() - start_time < timeout:
+            while time.time() - start_time < timeout and self.polling_running:
                 item_button_pos = self.find_image(
                     account_index, self.button_images["道具按钮"], self.right_button_region, 0
                 )
@@ -3579,7 +3582,7 @@ class CombatAutoScript:
                 self.ally_region,  # 己方区域（作为备选）
             ]
 
-            while time.time() - start_time < timeout:
+            while time.time() - start_time < timeout and self.polling_running:
                 for search_region in search_regions:
                     # 使用更低的识别率查找复活药（道具可能较难识别）
                     revive_item_pos = self.find_image(
@@ -3774,7 +3777,7 @@ class CombatAutoScript:
         # 使用复活药 - 在循环中查找道具按钮（超时1.5秒）
         item_btn = None
         start_time = time.time()
-        while time.time() - start_time < 1.5:
+        while time.time() - start_time < 1.5 and self.polling_running:
             item_btn = self.find_image(account_index, self.button_images["道具按钮"], self.right_button_region, 0)
             if item_btn:
                 break
@@ -3828,7 +3831,7 @@ class CombatAutoScript:
 
         revive_pos = None
         start_time = time.time()
-        while time.time() - start_time < 3.0:
+        while time.time() - start_time < 3.0 and self.polling_running:
             revive_pos = self.find_image(account_index, revive_path, self.item_panel_region, 0)
             if revive_pos:
                 break
@@ -4014,7 +4017,7 @@ class CombatAutoScript:
                 # 等待第二个武将操作
                 is_finded = False
                 start_time = time.time()
-                while time.time() - start_time < 2.0:
+                while time.time() - start_time < 2.0 and self.polling_running:
                     if self.check_action_button(account_index):
                         is_finded = True
                         break
@@ -4046,6 +4049,8 @@ class CombatAutoScript:
 
             # 阶段1：切换点位 retry（每个剩余点位试3次，覆盖3个单位）
             while True:
+                if not self.polling_running:
+                    return False
                 # 先检测操作面板是否仍存在
                 wait_start = time.time()
                 action_found = False
@@ -4112,6 +4117,7 @@ class CombatAutoScript:
 
         except Exception as e:
             self.report_battle_info(f"账号{account_index} 处理操作流程出错: {e}", "error")
+            return False
 
     # 处理我方回合操作
     def handle_our_turn(self, account_index, skip_side_effects=False):
@@ -5008,13 +5014,19 @@ class CombatAutoScript:
         """轮询监听循环(内部实现)"""
         self.report_battle_info("开始轮询监听战斗状态", "system")
         account_count = self.get_account_count()
+        my_generation = self._polling_generation  # 记录当前代际，不匹配时退出
 
         # 初始化单位信息
         self.init_unit_info()
 
         # 第零步（前置循环）：三个号进入循环，检测操作按钮或zdzd弹窗，等待进入监听环节
         step0_completed = False
+        step0_start = time.time()
         while not step0_completed and self.polling_running:
+            if self._polling_generation != my_generation:
+                return
+            if time.time() - step0_start > 600:  # 60秒超时，防止游戏加载画面永久等待
+                return
             # 检测所有账号
             for account_index in range(self.get_account_count()):
                 if not self.polling_running:
@@ -5054,6 +5066,8 @@ class CombatAutoScript:
 
         # 进入监听循环
         while self.polling_running:
+            if self._polling_generation != my_generation:
+                return
             try:
                 # 开启六曹操
                 # if not self.keep_support_general and not self.start_summon_liubei and 0 in self.enemies_need_clear and self.enemies_need_clear[0]:
@@ -5567,6 +5581,7 @@ class CombatAutoScript:
     def reset_state(self):
         try:
             self.polling_running = False
+            self._polling_generation += 1  # 递增代际，使旧线程自行失效
             try:
                 if hasattr(self, "stop_event") and isinstance(getattr(self, "stop_event"), threading.Event):
                     self.stop_event.set()

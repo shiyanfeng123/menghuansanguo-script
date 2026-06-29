@@ -257,6 +257,7 @@ class MyThread(threading.Thread):
         self.combat_auto_instance = None
         self.combat_auto_thread = None
         self.combat_auto_running = False
+        self._combat_lock = threading.Lock()  # 保护 start/stop 互斥
         # 副本统计：四象/噬魂 的成功、失败、已打、总次数
         self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
         self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
@@ -294,35 +295,38 @@ class MyThread(threading.Thread):
 
     def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None):
         try:
-            if self.combat_auto_running:
-                return
-            if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
-                return
-            _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
-            self.combat_auto_running = True
+            with self._combat_lock:
+                if self.combat_auto_running:
+                    return
+                if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
+                    return
+                _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
+                self.combat_auto_running = True
 
-            if not self.combat_auto_instance:
-                self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
-                self.combat_auto_instance.keep_support_general = False
-                self.combat_auto_instance.enable_main_heal = _heal_on
-                self.combat_auto_instance.enable_main_summon = True
-                self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
-                if combat_scene is not None:
-                    self.combat_auto_instance.combat_scene = combat_scene
-            else:
-                self.combat_auto_instance.reconfigure(
-                    enemy_keys_to_detect=clear_enemy_keys,
-                    liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
-                    enable_main_heal=_heal_on,
-                    combat_scene=combat_scene,
-                )
+                if not self.combat_auto_instance:
+                    self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
+                    self.combat_auto_instance.keep_support_general = False
+                    self.combat_auto_instance.enable_main_heal = _heal_on
+                    self.combat_auto_instance.enable_main_summon = True
+                    self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
+                    if combat_scene is not None:
+                        self.combat_auto_instance.combat_scene = combat_scene
+                else:
+                    self.combat_auto_instance.reconfigure(
+                        enemy_keys_to_detect=clear_enemy_keys,
+                        liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
+                        enable_main_heal=_heal_on,
+                        combat_scene=combat_scene,
+                    )
 
-            if self.combat_auto_instance.battle_report_dialog:
-                self.combat_auto_instance.battle_report_dialog.set_running(True)
+                if self.combat_auto_instance.battle_report_dialog:
+                    self.combat_auto_instance.battle_report_dialog.set_running(True)
 
-            self.combat_auto_thread = threading.Thread(
-                target=self.combat_auto_instance.run_combat_loop, daemon=True)
-            self.combat_auto_thread.start()
+                # 递增代际，使旧线程自行失效
+                self.combat_auto_instance._polling_generation += 1
+                self.combat_auto_thread = threading.Thread(
+                    target=self.combat_auto_instance.run_combat_loop, daemon=True)
+                self.combat_auto_thread.start()
 
         except Exception as e:
             print(f"启动战斗自动操作失败")
@@ -332,24 +336,25 @@ class MyThread(threading.Thread):
 
     def _stop_combat_auto(self):
         try:
-            if not self.combat_auto_running:
-                return
-            self.combat_auto_running = False
+            with self._combat_lock:
+                if not self.combat_auto_running:
+                    return
+                self.combat_auto_running = False
 
-            if self.combat_auto_instance:
-                self.combat_auto_instance.polling_running = False
-                if self.combat_auto_instance.battle_report_dialog:
-                    self.combat_auto_instance.battle_report_dialog.set_running(False)
+                if self.combat_auto_instance:
+                    self.combat_auto_instance.polling_running = False
+                    if self.combat_auto_instance.battle_report_dialog:
+                        self.combat_auto_instance.battle_report_dialog.set_running(False)
 
-            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
-                self.combat_auto_thread.join(timeout=5)
-            self.combat_auto_thread = None
+                if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+                    self.combat_auto_thread.join(timeout=5)
+                self.combat_auto_thread = None
 
-            if self.combat_auto_instance:
-                try:
-                    self.combat_auto_instance.reset_state()
-                except Exception as e:
-                    print(f"重置战斗脚本状态时出错: {e}")
+                if self.combat_auto_instance:
+                    try:
+                        self.combat_auto_instance.reset_state()
+                    except Exception as e:
+                        print(f"重置战斗脚本状态时出错: {e}")
 
         except Exception as e:
             print(f"停止战斗自动操作失败")
@@ -11115,6 +11120,21 @@ class MyThread(threading.Thread):
     def longzhuScript(self):
         self.heifengCount += 1
         print(f"第{self.heifengCount}次龙珠.")
+        isInGuanDu = self.waitFor(
+            self.get_resource_path("serveAssets/images/zhanhun/luoyang.bmp"),
+            self.dituLocation,
+            1,
+        )
+        if not isInGuanDu:
+            self.go_in_ditu(
+                "地图洛阳大道",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "洛阳",
+                "",
+                "",
+                True,
+            )
         self.findAndClickPic(
             "洛阳",
             self.get_resource_path("serveAssets/images/longzhu/laoyufu.bmp"),
@@ -11555,6 +11575,21 @@ class MyThread(threading.Thread):
 
     # 龙珠循环
     def longzhuWhile(self):
+        isInGuanDu = self.waitFor(
+            self.get_resource_path("serveAssets/images/zhanhun/luoyang.bmp"),
+            self.dituLocation,
+            1,
+        )
+        if not isInGuanDu:
+            self.go_in_ditu(
+                "地图洛阳大道",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "洛阳",
+                "",
+                "",
+                True,
+            )
         while True:
             if self.overed:
                 return
@@ -15316,7 +15351,7 @@ class MyDialog(wx.Dialog):
             b.Hide()
             tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
             if is_leader:
-                auto_btn = wx.Button(panel, label="自动识别", size=(74, 28), style=wx.BORDER_NONE)
+                auto_btn = wx.Button(panel, label="识别窗口", size=(74, 28), style=wx.BORDER_NONE)
                 auto_btn.SetBackgroundColour(self.C_GOLD)
                 auto_btn.SetForegroundColour(wx.Colour(255, 255, 255))
                 auto_btn.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
