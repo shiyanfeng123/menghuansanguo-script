@@ -4320,7 +4320,7 @@ class CombatAutoScript:
                                 and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
                                 has_liubei_in_account = True
                                 break
-
+                        # 刘备召唤简化（场上没有刘备就优先上刘备）
                         # if not field_has_liubei and not has_liubei_in_account and self.keep_support_general:
                         if not field_has_liubei and not has_liubei_in_account:
                             need_liubei = True
