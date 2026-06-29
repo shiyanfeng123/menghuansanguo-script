@@ -503,6 +503,7 @@ class CombatAutoScript:
         self.zhugeliang_status1_missing_count = {}  # 格式：{account_index: count}
         # 跟踪诸葛亮连续未找到状态2的检测次数：{account_index: count}
         self.zhugeliang_status2_missing_count = {}  # 格式：{account_index: count}
+        self._liubei29_status1_detected = False  # 刘备29状态1是否已被检测过（控制赵云29状态2的检测开关）
         # 跟踪每个单位连续未找到蓝条的操作回合数：{(account_index, region_idx): count}
         self.lantiao_missing_rounds = {}  # 格式：{(account_index, region_idx): count}
         # 我方武将免死被动追踪 + 轮转预替换
@@ -2615,6 +2616,10 @@ class CombatAutoScript:
             else:
                 # 其他武将：找到状态图片就返回需要清除
                 for status_name, status_image in status_images.items():
+                    # 赵云29状态2：须刘备29状态1 + 诸葛亮 都被检测过后才启用
+                    if (enemy_key == "赵云29" and status_name == "状态2"
+                        and not (self._liubei29_status1_detected and self.clear_zhugeliang)):
+                        continue
                     status_pos = self.find_image(dm_index, status_image, status_region, 0)
                     if status_pos:
                         # 检测到状态，在6曹操阵容下需要开始召唤刘备
@@ -2639,6 +2644,9 @@ class CombatAutoScript:
                                         "detected_turn": self.current_turn,
                                     }
                                 )
+                                # 记录刘备29状态1已被检测过（启用赵云29状态2的前置条件）
+                                if enemy_key == "刘备29" and status_name == "状态1":
+                                    self._liubei29_status1_detected = True
                             # 只在第一次检测到时播报
                             if enemy_key not in self.enemy_status_reported:
                                 self.report_battle_info(
@@ -5559,6 +5567,7 @@ class CombatAutoScript:
                 self.beidong_huihe = 0
                 self.zhaohuan_index = 0
                 self.clear_zhugeliang = False
+                self._liubei29_status1_detected = False
                 self.enable_persistent_liubei = True
                 self._last_kicked_info = None
                 self.ally_undead_rounds = {}
@@ -5670,6 +5679,7 @@ class CombatAutoScript:
             self.beidong_huihe = 0
             self.zhaohuan_index = 0
             self.clear_zhugeliang = False
+            self._liubei29_status1_detected = False
             self.attack_buff_tracker = {}
             self.low_hp_accounts = {}
             self._zhugeliang_low_hp = False
@@ -5716,6 +5726,7 @@ class CombatAutoScript:
             self.combat_scene = combat_scene
             self.current_turn = 0
             self.clear_zhugeliang = False
+            self._liubei29_status1_detected = False
             self.global_enemies_need_clear = []
             self._claimed_clear_target = {}
             self._last_clear_attempt = {}
