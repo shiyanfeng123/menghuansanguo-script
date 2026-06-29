@@ -204,17 +204,21 @@ class BattleReportDialog(wx.Frame):
         lbl_main.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
         lbl_main.SetForegroundColour(self.C_TEXT)
         sizer.Add(lbl_main, 0, wx.LEFT, 8)
-        lbl_gen = wx.StaticText(panel, label="武将: --")
-        lbl_gen.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-        lbl_gen.SetForegroundColour(self.C_TEXT)
-        sizer.Add(lbl_gen, 0, wx.LEFT, 8)
+        lbl_gen1 = wx.StaticText(panel, label="--")
+        lbl_gen1.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        lbl_gen1.SetForegroundColour(self.C_MUTED)
+        sizer.Add(lbl_gen1, 0, wx.LEFT, 8)
+        lbl_gen2 = wx.StaticText(panel, label="--")
+        lbl_gen2.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        lbl_gen2.SetForegroundColour(self.C_MUTED)
+        sizer.Add(lbl_gen2, 0, wx.LEFT, 8)
         lbl_lb = wx.StaticText(panel, label="刘备: --")
         lbl_lb.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
         lbl_lb.SetForegroundColour(self.C_TEXT)
         sizer.Add(lbl_lb, 0, wx.LEFT | wx.BOTTOM, 4)
         panel.SetSizer(sizer)
         self._account_panels[idx] = {
-            "panel": panel, "main": lbl_main, "general": lbl_gen, "liubei": lbl_lb
+            "panel": panel, "main": lbl_main, "gen1": lbl_gen1, "gen2": lbl_gen2, "liubei": lbl_lb
         }
         return panel
 
@@ -269,7 +273,12 @@ class BattleReportDialog(wx.Frame):
         self._safe_call_after(_update)
 
     def update_account_status(self, idx, main_alive=True, main_status="正常",
-                               general_alive=0, general_total=2, has_liubei=False):
+                               generals=None, has_liubei=False):
+        """更新单个账号的状态面板
+        Args:
+            generals: 武将状态列表 [{"name": "曹操", "alive": True}, ...] 或 None
+            has_liubei: 该账号场上是否有刘备（存活）
+        """
         def _update():
             try:
                 if idx not in self._account_panels:
@@ -282,18 +291,26 @@ class BattleReportDialog(wx.Frame):
                 else:
                     ap["main"].SetLabel("主角: \u25cb 阵亡")
                     ap["main"].SetForegroundColour(self.C_RED)
-                if general_alive < 0:
-                    ap["general"].SetLabel("武将: --")
-                    ap["general"].SetForegroundColour(self.C_MUTED)
-                else:
-                    gc = self.C_GREEN if general_alive == general_total else (self.C_ORANGE if general_alive > 0 else self.C_RED)
-                    ap["general"].SetLabel(f"武将: {general_alive}/{general_total}")
-                    ap["general"].SetForegroundColour(gc)
+                # 逐武将显示存活状态
+                gen_slots = [("gen1", None), ("gen2", None)]
+                if generals:
+                    for i, g in enumerate(generals[:2]):
+                        gen_slots[i] = (gen_slots[i][0], g)
+                for slot_key, g in gen_slots:
+                    if g is None:
+                        ap[slot_key].SetLabel("--")
+                        ap[slot_key].SetForegroundColour(self.C_MUTED)
+                    elif g.get("alive", False):
+                        ap[slot_key].SetLabel(f"{g['name']}: \u25cf")
+                        ap[slot_key].SetForegroundColour(self.C_GREEN)
+                    else:
+                        ap[slot_key].SetLabel(f"{g['name']}: \u25cb")
+                        ap[slot_key].SetForegroundColour(self.C_RED)
                 if has_liubei:
                     ap["liubei"].SetLabel("刘备: \u25cf 在场")
                     ap["liubei"].SetForegroundColour(self.C_GREEN)
                 else:
-                    ap["liubei"].SetLabel("刘备: -")
+                    ap["liubei"].SetLabel("刘备: --")
                     ap["liubei"].SetForegroundColour(self.C_MUTED)
             except Exception:
                 pass
@@ -312,8 +329,10 @@ class BattleReportDialog(wx.Frame):
                     ap = self._account_panels[idx]
                     ap["main"].SetLabel("主角: --")
                     ap["main"].SetForegroundColour(self.C_TEXT)
-                    ap["general"].SetLabel("武将: --")
-                    ap["general"].SetForegroundColour(self.C_TEXT)
+                    ap["gen1"].SetLabel("--")
+                    ap["gen1"].SetForegroundColour(self.C_MUTED)
+                    ap["gen2"].SetLabel("--")
+                    ap["gen2"].SetForegroundColour(self.C_MUTED)
                     ap["liubei"].SetLabel("刘备: --")
                     ap["liubei"].SetForegroundColour(self.C_TEXT)
             except Exception:
@@ -571,6 +590,8 @@ class CombatAutoScript:
         self.enemy_single_rounds = 0
         self.account_last_target_type = {}
         self.target_positions_detected = False
+        self._target_positions_detected_this_round = False
+        self._hp_scan_round = 0
         # 战斗场景标识（如"四象"），用于区分不同副本的点位偏移等差异
         self.combat_scene = None
 
@@ -5780,6 +5801,13 @@ class CombatAutoScript:
                 self._liubei29_status1_detected = False
                 self.enable_persistent_liubei = True
                 self._last_kicked_info = None
+                self.keep_support_general = False
+                self._proactive_replace_in_progress = False
+                self._zhugeliang_low_hp = False
+                self._xingcai_single_targets = []
+                self.caocao_passive_missing_rounds = {}
+                self.replace_fail_count = {}
+                self.replace_fail_cooldown = {}
                 self.ally_undead_rounds = {}
                 self.ally_undead_last_increment_turn = {}
                 self.need_proactive_replace = False
@@ -5841,6 +5869,7 @@ class CombatAutoScript:
             self.turn_start_time = None
             self.account_error_count = {}
             self._battle_dialog_retry_count = 0
+            self._dialog_closed = False
 
             self.unit_info = {}
             self.dead_units = {}
@@ -5966,25 +5995,29 @@ class CombatAutoScript:
             dlg = self.battle_report_dialog
             dlg.update_turn(self.current_turn)
             for i in range(3):
-                main_alive = True
-                main_status = "正常"
-                general_alive = -1
-                general_total = 2
-                has_lb = self.has_liubei.get(i, False)
+                main_alive = False
+                main_status = "阵亡"
+                gen_list = None
+                has_lb = False
                 if i in self.unit_info:
                     mc = self.unit_info[i].get("main_char", {})
-                    main_alive = mc.get("alive", True)
-                    if not main_alive:
-                        main_status = "阵亡"
-                    elif mc.get("need_revive", False) or mc.get("reviving", False):
-                        main_status = "复活中"
-                    elif i in self.low_hp_units and self.low_hp_units[i]:
-                        main_status = "低血"
+                    main_alive = mc.get("alive", False)
+                    if main_alive:
+                        main_status = "正常"
+                        if mc.get("need_revive", False) or mc.get("reviving", False):
+                            main_status = "复活中"
+                        elif i in self.low_hp_units and self.low_hp_units[i]:
+                            main_status = "低血"
                     generals = mc.get("generals", [])
-                    general_alive = sum(1 for g in generals if g.get("alive", True))
-                    general_total = min(max(len(generals), 2), 2)
+                    if generals:
+                        gen_list = [{"name": g.get("name", "?"), "alive": g.get("alive", False)} for g in generals]
+                        # 检查该账号场上是否有存活的刘备
+                        for g in generals:
+                            if g.get("name") == "刘备" and g.get("alive", False):
+                                has_lb = True
+                                break
                 dlg.update_account_status(i, main_alive, main_status,
-                                          general_alive, general_total, has_lb)
+                                          gen_list, has_lb)
         except Exception:
             pass
 
