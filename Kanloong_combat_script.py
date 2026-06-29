@@ -860,6 +860,7 @@ class CombatAutoScript:
 
         self._no_heal_item_missing_turn = {}
         self._no_mana_item_missing_turn = {}
+        self._healed_positions_this_turn = set()  # 本回合已加血的位置集合，防止同回合重复加同一目标
         self._current_our_turn_call = 0
 
         # 武将追踪信息（存储每个账号的武将信息）
@@ -904,7 +905,7 @@ class CombatAutoScript:
 
         # 血量条图片（用于检测血量低的单位）
         # 识别到这张图片说明单位血量低，需要加血
-        self.low_hp_indicator_image = f"{self.get_resource_path('serveAssets/images/auto/xueliangbuzu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/mubei2.bmp')}|{self.get_resource_path('serveAssets/images/auto/xueliangbuzu2.bmp')}"  # 血量低的标识图片
+        self.low_hp_indicator_image = f"{self.get_resource_path('serveAssets/images/auto/xueliangbuzu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/xueliangbuzu2.bmp')}"  # 血量低的标识图片
 
         # 9个血量条检测区域（3个账号，每个账号1个主角+2个武将）
         # 顺序：账号1主角、账号0主角、账号2主角、账号1武将1(后排)、账号0武将1(后排)、账号2武将1(后排)、账号1武将2(前排)、账号0武将2(前排)、账号2武将2(前排)
@@ -1014,7 +1015,7 @@ class CombatAutoScript:
                 },
                 "status_region": (253, 234, 336, 316),
                 "cast_position": (306, 380),
-                "status_duration": 4,
+                "status_duration": 3,
             },
             "刘备29": {
                 "status_images": {
@@ -1022,7 +1023,7 @@ class CombatAutoScript:
                 },
                 "status_region": (157, 234, 243, 316),
                 "cast_position": (206, 383),
-                "status_duration": 4,
+                "status_duration": 3,
             },
             "诸葛亮": {
                 "status_images": {
@@ -1040,7 +1041,7 @@ class CombatAutoScript:
                 },
                 "status_region": (54, 360, 174, 541),
                 "cast_position": (115, 446),
-                "status_duration": 4,
+                "status_duration": 3,
             },
             "龙/猴子": {
                 "status_images": {
@@ -1089,7 +1090,7 @@ class CombatAutoScript:
                 },
                 "status_region": (156, 235, 242, 319),
                 "cast_position": (202, 337),
-                "status_duration": 4,
+                "status_duration": 3,
             },
             "蛇": {
                 "status_images": {
@@ -3011,16 +3012,6 @@ class CombatAutoScript:
                 self.item_cd_tracking[account_index] = {}
             self.item_cd_tracking[account_index]["恢复药"] = self.current_turn
 
-            # 5. 从血量低单位列表中移除（如果存在）
-            if account_index in self.low_hp_units:
-                for unit_info in self.low_hp_units[account_index][:]:
-                    if (
-                        unit_info["unit_type"] == target_unit_info["unit_type"]
-                        and unit_info["unit_name"] == target_unit_info["unit_name"]
-                    ):
-                        self.low_hp_units[account_index].remove(unit_info)
-                        break
-
             self.report_battle_info(f"账号{account_index} 使用恢复药给{target_unit_info['unit_name']}加血", "success")
             self.click_position(account_index,12,12)
             self._no_heal_item_missing_turn.pop(account_index, None)
@@ -3031,23 +3022,55 @@ class CombatAutoScript:
             return False
 
     def _try_use_heal_for_low_hp(self, account_index):
-        """主角没技能时，尝试用恢复药给低血单位加血
+        """主角没技能时，尝试用恢复药给低血武将加血（跨账号）
         
-        优先级：主角 > 武将
-        use_heal_item 内部已有 CD 检查 + 2s 超时，找不到自动返回 False
+        优先级：全队低血武将（排除主角），先抢占先得
+        同回合同一武将不会被重复加血（_healed_positions_this_turn 防重）
+        找不到恢复药后 2 回合不再尝试
         """
         last_miss = self._no_heal_item_missing_turn.get(account_index, -999)
-        if self.current_turn - last_miss < 3:
+        if self.current_turn - last_miss < 2:
             return False
-        low_units = self.low_hp_units.get(account_index, [])
-        if not low_units:
+
+        # 收集所有账号的低血武将（排除主角和本回合已加血的）
+        candidates = []
+        for acct in range(self.get_account_count()):
+            for u in self.low_hp_units.get(acct, []):
+                if u["unit_type"] != "general":
+                    continue
+                pos = u.get("position")
+                if not pos:
+                    continue
+                if pos in self._healed_positions_this_turn:
+                    continue
+                candidates.append((acct, u))
+
+        if not candidates:
             return False
-        
-        for u in low_units:
-            if u["unit_type"] == "main_char":
-                return self.use_heal_item(account_index, u)
-        
-        return self.use_heal_item(account_index, low_units[0])
+
+        # 取第一个候选，锁内抢占标记防并发重复
+        target_acct, target_unit = candidates[0]
+        pos = target_unit["position"]
+        with self._state_lock:
+            if pos in self._healed_positions_this_turn:
+                return False  # 已被其他线程抢占
+            self._healed_positions_this_turn.add(pos)
+
+        result = self.use_heal_item(account_index, target_unit)
+        if not result:
+            # 加血失败，回滚标记，允许其他主角再尝试
+            with self._state_lock:
+                self._healed_positions_this_turn.discard(pos)
+            return False
+
+        # 从目标账号的低血列表中移除已加血单位
+        if target_acct in self.low_hp_units:
+            for u in list(self.low_hp_units[target_acct]):
+                if (u["unit_type"] == target_unit["unit_type"]
+                        and u["unit_name"] == target_unit["unit_name"]):
+                    self.low_hp_units[target_acct].remove(u)
+                    break
+        return True
 
     def _use_mana_item(self, account_index, target_unit_info):
         last_used = self.item_cd_tracking.get(account_index, {}).get("蓝药", -999)
@@ -5120,6 +5143,9 @@ class CombatAutoScript:
                     # 清理已过期的清除任务
                     self._cleanup_expired_clear_targets()
 
+                    # 新回合开始，重置加血位置记录
+                    self._healed_positions_this_turn.clear()
+
                     # 重置目标点位识别标志（只识别一次）
                     if (
                         not hasattr(self, "_target_positions_detected_this_round")
@@ -5537,6 +5563,7 @@ class CombatAutoScript:
                 self.low_hp_units = {}
                 self._no_heal_item_missing_turn = {}
                 self._no_mana_item_missing_turn = {}
+                self._healed_positions_this_turn = set()
                 self.item_cd_tracking = {}
                 self._current_our_turn_call = 0
                 self.zhugeliang_found = {}
@@ -5649,6 +5676,7 @@ class CombatAutoScript:
             self.low_hp_units = {}
             self._no_heal_item_missing_turn = {}
             self._no_mana_item_missing_turn = {}
+            self._healed_positions_this_turn = set()
             self.item_cd_tracking = {}
             self._current_our_turn_call = 0
             self.zhugeliang_found = {}
