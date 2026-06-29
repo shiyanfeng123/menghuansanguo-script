@@ -15290,7 +15290,7 @@ class MyDialog(wx.Dialog):
             btn_on.Bind(wx.EVT_BUTTON, lambda e, c=container, o=btn_off, n=btn_on: bind_fn(e, False, c, o, n))
             return container, btn_off, btn_on
 
-        for txt, attr_hint, is_leader in [("队长", "游戏名称", True), ("队友1", "队友1", False), ("队友2", "队友2", False)]:
+        for txt, attr_hint, is_leader in [("游戏名称", "360大厅游戏名称", True), ("队友1", "360大厅小号列表队友1名称", False), ("队友2", "360大厅小号列表队友2名称", False)]:
             tm.Add(label(txt, 40), 0, wx.ALIGN_CENTER_VERTICAL)
             tc = text_input(attr_hint)
             if is_leader:
@@ -15307,7 +15307,14 @@ class MyDialog(wx.Dialog):
             b.Hide()
             tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
             if is_leader:
-                tm.Add(wx.Panel(panel, size=(58, 1)), 0, wx.ALIGN_CENTER_VERTICAL)
+                auto_btn = wx.Button(panel, label="自动识别", size=(74, 28), style=wx.BORDER_NONE)
+                auto_btn.SetBackgroundColour(self.C_GOLD)
+                auto_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+                auto_btn.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+                auto_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+                auto_btn.SetToolTip("根据游戏名称自动识别队友窗口")
+                auto_btn.Bind(wx.EVT_BUTTON, self.on_auto_detect_window)
+                tm.Add(auto_btn, 0, wx.ALIGN_CENTER_VERTICAL)
             elif "1" in txt:
                 def _toggle1(event, flag, container, off_btn, on_btn):
                     if flag:
@@ -15956,6 +15963,160 @@ class MyDialog(wx.Dialog):
             self.button.Enable()
         else:
             self.button.Disable()
+
+    def on_auto_detect_window(self, event):
+        """根据游戏名称自动识别360大厅的队友窗口并填充名称
+        匹配规则：
+        - 标题格式 "小号名 | 游戏名称" → 提取"小号名"，非独立窗口
+        - 其他格式（无后缀/后缀不匹配） → 填入完整标题，勾选独立窗口
+        """
+        game_name = self.team_leader_text.GetValue().strip()
+        if not game_name:
+            wx.MessageBox("请先输入游戏名称", "提示", wx.OK | wx.ICON_WARNING)
+            return
+
+        try:
+            dm = CreateObject("dm.dmsoft")
+            hwnds_str = dm.EnumWindow(0, "", "DUIWindow", 1 + 2)
+            if hwnds_str:
+                candidates = []
+                for item in hwnds_str.split(","):
+                    if not item:
+                        continue
+                    title = dm.GetWindowTitle(int(item))
+                    if not title or title == game_name:
+                        continue
+                    candidates.append(title)
+            else:
+                candidates = []
+        except Exception:
+            return
+
+        if not candidates:
+            return
+
+        # 选择队友1
+        idx1 = self._show_window_selector("请选择队友1的窗口", candidates)
+        if idx1 is None:
+            return
+        name1, indep1 = self._parse_window_title(candidates[idx1], game_name)
+        self.teammate1_text.SetValue(name1)
+        self._set_independent(1, indep1)
+
+        # 选择队友2（排除已选的）
+        remaining = [t for i, t in enumerate(candidates) if i != idx1]
+        if not remaining:
+            return
+        idx2 = self._show_window_selector("请选择队友2的窗口", remaining)
+        if idx2 is None:
+            return
+        name2, indep2 = self._parse_window_title(remaining[idx2], game_name)
+        self.teammate2_text.SetValue(name2)
+        self._set_independent(2, indep2)
+
+    def _show_window_selector(self, message, options):
+        """显示窗口选择对话框，返回选中索引或 None（取消）"""
+        dlg = wx.Dialog(self, title="自动识别", size=(420, 300),
+                        style=wx.DEFAULT_DIALOG_STYLE)
+        dlg.SetBackgroundColour(self.C_BG)
+
+        panel = wx.Panel(dlg)
+        panel.SetBackgroundColour(self.C_BG)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # 提示文字
+        hint = wx.StaticText(panel, label=message)
+        hint.SetForegroundColour(self.C_MUTED)
+        hint.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                             wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        sizer.Add(hint, 0, wx.ALL, 10)
+
+        # 窗口列表
+        lb = wx.ListBox(panel, size=(-1, 160),
+                        choices=options,
+                        style=wx.LB_SINGLE | wx.BORDER_SIMPLE)
+        lb.SetBackgroundColour(self.C_INPUT_BG)
+        lb.SetForegroundColour(self.C_TEXT)
+        lb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                           wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        if options:
+            lb.SetSelection(0)
+        sizer.Add(lb, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+
+        # 按钮行
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_sizer.AddStretchSpacer()
+
+        for label_text, bg_color, is_ok in [("取消", self.C_SURFACE, False),
+                                             ("确定", self.C_GOLD, True)]:
+            btn = wx.Button(panel, label=label_text, size=(80, 30),
+                            style=wx.BORDER_NONE)
+            btn.SetBackgroundColour(bg_color)
+            btn.SetForegroundColour(wx.Colour(255, 255, 255) if is_ok else self.C_TEXT)
+            btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                                wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+            btn_sizer.Add(btn, 0, wx.ALL, 4)
+        sizer.Add(btn_sizer, 0, wx.ALIGN_RIGHT | wx.RIGHT | wx.BOTTOM, 10)
+
+        panel.SetSizer(sizer)
+
+        selected = [None]
+
+        def on_ok(e):
+            sel = lb.GetSelection()
+            if sel != wx.NOT_FOUND:
+                selected[0] = sel
+            dlg.EndModal(wx.ID_OK)
+
+        def on_cancel(e):
+            dlg.EndModal(wx.ID_CANCEL)
+
+        # 绑定按钮：确定是最后一个(is_ok=True), 取消是第一个(is_ok=False)
+        children = btn_sizer.GetChildren()
+        for child in children:
+            w = child.GetWindow()
+            if w:
+                if w.GetLabel() == "确定":
+                    w.Bind(wx.EVT_BUTTON, on_ok)
+                elif w.GetLabel() == "取消":
+                    w.Bind(wx.EVT_BUTTON, on_cancel)
+
+        # 双击列表项 = 确定
+        lb.Bind(wx.EVT_LISTBOX_DCLICK, on_ok)
+
+        dlg.CenterOnParent()
+        dlg.ShowModal()
+        dlg.Destroy()
+        return selected[0]
+
+    def _parse_window_title(self, title, game_name):
+        """解析窗口标题，返回 (填入名称, 是否独立窗口)
+        - "小号名 | 主号名" 且主号名==game_name → 填入"小号名"，非独立
+        - 其他格式 → 填入完整标题，独立窗口
+        """
+        parts = title.split("|")
+        if len(parts) == 2 and parts[1].strip() == game_name:
+            return parts[0].strip(), False
+        return title, True
+
+    def _set_independent(self, team, checked):
+        """设置队友1/2的独立窗口开关状态"""
+        if team == 1:
+            off_btn = getattr(self, "independent_win1_off", None)
+            on_btn = getattr(self, "independent_win1_on", None)
+        else:
+            off_btn = getattr(self, "independent_win2_off", None)
+            on_btn = getattr(self, "independent_win2_on", None)
+        if not off_btn or not on_btn:
+            return
+        if checked:
+            off_btn.Hide()
+            on_btn.Show()
+        else:
+            on_btn.Hide()
+            off_btn.Show()
+        off_btn.GetParent().Layout()
 
     def load_config(self):
         if os.path.exists(self.config_file):
