@@ -3137,6 +3137,7 @@ class CombatAutoScript:
         遍历所有低血武将候选，直到成功抢占一个未被其他线程标记的目标
         同回合同一武将不会被重复加血（_healed_positions_this_turn 防重）
         找不到恢复药后 2 回合不再尝试
+        仅给刘备和张星彩加血，其他武将不吃恢复药
         """
         last_miss = self._no_heal_item_missing_turn.get(account_index, -999)
         if self.current_turn - last_miss < 2:
@@ -3149,8 +3150,13 @@ class CombatAutoScript:
             return False
 
         # 收集所有账号的低血武将（排除主角和本回合已加血的）
+        # 仅给刘备和张星彩加血，通过位置反查真实武将名
+        ALLOWED_HEAL_TARGETS = {"刘备", "张星彩"}
         candidates = []
         for acct in range(self.get_account_count()):
+            if acct not in self.unit_info:
+                continue
+            generals = self.unit_info[acct]["main_char"].get("generals", [])
             for u in self.low_hp_units.get(acct, []):
                 if u["unit_type"] != "general":
                     continue
@@ -3158,6 +3164,10 @@ class CombatAutoScript:
                 if not pos:
                     continue
                 if pos in self._healed_positions_this_turn:
+                    continue
+                # 通过位置反查真实武将名，只给刘备/张星彩加血
+                gen = self._find_general_by_position(generals, pos)
+                if gen is None or gen.get("name") not in ALLOWED_HEAL_TARGETS:
                     continue
                 candidates.append((acct, u))
 
