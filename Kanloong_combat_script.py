@@ -1040,7 +1040,7 @@ class CombatAutoScript:
                 "cast_position": (115, 446),
                 "status_duration": 4,
             },
-            "龙": {
+            "龙/猴子": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
                 },
@@ -1064,14 +1064,14 @@ class CombatAutoScript:
                 "cast_position": (148, 175),
                 "status_duration": 4,
             },
-            "猴子": {
-                "status_images": {
-                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
-                },
-                "status_region": (56, 257, 145, 319),
-                "cast_position": (113, 302),
-                "status_duration": 4,
-            },
+            # "猴子": {
+            #     "status_images": {
+            #         "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+            #     },
+            #     "status_region": (56, 257, 145, 319),
+            #     "cast_position": (113, 302),
+            #     "status_duration": 4,
+            # },
             "猴子狮": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
