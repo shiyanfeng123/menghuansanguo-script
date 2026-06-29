@@ -1306,6 +1306,9 @@ class MyThread(threading.Thread):
         else:
             print("窗口绑定失败")
             return False
+        # 调整队长窗口大小和位置：900×630，左上角 (0,0)
+        self.dm.SetClientSize(hwnd, 900, 630)
+        self.dm.MoveWindow(hwnd, 0, 0)
         location = self.dm.GetClientSize(self.click_hwnd)
         x, y, res = location
         if res == 1:
@@ -1919,6 +1922,9 @@ class MyThread(threading.Thread):
         if bind_result != 1:
             self.show_error_message("队友1绑定失败")
             return False
+        # 调整队友1窗口大小和位置：900×630，左上角 (900,0)
+        self.win1_dm.SetClientSize(hwnd, 900, 630)
+        self.win1_dm.MoveWindow(hwnd, 900, 0)
         self.win1_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team1.txt"))
         time.sleep(0.5)
@@ -2189,6 +2195,9 @@ class MyThread(threading.Thread):
         if bind_result != 1:
             self.show_error_message("队友2绑定失败")
             return False
+        # 调整队友2窗口大小和位置：900×630，左上角 (900,450)
+        self.win2_dm.SetClientSize(hwnd, 900, 630)
+        self.win2_dm.MoveWindow(hwnd, 900, 450)
         self.win2_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team2.txt"))
         time.sleep(0.5)

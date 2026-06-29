@@ -71,7 +71,7 @@ else:
     print("找到目标窗口")
 
     # 设置窗口客户区大小为 900×580
-    result = dm.SetClientSize(hwnd, 900, 580)
+    result = dm.SetClientSize(hwnd, 900, 630)
     print(f"设置窗口大小 900×580: {'成功' if result == 1 else '失败'}")
 
     #
