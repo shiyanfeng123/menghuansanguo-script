@@ -522,6 +522,7 @@ class CombatAutoScript:
         self._last_kicked_info = None
         self.liubei_verify_image = None
         self.xingcai_verify_image = None
+        self.zhugeliang_verify_image = None
 
         # 张星彩单攻优先目标列表：检测到蓝条（存活）的特定敌军
         self._xingcai_single_targets = []  
@@ -547,6 +548,7 @@ class CombatAutoScript:
             "剑阵灭杀": "曹操", "曹操单攻": "曹操",
             "武神一怒": "魔化关羽",
             "星彩群攻": "张星彩", "星彩单攻": "张星彩",
+            "诸葛辅助": "诸葛亮", "诸葛单攻": "诸葛亮", "诸葛群攻": "诸葛亮",
         }
         # 不再记录第一回合武将数量，默认每个账号有2个武将
 
@@ -626,6 +628,12 @@ class CombatAutoScript:
                 {"priority": 95,  "skill": "星彩单攻",   "condition": "has_xingcai_single_target"},
                 {"priority": 90,  "skill": "星彩群攻",   "condition": "always"},
                 {"priority": 70,  "skill": "星彩辅助",   "condition": "always"},
+                {"priority": -1,  "skill": "防御",       "condition": "always"},
+            ],
+            "zhugeliang_attack": [
+                {"priority": 100, "skill": "诸葛辅助",   "condition": "always"},
+                {"priority": 95,  "skill": "诸葛单攻",   "condition": "enemy_single"},
+                {"priority": 90,  "skill": "诸葛群攻",   "condition": "always"},
                 {"priority": -1,  "skill": "防御",       "condition": "always"},
             ],
         }
@@ -786,6 +794,10 @@ class CombatAutoScript:
             "星彩群攻": f"{self.get_resource_path('serveAssets/images/auto/xingcaiqun.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaiqun1.bmp')}",
             "星彩单攻": f"{self.get_resource_path('serveAssets/images/auto/xingcaidan.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaidan1.bmp')}",
             "星彩辅助": f"{self.get_resource_path('serveAssets/images/auto/xingcaifuzhu.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaifuzhu1.bmp')}",
+            # 诸葛亮技能
+            "诸葛辅助": f"{self.get_resource_path('serveAssets/images/auto/zhugefuzhu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugefuzhu2.bmp')}",
+            "诸葛单攻": f"{self.get_resource_path('serveAssets/images/auto/zhugedangong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugedangong2.bmp')}",
+            "诸葛群攻": f"{self.get_resource_path('serveAssets/images/auto/zhugequngong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugequngong2.bmp')}",
         }
 
         self.gray_skill_images = {
@@ -824,6 +836,7 @@ class CombatAutoScript:
         # 刘备技能目标图片,需要重新截图
         self.liubei_verify_image = f"{self.get_resource_path('serveAssets/images/auto/miankong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/miankong2.bmp')}"
         self.xingcai_verify_image = f"{self.get_resource_path('serveAssets/images/auto/xingcaibeidong1.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaibeidong2.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaibeidong3.bmp')}"
+        self.zhugeliang_verify_image = f"{self.get_resource_path('serveAssets/images/auto/lantiao.bmp')}|{self.get_resource_path('serveAssets/images/auto/xuetiao.bmp')}"
         self.zhugexuetiao_image = f"{self.get_resource_path('serveAssets/images/auto/zhugexuetiao.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugexuetiao2.bmp')}"
         # 技能CD配置（回合数）
         self.skill_cd_config = {
@@ -843,6 +856,9 @@ class CombatAutoScript:
             "星彩群攻": 0,  # 无CD
             "星彩单攻": 0,  # 无CD
             "星彩辅助": 0,  # 无CD
+            "诸葛辅助": 0,  # 无CD
+            "诸葛单攻": 0,  # 无CD
+            "诸葛群攻": 0,  # 无CD
         }
 
         # 药品CD配置
@@ -901,6 +917,7 @@ class CombatAutoScript:
             "魔化关羽": f"{self.get_resource_path('serveAssets/images/auto/mogu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/mogu1.bmp')}",
             "曹操": f"{self.get_resource_path('serveAssets/images/auto/caocao1.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocao2.bmp')}",
             "张星彩": f"{self.get_resource_path('serveAssets/images/auto/zhangxingcai.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhangxingcai1.bmp')}",
+            "诸葛亮": f"{self.get_resource_path('serveAssets/images/auto/zhugeliang_bag.bmp')}|{self.get_resource_path('serveAssets/images/auto/zhugeliang_bag1.bmp')}",
         }
 
         # 血量条图片（用于检测血量低的单位）
@@ -1521,6 +1538,24 @@ class CombatAutoScript:
                             f"账号{account_index} 刘备释放{skill_name}，目标位置: {target_pos}", "action"
                         )
 
+            elif skill_type == "zhugeliang_attack":
+                if skill_name == "诸葛辅助":
+                    # 诸葛亮辅助技能：按优先级选择我方目标（曹操 > 张星彩 > 魔化关羽 > 刘备 > 主角 > 诸葛亮）
+                    target_pos = self._get_zhugeliang_assist_target(account_index)
+                    self.account_last_target_type[account_index] = "ally"
+                    self.click_position(account_index, target_pos[0], target_pos[1])
+                    self.report_battle_info(
+                        f"账号{account_index} 诸葛亮释放{skill_name}，目标位置: {target_pos}", "action"
+                    )
+                else:  # 诸葛群攻, 诸葛单攻 → 敌方目标
+                    positions = self.enemy_target_positions
+                    target_pos = positions[self.enemy_target_index] if self.enemy_target_index < len(positions) else (104, 344)
+                    self.account_last_target_type[account_index] = "enemy"
+                    self.click_position(account_index, target_pos[0], target_pos[1])
+                    self.report_battle_info(
+                        f"账号{account_index} 诸葛亮释放{skill_name}，目标位置: {target_pos}", "action"
+                    )
+
             if skill_name == "清除状态" and skill_type == "support":
                 if account_index not in self.liubei_skill_cd:
                     self.liubei_skill_cd[account_index] = {}
@@ -1597,8 +1632,8 @@ class CombatAutoScript:
                 is_replacement = False
         kicked = None
         if is_replacement:
-            # 替换优先级: 刘备 > 魔化关羽 > 曹操 (张星彩永远不在替换列表中)
-            REPLACE_PRIORITY = ["魔化关羽", "刘备", "曹操"]
+            # 替换优先级: 诸葛亮 > 魔化关羽 > 刘备 > 曹操 (张星彩永远不在替换列表中)
+            REPLACE_PRIORITY = ["诸葛亮", "魔化关羽", "刘备", "曹操"]
             if replace_position is not None:
                 for g in alive_generals:
                     if (abs(g["position"][0] - replace_position[0]) < 50
@@ -2154,6 +2189,38 @@ class CombatAutoScript:
 
         self.target_positions_detected = True
 
+    def _get_zhugeliang_assist_target(self, account_index):
+        """诸葛亮辅助技能目标优先级: 曹操 > 张星彩 > 魔化关羽 > 刘备 > 主角 > 诸葛亮
+        
+        点位来源和存活判断与 detect_target_positions 的 ally_target_positions 完全一致
+        """
+        priority_order = ["曹操", "张星彩", "魔化关羽", "刘备", "主角", "诸葛亮"]
+
+        allies = []
+        for acct in range(self.get_account_count()):
+            if acct not in self.unit_info:
+                continue
+            char_info = self.unit_info[acct]["main_char"]
+            # 主角：使用 unit_positions 固定点位（与 ally_target_positions 一致）
+            if char_info.get("alive", False):
+                allies.append(("主角", self.unit_positions[acct]["main_char"]))
+            # 武将：使用 gen["position"]（与 ally_target_positions 一致）
+            for gen in char_info.get("generals", []):
+                if gen.get("alive", False) and not gen.get("replacing", False):
+                    pos = gen.get("position")
+                    name = gen.get("name", "")
+                    if pos and name:
+                        allies.append((name, pos))
+
+        def sort_key(ally):
+            try:
+                return priority_order.index(ally[0])
+            except ValueError:
+                return len(priority_order)
+
+        allies.sort(key=sort_key)
+        return allies[0][1] if allies else (764, 380)
+
     def _detect_liubei_on_field(self):
         """在我方回合开始时，由大漠对象0检测场上是否有刘备
         在我方区域检测self.liubei_image，如果超过10次没有找到，则设置has_liubei_on_field为False
@@ -2249,6 +2316,9 @@ class CombatAutoScript:
                         elif pk_name == "张星彩":
                             if self.xingcai_verify_image:
                                 pk_still_on_field = bool(self.find_image(dm_index, self.xingcai_verify_image, pk_region, 0))
+                        elif pk_name == "诸葛亮":
+                            if self.zhugeliang_verify_image:
+                                pk_still_on_field = bool(self.find_image(dm_index, self.zhugeliang_verify_image, pk_region, 0))
                     if pk_still_on_field:
                         # 被替换武将还在场, 重置超时起点, 继续等待
                         gen["deployed_turn"] = current_turn
@@ -2266,6 +2336,9 @@ class CombatAutoScript:
                 elif gen_name == "张星彩":
                     if self.xingcai_verify_image:
                         verify_found = bool(self.find_image(dm_index, self.xingcai_verify_image, region, 0))
+                elif gen_name == "诸葛亮":
+                    if self.zhugeliang_verify_image:
+                        verify_found = bool(self.find_image(dm_index, self.zhugeliang_verify_image, region, 0))
 
                 if verify_found:
                     if acct not in self.unit_info:
@@ -2513,6 +2586,9 @@ class CombatAutoScript:
             if gen.get("name") == "张星彩":
                 continue
             count = self.ally_undead_rounds.get((account_index, region_idx), 0)
+            # 诸葛亮无免死被动，替换时优先级最高（_track_ally_undead每轮删除其计数）
+            if gen.get("name") == "诸葛亮":
+                count = max(count, 99)
             score = count
             if score > best_score:
                 best_score = score
@@ -3170,6 +3246,7 @@ class CombatAutoScript:
             ("武神一怒", "attack",           "魔化关羽"),
             ("星彩群攻", "xingcai_support",  "张星彩"),
             ("控制",     "support",          "刘备"),
+            ("诸葛群攻", "zhugeliang_attack", "诸葛亮"),
         ]
 
         for skill_name, unit_type, general_name in gray_icon_map:
@@ -3734,6 +3811,15 @@ class CombatAutoScript:
         # 准备张星彩辅助技能路径
         xingcai_support_skill_path = self.skill_images.get("星彩辅助")
 
+        # 准备诸葛亮技能路径（诸葛群攻/诸葛单攻，归类为zhugeliang_attack）
+        zhugeliang_attack_skills = ["诸葛群攻", "诸葛单攻"]
+        zhugeliang_attack_skill_paths = {}
+        for skill_name in zhugeliang_attack_skills:
+            skill_path = self.skill_images.get(skill_name)
+            if skill_path:
+                zhugeliang_attack_skill_paths[skill_name] = skill_path
+        zhugeliang_support_skill_path = self.skill_images.get("诸葛辅助")
+
         # 同步查找：先检查技能面板中的技能，最后才查召唤按钮
         # 避免召唤按钮常驻导致武将回合被误判为主角
         while time.time() - start_time < timeout:
@@ -3760,6 +3846,24 @@ class CombatAutoScript:
                 skill_pos = self.find_image(account_index, xingcai_support_skill_path, self.skill_panel_region, 0)
                 if skill_pos:
                     return ("xingcai_support", "星彩辅助")
+
+            # 4.5 第一回合优先检测诸葛辅助技能（确保第一回合走辅助策略）
+            if self.current_turn <= 1 and zhugeliang_support_skill_path:
+                skill_pos = self.find_image(account_index, zhugeliang_support_skill_path, self.skill_panel_region, 0)
+                if skill_pos:
+                    return ("zhugeliang_attack", "诸葛辅助")
+
+            # 4.6 查找诸葛攻击技能（诸葛群攻/诸葛单攻）
+            for skill_name, skill_path in zhugeliang_attack_skill_paths.items():
+                skill_pos = self.find_image(account_index, skill_path, self.skill_panel_region, 0)
+                if skill_pos:
+                    return ("zhugeliang_attack", skill_name)
+
+            # 4.7 检测诸葛辅助技能（群攻CD中时兜底）
+            if zhugeliang_support_skill_path:
+                skill_pos = self.find_image(account_index, zhugeliang_support_skill_path, self.skill_panel_region, 0)
+                if skill_pos:
+                    return ("zhugeliang_attack", "诸葛辅助")
 
             # 5. 查找刘备的控制技能（用于识别刘备）
             if control_skill_path:
@@ -4275,9 +4379,9 @@ class CombatAutoScript:
                                             break
                                 # 根据检查结果决定召唤优先级
                                 if not _field_lb:
-                                    general_order = ["刘备", "曹操", "魔化关羽", "张星彩"]   # 无刘备→优先
+                                    general_order = ["刘备", "曹操", "魔化关羽", "张星彩", "诸葛亮"]   # 无刘备→优先
                                 else:
-                                    general_order = ["曹操", "魔化关羽", "张星彩", "刘备"]   # 有刘备→原顺序
+                                    general_order = ["曹操", "魔化关羽", "张星彩", "刘备", "诸葛亮"]   # 有刘备→原顺序
                                 # === 新增逻辑结束 ===
                                 for summon_name in general_order:
                                     if self.summon_general_with_verification(
@@ -4544,7 +4648,7 @@ class CombatAutoScript:
                     and self.has_general[account_index]
                     and not skip_side_effects
                 ):
-                    general_order = ["曹操", "魔化关羽", "张星彩", "刘备"]
+                    general_order = ["曹操", "魔化关羽", "张星彩", "刘备", "诸葛亮"]
                     _summon_not_found_count = 0
                     for general_name in general_order:
                         _summon_result = self.summon_general_with_verification(account_index, general_name)
@@ -5022,6 +5126,61 @@ class CombatAutoScript:
                 if defense_btn:
                     self.click_position(account_index, defense_btn.x, defense_btn.y)
                     self.report_battle_info(f"账号{account_index} 张星彩执行防御", "action")
+                    time.sleep(CombatConstants.ACTION_DELAY)
+                    return True
+
+            elif unit_type == "zhugeliang_attack":
+                # 诸葛亮操作（第一回合辅助，后续群攻 > 单攻 > 防御）
+                char_info = self.unit_info[account_index]["main_char"]
+                found_zhugeliang = any(g.get("name") == "诸葛亮" for g in char_info.get("generals", []))
+
+                if not found_zhugeliang:
+                    _existing_positions = [g.get("position") for g in char_info.get("generals", []) if g.get("position")]
+                    _slot1 = self.unit_positions[account_index]["generals"][0][1:]
+                    _slot2 = self.unit_positions[account_index]["generals"][1][1:]
+                    _slot1_occupied = any(abs(p[0]-_slot1[0]) < 50 and abs(p[1]-_slot1[1]) < 50 for p in _existing_positions)
+                    zhugeliang_position = _slot2 if _slot1_occupied else _slot1
+
+                    new_general = {
+                        "name": "诸葛亮",
+                        "position": zhugeliang_position,
+                        "alive": True,
+                        "reviving": False,
+                        "deployed_turn": self.current_turn,
+                        "account_index": account_index,
+                    }
+                    if "generals" not in char_info:
+                        char_info["generals"] = []
+                    char_info["generals"].append(new_general)
+
+                # 4.1 执行分配的复活任务（如果当前账号有分配任务）
+                if assigned_revive_target is not None and time.time() - turn_start_time < turn_timeout:
+                    if self._check_and_mark_reviving(assigned_revive_target, "主角"):
+                        if self.revive_main_char_with_target(account_index, assigned_revive_target):
+                            if account_index in self.revive_assignments:
+                                del self.revive_assignments[account_index]
+                            time.sleep(0.1)
+                            return True
+                        else:
+                            with self._state_lock:
+                                if assigned_revive_target in self.unit_info:
+                                    char_info_revive = self.unit_info[assigned_revive_target]["main_char"]
+                                    if char_info_revive.get("reviving", False):
+                                        char_info_revive["reviving"] = False
+                            if account_index in self.revive_assignments:
+                                del self.revive_assignments[account_index]
+
+                # 4.2 释放技能（策略引擎）
+                if self._execute_best_strategy(account_index, "zhugeliang_attack"):
+                    return True
+
+                # 4.3 防御（保底兼容）
+                defense_btn = self.find_image(
+                    account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
+                )
+                if defense_btn:
+                    self.click_position(account_index, defense_btn.x, defense_btn.y)
+                    self.report_battle_info(f"账号{account_index} 诸葛亮执行防御", "action")
                     time.sleep(CombatConstants.ACTION_DELAY)
                     return True
             
