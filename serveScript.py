@@ -11234,8 +11234,7 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/longzhu/chuansongmen.bmp"),
             self.dituLocation,
-            self.get_resource_path(
-                "serveAssets/images/longzhu/longchaojingnei.bmp"),
+            f"{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei1.bmp')}",
             self.dituLocation,
             "888,75",
         )
@@ -11243,13 +11242,12 @@ class MyThread(threading.Thread):
             "755,77",
             "779,72",
             "808,79",
-            "829,77",
-            "868,79",
+            "837,77",
+            "868,77",
         ]
         for index, item in enumerate(longzhuPos3):
             self.findAndClickPic(
-                self.get_resource_path(
-                    "serveAssets/images/longzhu/longchaojingnei.bmp"),
+                f"{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei1.bmp')}",
                 "单龙|御剑仙女",
                 f"{self.get_resource_path('serveAssets/images/longzhu/longhufa1.bmp')}|"
                 f"{self.get_resource_path('serveAssets/images/longzhu/longhufa2.bmp')}|"

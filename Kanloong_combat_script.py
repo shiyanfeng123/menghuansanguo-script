@@ -1362,20 +1362,20 @@ class CombatAutoScript:
             if verify_pos is None:
                 # 图片已消失，点击成功
                 if attempt > 0:
-                    self.report_battle_info(f"账号{account_index} {item_name}点击成功（第{attempt + 1}次尝试）", "info")
+                    self.report_battle_info(f"账号{account_index} {item_name}使用成功", "info")
                 return True
             else:
                 # 图片还在，需要重试
                 if attempt < max_retries - 1:
                     self.report_battle_info(
-                        f"账号{account_index} {item_name}点击后未消失，进行第{attempt + 2}次点击", "warning"
+                        f"账号{account_index} {item_name}点击未生效，重试中", "warning"
                     )
                     pos = verify_pos  # 更新位置（可能位置有变化）
                     time.sleep(0.2)  # 短暂延迟后重试
                 else:
                     # 最后一次尝试也失败
                     self.report_battle_info(
-                        f"账号{account_index} {item_name}点击失败（已重试{max_retries - 1}次，图片仍未消失）", "error"
+                        f"账号{account_index} {item_name}使用失败", "error"
                     )
 
         return False
@@ -1589,7 +1589,7 @@ class CombatAutoScript:
             time.sleep(CombatConstants.ACTION_DELAY)
             return True
         except Exception as e:
-            self.report_battle_info(f"账号{account_index} 释放技能{skill_name}时发生异常: {e}", "error")
+            self.report_battle_info(f"账号{account_index} 释放技能{skill_name}时发生错误", "error")
             return False
 
     # 召唤武将
@@ -1613,7 +1613,7 @@ class CombatAutoScript:
         # 2. 查找武将图片
         general_path = self.bag_general_images.get(general_name)
         if not general_path:
-            self.report_battle_info(f"账号{account_index} 武将'{general_name}'图片路径未配置", "error")
+            self.report_battle_info(f"账号{account_index} 武将'{general_name}'识别图缺失", "error")
             return False
 
         general_pos = None
@@ -1625,7 +1625,7 @@ class CombatAutoScript:
             time.sleep(0.1)
 
         if not general_pos:
-            self.report_battle_info(f"账号{account_index} 查找武将{general_name}图片超时", "warning")
+            self.report_battle_info(f"账号{account_index} 未找到武将{general_name}", "warning")
             return False
 
         # 3. 点击武将并验证（背包武将消失即表示召唤成功）
@@ -1767,7 +1767,7 @@ class CombatAutoScript:
             time.sleep(0.1)
 
         if not item_btn:
-            self.report_battle_info(f"账号{account_index} 查找道具按钮超时（1.5秒）", "warning")
+            self.report_battle_info(f"账号{account_index} 未找到道具按钮", "warning")
             return False
 
         self.click_position(account_index, item_btn.x, item_btn.y)
@@ -1775,7 +1775,7 @@ class CombatAutoScript:
         # 2. 查找药品图片
         item_path = self.item_images.get(item_name)
         if not item_path:
-            self.report_battle_info(f"账号{account_index} 药品'{item_name}'图片路径未配置", "error")
+            self.report_battle_info(f"账号{account_index} 药品'{item_name}'识别图缺失", "error")
             return False
 
         item_pos = None
@@ -1787,7 +1787,7 @@ class CombatAutoScript:
             time.sleep(0.1)
 
         if not item_pos:
-            self.report_battle_info(f"账号{account_index} 查找{item_name}图片超时（3秒）", "warning")
+            self.report_battle_info(f"账号{account_index} 未找到{item_name}", "warning")
             return False
 
         # 3. 点击药品并验证
@@ -2072,7 +2072,7 @@ class CombatAutoScript:
                                                     self.ally_undead_rounds[old_key] = -1
                                                     if old_key in self.ally_undead_last_increment_turn:
                                                         del self.ally_undead_last_increment_turn[old_key]
-                                                self.report_battle_info(f"账号{acct} 旧武将{old_gen_name}死亡(replacing期间,蓝条缺失)", "warning")
+                                                self.report_battle_info(f"账号{acct} 旧武将{old_gen_name}被替换（阵亡）", "warning")
                                             continue
                                         elif gen.get("reviving", False):
                                             gen["alive"] = False
@@ -2773,7 +2773,7 @@ class CombatAutoScript:
                                 if acct_idx in self.liubei_skill_cd:
                                     self.liubei_skill_cd[acct_idx].pop("清除状态", None)
                                 self.report_battle_info(
-                                    f"账号{acct_idx} 上回合清除{enemy_key}失败，CD已重置为0",
+                                    f"账号{acct_idx} 清除{enemy_key}失败，技能冷却已重置",
                                     "warning"
                                 )
                                 del self._last_clear_attempt[acct_idx]
@@ -2842,13 +2842,13 @@ class CombatAutoScript:
                 # 不再在此处重置 clear_zhugeliang = False
                 duration = self.enemy_general_config.get(enemy_name, {}).get("status_duration", 999)
                 self.report_battle_info(
-                    f"敌军{enemy_name}状态已过期（持续{duration}回合），从清除列表移除",
+                    f"敌军{enemy_name}增益状态已消失",
                     "system",
                 )
             if not self.global_enemies_need_clear and not self.enable_persistent_liubei:
                 self.keep_support_general = False
                 self._zhugeliang_low_hp = False
-                self.report_battle_info("所有敌军状态已过期，恢复6曹操模式", "system")
+                self.report_battle_info("敌军增益状态已全部清除", "system")
 
 
     # 更新单位信息(根据墓碑检测结果)
@@ -3065,7 +3065,7 @@ class CombatAutoScript:
                 time.sleep(0.1)  # 每次查找间隔0.2秒
 
             if not item_button_pos:
-                self.report_battle_info(f"账号{account_index} 未找到道具按钮（2秒超时）", "error")
+                self.report_battle_info(f"账号{account_index} 未找到道具按钮", "error")
                 return False
 
             self.click_position(account_index, item_button_pos.x, item_button_pos.y)
@@ -3075,7 +3075,7 @@ class CombatAutoScript:
             # 2. 等待恢复药出现并点击（5秒内找到，否则返回False）
             heal_item_image = self.item_images.get("恢复药")
             if not heal_item_image:
-                self.report_battle_info(f"账号{account_index} 未找到恢复药图片配置", "error")
+                self.report_battle_info(f"账号{account_index} 恢复药识别图缺失", "error")
                 return False
 
             # 5秒内循环查找恢复药，使用更大的搜索区域
@@ -3128,7 +3128,7 @@ class CombatAutoScript:
             return True
 
         except Exception as e:
-            self.report_battle_info(f"账号{account_index} 使用恢复药失败: {e}", "error")
+            self.report_battle_info(f"账号{account_index} 使用恢复药失败", "error")
             return False
 
     def _try_use_heal_for_low_hp(self, account_index):
@@ -3314,7 +3314,7 @@ class CombatAutoScript:
                 return True
             else:
                 self.report_battle_info(
-                    f"账号{account_index} 蓝药不可用(CD中/找不到)，降级到防御", "warning"
+                    f"账号{account_index} 蓝药冷却中，本回合执行防御", "warning"
                 )
                 return False
 
@@ -3477,7 +3477,7 @@ class CombatAutoScript:
                         if "reviving_timestamp" in char_info:
                             del char_info["reviving_timestamp"]
                         self.report_battle_info(
-                            f"账号{target_account_index} 主角状态异常：reviving=True但不在全局阵亡记录中，清除reviving标志",
+                            f"账号{target_account_index} 主角复活状态异常，已重置",
                             "warning",
                         )
                         reviving = False
@@ -3490,7 +3490,7 @@ class CombatAutoScript:
                         if "reviving_timestamp" in char_info:
                             del char_info["reviving_timestamp"]
                         self.report_battle_info(
-                            f"账号{target_account_index} 主角已阵亡但reviving=True，清除reviving标志，允许重新尝试复活",
+                            f"账号{target_account_index} 主角复活标记已清除，可重新尝试复活",
                             "warning",
                         )
                         reviving = False
@@ -3625,7 +3625,7 @@ class CombatAutoScript:
                     key = (account_index, main_char_region_idx)
                     if key in self.lantiao_missing_rounds:
                         del self.lantiao_missing_rounds[key]
-                self.report_battle_info(f"账号{account_index} 主角复活成功（检测到蓝条），数量: 0 -> 1", "success")
+                self.report_battle_info(f"账号{account_index} 主角复活成功", "success")
 
     # 确认复活失败（如果待验证但下个回合没有操作也没有蓝条）
     def _confirm_revive_failure(self, account_index):
@@ -3650,7 +3650,7 @@ class CombatAutoScript:
                         self.global_dead_units["main_chars"].append(dead_char_info)
                     self.dead_units[account_index]["main_char"] = dead_char_info
                     self.report_battle_info(
-                        f"账号{account_index} 主角复活失败（下一回合未检测到蓝条），状态更新为死亡，数量不变", "warning"
+                        f"账号{account_index} 主角复活失败，确认阵亡", "warning"
                     )
 
     # 复活主角
@@ -3675,7 +3675,7 @@ class CombatAutoScript:
                 time.sleep(0.05)  # 每次查找间隔0.2秒
 
             if not item_button_pos:
-                self.report_battle_info(f"账号{account_index} 未找到道具按钮（5秒超时）", "error")
+                self.report_battle_info(f"账号{account_index} 未找到道具按钮", "error")
                 return False
 
             # 找到道具按钮，开始执行复活操作，设置reviving=True
@@ -3714,7 +3714,7 @@ class CombatAutoScript:
             # 2. 等待复活药出现并点击（5秒内找到，否则返回False）
             revive_item_image = self.item_images.get("复活药")
             if not revive_item_image:
-                self.report_battle_info(f"账号{account_index} 未找到复活药图片配置", "error")
+                self.report_battle_info(f"账号{account_index} 复活药识别图缺失", "error")
                 # 清除复活中标记
                 with self._state_lock:
                     if target_dead_account_idx in self.unit_info:
@@ -3750,7 +3750,7 @@ class CombatAutoScript:
 
             if not revive_item_pos:
                 self.report_battle_info(
-                    f"账号{account_index} 道具面板中未找到复活药（5秒超时），图片路径：{revive_item_image}", "error"
+                    f"账号{account_index} 未找到复活药", "error"
                 )
                 # 清除复活中标记
                 with self._state_lock:
@@ -3792,7 +3792,7 @@ class CombatAutoScript:
             return True
 
         except Exception as e:
-            self.report_battle_info(f"账号{account_index} 复活{dead_char_info['name']}失败: {e}", "error")
+            self.report_battle_info(f"账号{account_index} 复活失败", "error")
             # 清除复活中标记
             target_dead_account_idx = dead_char_info.get("account_index", account_index)
             with self._state_lock:
@@ -3964,7 +3964,7 @@ class CombatAutoScript:
             time.sleep(0.1)
 
         if not item_btn:
-            self.report_battle_info(f"账号{account_index} 查找道具按钮超时（1.5秒）", "warning")
+            self.report_battle_info(f"账号{account_index} 未找到道具按钮", "warning")
             return False
 
         # 找到道具按钮，开始执行复活操作，设置reviving=True
@@ -4039,7 +4039,7 @@ class CombatAutoScript:
                 # 复活药已消失，点击成功
                 click_success = True
                 if attempt > 0:
-                    self.report_battle_info(f"账号{account_index} 复活药点击成功（第{attempt + 1}次尝试）", "info")
+                    self.report_battle_info(f"账号{account_index} 复活药使用成功", "info")
                 break
             else:
                 # 复活药还在，需要重试
@@ -4173,7 +4173,7 @@ class CombatAutoScript:
 
             if summon_btn:
                 # 主角操作
-                self.report_battle_info(f"主角操作阶段：账号 [{account_index}]", "turn")
+                self.report_battle_info(f"--- 账号{account_index} 主角回合 ---", "turn")
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
                     return False
@@ -4188,7 +4188,7 @@ class CombatAutoScript:
                 if not is_finded:
                     return False
                 # 进入第一个武将操作
-                self.report_battle_info(f"武将操作阶段：账号 [{account_index}]", "turn")
+                self.report_battle_info(f"--- 账号{account_index} 武将回合 ---", "turn")
                 self._current_our_turn_call = 0
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
@@ -4210,7 +4210,7 @@ class CombatAutoScript:
                     return False
             else:
                 # 武将操作
-                self.report_battle_info(f"武将操作阶段：账号 [{account_index}]", "turn")
+                self.report_battle_info(f"--- 账号{account_index} 武将回合 ---", "turn")
                 self._current_our_turn_call = 0
                 is_action = self.handle_our_turn(account_index)
                 if not is_action:
@@ -4296,7 +4296,7 @@ class CombatAutoScript:
                 time.sleep(0.5)
 
         except Exception as e:
-            self.report_battle_info(f"账号{account_index} 处理操作流程出错: {e}", "error")
+            self.report_battle_info(f"账号{account_index} 处理操作流程出错", "error")
             return False
 
     # 处理我方回合操作
@@ -4512,25 +4512,22 @@ class CombatAutoScript:
                             need_liubei = True
                             need_summon_general = True
                             self.report_battle_info(
-                                f"账号{account_index} 判断需要召唤刘备（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 场上无刘备={not field_has_liubei}, 账号无刘备={not has_liubei_in_account}, 背包有刘备={self.has_liubei.get(account_index, False)}, 主角存活={char_info.get('alive', True)}）",
+                                f"账号{account_index} 判断需要召唤刘备",
                                 "info",
                             )
                         else:
                             need_summon_general = True
                             self.report_battle_info(
-                                f"账号{account_index} 判断需要召唤其他武将（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 场上有刘备={field_has_liubei}, 账号有刘备={has_liubei_in_account}, 主角存活={char_info.get('alive', True)}）",
+                                f"账号{account_index} 判断需要召唤其他武将",
                                 "info",
                             )
                     else:
-                        self.report_battle_info(
-                            f"账号{account_index} 判断不需要召唤（有武将死亡={has_dead_general_in_account or has_dead_general_in_list}, 主角存活={char_info.get('alive', True)}）",
-                            "info",
-                        )
+                        pass
                 else:
                     if skip_side_effects:
-                        self.report_battle_info(f"账号{account_index} [retry] 跳过召唤判断（skip_side_effects）", "info")
+                        pass
                     else:
-                        self.report_battle_info(f"账号{account_index} 第一回合，跳过召唤判断", "info")
+                        pass
 
                 # 多刘备并行（已禁用）
                 if False and not skip_side_effects:
@@ -5229,7 +5226,7 @@ class CombatAutoScript:
             return False
 
         except Exception as e:
-            self.report_battle_info(f"账号{account_index} 处理回合操作失败: {e}", "error")
+            self.report_battle_info(f"账号{account_index} 处理回合操作失败", "error")
             return False
 
     # 轮询监听主循环
@@ -5597,7 +5594,7 @@ class CombatAutoScript:
                 break
             except Exception as e:
                 import traceback
-                self.report_battle_info(f"轮询监听出错: {type(e).__name__}: {e}", "error")
+                self.report_battle_info(f"轮询监听出错", "error")
                 try:
                     traceback.print_exc()
                 except Exception:
