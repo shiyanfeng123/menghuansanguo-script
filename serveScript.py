@@ -210,6 +210,7 @@ class MyThread(threading.Thread):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.auto_resize_window = False  # 是否在窗口绑定时自动调整大小和位置
         self.independent_win1 = False
         self.independent_win2 = False
         self.stoped = False
@@ -272,6 +273,7 @@ class MyThread(threading.Thread):
         self._combat_state_reset = True # 一次性重置标志（True=已重置，待下次进入战斗）
         self._mode3_triggered = False   # Mode 3 是否已触发（预留，暂未使用）
         self._idle_skill_round_done = False  # IDLE交替标志（False=下次全托管，True=下次点击自动）
+        self._combat_lock = threading.Lock()  # 保护 start/stop 互斥
         # 副本统计：四象/噬魂 的成功、失败、已打、总次数
         self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
         self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
@@ -308,50 +310,41 @@ class MyThread(threading.Thread):
             pass
 
     def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None):
-        """启动 Mode 2 全托管战斗循环
-        :param clear_enemy_keys: 需检测的敌方状态 key 列表，如 ["赵云28","刘备28"]
-                                 非 None 时，Mode 2 内部每回合会自动检测并清除这些敌方的状态
-                                 None 时不检测敌方状态（仅基础技能释放+防御）
-        :param combat_scene: 战斗场景标识，如 "四象"，影响部分副本特殊逻辑
-        调用方式:
-            # 直接全托管（无敌方检测）:
-            self._start_combat_auto()
-            # 全托管 + 检测指定敌方状态:
-            self._start_combat_auto(clear_enemy_keys=["赵云28","刘备28"])
-            # 四象副本:
-            self._start_combat_auto(combat_scene="四象", clear_enemy_keys=["玄武"])
-        """
         try:
-            if self.combat_auto_running:
-                return
-            if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
-                return
-            _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
-            self.combat_auto_running = True
+            with self._combat_lock:
+                if self.combat_auto_running:
+                    return
+                if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
+                    return
+                _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
+                self.combat_auto_running = True
 
-            if not self.combat_auto_instance:
-                self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
-                self.combat_auto_instance.keep_support_general = False
-                self.combat_auto_instance.enable_main_heal = _heal_on
-                self.combat_auto_instance.enable_main_summon = True
-                self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
-                if combat_scene is not None:
-                    self.combat_auto_instance.combat_scene = combat_scene
-            else:
-                self.combat_auto_instance.reconfigure(
-                    enemy_keys_to_detect=clear_enemy_keys,
-                    keep_support_general=False,
-                    liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
-                    enable_main_heal=_heal_on,
-                    combat_scene=combat_scene,
-                )
+                if not self.combat_auto_instance:
+                    self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
+                    self.combat_auto_instance.keep_support_general = False
+                    self.combat_auto_instance.enable_main_heal = _heal_on
+                    self.combat_auto_instance.enable_main_summon = True
+                    self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
+                    if combat_scene is not None:
+                        self.combat_auto_instance.combat_scene = combat_scene
+                else:
+                    self.combat_auto_instance.reconfigure(
+                        enemy_keys_to_detect=clear_enemy_keys,
+                        keep_support_general=False,
+                        liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
+                        enable_main_heal=_heal_on,
+                        enable_main_summon=True,
+                        combat_scene=combat_scene,
+                    )
 
-            if self.combat_auto_instance.battle_report_dialog:
-                self.combat_auto_instance.battle_report_dialog.set_running(True)
+                if self.combat_auto_instance.battle_report_dialog:
+                    self.combat_auto_instance.battle_report_dialog.set_running(True)
 
-            self.combat_auto_thread = threading.Thread(
-                target=self.combat_auto_instance.run_combat_loop, daemon=True)
-            self.combat_auto_thread.start()
+                # 递增代际，使旧线程自行失效
+                self.combat_auto_instance._polling_generation += 1
+                self.combat_auto_thread = threading.Thread(
+                    target=self.combat_auto_instance.run_combat_loop, daemon=True)
+                self.combat_auto_thread.start()
 
         except Exception as e:
             print(f"启动战斗自动操作失败")
@@ -361,24 +354,25 @@ class MyThread(threading.Thread):
 
     def _stop_combat_auto(self):
         try:
-            if not self.combat_auto_running:
-                return
-            self.combat_auto_running = False
+            with self._combat_lock:
+                if not self.combat_auto_running:
+                    return
+                self.combat_auto_running = False
 
-            if self.combat_auto_instance:
-                self.combat_auto_instance.polling_running = False
-                if self.combat_auto_instance.battle_report_dialog:
-                    self.combat_auto_instance.battle_report_dialog.set_running(False)
+                if self.combat_auto_instance:
+                    self.combat_auto_instance.polling_running = False
+                    if self.combat_auto_instance.battle_report_dialog:
+                        self.combat_auto_instance.battle_report_dialog.set_running(False)
 
-            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
-                self.combat_auto_thread.join(timeout=5)
-            self.combat_auto_thread = None
+                if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+                    self.combat_auto_thread.join(timeout=5)
+                self.combat_auto_thread = None
 
-            if self.combat_auto_instance:
-                try:
-                    self.combat_auto_instance.reset_state()
-                except Exception as e:
-                    print(f"重置战斗脚本状态时出错: {e}")
+                if self.combat_auto_instance:
+                    try:
+                        self.combat_auto_instance.reset_state()
+                    except Exception as e:
+                        print(f"重置战斗脚本状态时出错: {e}")
 
         except Exception as e:
             print(f"停止战斗自动操作失败")
@@ -1393,8 +1387,9 @@ class MyThread(threading.Thread):
             print("窗口绑定失败")
             return False
         # 调整队长窗口大小和位置：900×630，左上角 (0,0)
-        self.dm.SetClientSize(hwnd, 900, 630)
-        self.dm.MoveWindow(hwnd, 0, 0)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.dm.SetClientSize(hwnd, 900, 630)
+            self.dm.MoveWindow(hwnd, 0, 0)
         location = self.dm.GetClientSize(self.click_hwnd)
         x, y, res = location
         if res == 1:
@@ -2036,8 +2031,9 @@ class MyThread(threading.Thread):
             self.show_error_message("队友1绑定失败")
             return False
         # 调整队友1窗口大小和位置：900×630，左上角 (900,0)
-        self.win1_dm.SetClientSize(hwnd, 900, 630)
-        self.win1_dm.MoveWindow(hwnd, 900, 0)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.win1_dm.SetClientSize(hwnd, 900, 630)
+            self.win1_dm.MoveWindow(hwnd, 900, 0)
         self.win1_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team1.txt"))
         time.sleep(0.5)
@@ -2303,8 +2299,9 @@ class MyThread(threading.Thread):
             self.show_error_message("队友2绑定失败")
             return False
         # 调整队友2窗口大小和位置：900×630，左上角 (900,450)
-        self.win2_dm.SetClientSize(hwnd, 900, 630)
-        self.win2_dm.MoveWindow(hwnd, 900, 450)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.win2_dm.SetClientSize(hwnd, 900, 630)
+            self.win2_dm.MoveWindow(hwnd, 900, 450)
         self.win2_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team2.txt"))
         time.sleep(0.5)
@@ -11217,6 +11214,21 @@ class MyThread(threading.Thread):
     def longzhuScript(self):
         self.heifengCount += 1
         print(f"第{self.heifengCount}次龙珠.")
+        isInGuanDu = self.waitFor(
+            self.get_resource_path("serveAssets/images/zhanhun/luoyang.bmp"),
+            self.dituLocation,
+            1,
+        )
+        if not isInGuanDu:
+            self.go_in_ditu(
+                "地图洛阳大道",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "洛阳",
+                "",
+                "",
+                True,
+            )
         self.findAndClickPic(
             "洛阳",
             self.get_resource_path("serveAssets/images/longzhu/laoyufu.bmp"),
@@ -11312,8 +11324,7 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/longzhu/chuansongmen.bmp"),
             self.dituLocation,
-            self.get_resource_path(
-                "serveAssets/images/longzhu/longchaojingnei.bmp"),
+            f"{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei1.bmp')}",
             self.dituLocation,
             "888,75",
         )
@@ -11321,13 +11332,12 @@ class MyThread(threading.Thread):
             "755,77",
             "779,72",
             "808,79",
-            "829,77",
-            "868,79",
+            "837,77",
+            "868,77",
         ]
         for index, item in enumerate(longzhuPos3):
             self.findAndClickPic(
-                self.get_resource_path(
-                    "serveAssets/images/longzhu/longchaojingnei.bmp"),
+                f"{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei1.bmp')}",
                 "单龙|御剑仙女",
                 f"{self.get_resource_path('serveAssets/images/longzhu/longhufa1.bmp')}|"
                 f"{self.get_resource_path('serveAssets/images/longzhu/longhufa2.bmp')}|"
@@ -11657,6 +11667,21 @@ class MyThread(threading.Thread):
 
     # 龙珠循环
     def longzhuWhile(self):
+        isInGuanDu = self.waitFor(
+            self.get_resource_path("serveAssets/images/zhanhun/luoyang.bmp"),
+            self.dituLocation,
+            1,
+        )
+        if not isInGuanDu:
+            self.go_in_ditu(
+                "地图洛阳大道",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "洛阳",
+                "",
+                "",
+                True,
+            )
         while True:
             if self.overed:
                 return
@@ -14234,6 +14259,7 @@ class MyFrame(wx.Frame):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.auto_resize_window = False
         self.independent_win1 = False
         self.independent_win2 = False
 
@@ -14952,6 +14978,13 @@ class MyFrame(wx.Frame):
                     cb.SetValue(scene in self.combat_auto_scenes)
             if hasattr(self, 'use_heal_item') and hasattr(dialog, 'use_heal_cb'):
                 dialog.use_heal_cb.SetValue(self.use_heal_item)
+            if hasattr(self, 'auto_resize_window') and hasattr(dialog, 'auto_resize_on'):
+                if self.auto_resize_window:
+                    dialog.auto_resize_off.Hide()
+                    dialog.auto_resize_on.Show()
+                else:
+                    dialog.auto_resize_on.Hide()
+                    dialog.auto_resize_off.Show()
         if dialog.ShowModal() == wx.ID_OK:
             print("当前游戏名称：" + self.game_name)
         dialog.Destroy()
@@ -15374,14 +15407,7 @@ class MyDialog(wx.Dialog):
             b.SetCursor(wx.Cursor(wx.CURSOR_HAND))
             b.Bind(wx.EVT_BUTTON, fn)
             top_row.Add(b, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 3)
-        main_sizer.Add(top_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
-        main_sizer.AddSpacer(8)
-
-        # ── 队伍 ──
-        sec = lambda t: self._section_header(main_sizer, panel, t)
-        sec("队伍")
-        tm = wx.FlexGridSizer(cols=4, vgap=5, hgap=6)
-        tm.AddGrowableCol(1, 1)
+        top_row.AddStretchSpacer()
 
         def _make_toggle_btn(parent, label_off, label_on, bind_fn):
             container = wx.Panel(parent, size=(74, 30))
@@ -15401,6 +15427,25 @@ class MyDialog(wx.Dialog):
             btn_on.Bind(wx.EVT_BUTTON, lambda e, c=container, o=btn_off, n=btn_on: bind_fn(e, False, c, o, n))
             return container, btn_off, btn_on
 
+        def _toggle_resize(event, flag, container, off_btn, on_btn):
+            if flag:
+                off_btn.Hide(); on_btn.Show(); container.Layout()
+            else:
+                on_btn.Hide(); off_btn.Show(); container.Layout()
+        resize_container, resize_off, resize_on = _make_toggle_btn(panel, "调整窗口✅", "调整窗口✅", _toggle_resize)
+        self.auto_resize_off = resize_off
+        self.auto_resize_on = resize_on
+        top_row.Add(resize_container, 0, wx.ALIGN_CENTER_VERTICAL)
+        resize_off.SetToolTip("开启后窗口绑定时自动调整大小和位置")
+        main_sizer.Add(top_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
+
+        # ── 队伍 ──
+        sec = lambda t: self._section_header(main_sizer, panel, t)
+        sec("队伍")
+        tm = wx.FlexGridSizer(cols=4, vgap=5, hgap=6)
+        tm.AddGrowableCol(1, 1)
+
         for txt, attr_hint, is_leader in [("游戏名称", "360大厅游戏名称", True), ("队友1", "360大厅小号列表队友1名称", False), ("队友2", "360大厅小号列表队友2名称", False)]:
             tm.Add(label(txt, 40), 0, wx.ALIGN_CENTER_VERTICAL)
             tc = text_input(attr_hint)
@@ -15418,7 +15463,7 @@ class MyDialog(wx.Dialog):
             b.Hide()
             tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
             if is_leader:
-                auto_btn = wx.Button(panel, label="自动识别", size=(74, 28), style=wx.BORDER_NONE)
+                auto_btn = wx.Button(panel, label="识别窗口", size=(74, 28), style=wx.BORDER_NONE)
                 auto_btn.SetBackgroundColour(self.C_GOLD)
                 auto_btn.SetForegroundColour(wx.Colour(255, 255, 255))
                 auto_btn.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
@@ -16290,6 +16335,7 @@ class MyDialog(wx.Dialog):
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
             "combat_auto_scenes": combat_auto_scenes,
             "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
+            "auto_resize_window": self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False,
         }
 
     def apply_settings(self, settings):
@@ -16340,6 +16386,14 @@ class MyDialog(wx.Dialog):
                 cb.SetValue(scene in saved_scenes)
         if hasattr(self, 'use_heal_cb'):
             self.use_heal_cb.SetValue(settings.get("use_heal_item", False))
+        if hasattr(self, 'auto_resize_on'):
+            val = settings.get("auto_resize_window", False)
+            if val:
+                self.auto_resize_off.Hide()
+                self.auto_resize_on.Show()
+            else:
+                self.auto_resize_on.Hide()
+                self.auto_resize_off.Show()
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -16482,6 +16536,7 @@ class MyDialog(wx.Dialog):
                 parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
         parent.independent_win1 = self.independent_win1_on.IsShown() if hasattr(self, "independent_win1_on") else False
         parent.independent_win2 = self.independent_win2_on.IsShown() if hasattr(self, "independent_win2_on") else False
+        parent.auto_resize_window = self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False
         parent.use_heal_item = self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False
         if self.IsModal():
             self.EndModal(wx.ID_OK)
