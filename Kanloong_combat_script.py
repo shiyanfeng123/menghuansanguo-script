@@ -1353,6 +1353,13 @@ class CombatAutoScript:
                 time.sleep(CombatConstants.ACTION_DELAY)
                 return True
             return False
+
+        # 加攻击去重：同一buff周期内只允许一个刘备释放，避免双刘备重复buff浪费
+        if skill_name == "加攻击":
+            with self._state_lock:
+                if any(t > 0 for t in self.attack_buff_tracker.values()):
+                    return False
+
         skill_path = self.skill_images.get(skill_name)
         if not skill_path:
             return False
@@ -1361,7 +1368,16 @@ class CombatAutoScript:
         _find_cost = round(time.time() - _find_start, 3)
         if not skill_pos:
             return False
-        return self.release_skill_with_target(account_index, skill_name, skill_pos, caller_hint)
+
+        result = self.release_skill_with_target(account_index, skill_name, skill_pos, caller_hint)
+
+        # 加攻击释放成功后，更新全局tracker防止其他刘备重复释放
+        if result and skill_name == "加攻击":
+            with self._state_lock:
+                for acct in range(self.get_account_count()):
+                    self.attack_buff_tracker[acct] = 3
+
+        return result
 
     def _evaluate_condition(self, account_index, cond):
         if cond == "always":
@@ -1504,9 +1520,6 @@ class CombatAutoScript:
                         self.report_battle_info(
                             f"账号{account_index} 刘备释放{skill_name}，目标位置: {target_pos}", "action"
                         )
-
-            if skill_name == "加攻击" and skill_type == "support":
-                self.attack_buff_tracker[account_index] = 3
 
             if skill_name == "清除状态" and skill_type == "support":
                 if account_index not in self.liubei_skill_cd:
@@ -3024,12 +3037,18 @@ class CombatAutoScript:
     def _try_use_heal_for_low_hp(self, account_index):
         """主角没技能时，尝试用恢复药给低血武将加血（跨账号）
         
-        优先级：全队低血武将（排除主角），先抢占先得
+        遍历所有低血武将候选，直到成功抢占一个未被其他线程标记的目标
         同回合同一武将不会被重复加血（_healed_positions_this_turn 防重）
         找不到恢复药后 2 回合不再尝试
         """
         last_miss = self._no_heal_item_missing_turn.get(account_index, -999)
         if self.current_turn - last_miss < 2:
+            return False
+
+        # CD 前置检查，避免循环内对同一账号反复失败
+        cd_config = self.item_cd_config.get("恢复药", 3)
+        last_used = self.item_cd_tracking.get(account_index, {}).get("恢复药", -999)
+        if (self.current_turn - last_used) < cd_config:
             return False
 
         # 收集所有账号的低血武将（排除主角和本回合已加血的）
@@ -3048,29 +3067,34 @@ class CombatAutoScript:
         if not candidates:
             return False
 
-        # 取第一个候选，锁内抢占标记防并发重复
-        target_acct, target_unit = candidates[0]
-        pos = target_unit["position"]
-        with self._state_lock:
-            if pos in self._healed_positions_this_turn:
-                return False  # 已被其他线程抢占
-            self._healed_positions_this_turn.add(pos)
-
-        result = self.use_heal_item(account_index, target_unit)
-        if not result:
-            # 加血失败，回滚标记，允许其他主角再尝试
+        # 遍历候选，直到成功抢占一个未被其他线程标记的目标
+        for target_acct, target_unit in candidates:
+            pos = target_unit["position"]
             with self._state_lock:
-                self._healed_positions_this_turn.discard(pos)
-            return False
+                if pos in self._healed_positions_this_turn:
+                    continue  # 已被其他线程抢占，试下一个
+                self._healed_positions_this_turn.add(pos)
 
-        # 从目标账号的低血列表中移除已加血单位
-        if target_acct in self.low_hp_units:
-            for u in list(self.low_hp_units[target_acct]):
-                if (u["unit_type"] == target_unit["unit_type"]
-                        and u["unit_name"] == target_unit["unit_name"]):
-                    self.low_hp_units[target_acct].remove(u)
-                    break
-        return True
+            result = self.use_heal_item(account_index, target_unit)
+            if not result:
+                # 加血失败，回滚标记，允许其他主角再尝试
+                with self._state_lock:
+                    self._healed_positions_this_turn.discard(pos)
+                # 找不到恢复药时 use_heal_item 内部已设抑制，换候选也没用 → 直接退出
+                if account_index in self._no_heal_item_missing_turn:
+                    return False
+                continue
+
+            # 从目标账号的低血列表中移除已加血单位
+            if target_acct in self.low_hp_units:
+                for u in list(self.low_hp_units[target_acct]):
+                    if (u["unit_type"] == target_unit["unit_type"]
+                            and u["unit_name"] == target_unit["unit_name"]):
+                        self.low_hp_units[target_acct].remove(u)
+                        break
+            return True
+
+        return False
 
     def _use_mana_item(self, account_index, target_unit_info):
         last_used = self.item_cd_tracking.get(account_index, {}).get("蓝药", -999)
