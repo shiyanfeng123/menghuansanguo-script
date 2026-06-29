@@ -210,6 +210,7 @@ class MyThread(threading.Thread):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.auto_resize_window = False  # 是否在窗口绑定时自动调整大小和位置
         self.independent_win1 = False
         self.independent_win2 = False
         self.stoped = False
@@ -1312,8 +1313,9 @@ class MyThread(threading.Thread):
             print("窗口绑定失败")
             return False
         # 调整队长窗口大小和位置：900×630，左上角 (0,0)
-        self.dm.SetClientSize(hwnd, 900, 630)
-        self.dm.MoveWindow(hwnd, 0, 0)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.dm.SetClientSize(hwnd, 900, 630)
+            self.dm.MoveWindow(hwnd, 0, 0)
         location = self.dm.GetClientSize(self.click_hwnd)
         x, y, res = location
         if res == 1:
@@ -1928,8 +1930,9 @@ class MyThread(threading.Thread):
             self.show_error_message("队友1绑定失败")
             return False
         # 调整队友1窗口大小和位置：900×630，左上角 (900,0)
-        self.win1_dm.SetClientSize(hwnd, 900, 630)
-        self.win1_dm.MoveWindow(hwnd, 900, 0)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.win1_dm.SetClientSize(hwnd, 900, 630)
+            self.win1_dm.MoveWindow(hwnd, 900, 0)
         self.win1_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team1.txt"))
         time.sleep(0.5)
@@ -2201,8 +2204,9 @@ class MyThread(threading.Thread):
             self.show_error_message("队友2绑定失败")
             return False
         # 调整队友2窗口大小和位置：900×630，左上角 (900,450)
-        self.win2_dm.SetClientSize(hwnd, 900, 630)
-        self.win2_dm.MoveWindow(hwnd, 900, 450)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.win2_dm.SetClientSize(hwnd, 900, 630)
+            self.win2_dm.MoveWindow(hwnd, 900, 450)
         self.win2_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team2.txt"))
         time.sleep(0.5)
@@ -14167,6 +14171,7 @@ class MyFrame(wx.Frame):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.auto_resize_window = False
         self.independent_win1 = False
         self.independent_win2 = False
 
@@ -14885,6 +14890,13 @@ class MyFrame(wx.Frame):
                     cb.SetValue(scene in self.combat_auto_scenes)
             if hasattr(self, 'use_heal_item') and hasattr(dialog, 'use_heal_cb'):
                 dialog.use_heal_cb.SetValue(self.use_heal_item)
+            if hasattr(self, 'auto_resize_window') and hasattr(dialog, 'auto_resize_on'):
+                if self.auto_resize_window:
+                    dialog.auto_resize_off.Hide()
+                    dialog.auto_resize_on.Show()
+                else:
+                    dialog.auto_resize_on.Hide()
+                    dialog.auto_resize_off.Show()
         if dialog.ShowModal() == wx.ID_OK:
             print("当前游戏名称：" + self.game_name)
         dialog.Destroy()
@@ -15307,14 +15319,7 @@ class MyDialog(wx.Dialog):
             b.SetCursor(wx.Cursor(wx.CURSOR_HAND))
             b.Bind(wx.EVT_BUTTON, fn)
             top_row.Add(b, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 3)
-        main_sizer.Add(top_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
-        main_sizer.AddSpacer(8)
-
-        # ── 队伍 ──
-        sec = lambda t: self._section_header(main_sizer, panel, t)
-        sec("队伍")
-        tm = wx.FlexGridSizer(cols=4, vgap=5, hgap=6)
-        tm.AddGrowableCol(1, 1)
+        top_row.AddStretchSpacer()
 
         def _make_toggle_btn(parent, label_off, label_on, bind_fn):
             container = wx.Panel(parent, size=(74, 30))
@@ -15333,6 +15338,25 @@ class MyDialog(wx.Dialog):
             btn_off.Bind(wx.EVT_BUTTON, lambda e, c=container, o=btn_off, n=btn_on: bind_fn(e, True, c, o, n))
             btn_on.Bind(wx.EVT_BUTTON, lambda e, c=container, o=btn_off, n=btn_on: bind_fn(e, False, c, o, n))
             return container, btn_off, btn_on
+
+        def _toggle_resize(event, flag, container, off_btn, on_btn):
+            if flag:
+                off_btn.Hide(); on_btn.Show(); container.Layout()
+            else:
+                on_btn.Hide(); off_btn.Show(); container.Layout()
+        resize_container, resize_off, resize_on = _make_toggle_btn(panel, "调整窗口✅", "调整窗口✅", _toggle_resize)
+        self.auto_resize_off = resize_off
+        self.auto_resize_on = resize_on
+        top_row.Add(resize_container, 0, wx.ALIGN_CENTER_VERTICAL)
+        resize_off.SetToolTip("开启后窗口绑定时自动调整大小和位置")
+        main_sizer.Add(top_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
+
+        # ── 队伍 ──
+        sec = lambda t: self._section_header(main_sizer, panel, t)
+        sec("队伍")
+        tm = wx.FlexGridSizer(cols=4, vgap=5, hgap=6)
+        tm.AddGrowableCol(1, 1)
 
         for txt, attr_hint, is_leader in [("游戏名称", "360大厅游戏名称", True), ("队友1", "360大厅小号列表队友1名称", False), ("队友2", "360大厅小号列表队友2名称", False)]:
             tm.Add(label(txt, 40), 0, wx.ALIGN_CENTER_VERTICAL)
@@ -16223,6 +16247,7 @@ class MyDialog(wx.Dialog):
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
             "combat_auto_scenes": combat_auto_scenes,
             "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
+            "auto_resize_window": self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False,
         }
 
     def apply_settings(self, settings):
@@ -16273,6 +16298,14 @@ class MyDialog(wx.Dialog):
                 cb.SetValue(scene in saved_scenes)
         if hasattr(self, 'use_heal_cb'):
             self.use_heal_cb.SetValue(settings.get("use_heal_item", False))
+        if hasattr(self, 'auto_resize_on'):
+            val = settings.get("auto_resize_window", False)
+            if val:
+                self.auto_resize_off.Hide()
+                self.auto_resize_on.Show()
+            else:
+                self.auto_resize_on.Hide()
+                self.auto_resize_off.Show()
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -16415,6 +16448,7 @@ class MyDialog(wx.Dialog):
                 parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
         parent.independent_win1 = self.independent_win1_on.IsShown() if hasattr(self, "independent_win1_on") else False
         parent.independent_win2 = self.independent_win2_on.IsShown() if hasattr(self, "independent_win2_on") else False
+        parent.auto_resize_window = self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False
         parent.use_heal_item = self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False
         if self.IsModal():
             self.EndModal(wx.ID_OK)
