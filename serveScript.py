@@ -378,6 +378,21 @@ class MyThread(threading.Thread):
                     return True
         return self.overed
 
+    def interruptible_sleep(self, seconds, step=0.3):
+        """可中断的sleep，暂停时等待，重置时立即返回"""
+        elapsed = 0
+        while elapsed < seconds:
+            if self.overed:
+                return True
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            if self.overed:
+                return True
+            time.sleep(min(step, seconds - elapsed))
+            elapsed += step
+        return False
+
     def run(self):
         # self.mac_address = self.get_mac_address()
         # self.mac_address1 = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8 * 6, 8)][::-1])
@@ -752,6 +767,17 @@ class MyThread(threading.Thread):
         elif self.scriptName == "抢龙":
             self.zhengdianFloor = "龙+全打"
             self.new_zhengdian()
+        elif self.scriptName == "沉浸式自动战斗":
+            while True:
+                if self.overed:
+                    return
+                with condition:
+                    if self.stoped:
+                        condition.wait()
+                self.waitFor(self.get_resource_path("serveAssets/images/zdzd.bmp"),self.gameBottomLocation)
+                self._start_combat_auto()
+                self.waitFor(self.get_resource_path("serveAssets/images/jineng.bmp"),self.gameBottomLocation)
+                self._stop_combat_auto()
         elif self.scriptName == "测试自动战斗":
             if self.combat_auto_scenes:
                 self._start_combat_auto()
@@ -923,6 +949,8 @@ class MyThread(threading.Thread):
         elif self.scriptName == "名将闯关":
             print("开始名将闯关")
             while True:
+                if self.check_stop_or_over():
+                    return
                 has_mingjiang = self.mingjiangchuangguan()
                 if not has_mingjiang:
                     break
@@ -2942,6 +2970,10 @@ class MyThread(threading.Thread):
         find_queding_time = time.time()
         locationQueding = None
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             if self.scriptName == "官渡" and self.find_pic_or_str("官渡",
                                                                   self.dituLocation,
                                                                   0):
@@ -3592,6 +3624,8 @@ class MyThread(threading.Thread):
             time.sleep(1)
             print("开始名将闯关")
             while True:
+                if self.check_stop_or_over():
+                    return
                 has_mingjiang = self.mingjiangchuangguan()
                 if not has_mingjiang:
                     break
@@ -5867,6 +5901,10 @@ class MyThread(threading.Thread):
         address_pos_city_pos = None
         begin_time = time.time()
         while True:
+            if self.overed:
+                return None
+            if self.stoped:
+                self.check_stop_or_over()
             if time.time() - begin_time > 600:
                 break
             self.confidenceNum = 0.8
@@ -6031,6 +6069,10 @@ class MyThread(threading.Thread):
                 self.gameLocation,
                 0,
         ):
+            if self.overed:
+                return False
+            if self.stoped:
+                self.check_stop_or_over()
             if time.time() - begin_time > 600:
                 break
             self.dm.KeyPressChar("z")
@@ -6070,6 +6112,10 @@ class MyThread(threading.Thread):
                     break
             if fei_pos:
                 while True:
+                    if self.overed:
+                        return False
+                    if self.stoped:
+                        self.check_stop_or_over()
                     if not self.find_pic_or_str(image_path, self.gameLocation,
                                                 0):
                         break
@@ -6129,6 +6175,10 @@ class MyThread(threading.Thread):
                     break
             if fei_pos:
                 while True:
+                    if self.overed:
+                        return False
+                    if self.stoped:
+                        self.check_stop_or_over()
                     if not self.find_pic_or_str(image_path, self.gameLocation,
                                                 0):
                         break
@@ -7179,6 +7229,10 @@ class MyThread(threading.Thread):
             2,
         )
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.3)
@@ -7209,7 +7263,7 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
         )
         self.confidenceNum = 0.9
-        if self.overed:
+        if self.check_stop_or_over():
             return
         isInHong = self.waitFor("军营", self.dituLocation, 8)
         if not isInHong:
@@ -7358,7 +7412,7 @@ class MyThread(threading.Thread):
 
     def qingyuanWhile(self):
         for i in range(int(self.qingyuan_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             qingyuanRes = self.qingyuanScript()
             if not qingyuanRes:
@@ -10256,7 +10310,7 @@ class MyThread(threading.Thread):
     # 一直执行天外天
     def mingjiangtiaozhanWhile(self):
         for i in range(int(self.mingjiang_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             zhanhunRes = self.mingjiangtiaozhan()
             if not zhanhunRes:
@@ -10377,6 +10431,10 @@ class MyThread(threading.Thread):
     def _handle_continue_dialog(self):
         """处理"点击继续"对话框"""
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             self.color_format = "b@ffff00-000000|fff200-000000"
             jixu_pos = self.find_str("点击继续背景", self.gameBottomLocation, 0)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
@@ -10607,7 +10665,7 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
         )
         self.confidenceNum = 0.9
-        if self.overed:
+        if self.check_stop_or_over():
             return
         isInHong = self.waitFor(
             self.get_resource_path("serveAssets/images/xigua/nongshe.bmp"),
@@ -11593,6 +11651,10 @@ class MyThread(threading.Thread):
         fei_pos = ResXy(871,217)
         renwu_pos = ResXy(746,151)
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             self.dm.MoveTo(cangbaotu_pos.x,cangbaotu_pos.y)
             self.dm.LeftDoubleClick()
             self.dm.LeftDoubleClick()
@@ -11619,7 +11681,7 @@ class MyThread(threading.Thread):
     # 藏宝图循环
     def cangbaotuWhile(self):
         while True:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.cangbaotuScript()
 
@@ -11641,7 +11703,7 @@ class MyThread(threading.Thread):
                 True,
             )
         while True:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             longzhuRes = self.longzhuScript()
             if not longzhuRes:
@@ -11670,7 +11732,7 @@ class MyThread(threading.Thread):
                              0):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.go_in_ditu(
                     "地图五层",
@@ -11682,13 +11744,13 @@ class MyThread(threading.Thread):
                     True,
                 )
         for i in range(self.heifengWhileCount):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.heifengScript()
             if self.heifengCount >= self.heifengWhileCount:
                 break
         print(f"{self.heifengWhileCount}次黑风已完成,去官渡")
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.scriptName = "官渡"
         self.guanduWhile()
@@ -11713,7 +11775,7 @@ class MyThread(threading.Thread):
                              self.dituLocation, 0):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.go_in_ditu(
                     "地图官渡",
@@ -11732,7 +11794,7 @@ class MyThread(threading.Thread):
     # 一直执行英魂
     def hongWhile(self):
         for i in range(int(self.hong_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hongRes = self.hongScript()
             if not hongRes:
@@ -11747,7 +11809,7 @@ class MyThread(threading.Thread):
         if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
             wx.CallAfter(self.frame._refresh_dungeon_stats)
         for i in range(int(self.sixiang_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             sixiangRes = self.sixiangScript()
             if not sixiangRes:
@@ -11759,7 +11821,7 @@ class MyThread(threading.Thread):
     # 一直执行英魂
     def yinghunWhile(self):
         for i in range(int(self.yinhun_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hongRes = self.yinhunScript()
             if not hongRes:
@@ -11783,7 +11845,7 @@ class MyThread(threading.Thread):
             self.dm.LeftClick()
             time.sleep(2)
         for i in range(int(self.zhanhun_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             zhanhunRes = self.zhanhunScript()
             if not zhanhunRes:
@@ -11803,7 +11865,7 @@ class MyThread(threading.Thread):
             ):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.go_in_ditu(
                     "地图城西",
@@ -11823,7 +11885,7 @@ class MyThread(threading.Thread):
             ):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.feiFb("副本魔镜使者", False)
         while True:
@@ -11840,7 +11902,7 @@ class MyThread(threading.Thread):
     def richangeScript(self):
         print("日常")
         # 战魂
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if self.richang_zhengdian:
             self.richangAndZhengDian()
@@ -11857,7 +11919,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.zhanhun_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.zhanhunScript()
                 if not hongRes:
@@ -11875,7 +11937,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.lianyu_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.zhenhun_lianyu_script()
                 if not hongRes:
@@ -11893,13 +11955,13 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.shihun_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.shihun_lianyu_script()
                 if not hongRes:
                     break
         # 飞溶洞
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.rongdong_count) > 0:
             if not self.find_str("绿林路", self.dituLocation, 0):
@@ -11915,14 +11977,14 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.rongdong_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hasRongdong = self.rongdongScript()
                 if not hasRongdong:
                     break
             time.sleep(1)
         # 飞炼丹
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.liandan_count) > 0:
             if not self.find_str("五指峡谷", self.dituLocation, 0):
@@ -11936,14 +11998,14 @@ class MyThread(threading.Thread):
                     True,
                 )
             for i in range(int(self.liandan_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 liandanHas = self.liandanScript()
                 if not liandanHas:
                     break
             time.sleep(1)
         # 飞五行
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.wuxing_count) > 0:
             if not self.find_str("野外西", self.dituLocation, 0):
@@ -11958,14 +12020,14 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.wuxing_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hasWuxing = self.wuxingScript()
                 if not hasWuxing:
                     break
             time.sleep(1)
         # 飞四象
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.sixiang_count) > 0:
             if not self.find_pic(
@@ -11984,7 +12046,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.sixiang_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 sixiangRes = self.sixiangScript()
                 if not sixiangRes:
@@ -11993,7 +12055,7 @@ class MyThread(threading.Thread):
             time.sleep(1)
         # 飞云游精英
         if int(self.yunyou_count) > 0:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             if not self.find_str("嵩山", self.dituLocation, 0):
                 # self.feiFb('副本仙人', True)
@@ -12023,7 +12085,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.mingjiang_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 zhanhunRes = self.mingjiangtiaozhan()
                 if not zhanhunRes:
@@ -12033,7 +12095,7 @@ class MyThread(threading.Thread):
 
         # 飞80精英
         if int(self.bamen_count) > 0:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             if not self.find_str("许昌", self.dituLocation, 0):
                 # self.feiFb('副本分身', True)
@@ -12086,7 +12148,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.yinhun_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.yinhunScript()
                 if not hongRes:
@@ -12110,13 +12172,13 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.sangumaolu_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.sangumaoluScript()
                 if not hongRes:
                     break
         # 红
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.hong_count) > 0:
             if not self.find_str("虎牢关外", self.dituLocation, 0):
@@ -12131,7 +12193,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.hong_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.hongScript()
                 if not hongRes:
@@ -12149,14 +12211,14 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.qingyuan_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.qingyuanScript()
                 if not hongRes:
                     break
         # 飞官渡精英
         if int(self.guandujy_count) > 0:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             if not self.find_str("官渡", self.dituLocation, 0):
                 self.go_in_ditu(
@@ -12171,53 +12233,53 @@ class MyThread(threading.Thread):
             time.sleep(1)
             self.guanduJyScript()
             time.sleep(1)
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if self.richang_mojing:
             self.scriptName = "魔镜"
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.mojingWhile()
         else:
             self.scriptName = "官渡"
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.guanduWhile()
 
     # 五行
     def wuxingWhile(self):
         for i in range(int(self.wuxing_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hasWuxing = self.wuxingScript()
             if not hasWuxing:
                 break
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.guanduWhile()
 
     # 溶洞
     def rongdongWhile(self):
         for i in range(int(self.rongdong_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hasRongdong = self.rongdongScript()
             if not hasRongdong:
                 break
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.guanduWhile()
 
     # 炼丹
     def liandanWhile(self):
         for i in range(int(self.liandan_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             liandanHas = self.liandanScript()
             if not liandanHas:
                 break
         self.scriptName = "官渡"
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.guanduWhile()
 
@@ -13539,7 +13601,7 @@ class MyThread(threading.Thread):
         self.clearBag()
         time.sleep(1)
         self.outScript()
-        time.sleep(2)
+        self.interruptible_sleep(2)
         if self.zhengdianFloor in ["全打", "龙+全打", "蛇+全打"]:
             # 打整点
             self.zhengdian_flag = True
@@ -14525,6 +14587,7 @@ class MyFrame(wx.Frame):
                 # "天外天传送符",
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
+                "沉浸式自动战斗",
                 # "整点",
                 # "测试",
             ],
