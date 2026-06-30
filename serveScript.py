@@ -2801,7 +2801,6 @@ class MyThread(threading.Thread):
                 if self.check_stop_or_over():
                     return
                 if time.time() - query_time > 10:
-                    print("一键恢复超时")
                     return
                 find_res = dm.FindStrFastE(0, 0, 900, 580, '一键恢复', self.color_format, self.confidenceNum)
                 find_str_result = find_res.split("|")
@@ -2820,7 +2819,6 @@ class MyThread(threading.Thread):
                 if self.check_stop_or_over():
                     return
                 if time.time() - query_time > 10:
-                    print("一键恢复超时")
                     return
                 find_res = dm.FindPicEx(0, 0, 900, 590,
                              f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
@@ -8343,7 +8341,7 @@ class MyThread(threading.Thread):
         if not self.shihun_floor:
             self.shihun_floor = "29层"
             print("未选择层数，自动打29层")
-        print("开始噬魂 第{}次".format(self.shihun_stats["done"] + 1))
+        print("第{}次噬魂".format(self.shihun_stats["done"] + 1))
         _start = time.time()
         self._sh_run_start = time.time()
         outFbLocation = self.find_pic_or_str(
@@ -11316,7 +11314,7 @@ class MyThread(threading.Thread):
 
     # 四象脚本
     def sixiangScript(self):
-        print("四象脚本 第{}次".format(self.sixiang_stats["done"] + 1))
+        print("第{}次四象".format(self.sixiang_stats["done"] + 1))
         _start = time.time()
         self._sx_run_start = time.time()
         with condition:
@@ -14402,7 +14400,7 @@ class MyFrame(wx.Frame):
         self.text_ctrl = wx.TextCtrl(log_card, size=(-1, 200), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
         self.text_ctrl.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.text_ctrl.SetForegroundColour(wx.Colour(40, 42, 50))
-        self.text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        self.text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL,faceName="Microsoft YaHei UI"))
         lcs.Add(self.text_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         log_card.SetSizer(lcs)
 

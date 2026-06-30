@@ -156,7 +156,7 @@ class BattleReportDialog(wx.Frame):
         self.log_text = wx.TextCtrl(
             log_panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2
         )
-        self.log_text.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        self.log_text.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Microsoft YaHei UI"))
         self.log_text.SetBackgroundColour(self.C_LOG_BG)
         ls.Add(self.log_text, 1, wx.EXPAND | wx.ALL, 2)
         log_panel.SetSizer(ls)
@@ -165,7 +165,7 @@ class BattleReportDialog(wx.Frame):
         btn_bar = wx.Panel(panel)
         btn_bar.SetBackgroundColour(self.C_SURFACE)
         bs = wx.BoxSizer(wx.HORIZONTAL)
-        btn_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑")
+        btn_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="Microsoft YaHei UI")
         self.export_button = wx.Button(btn_bar, label="导出日志", size=(80, 26))
         self.export_button.SetFont(btn_font)
         self.export_button.SetBackgroundColour(self.C_ACCENT)
@@ -458,6 +458,10 @@ class CombatAutoScript:
     # :param thread_instance: MyThread 实例，用于访问大漠对象和区域定义
     # :param enemy_keys_to_detect: 需要检测状态的敌军单位 key 列表，例如 ["诸葛亮", "赵云29"]，如果为None则不检测
     def __init__(self, thread_instance, enemy_keys_to_detect=None):
+        """初始化战斗自动脚本
+        :param thread_instance: 所属的 UI 线程实例（serveScript 中的主窗口对象）
+        :param enemy_keys_to_detect: 需要检测状态的敌军 key 列表（如 ["刘备28", "赵云29"]）
+        """
         self.thread = thread_instance
         self.battle_report_dialog = None  # 战斗播报窗口
         self._dialog_closed = False  # 标记窗口是否已被关闭，防止重新创建
@@ -565,7 +569,7 @@ class CombatAutoScript:
         }
         self.SKILL_TO_GENERAL = {
             "剑阵灭杀": "曹操", "曹操单攻": "曹操",
-            "武神一怒": "魔化关羽",
+            "武神一怒": "魔化关羽", "魔关单攻": "魔化关羽",
             "星彩群攻": "张星彩", "星彩单攻": "张星彩",
             "诸葛辅助": "诸葛亮", "诸葛单攻": "诸葛亮", "诸葛群攻": "诸葛亮",
         }
@@ -618,6 +622,9 @@ class CombatAutoScript:
         # 刘备是否常驻（True=死了重召，False=一次性模式，清完状态回6曹操）
         self.enable_persistent_liubei = True
 
+        # 赵云29状态2需清除时，是否跳过攻击技能仅加血/防御
+        self.enable_zhaoyun29_hold = False
+
         # 战斗策略引擎（优先级排序的技能释放策略）
         self.skill_strategies = {
             "main_char": [
@@ -627,6 +634,7 @@ class CombatAutoScript:
             ],
             "attack": [
                 {"priority": 90, "skill": "曹操单攻",    "condition": "enemy_single"},
+                {"priority": 88, "skill": "魔关单攻",    "condition": "enemy_single"},
                 {"priority": 86, "skill": "星彩单攻",    "condition": "enemy_single"},
                 {"priority": 85, "skill": "星彩群攻",    "condition": "always"},
                 {"priority": 80, "skill": "剑阵灭杀",    "condition": "always"},
@@ -810,6 +818,7 @@ class CombatAutoScript:
             # 输出武将技能
             "剑阵灭杀": f"{self.get_resource_path('serveAssets/images/auto/caocaoqun3.bmp')}|{self.get_resource_path('serveAssets/images/auto/caocaoqun2.bmp')}",
             "武神一怒": f"{self.get_resource_path('serveAssets/images/auto/moguqun1.bmp')}|{self.get_resource_path('serveAssets/images/auto/moguqun2.bmp')}",
+            "魔关单攻": f"{self.get_resource_path('serveAssets/images/auto/moguandan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/moguandan.bmp')}",
             "曹操单攻": f"{self.get_resource_path('serveAssets/images/auto/caocaodan1.bmp')}",
             # 张星彩技能
             "星彩群攻": f"{self.get_resource_path('serveAssets/images/auto/xingcaiqun.bmp')}|{self.get_resource_path('serveAssets/images/auto/xingcaiqun1.bmp')}",
@@ -873,6 +882,7 @@ class CombatAutoScript:
             # 武将技能
             "剑阵灭杀": 0,  # 无CD
             "武神一怒": 0,  # 无CD
+            "魔关单攻": 0,  # 无CD
             "曹操单攻": 0,  # 无CD
             "星彩群攻": 0,  # 无CD
             "星彩单攻": 0,  # 无CD
@@ -1382,6 +1392,13 @@ class CombatAutoScript:
         return False
 
     def _try_release_skill(self, account_index, skill_name, caller_hint=""):
+        """尝试释放技能（技能释放统一入口）
+        处理"防御"按钮点击、"加攻击"去重抢占、技能图标查找与点击。
+        :param account_index: 账号索引
+        :param skill_name: 技能名称（如"武神一怒"、"加血"、"防御"等）
+        :param caller_hint: 调用来源标识（unit_type），传递给 release_skill_with_target 决定目标选择分支
+        :return: True=释放成功, False=失败（图标未找到/点击失败/CD未就绪等）
+        """
         if skill_name == "防御":
             defense_btn = self.find_image(
                 account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
@@ -1416,6 +1433,11 @@ class CombatAutoScript:
         return result
 
     def _evaluate_condition(self, account_index, cond):
+        """评估策略条件是否满足
+        :param account_index: 账号索引
+        :param cond: 条件名（"always"/"enemy_single"/"has_claimed_clear_target"/"ally_hp_low"/"ally_hp_critical"/"attack_buff_expired"/"has_xingcai_single_target"/"first_turn"）
+        :return: True=条件满足, False=不满足
+        """
         if cond == "always":
             return True
         elif cond == "has_claimed_clear_target":
@@ -1435,10 +1457,19 @@ class CombatAutoScript:
         return True
 
     def _execute_best_strategy(self, account_index, unit_type):
+        """策略引擎：按优先级排序，依次评估条件，释放第一个满足条件的技能
+        赵云29 hold 激活时跳过非加血/防御技能。
+        :param account_index: 账号索引
+        :param unit_type: 单位类型（"main_char"/"attack"/"support"/"xingcai_support"/"zhugeliang_attack"）
+        :return: True=成功释放技能, False=无可用技能（走下方防御兜底）
+        """
         if unit_type not in self.skill_strategies:
             return False
         strategies = sorted(self.skill_strategies[unit_type], key=lambda s: s["priority"], reverse=True)
+        _hold = self._should_hold_skills_for_zhaoyun29()
         for st in strategies:
+            if _hold and st.get("skill") not in ("加血", "防御"):
+                continue
             if not self._evaluate_condition(account_index, st["condition"]):
                 continue
             skill = st["skill"]
@@ -2158,6 +2189,9 @@ class CombatAutoScript:
         return False
 
     def detect_target_positions(self):
+        """检测敌军/我方目标点位（每回合开始时调用一次）
+        多次采样取最大蓝条数，计算点击偏移，更新 enemy_single_rounds。
+        """
         if self.target_positions_detected:
             return
 
@@ -2824,6 +2858,29 @@ class CombatAutoScript:
                         if t["cast_position"] != cast_position
                     ]
 
+    def _should_hold_skills_for_zhaoyun29(self):
+        """赵云29状态2需清除但无刘备可用时，全员跳过攻击技能，仅加血/防御"""
+        if not getattr(self, 'enable_zhaoyun29_hold', True):
+            return False
+        if self.enemy_single_rounds < 2:
+            return False
+        with self._state_lock:
+            zhaoyun29_in_queue = any(
+                e.get("enemy_name") == "赵云29" and e.get("status_name") == "状态2"
+                for e in self.global_enemies_need_clear
+            )
+        if not zhaoyun29_in_queue:
+            return False
+        for acct in range(self.get_account_count()):
+            if acct not in self.unit_info:
+                continue
+            for g in self.unit_info[acct]["main_char"].get("generals", []):
+                if (g.get("name") == "刘备" and g.get("alive", True)
+                        and not g.get("replacing", False) and not g.get("pending_kick", False)):
+                    if self._get_liubei_clear_cd_remaining(acct) == 0:
+                        return False
+        return True
+
     def _get_liubei_clear_cd_remaining(self, account_index):
         """获取指定账号刘备清除状态技能的CD剩余回合数"""
         cd_info = self.liubei_skill_cd.get(account_index, {})
@@ -3224,6 +3281,12 @@ class CombatAutoScript:
         return False
 
     def _use_mana_item(self, account_index, target_unit_info):
+        """使用蓝药恢复指定单位蓝量
+        含 CD 检查（3回合）、道具按钮查找、蓝药图标查找（双区域）、目标点击。
+        :param account_index: 账号索引
+        :param target_unit_info: {"unit_type": "main_char"/"general", "unit_name": str, "position": (x,y)}
+        :return: True=使用成功, False=CD中/找不到道具/找不到蓝药
+        """
         last_used = self.item_cd_tracking.get(account_index, {}).get("蓝药", -999)
         cd_config = self.item_cd_config.get("蓝药", 3)
         if (self.current_turn - last_used) < cd_config:
@@ -3291,6 +3354,12 @@ class CombatAutoScript:
         return True
 
     def _detect_gray_and_recover(self, account_index):
+        """检测技能面板灰色图标，使用蓝药恢复对应武将/主角蓝量
+        遍历 gray_icon_map 中的技能→武将映射，检测到灰色图标则调用 _use_mana_item。
+        蓝药 CD 中时本回合执行防御。
+        :param account_index: 账号索引
+        :return: True=检测到灰图标并成功恢复, False=无灰图标或恢复失败
+        """
         gray_icon_map = [
             ("寂灭神劫", "main_char",        None),
             ("剑阵灭杀", "attack",           "曹操"),
@@ -3621,7 +3690,7 @@ class CombatAutoScript:
                     del self.lantiao_missing_rounds[key]
 
         self.report_battle_info(
-            f"账号{target_dead_account_idx} 主角复活操作完成，状态已更新（下个回合通过主角操作或蓝条检测确认是否成功）",
+            f"账号{target_dead_account_idx} 主角复活操作完成，状态已更新（下个回合检测是否成功）",
             "info",
         )
 
@@ -3841,7 +3910,7 @@ class CombatAutoScript:
         start_time = time.time()
 
         # 准备攻击武将技能列表（曹操/魔化关羽的攻击技能）
-        attack_skills = ["剑阵灭杀", "武神一怒", "曹操单攻"]
+        attack_skills = ["剑阵灭杀", "武神一怒", "曹操单攻", "魔关单攻"]
         attack_skill_paths = {}
         for skill_name in attack_skills:
             skill_path = self.skill_images.get(skill_name)
@@ -4151,7 +4220,7 @@ class CombatAutoScript:
             self.click_position(account_index, cast_x, cast_y)
             time.sleep(CombatConstants.ACTION_DELAY)
             self.report_battle_info(
-                f"账号{account_index} 使用复活药复活账号{target_dead_account_idx}的主角，找到目标图片位置: ({target_pos.x}, {target_pos.y})，施法位置: ({cast_x}, {cast_y})",
+                f"账号{account_index} 使用复活药复活账号{target_dead_account_idx}的主角",
                 "action",
             )
             # 使用复活药后，立即更新状态为复活中（在锁内更新）
@@ -4166,7 +4235,7 @@ class CombatAutoScript:
                 self.click_position(account_index, cast_x, cast_y)
                 time.sleep(CombatConstants.ACTION_DELAY)
                 self.report_battle_info(
-                    f"账号{account_index} 使用复活药复活账号{target_dead_account_idx}的主角，找到目标图片位置: ({target_pos.x}, {target_pos.y})，施法位置: ({cast_x}, {cast_y})",
+                    f"账号{account_index} 使用复活药复活账号{target_dead_account_idx}的主角",
                     "action",
                 )
                 # 使用复活药后，立即更新状态为复活中（在锁内更新）
@@ -5856,6 +5925,9 @@ class CombatAutoScript:
             traceback.print_exc()
 
     def reset_state(self):
+        """重置所有战斗状态（一轮战斗结束后调用）
+        停止轮询线程、清理定时器、等待账号线程退出、清空所有战斗相关数据。
+        """
         try:
             self.polling_running = False
             self._polling_generation += 1  # 递增代际，使旧线程自行失效
@@ -5979,6 +6051,16 @@ class CombatAutoScript:
                     enable_main_heal=None, enable_main_summon=None,
                     enable_persistent_liubei=None, liubei_counts=None,
                     combat_scene=None):
+        """重新配置战斗参数（副本切换时调用，仅更新传入的参数）
+        未传入的参数保持原值不变。同时清零回合数、清除状态队列等临时数据。
+        :param enemy_keys_to_detect: 需检测状态的敌军 key 列表
+        :param keep_support_general: 是否保留刘备辅助模式
+        :param enable_main_heal: 是否启用主角加血
+        :param enable_main_summon: 是否启用主角召唤
+        :param enable_persistent_liubei: 刘备是否常驻（死后再召）
+        :param liubei_counts: 各账号刘备数量 {account_index: count}
+        :param combat_scene: 战斗场景标识（如"四象"），影响坐标偏移
+        """
         try:
             if enemy_keys_to_detect is not None:
                 self.enemy_keys_to_detect = enemy_keys_to_detect if enemy_keys_to_detect else []
@@ -6020,6 +6102,9 @@ class CombatAutoScript:
             print(f"reconfigure 出错: {e}")
 
     def update_status_panel(self):
+        """更新战斗播报窗口状态面板
+        同步当前回合数、3个账号的主角存活/低血/复活中状态、武将列表及刘备存活标记。
+        """
         try:
             if not self.battle_report_dialog:
                 return
