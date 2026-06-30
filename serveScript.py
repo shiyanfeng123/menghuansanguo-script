@@ -260,8 +260,8 @@ class MyThread(threading.Thread):
         self.combat_auto_running = False
         self._combat_lock = threading.Lock()  # 保护 start/stop 互斥
         # 副本统计：四象/噬魂 的成功、失败、已打、总次数
-        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
-        self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
+        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0, "total_time": 0}
+        self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0, "total_time": 0}
         self.combat_loop_thread = None  # 循环战斗线程
         self.click_delay = 0.5  # 点击延迟（秒）
         # 初始化 pyttsx3 引擎
@@ -899,7 +899,7 @@ class MyThread(threading.Thread):
             if not self.shihun_floor:
                 self.shihun_floor = "29层"
                 print("未选择层数，自动打29层")
-            self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": self.shihun_count}
+            self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": self.shihun_count, "total_time": 0}
             if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
                 wx.CallAfter(self.frame._refresh_dungeon_stats)
             for i in range(self.shihun_count):
@@ -5005,10 +5005,11 @@ class MyThread(threading.Thread):
                 if not found_btn:
                     attacked_set.add((tl_x, tl_y))
                     continue
-                if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
-                    self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
+                if auto_combat_key is not None:
+                    _keys = None if auto_combat_key is True else [auto_combat_key]
+                    self._start_combat_auto(clear_enemy_keys=_keys)
                 combat_ok = self._wait_combat_result(base_image, auto_combat_key)
-                if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
+                if auto_combat_key is not None:
                     self._stop_combat_auto()
                 if combat_ok == "success":
                     self.daZhengDianCount += 1
@@ -8342,7 +8343,9 @@ class MyThread(threading.Thread):
         if not self.shihun_floor:
             self.shihun_floor = "29层"
             print("未选择层数，自动打29层")
-        print("开始噬魂")
+        print("开始噬魂 第{}次".format(self.shihun_stats["done"] + 1))
+        _start = time.time()
+        self._sh_run_start = time.time()
         outFbLocation = self.find_pic_or_str(
             f"{self.get_resource_path('serveAssets/images/outFb.bmp')}|{self.get_resource_path('serveAssets/images/outFb1.bmp')}",
             self.gameLocation,
@@ -8394,6 +8397,10 @@ class MyThread(threading.Thread):
         isInZhanhun = self.waitFor("噬魂", self.dituLocation, 15)
         if not isInZhanhun:
             print("战魂没次数了")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return False
         self.huifu_yijian_main()
         time.sleep(1)
@@ -8422,11 +8429,19 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("28层没打过")
             self._update_dungeon_stats("噬魂", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return True
         if self.shihun_floor == "28层":
             # 退出副本
             self.outScript("噬魂")
             self._update_dungeon_stats("噬魂", "win")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return True
         self.huifu_yijian_main()
         time.sleep(1)
@@ -8466,10 +8481,18 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("29层没打过")
             self._update_dungeon_stats("噬魂", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return True
         # 退出副本
         self.outScript("噬魂")
         self._update_dungeon_stats("噬魂", "win")
+        _elapsed = int(time.time() - _start)
+        print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+        self.shihun_stats["total_time"] += _elapsed
+        self._sh_run_start = None
         return True
 
     # 魔镜脚本
@@ -11293,7 +11316,9 @@ class MyThread(threading.Thread):
 
     # 四象脚本
     def sixiangScript(self):
-        print("四象脚本")
+        print("四象脚本 第{}次".format(self.sixiang_stats["done"] + 1))
+        _start = time.time()
+        self._sx_run_start = time.time()
         with condition:
             if self.stoped:
                 condition.wait()
@@ -11324,6 +11349,8 @@ class MyThread(threading.Thread):
         isInMojing = self.waitFor(self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"), self.dituLocation, 5)
         if not isInMojing:
             print("四象没次数了")
+            self.sixiang_stats["total_time"] += int(time.time() - _start)
+            self._sx_run_start = None
             return False
         self.huifu_yijian_main()
         time.sleep(1)
@@ -11353,6 +11380,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("玄水马龙没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
@@ -11390,6 +11421,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("玄武没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
@@ -11436,6 +11471,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("朱雀没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
@@ -11482,6 +11521,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("青龙没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
@@ -11518,7 +11561,6 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if _sixiang_auto_combat:
             self._stop_combat_auto()
-        self.addBloud()
         waitForTwoRes = self.waitForTwo(
             self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
             self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
@@ -11528,12 +11570,20 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("白虎没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.outScript(
             self.get_resource_path(
                 "serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
         )
         self._update_dungeon_stats("四象", "win")
+        _elapsed = int(time.time() - _start)
+        print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+        self.sixiang_stats["total_time"] += _elapsed
+        self._sx_run_start = None
         return True
 
     # 藏宝图脚本
@@ -11695,7 +11745,7 @@ class MyThread(threading.Thread):
 
     # 一直执行四象
     def sixiangWhile(self):
-        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": int(self.sixiang_count)}
+        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": int(self.sixiang_count), "total_time": 0}
         if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
             wx.CallAfter(self.frame._refresh_dungeon_stats)
         for i in range(int(self.sixiang_count)):
@@ -14263,13 +14313,17 @@ class MyFrame(wx.Frame):
             card.SetBackgroundColour(_C_CARD_BG)
             vs = wx.BoxSizer(wx.VERTICAL)
 
-            # 标题行 — 左标题 + 右进度
+            # 标题行 — 左标题 + 耗时 + 右进度
             title_row = wx.BoxSizer(wx.HORIZONTAL)
             title = wx.StaticText(card, label=label)
             title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
             title.SetForegroundColour(wx.Colour(40, 45, 55))
             title_row.Add(title, 0, wx.ALIGN_CENTER_VERTICAL)
             title_row.AddStretchSpacer()
+            time_lbl = wx.StaticText(card, label="00:00:00")
+            time_lbl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            time_lbl.SetForegroundColour(wx.Colour(100, 105, 115))
+            title_row.Add(time_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
             done_num = wx.StaticText(card, label="0/0")
             done_num.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
             done_num.SetForegroundColour(_C_DONE)
@@ -14318,12 +14372,12 @@ class MyFrame(wx.Frame):
 
             vs.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 2)
             card.SetSizer(vs)
-            return card, w_num, f_num, done_num
+            return card, w_num, f_num, done_num, time_lbl
 
-        sx_card, self.stats_sx_win, self.stats_sx_fail, self.stats_sx_done = _make_card("四象")
+        sx_card, self.stats_sx_win, self.stats_sx_fail, self.stats_sx_done, self.stats_sx_time = _make_card("四象")
         self._sx_card = sx_card
         stats_sizer.Add(sx_card, 1, wx.EXPAND | wx.RIGHT, 6)
-        sh_card, self.stats_sh_win, self.stats_sh_fail, self.stats_sh_done = _make_card("噬魂")
+        sh_card, self.stats_sh_win, self.stats_sh_fail, self.stats_sh_done, self.stats_sh_time = _make_card("噬魂")
         self._sh_card = sh_card
         stats_sizer.Add(sh_card, 1, wx.EXPAND)
 
@@ -14901,6 +14955,18 @@ class MyFrame(wx.Frame):
     def _update_clock(self, event):
         if hasattr(self, 'log_ts') and self.log_ts:
             self.log_ts.SetLabel(datetime.now().strftime("%H:%M:%S"))
+        t = self.thread
+        if t is not None:
+            for _stats_attr, _run_attr, _lbl_attr in [
+                ("sixiang_stats", "_sx_run_start", "stats_sx_time"),
+                ("shihun_stats", "_sh_run_start", "stats_sh_time"),
+            ]:
+                _stats = getattr(t, _stats_attr, None)
+                _run_start = getattr(t, _run_attr, None)
+                _lbl = getattr(self, _lbl_attr, None)
+                if _stats is not None and _lbl is not None:
+                    _total = _stats.get("total_time", 0) + (int(time.time() - _run_start) if _run_start else 0)
+                    _lbl.SetLabel(f"{_total // 3600:02d}:{(_total % 3600) // 60:02d}:{_total % 60:02d}")
 
     def _refresh_dungeon_stats(self):
         """从当前脚本线程同步副本统计数据到UI（主线程中调用）"""
