@@ -623,7 +623,7 @@ class CombatAutoScript:
         self.enable_persistent_liubei = True
 
         # 赵云29状态2需清除时，是否跳过攻击技能仅加血/防御
-        self.enable_zhaoyun29_hold = False
+        self.enable_zhaoyun29_hold = True
 
         # 战斗策略引擎（优先级排序的技能释放策略）
         self.skill_strategies = {
