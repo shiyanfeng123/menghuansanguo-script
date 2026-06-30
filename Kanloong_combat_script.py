@@ -4189,33 +4189,6 @@ class CombatAutoScript:
                 f"账号{account_index} 账号{target_dead_account_idx}的区域不存在，使用整个道具面板区域", "warning"
             )
 
-        # 在执行复活操作前，再次检查状态（确保还没有被其他线程复活）
-        # with self._state_lock:
-        #     if target_dead_account_idx in self.unit_info:
-        #         char_info = self.unit_info[target_dead_account_idx]["main_char"]
-        #         if (char_info.get("alive", False) or
-        #             char_info.get("revive_pending_verification", False) or
-        #             not char_info.get("reviving", False)):  # 如果没有复活中标记，说明被其他线程抢占了
-        #             self.report_battle_info(f"账号{account_index} 在执行复活操作前，发现账号{target_dead_account_idx}的主角状态已变化，取消复活", "warning")
-        #             # 清除复活中标记（如果存在）
-        #             if char_info.get("reviving", False):
-        #                 char_info["reviving"] = False
-        #             return False
-
-        #     still_in_dead_list = False
-        #     for dead_char in self.global_dead_units["main_chars"]:
-        #         if dead_char.get("account_index") == target_dead_account_idx:
-        #             still_in_dead_list = True
-        #             break
-
-        #     if not still_in_dead_list:
-        #         self.report_battle_info(f"账号{account_index} 在执行复活操作前，发现账号{target_dead_account_idx}的主角已不在全局阵亡记录中，取消复活", "warning")
-        #         # 清除复活中标记
-        #         if target_dead_account_idx in self.unit_info:
-        #             char_info = self.unit_info[target_dead_account_idx]["main_char"]
-        #             char_info["reviving"] = False
-        #         return False
-
         # 使用复活药（在锁外执行操作，但状态更新在锁内）
         target_pos = self.find_target_text(account_index, search_region, timeout=3.0)
 
@@ -4225,6 +4198,7 @@ class CombatAutoScript:
             cast_y = target_pos.y + 80
             self.click_position(account_index, cast_x, cast_y)
             time.sleep(CombatConstants.ACTION_DELAY)
+            self.click_position(account_index, 12, 12)
             self.report_battle_info(
                 f"账号{account_index} 使用复活药复活账号{target_dead_account_idx}的主角",
                 "action",
@@ -4240,6 +4214,7 @@ class CombatAutoScript:
                 cast_y = target_pos.y + 80
                 self.click_position(account_index, cast_x, cast_y)
                 time.sleep(CombatConstants.ACTION_DELAY)
+                self.click_position(account_index, 12, 12)
                 self.report_battle_info(
                     f"账号{account_index} 使用复活药复活账号{target_dead_account_idx}的主角",
                     "action",
@@ -4258,6 +4233,7 @@ class CombatAutoScript:
                 default_pos = default_main_char_positions.get(target_dead_account_idx, (793, 380))
                 self.click_position(account_index, default_pos[0], default_pos[1])
                 time.sleep(CombatConstants.ACTION_DELAY)
+                self.click_position(account_index, 12, 12)
                 self.report_battle_info(
                     f"账号{account_index} 使用复活药复活账号{target_dead_account_idx}的主角（未找到目标图片，使用默认位置: {default_pos}）",
                     "warning",
