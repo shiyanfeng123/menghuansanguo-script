@@ -322,6 +322,7 @@ class MyThread(threading.Thread):
                 if not _clear_liubei and clear_enemy_keys:
                     clear_enemy_keys = [k for k in clear_enemy_keys if "刘备" not in k]
                 self.combat_auto_running = True
+                self._idle_skill_round_done = False  # 重置交替状态，确保下次战斗从全托管开始
 
                 if not self.combat_auto_instance:
                     self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
@@ -1993,6 +1994,10 @@ class MyThread(threading.Thread):
                             # 点击自动按钮，维持系统自动，并重置标志
                             # 下次再检测到自动按钮时将再次全托管
                             found = self.click_image(zidong_path, 0.8, self.gameLocation)
+                            if self.win1_dm:
+                                self.click_image_team1(zidong_path, 0.8, self.gameLocation)
+                            if self.win2_dm:
+                                self.click_image_team2(zidong_path, 0.8, self.gameLocation)
                             if found:
                                 self._idle_skill_round_done = False
             time.sleep(2)
@@ -4890,7 +4895,10 @@ class MyThread(threading.Thread):
         self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
         time.sleep(0.001)
         self.dm.LeftClick()
-        self.set_pending_enemy_keys(["龙/猴子", "龙上龙","猴子狮","羊人参娃"])
+        if auto_combat_key == "蛇":
+            self.set_pending_enemy_keys(["蛇"])
+        else:
+            self.set_pending_enemy_keys(["龙/猴子", "龙上龙","猴子狮","羊人参娃"])
         if auto_combat_key is not None:
             self._start_combat_auto()
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
