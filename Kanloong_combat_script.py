@@ -2776,7 +2776,9 @@ class CombatAutoScript:
                 # 其他武将：找到状态图片就返回需要清除
                 for status_name, status_image in status_images.items():
                     # 赵云29状态2：须刘备29状态1 + 诸葛亮 都被检测过后才启用
+                    # 当enemy_keys_to_detect中无刘备29（清刘备关闭）时跳过此前置条件
                     if (enemy_key == "赵云29" and status_name == "状态2"
+                        and "刘备29" in self.enemy_keys_to_detect
                         and not (self._liubei29_status1_detected and self.clear_zhugeliang)):
                         continue
                     status_pos = self.find_image(dm_index, status_image, status_region, 0)
