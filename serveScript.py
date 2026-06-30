@@ -210,6 +210,7 @@ class MyThread(threading.Thread):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.clear_liubei_enabled = True
         self.auto_resize_window = False  # 是否在窗口绑定时自动调整大小和位置
         self.independent_win1 = False
         self.independent_win2 = False
@@ -302,6 +303,9 @@ class MyThread(threading.Thread):
                 if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
                     return
                 _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
+                _clear_liubei = self.frame.clear_liubei_enabled if hasattr(self.frame, 'clear_liubei_enabled') else True
+                if not _clear_liubei and clear_enemy_keys:
+                    clear_enemy_keys = [k for k in clear_enemy_keys if "刘备" not in k]
                 self.combat_auto_running = True
 
                 if not self.combat_auto_instance:
@@ -1093,20 +1097,22 @@ class MyThread(threading.Thread):
                 "0.107,0.156",
             )
             time.sleep(1)
+            _haojie_auto = "浩劫" in self.combat_auto_scenes if hasattr(self, 'combat_auto_scenes') else False
+            _haojie_key = True if _haojie_auto else None
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.5)
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.5)
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
         elif self.scriptName == "帮派任务":
             if not self.find_str("城西", self.dituLocation, 0):
                 self.go_in_ditu(
@@ -14277,6 +14283,7 @@ class MyFrame(wx.Frame):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.clear_liubei_enabled = True
         self.auto_resize_window = False
         self.independent_win1 = False
         self.independent_win2 = False
@@ -15002,6 +15009,8 @@ class MyFrame(wx.Frame):
                     cb.SetValue(scene in self.combat_auto_scenes)
             if hasattr(self, 'use_heal_item') and hasattr(dialog, 'use_heal_cb'):
                 dialog.use_heal_cb.SetValue(self.use_heal_item)
+            if hasattr(self, 'clear_liubei_enabled') and hasattr(dialog, 'clear_liubei_cb'):
+                dialog.clear_liubei_cb.SetValue(self.clear_liubei_enabled)
             if hasattr(self, 'auto_resize_window') and hasattr(dialog, 'auto_resize_on'):
                 if self.auto_resize_window:
                     dialog.auto_resize_off.Hide()
@@ -15383,7 +15392,7 @@ class MyDialog(wx.Dialog):
     C_INPUT_BG = wx.Colour(255, 255, 255)
 
     def __init__(self, parent, has_script):
-        super().__init__(parent, title="游戏设置", size=(570, 610), pos=(200, 20))
+        super().__init__(parent, title="游戏设置", size=(570, 645), pos=(200, 20))
         self.SetBackgroundColour(self.C_BG)
         self.frame = parent
         self.config_file = "settings_config.json"
@@ -15545,7 +15554,7 @@ class MyDialog(wx.Dialog):
             scene_label.SetForegroundColour(self.C_MUTED)
             scene_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
             auto_row.Add(scene_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-            for scene in ["战魂", "蛇", "四象"]:
+            for scene in ["战魂", "蛇", "四象", "浩劫"]:
                 cb = wx.CheckBox(auto_combat_panel, label=scene)
                 cb.SetForegroundColour(self.C_MUTED)
                 cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
@@ -15570,13 +15579,27 @@ class MyDialog(wx.Dialog):
                 self.liubeiCountInputs[idx] = tc
                 auto_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
 
-            auto_row.AddSpacer(12)
+            func_row = wx.BoxSizer(wx.HORIZONTAL)
+            func_label = wx.StaticText(auto_combat_panel, label="功能开关:")
+            func_label.SetForegroundColour(self.C_TEXT)
+            func_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            func_row.Add(func_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+
             self.use_heal_cb = wx.CheckBox(auto_combat_panel, label="吃药")
             self.use_heal_cb.SetForegroundColour(self.C_MUTED)
             self.use_heal_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            auto_row.Add(self.use_heal_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+            func_row.Add(self.use_heal_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
 
-            auto_combat_panel.SetSizer(auto_row)
+            self.clear_liubei_cb = wx.CheckBox(auto_combat_panel, label="清刘备")
+            self.clear_liubei_cb.SetForegroundColour(self.C_MUTED)
+            self.clear_liubei_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            self.clear_liubei_cb.SetValue(True)
+            func_row.Add(self.clear_liubei_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+
+            auto_panel_sizer = wx.BoxSizer(wx.VERTICAL)
+            auto_panel_sizer.Add(auto_row, 0, wx.EXPAND)
+            auto_panel_sizer.Add(func_row, 0, wx.TOP | wx.ALIGN_LEFT, 6)
+            auto_combat_panel.SetSizer(auto_panel_sizer)
             main_sizer.Add(auto_combat_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         else:
             self.liubeiCountInputs = {0: 1, 1: 0, 2: 0}
@@ -16371,6 +16394,7 @@ class MyDialog(wx.Dialog):
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
             "combat_auto_scenes": combat_auto_scenes,
             "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
+            "clear_liubei_enabled": self.clear_liubei_cb.GetValue() if hasattr(self, 'clear_liubei_cb') else True,
             "auto_resize_window": self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False,
         }
 
@@ -16422,6 +16446,8 @@ class MyDialog(wx.Dialog):
                 cb.SetValue(scene in saved_scenes)
         if hasattr(self, 'use_heal_cb'):
             self.use_heal_cb.SetValue(settings.get("use_heal_item", False))
+        if hasattr(self, 'clear_liubei_cb'):
+            self.clear_liubei_cb.SetValue(settings.get("clear_liubei_enabled", True))
         if hasattr(self, 'auto_resize_on'):
             val = settings.get("auto_resize_window", False)
             if val:
@@ -16574,6 +16600,7 @@ class MyDialog(wx.Dialog):
         parent.independent_win2 = self.independent_win2_on.IsShown() if hasattr(self, "independent_win2_on") else False
         parent.auto_resize_window = self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False
         parent.use_heal_item = self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False
+        parent.clear_liubei_enabled = self.clear_liubei_cb.GetValue() if hasattr(self, 'clear_liubei_cb') else True
         if self.IsModal():
             self.EndModal(wx.ID_OK)
 
