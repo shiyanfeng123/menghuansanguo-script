@@ -210,6 +210,8 @@ class MyThread(threading.Thread):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.clear_liubei_enabled = True
+        self.auto_resize_window = False  # 是否在窗口绑定时自动调整大小和位置
         self.independent_win1 = False
         self.independent_win2 = False
         self.stoped = False
@@ -272,9 +274,10 @@ class MyThread(threading.Thread):
         self._combat_state_reset = True # 一次性重置标志（True=已重置，待下次进入战斗）
         self._mode3_triggered = False   # Mode 3 是否已触发（预留，暂未使用）
         self._idle_skill_round_done = False  # IDLE交替标志（False=下次全托管，True=下次点击自动）
+        self._combat_lock = threading.Lock()  # 保护 start/stop 互斥
         # 副本统计：四象/噬魂 的成功、失败、已打、总次数
-        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
-        self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0}
+        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0, "total_time": 0}
+        self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0, "total_time": 0}
         self.combat_loop_thread = None  # 循环战斗线程
         self.click_delay = 0.5  # 点击延迟（秒）
         # 初始化 pyttsx3 引擎
@@ -308,50 +311,43 @@ class MyThread(threading.Thread):
             pass
 
     def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None):
-        """启动 Mode 2 全托管战斗循环
-        :param clear_enemy_keys: 需检测的敌方状态 key 列表，如 ["赵云28","刘备28"]
-                                 非 None 时，Mode 2 内部每回合会自动检测并清除这些敌方的状态
-                                 None 时不检测敌方状态（仅基础技能释放+防御）
-        :param combat_scene: 战斗场景标识，如 "四象"，影响部分副本特殊逻辑
-        调用方式:
-            # 直接全托管（无敌方检测）:
-            self._start_combat_auto()
-            # 全托管 + 检测指定敌方状态:
-            self._start_combat_auto(clear_enemy_keys=["赵云28","刘备28"])
-            # 四象副本:
-            self._start_combat_auto(combat_scene="四象", clear_enemy_keys=["玄武"])
-        """
         try:
-            if self.combat_auto_running:
-                return
-            if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
-                return
-            _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
-            self.combat_auto_running = True
+            with self._combat_lock:
+                if self.combat_auto_running:
+                    return
+                if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
+                    return
+                _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
+                _clear_liubei = self.frame.clear_liubei_enabled if hasattr(self.frame, 'clear_liubei_enabled') else True
+                if not _clear_liubei and clear_enemy_keys:
+                    clear_enemy_keys = [k for k in clear_enemy_keys if "刘备" not in k]
+                self.combat_auto_running = True
 
-            if not self.combat_auto_instance:
-                self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
-                self.combat_auto_instance.keep_support_general = False
-                self.combat_auto_instance.enable_main_heal = _heal_on
-                self.combat_auto_instance.enable_main_summon = True
-                self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
-                if combat_scene is not None:
-                    self.combat_auto_instance.combat_scene = combat_scene
-            else:
-                self.combat_auto_instance.reconfigure(
-                    enemy_keys_to_detect=clear_enemy_keys,
+                if not self.combat_auto_instance:
+                    self.combat_auto_instance = CombatAutoScript(self, clear_enemy_keys)
+                    self.combat_auto_instance.keep_support_general = False
+                    self.combat_auto_instance.enable_main_heal = _heal_on
+                    self.combat_auto_instance.enable_main_summon = True
+                    self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
+                    if combat_scene is not None:
+                        self.combat_auto_instance.combat_scene = combat_scene
+                else:
+                    self.combat_auto_instance.reconfigure(
+                        enemy_keys_to_detect=clear_enemy_keys,
                     keep_support_general=False,
-                    liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
-                    enable_main_heal=_heal_on,
-                    combat_scene=combat_scene,
-                )
+                        liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
+                        enable_main_heal=_heal_on,
+                        combat_scene=combat_scene,
+                    )
 
-            if self.combat_auto_instance.battle_report_dialog:
-                self.combat_auto_instance.battle_report_dialog.set_running(True)
+                if self.combat_auto_instance.battle_report_dialog:
+                    self.combat_auto_instance.battle_report_dialog.set_running(True)
 
-            self.combat_auto_thread = threading.Thread(
-                target=self.combat_auto_instance.run_combat_loop, daemon=True)
-            self.combat_auto_thread.start()
+                # 递增代际，使旧线程自行失效
+                self.combat_auto_instance._polling_generation += 1
+                self.combat_auto_thread = threading.Thread(
+                    target=self.combat_auto_instance.run_combat_loop, daemon=True)
+                self.combat_auto_thread.start()
 
         except Exception as e:
             print(f"启动战斗自动操作失败")
@@ -361,24 +357,25 @@ class MyThread(threading.Thread):
 
     def _stop_combat_auto(self):
         try:
-            if not self.combat_auto_running:
-                return
-            self.combat_auto_running = False
+            with self._combat_lock:
+                if not self.combat_auto_running:
+                    return
+                self.combat_auto_running = False
 
-            if self.combat_auto_instance:
-                self.combat_auto_instance.polling_running = False
-                if self.combat_auto_instance.battle_report_dialog:
-                    self.combat_auto_instance.battle_report_dialog.set_running(False)
+                if self.combat_auto_instance:
+                    self.combat_auto_instance.polling_running = False
+                    if self.combat_auto_instance.battle_report_dialog:
+                        self.combat_auto_instance.battle_report_dialog.set_running(False)
 
-            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
-                self.combat_auto_thread.join(timeout=5)
-            self.combat_auto_thread = None
+                if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+                    self.combat_auto_thread.join(timeout=5)
+                self.combat_auto_thread = None
 
-            if self.combat_auto_instance:
-                try:
-                    self.combat_auto_instance.reset_state()
-                except Exception as e:
-                    print(f"重置战斗脚本状态时出错: {e}")
+                if self.combat_auto_instance:
+                    try:
+                        self.combat_auto_instance.reset_state()
+                    except Exception as e:
+                        print(f"重置战斗脚本状态时出错: {e}")
 
         except Exception as e:
             print(f"停止战斗自动操作失败")
@@ -457,6 +454,21 @@ class MyThread(threading.Thread):
                 if self.overed:
                     return True
         return self.overed
+
+    def interruptible_sleep(self, seconds, step=0.3):
+        """可中断的sleep，暂停时等待，重置时立即返回"""
+        elapsed = 0
+        while elapsed < seconds:
+            if self.overed:
+                return True
+            with condition:
+                if self.stoped:
+                    condition.wait()
+            if self.overed:
+                return True
+            time.sleep(min(step, seconds - elapsed))
+            elapsed += step
+        return False
 
     def run(self):
         # self.mac_address = self.get_mac_address()
@@ -832,6 +844,17 @@ class MyThread(threading.Thread):
         elif self.scriptName == "抢龙":
             self.zhengdianFloor = "龙+全打"
             self.new_zhengdian()
+        elif self.scriptName == "沉浸式自动战斗":
+            while True:
+                if self.overed:
+                    return
+                with condition:
+                    if self.stoped:
+                        condition.wait()
+                self.waitFor(self.get_resource_path("serveAssets/images/zdzd.bmp"),self.gameBottomLocation)
+                self._start_combat_auto()
+                self.waitFor(self.get_resource_path("serveAssets/images/jineng.bmp"),self.gameBottomLocation)
+                self._stop_combat_auto()
         elif self.scriptName == "测试自动战斗":
             if self.combat_auto_scenes:
                 self._start_combat_auto()
@@ -979,7 +1002,7 @@ class MyThread(threading.Thread):
             if not self.shihun_floor:
                 self.shihun_floor = "29层"
                 print("未选择层数，自动打29层")
-            self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": self.shihun_count}
+            self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": self.shihun_count, "total_time": 0}
             if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
                 wx.CallAfter(self.frame._refresh_dungeon_stats)
             for i in range(self.shihun_count):
@@ -1003,6 +1026,8 @@ class MyThread(threading.Thread):
         elif self.scriptName == "名将闯关":
             print("开始名将闯关")
             while True:
+                if self.check_stop_or_over():
+                    return
                 has_mingjiang = self.mingjiangchuangguan()
                 if not has_mingjiang:
                     break
@@ -1145,20 +1170,22 @@ class MyThread(threading.Thread):
                 "0.107,0.156",
             )
             time.sleep(1)
+            _haojie_auto = "浩劫" in self.combat_auto_scenes if hasattr(self, 'combat_auto_scenes') else False
+            _haojie_key = True if _haojie_auto else None
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.5)
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 830, self.locationY + 75)
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.5)
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
-                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=True,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
+                    "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
         elif self.scriptName == "帮派任务":
             if not self.find_str("城西", self.dituLocation, 0):
                 self.go_in_ditu(
@@ -1392,6 +1419,10 @@ class MyThread(threading.Thread):
         else:
             print("窗口绑定失败")
             return False
+        # 调整队长窗口大小和位置：900×630，左上角 (0,0)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.dm.SetClientSize(hwnd, 900, 630)
+            self.dm.MoveWindow(hwnd, 0, 0)
         location = self.dm.GetClientSize(self.click_hwnd)
         x, y, res = location
         if res == 1:
@@ -2032,6 +2063,10 @@ class MyThread(threading.Thread):
         if bind_result != 1:
             self.show_error_message("队友1绑定失败")
             return False
+        # 调整队友1窗口大小和位置：900×630，左上角 (900,0)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.win1_dm.SetClientSize(hwnd, 900, 630)
+            self.win1_dm.MoveWindow(hwnd, 900, 0)
         self.win1_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team1.txt"))
         time.sleep(0.5)
@@ -2296,6 +2331,10 @@ class MyThread(threading.Thread):
         if bind_result != 1:
             self.show_error_message("队友2绑定失败")
             return False
+        # 调整队友2窗口大小和位置：900×630，左上角 (900,450)
+        if getattr(self.frame, 'auto_resize_window', False):
+            self.win2_dm.SetClientSize(hwnd, 900, 630)
+            self.win2_dm.MoveWindow(hwnd, 900, 450)
         self.win2_dm.SetDict(0, self.get_resource_path(
             "serveAssets/fonts/team2.txt"))
         time.sleep(0.5)
@@ -2884,7 +2923,6 @@ class MyThread(threading.Thread):
                 if self.check_stop_or_over():
                     return
                 if time.time() - query_time > 10:
-                    print("一键恢复超时")
                     return
                 find_res = dm.FindStrFastE(0, 0, 900, 580, '一键恢复', self.color_format, self.confidenceNum)
                 find_str_result = find_res.split("|")
@@ -2903,7 +2941,6 @@ class MyThread(threading.Thread):
                 if self.check_stop_or_over():
                     return
                 if time.time() - query_time > 10:
-                    print("一键恢复超时")
                     return
                 find_res = dm.FindPicEx(0, 0, 900, 590,
                              f"{self.get_resource_path('serveAssets/images/wujiang1.bmp')}|{self.get_resource_path('serveAssets/images/wujiang2.bmp')}",
@@ -3027,6 +3064,10 @@ class MyThread(threading.Thread):
         find_queding_time = time.time()
         locationQueding = None
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             if self.scriptName == "官渡" and self.find_pic_or_str("官渡",
                                                                   self.dituLocation,
                                                                   0):
@@ -3677,6 +3718,8 @@ class MyThread(threading.Thread):
             time.sleep(1)
             print("开始名将闯关")
             while True:
+                if self.check_stop_or_over():
+                    return
                 has_mingjiang = self.mingjiangchuangguan()
                 if not has_mingjiang:
                     break
@@ -5088,10 +5131,11 @@ class MyThread(threading.Thread):
                 if not found_btn:
                     attacked_set.add((tl_x, tl_y))
                     continue
-                if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
-                    self._start_combat_auto(clear_enemy_keys=[auto_combat_key])
+                if auto_combat_key is not None:
+                    _keys = None if auto_combat_key is True else [auto_combat_key]
+                    self._start_combat_auto(clear_enemy_keys=_keys)
                 combat_ok = self._wait_combat_result(base_image, auto_combat_key)
-                if auto_combat_key is not None and auto_combat_key in self.combat_auto_scenes:
+                if auto_combat_key is not None:
                     self._stop_combat_auto()
                 if combat_ok == "success":
                     self.daZhengDianCount += 1
@@ -5951,6 +5995,10 @@ class MyThread(threading.Thread):
         address_pos_city_pos = None
         begin_time = time.time()
         while True:
+            if self.overed:
+                return None
+            if self.stoped:
+                self.check_stop_or_over()
             if time.time() - begin_time > 600:
                 break
             self.confidenceNum = 0.8
@@ -6115,6 +6163,10 @@ class MyThread(threading.Thread):
                 self.gameLocation,
                 0,
         ):
+            if self.overed:
+                return False
+            if self.stoped:
+                self.check_stop_or_over()
             if time.time() - begin_time > 600:
                 break
             self.dm.KeyPressChar("z")
@@ -6154,6 +6206,10 @@ class MyThread(threading.Thread):
                     break
             if fei_pos:
                 while True:
+                    if self.overed:
+                        return False
+                    if self.stoped:
+                        self.check_stop_or_over()
                     if not self.find_pic_or_str(image_path, self.gameLocation,
                                                 0):
                         break
@@ -6213,6 +6269,10 @@ class MyThread(threading.Thread):
                     break
             if fei_pos:
                 while True:
+                    if self.overed:
+                        return False
+                    if self.stoped:
+                        self.check_stop_or_over()
                     if not self.find_pic_or_str(image_path, self.gameLocation,
                                                 0):
                         break
@@ -7077,7 +7137,7 @@ class MyThread(threading.Thread):
         # 0.091,0.118  f"{self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp')}"
         self.findAndClickPic(
             "曹袁战场",
-            self.get_resource_path("serveAssets/images/guandu/yanliang.bmp"),
+            "官渡颜良",
             f"{self.get_resource_path('serveAssets/images/guandu/yanliang1.bmp')}|{self.get_resource_path('serveAssets/images/guandu/yanliang2.bmp')}",
             self.gameBottomLocation,
             f"{self.get_resource_path('serveAssets/images/zdzd111.bmp')}|{self.get_resource_path('serveAssets/images/zdzd.bmp')}",
@@ -7263,6 +7323,10 @@ class MyThread(threading.Thread):
             2,
         )
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             time.sleep(0.001)
             self.dm.LeftClick()
             time.sleep(0.3)
@@ -7293,7 +7357,7 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
         )
         self.confidenceNum = 0.9
-        if self.overed:
+        if self.check_stop_or_over():
             return
         isInHong = self.waitFor("军营", self.dituLocation, 8)
         if not isInHong:
@@ -7442,7 +7506,7 @@ class MyThread(threading.Thread):
 
     def qingyuanWhile(self):
         for i in range(int(self.qingyuan_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             qingyuanRes = self.qingyuanScript()
             if not qingyuanRes:
@@ -8425,7 +8489,9 @@ class MyThread(threading.Thread):
         if not self.shihun_floor:
             self.shihun_floor = "29层"
             print("未选择层数，自动打29层")
-        print("开始噬魂")
+        print("第{}次噬魂".format(self.shihun_stats["done"] + 1))
+        _start = time.time()
+        self._sh_run_start = time.time()
         outFbLocation = self.find_pic_or_str(
             f"{self.get_resource_path('serveAssets/images/outFb.bmp')}|{self.get_resource_path('serveAssets/images/outFb1.bmp')}",
             self.gameLocation,
@@ -8477,6 +8543,10 @@ class MyThread(threading.Thread):
         isInZhanhun = self.waitFor("噬魂", self.dituLocation, 15)
         if not isInZhanhun:
             print("战魂没次数了")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return False
         self.huifu_yijian_main()
         time.sleep(1)
@@ -8505,11 +8575,19 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("28层没打过")
             self._update_dungeon_stats("噬魂", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return True
         if self.shihun_floor == "28层":
             # 退出副本
             self.outScript("噬魂")
             self._update_dungeon_stats("噬魂", "win")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return True
         self.huifu_yijian_main()
         time.sleep(1)
@@ -8549,10 +8627,18 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("29层没打过")
             self._update_dungeon_stats("噬魂", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.shihun_stats["total_time"] += _elapsed
+            self._sh_run_start = None
             return True
         # 退出副本
         self.outScript("噬魂")
         self._update_dungeon_stats("噬魂", "win")
+        _elapsed = int(time.time() - _start)
+        print(f"噬魂本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+        self.shihun_stats["total_time"] += _elapsed
+        self._sh_run_start = None
         return True
 
     # 魔镜脚本
@@ -10318,7 +10404,7 @@ class MyThread(threading.Thread):
     # 一直执行天外天
     def mingjiangtiaozhanWhile(self):
         for i in range(int(self.mingjiang_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             zhanhunRes = self.mingjiangtiaozhan()
             if not zhanhunRes:
@@ -10439,6 +10525,10 @@ class MyThread(threading.Thread):
     def _handle_continue_dialog(self):
         """处理"点击继续"对话框"""
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             self.color_format = "b@ffff00-000000|fff200-000000"
             jixu_pos = self.find_str("点击继续背景", self.gameBottomLocation, 0)
             self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
@@ -10669,7 +10759,7 @@ class MyThread(threading.Thread):
             self.gameBottomLocation,
         )
         self.confidenceNum = 0.9
-        if self.overed:
+        if self.check_stop_or_over():
             return
         isInHong = self.waitFor(
             self.get_resource_path("serveAssets/images/xigua/nongshe.bmp"),
@@ -11207,6 +11297,21 @@ class MyThread(threading.Thread):
     def longzhuScript(self):
         self.heifengCount += 1
         print(f"第{self.heifengCount}次龙珠.")
+        isInGuanDu = self.waitFor(
+            self.get_resource_path("serveAssets/images/zhanhun/luoyang.bmp"),
+            self.dituLocation,
+            1,
+        )
+        if not isInGuanDu:
+            self.go_in_ditu(
+                "地图洛阳大道",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "洛阳",
+                "",
+                "",
+                True,
+            )
         self.findAndClickPic(
             "洛阳",
             self.get_resource_path("serveAssets/images/longzhu/laoyufu.bmp"),
@@ -11302,8 +11407,7 @@ class MyThread(threading.Thread):
             self.get_resource_path(
                 "serveAssets/images/longzhu/chuansongmen.bmp"),
             self.dituLocation,
-            self.get_resource_path(
-                "serveAssets/images/longzhu/longchaojingnei.bmp"),
+            f"{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei1.bmp')}",
             self.dituLocation,
             "888,75",
         )
@@ -11311,13 +11415,12 @@ class MyThread(threading.Thread):
             "755,77",
             "779,72",
             "808,79",
-            "829,77",
-            "868,79",
+            "837,77",
+            "868,77",
         ]
         for index, item in enumerate(longzhuPos3):
             self.findAndClickPic(
-                self.get_resource_path(
-                    "serveAssets/images/longzhu/longchaojingnei.bmp"),
+                f"{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei.bmp')}|{self.get_resource_path('serveAssets/images/longzhu/longchaojingnei1.bmp')}",
                 "单龙|御剑仙女",
                 f"{self.get_resource_path('serveAssets/images/longzhu/longhufa1.bmp')}|"
                 f"{self.get_resource_path('serveAssets/images/longzhu/longhufa2.bmp')}|"
@@ -11363,7 +11466,9 @@ class MyThread(threading.Thread):
 
     # 四象脚本
     def sixiangScript(self):
-        print("四象脚本")
+        print("第{}次四象".format(self.sixiang_stats["done"] + 1))
+        _start = time.time()
+        self._sx_run_start = time.time()
         with condition:
             if self.stoped:
                 condition.wait()
@@ -11394,6 +11499,8 @@ class MyThread(threading.Thread):
         isInMojing = self.waitFor(self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"), self.dituLocation, 5)
         if not isInMojing:
             print("四象没次数了")
+            self.sixiang_stats["total_time"] += int(time.time() - _start)
+            self._sx_run_start = None
             return False
         self.huifu_yijian_main()
         time.sleep(1)
@@ -11423,6 +11530,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("玄水马龙没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
@@ -11460,6 +11571,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("玄武没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
@@ -11506,6 +11621,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("朱雀没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
@@ -11552,6 +11671,10 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("青龙没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
@@ -11588,7 +11711,6 @@ class MyThread(threading.Thread):
                      self.gameLocation)
         if _sixiang_auto_combat:
             self._stop_combat_auto()
-        self.addBloud()
         waitForTwoRes = self.waitForTwo(
             self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
             self.get_resource_path("serveAssets/images/sixiang/fengmoyiji.bmp"),
@@ -11598,12 +11720,20 @@ class MyThread(threading.Thread):
         if waitForTwoRes == "second":
             print("白虎没打过")
             self._update_dungeon_stats("四象", "fail")
+            _elapsed = int(time.time() - _start)
+            print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+            self.sixiang_stats["total_time"] += _elapsed
+            self._sx_run_start = None
             return True
         self.outScript(
             self.get_resource_path(
                 "serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
         )
         self._update_dungeon_stats("四象", "win")
+        _elapsed = int(time.time() - _start)
+        print(f"四象本次耗时: {_elapsed // 60}:{_elapsed % 60:02d}")
+        self.sixiang_stats["total_time"] += _elapsed
+        self._sx_run_start = None
         return True
 
     # 藏宝图脚本
@@ -11615,6 +11745,10 @@ class MyThread(threading.Thread):
         fei_pos = ResXy(871,217)
         renwu_pos = ResXy(746,151)
         while True:
+            if self.overed:
+                return
+            if self.stoped:
+                self.check_stop_or_over()
             self.dm.MoveTo(cangbaotu_pos.x,cangbaotu_pos.y)
             self.dm.LeftDoubleClick()
             self.dm.LeftDoubleClick()
@@ -11641,14 +11775,29 @@ class MyThread(threading.Thread):
     # 藏宝图循环
     def cangbaotuWhile(self):
         while True:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.cangbaotuScript()
 
     # 龙珠循环
     def longzhuWhile(self):
+        isInGuanDu = self.waitFor(
+            self.get_resource_path("serveAssets/images/zhanhun/luoyang.bmp"),
+            self.dituLocation,
+            1,
+        )
+        if not isInGuanDu:
+            self.go_in_ditu(
+                "地图洛阳大道",
+                self.get_resource_path(
+                    "serveAssets/images/zhengdian/luoyang.bmp"),
+                "洛阳",
+                "",
+                "",
+                True,
+            )
         while True:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             longzhuRes = self.longzhuScript()
             if not longzhuRes:
@@ -11677,7 +11826,7 @@ class MyThread(threading.Thread):
                              0):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.go_in_ditu(
                     "地图五层",
@@ -11689,13 +11838,13 @@ class MyThread(threading.Thread):
                     True,
                 )
         for i in range(self.heifengWhileCount):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.heifengScript()
             if self.heifengCount >= self.heifengWhileCount:
                 break
         print(f"{self.heifengWhileCount}次黑风已完成,去官渡")
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.scriptName = "官渡"
         self.guanduWhile()
@@ -11720,7 +11869,7 @@ class MyThread(threading.Thread):
                              self.dituLocation, 0):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.go_in_ditu(
                     "地图官渡",
@@ -11739,7 +11888,7 @@ class MyThread(threading.Thread):
     # 一直执行英魂
     def hongWhile(self):
         for i in range(int(self.hong_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hongRes = self.hongScript()
             if not hongRes:
@@ -11750,11 +11899,11 @@ class MyThread(threading.Thread):
 
     # 一直执行四象
     def sixiangWhile(self):
-        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": int(self.sixiang_count)}
+        self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": int(self.sixiang_count), "total_time": 0}
         if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
             wx.CallAfter(self.frame._refresh_dungeon_stats)
         for i in range(int(self.sixiang_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             sixiangRes = self.sixiangScript()
             if not sixiangRes:
@@ -11766,7 +11915,7 @@ class MyThread(threading.Thread):
     # 一直执行英魂
     def yinghunWhile(self):
         for i in range(int(self.yinhun_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hongRes = self.yinhunScript()
             if not hongRes:
@@ -11790,7 +11939,7 @@ class MyThread(threading.Thread):
             self.dm.LeftClick()
             time.sleep(2)
         for i in range(int(self.zhanhun_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             zhanhunRes = self.zhanhunScript()
             if not zhanhunRes:
@@ -11810,7 +11959,7 @@ class MyThread(threading.Thread):
             ):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.go_in_ditu(
                     "地图城西",
@@ -11830,7 +11979,7 @@ class MyThread(threading.Thread):
             ):
                 time.sleep(0.5)
                 self.outScript()
-                time.sleep(2)
+                self.interruptible_sleep(2)
             else:
                 self.feiFb("副本魔镜使者", False)
         while True:
@@ -11847,7 +11996,7 @@ class MyThread(threading.Thread):
     def richangeScript(self):
         print("日常")
         # 战魂
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if self.richang_zhengdian:
             self.richangAndZhengDian()
@@ -11864,7 +12013,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.zhanhun_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.zhanhunScript()
                 if not hongRes:
@@ -11882,7 +12031,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.lianyu_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.zhenhun_lianyu_script()
                 if not hongRes:
@@ -11900,13 +12049,13 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.shihun_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.shihun_lianyu_script()
                 if not hongRes:
                     break
         # 飞溶洞
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.rongdong_count) > 0:
             if not self.find_str("绿林路", self.dituLocation, 0):
@@ -11922,14 +12071,14 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.rongdong_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hasRongdong = self.rongdongScript()
                 if not hasRongdong:
                     break
             time.sleep(1)
         # 飞炼丹
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.liandan_count) > 0:
             if not self.find_str("五指峡谷", self.dituLocation, 0):
@@ -11943,14 +12092,14 @@ class MyThread(threading.Thread):
                     True,
                 )
             for i in range(int(self.liandan_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 liandanHas = self.liandanScript()
                 if not liandanHas:
                     break
             time.sleep(1)
         # 飞五行
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.wuxing_count) > 0:
             if not self.find_str("野外西", self.dituLocation, 0):
@@ -11965,14 +12114,14 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.wuxing_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hasWuxing = self.wuxingScript()
                 if not hasWuxing:
                     break
             time.sleep(1)
         # 飞四象
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.sixiang_count) > 0:
             if not self.find_pic(
@@ -11991,7 +12140,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.sixiang_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 sixiangRes = self.sixiangScript()
                 if not sixiangRes:
@@ -12000,7 +12149,7 @@ class MyThread(threading.Thread):
             time.sleep(1)
         # 飞云游精英
         if int(self.yunyou_count) > 0:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             if not self.find_str("嵩山", self.dituLocation, 0):
                 # self.feiFb('副本仙人', True)
@@ -12030,7 +12179,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.mingjiang_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 zhanhunRes = self.mingjiangtiaozhan()
                 if not zhanhunRes:
@@ -12040,7 +12189,7 @@ class MyThread(threading.Thread):
 
         # 飞80精英
         if int(self.bamen_count) > 0:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             if not self.find_str("许昌", self.dituLocation, 0):
                 # self.feiFb('副本分身', True)
@@ -12093,7 +12242,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.yinhun_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.yinhunScript()
                 if not hongRes:
@@ -12117,13 +12266,13 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.sangumaolu_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.sangumaoluScript()
                 if not hongRes:
                     break
         # 红
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if int(self.hong_count) > 0:
             if not self.find_str("虎牢关外", self.dituLocation, 0):
@@ -12138,7 +12287,7 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.hong_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.hongScript()
                 if not hongRes:
@@ -12156,14 +12305,14 @@ class MyThread(threading.Thread):
                 )
             time.sleep(1)
             for i in range(int(self.qingyuan_count)):
-                if self.overed:
+                if self.check_stop_or_over():
                     return
                 hongRes = self.qingyuanScript()
                 if not hongRes:
                     break
         # 飞官渡精英
         if int(self.guandujy_count) > 0:
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             if not self.find_str("官渡", self.dituLocation, 0):
                 self.go_in_ditu(
@@ -12178,53 +12327,53 @@ class MyThread(threading.Thread):
             time.sleep(1)
             self.guanduJyScript()
             time.sleep(1)
-        if self.overed:
+        if self.check_stop_or_over():
             return
         if self.richang_mojing:
             self.scriptName = "魔镜"
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.mojingWhile()
         else:
             self.scriptName = "官渡"
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             self.guanduWhile()
 
     # 五行
     def wuxingWhile(self):
         for i in range(int(self.wuxing_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hasWuxing = self.wuxingScript()
             if not hasWuxing:
                 break
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.guanduWhile()
 
     # 溶洞
     def rongdongWhile(self):
         for i in range(int(self.rongdong_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             hasRongdong = self.rongdongScript()
             if not hasRongdong:
                 break
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.guanduWhile()
 
     # 炼丹
     def liandanWhile(self):
         for i in range(int(self.liandan_count)):
-            if self.overed:
+            if self.check_stop_or_over():
                 return
             liandanHas = self.liandanScript()
             if not liandanHas:
                 break
         self.scriptName = "官渡"
-        if self.overed:
+        if self.check_stop_or_over():
             return
         self.guanduWhile()
 
@@ -12459,8 +12608,6 @@ class MyThread(threading.Thread):
                 return
             self.mojingWhile()
         else:
-            if self.has_script != "all" and not "整点" in self.has_script:
-                return
             print("开始整点")
             self.scriptName = "49整点"
             time.sleep(2)
@@ -13548,7 +13695,7 @@ class MyThread(threading.Thread):
         self.clearBag()
         time.sleep(1)
         self.outScript()
-        time.sleep(2)
+        self.interruptible_sleep(2)
         if self.zhengdianFloor in ["全打", "龙+全打", "蛇+全打"]:
             # 打整点
             self.zhengdian_flag = True
@@ -14224,6 +14371,8 @@ class MyFrame(wx.Frame):
         self.combat_auto_scenes = []
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
+        self.clear_liubei_enabled = True
+        self.auto_resize_window = False
         self.independent_win1 = False
         self.independent_win2 = False
 
@@ -14319,13 +14468,17 @@ class MyFrame(wx.Frame):
             card.SetBackgroundColour(_C_CARD_BG)
             vs = wx.BoxSizer(wx.VERTICAL)
 
-            # 标题行 — 左标题 + 右进度
+            # 标题行 — 左标题 + 耗时 + 右进度
             title_row = wx.BoxSizer(wx.HORIZONTAL)
             title = wx.StaticText(card, label=label)
             title.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
             title.SetForegroundColour(wx.Colour(40, 45, 55))
             title_row.Add(title, 0, wx.ALIGN_CENTER_VERTICAL)
             title_row.AddStretchSpacer()
+            time_lbl = wx.StaticText(card, label="00:00:00")
+            time_lbl.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            time_lbl.SetForegroundColour(wx.Colour(100, 105, 115))
+            title_row.Add(time_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
             done_num = wx.StaticText(card, label="0/0")
             done_num.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
             done_num.SetForegroundColour(_C_DONE)
@@ -14374,12 +14527,12 @@ class MyFrame(wx.Frame):
 
             vs.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 2)
             card.SetSizer(vs)
-            return card, w_num, f_num, done_num
+            return card, w_num, f_num, done_num, time_lbl
 
-        sx_card, self.stats_sx_win, self.stats_sx_fail, self.stats_sx_done = _make_card("四象")
+        sx_card, self.stats_sx_win, self.stats_sx_fail, self.stats_sx_done, self.stats_sx_time = _make_card("四象")
         self._sx_card = sx_card
         stats_sizer.Add(sx_card, 1, wx.EXPAND | wx.RIGHT, 6)
-        sh_card, self.stats_sh_win, self.stats_sh_fail, self.stats_sh_done = _make_card("噬魂")
+        sh_card, self.stats_sh_win, self.stats_sh_fail, self.stats_sh_done, self.stats_sh_time = _make_card("噬魂")
         self._sh_card = sh_card
         stats_sizer.Add(sh_card, 1, wx.EXPAND)
 
@@ -14404,7 +14557,7 @@ class MyFrame(wx.Frame):
         self.text_ctrl = wx.TextCtrl(log_card, size=(-1, 200), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
         self.text_ctrl.SetBackgroundColour(wx.Colour(255, 255, 255))
         self.text_ctrl.SetForegroundColour(wx.Colour(40, 42, 50))
-        self.text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        self.text_ctrl.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL,faceName="Microsoft YaHei UI"))
         lcs.Add(self.text_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         log_card.SetSizer(lcs)
 
@@ -14529,6 +14682,7 @@ class MyFrame(wx.Frame):
                 # "天外天传送符",
                 "嗜血战场(精英)",
                 "英魂秘境(精英)",
+                "沉浸式自动战斗",
                 # "整点",
                 # "测试",
             ],
@@ -14544,7 +14698,7 @@ class MyFrame(wx.Frame):
                 "龙珠",
                 "四象",
                 "青渊",
-                "清妖",
+                # "清妖",
                 # "龙王令",
                 # "引魔符",
                 "藏宝图",
@@ -14553,7 +14707,7 @@ class MyFrame(wx.Frame):
                 "49整点",
                 "帮派任务",
                 "名将闯关",
-                "怪物攻城",
+                # "怪物攻城",
                 "挂机+整点",
                 "西瓜保卫战",
                 "战魂楼(精英)",
@@ -14748,9 +14902,10 @@ class MyFrame(wx.Frame):
             "4.黑风/矿产次数填多少次打多少次，打完自动去官渡；",
             "6.挂机+整点，使用之前打开查看副本，点一下需要打的副本，然后启动脚本即可；",
             "7.保存数据之后会在脚本同级文件夹生成一个setting.json，下次使用脚本会自动读入数据；",
-            "8.整点全打为飞过去打页面上能找到的怪物，走路打九黎族祭坛，魔魂山，魔谷西三个地图的怪物；",
-            "9.自动战斗选择了对应的副本/整点，到打的时候会自动开启，刘备数量为账号内拥有的刘备数量总和，包括出战的，自动战斗多开，脚本队友1要在游戏队伍中第二位，脚本队友2在游戏队伍中第三位，吃药功能为吃恢复药；",
-            "10.窗口绑定的独立方法如：原平台两个号，新平台一个号，那么新平台的小号勾选独立并且填入360游戏大厅对应的游戏名称。",
+            "8.调整窗口功能为绑定的游戏窗口，多开之后，自动缩小并且调整位置，便于观看多个账号操作；",
+            "9.整点全打为飞过去打页面上能找到的怪物，走路打九黎族祭坛，魔魂山，魔谷西三个地图的怪物；",
+            "10.自动战斗选择了对应的副本/整点，到打的时候会自动开启，刘备数量为账号内拥有的刘备数量总和，包括出战的，自动战斗多开，脚本队友1要在游戏队伍中第二位，脚本队友2在游戏队伍中第三位，吃药功能为吃恢复药；",
+            "11.窗口绑定的独立方法如：原平台两个号，新平台一个号，那么新平台的小号勾选独立并且填入360游戏大厅对应的游戏名称。",
             "常见问题：",
             "1.点开始脚本没任何反应：使用管理员打开脚本；",
             "2.点开始之后提示无效窗口：务必保证输入的没问题，360最新版的只能绑定第一个打开的窗口；",
@@ -14942,6 +15097,15 @@ class MyFrame(wx.Frame):
                     cb.SetValue(scene in self.combat_auto_scenes)
             if hasattr(self, 'use_heal_item') and hasattr(dialog, 'use_heal_cb'):
                 dialog.use_heal_cb.SetValue(self.use_heal_item)
+            if hasattr(self, 'clear_liubei_enabled') and hasattr(dialog, 'clear_liubei_cb'):
+                dialog.clear_liubei_cb.SetValue(self.clear_liubei_enabled)
+            if hasattr(self, 'auto_resize_window') and hasattr(dialog, 'auto_resize_on'):
+                if self.auto_resize_window:
+                    dialog.auto_resize_off.Hide()
+                    dialog.auto_resize_on.Show()
+                else:
+                    dialog.auto_resize_on.Hide()
+                    dialog.auto_resize_off.Show()
         if dialog.ShowModal() == wx.ID_OK:
             print("当前游戏名称：" + self.game_name)
         dialog.Destroy()
@@ -14949,6 +15113,18 @@ class MyFrame(wx.Frame):
     def _update_clock(self, event):
         if hasattr(self, 'log_ts') and self.log_ts:
             self.log_ts.SetLabel(datetime.now().strftime("%H:%M:%S"))
+        t = self.thread
+        if t is not None:
+            for _stats_attr, _run_attr, _lbl_attr in [
+                ("sixiang_stats", "_sx_run_start", "stats_sx_time"),
+                ("shihun_stats", "_sh_run_start", "stats_sh_time"),
+            ]:
+                _stats = getattr(t, _stats_attr, None)
+                _run_start = getattr(t, _run_attr, None)
+                _lbl = getattr(self, _lbl_attr, None)
+                if _stats is not None and _lbl is not None:
+                    _total = _stats.get("total_time", 0) + (int(time.time() - _run_start) if _run_start else 0)
+                    _lbl.SetLabel(f"{_total // 3600:02d}:{(_total % 3600) // 60:02d}:{_total % 60:02d}")
 
     def _refresh_dungeon_stats(self):
         """从当前脚本线程同步副本统计数据到UI（主线程中调用）"""
@@ -15304,7 +15480,7 @@ class MyDialog(wx.Dialog):
     C_INPUT_BG = wx.Colour(255, 255, 255)
 
     def __init__(self, parent, has_script):
-        super().__init__(parent, title="游戏设置", size=(570, 610), pos=(200, 20))
+        super().__init__(parent, title="游戏设置", size=(570, 645), pos=(200, 20))
         self.SetBackgroundColour(self.C_BG)
         self.frame = parent
         self.config_file = "settings_config.json"
@@ -15364,14 +15540,7 @@ class MyDialog(wx.Dialog):
             b.SetCursor(wx.Cursor(wx.CURSOR_HAND))
             b.Bind(wx.EVT_BUTTON, fn)
             top_row.Add(b, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 3)
-        main_sizer.Add(top_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
-        main_sizer.AddSpacer(8)
-
-        # ── 队伍 ──
-        sec = lambda t: self._section_header(main_sizer, panel, t)
-        sec("队伍")
-        tm = wx.FlexGridSizer(cols=4, vgap=5, hgap=6)
-        tm.AddGrowableCol(1, 1)
+        top_row.AddStretchSpacer()
 
         def _make_toggle_btn(parent, label_off, label_on, bind_fn):
             container = wx.Panel(parent, size=(74, 30))
@@ -15391,7 +15560,26 @@ class MyDialog(wx.Dialog):
             btn_on.Bind(wx.EVT_BUTTON, lambda e, c=container, o=btn_off, n=btn_on: bind_fn(e, False, c, o, n))
             return container, btn_off, btn_on
 
-        for txt, attr_hint, is_leader in [("队长", "游戏名称", True), ("队友1", "队友1", False), ("队友2", "队友2", False)]:
+        def _toggle_resize(event, flag, container, off_btn, on_btn):
+            if flag:
+                off_btn.Hide(); on_btn.Show(); container.Layout()
+            else:
+                on_btn.Hide(); off_btn.Show(); container.Layout()
+        resize_container, resize_off, resize_on = _make_toggle_btn(panel, "调整窗口✅", "调整窗口✅", _toggle_resize)
+        self.auto_resize_off = resize_off
+        self.auto_resize_on = resize_on
+        top_row.Add(resize_container, 0, wx.ALIGN_CENTER_VERTICAL)
+        resize_off.SetToolTip("开启后窗口绑定时自动调整大小和位置")
+        main_sizer.Add(top_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        main_sizer.AddSpacer(8)
+
+        # ── 队伍 ──
+        sec = lambda t: self._section_header(main_sizer, panel, t)
+        sec("队伍")
+        tm = wx.FlexGridSizer(cols=4, vgap=5, hgap=6)
+        tm.AddGrowableCol(1, 1)
+
+        for txt, attr_hint, is_leader in [("游戏名称", "360大厅游戏名称", True), ("队友1", "360大厅小号列表队友1名称", False), ("队友2", "360大厅小号列表队友2名称", False)]:
             tm.Add(label(txt, 40), 0, wx.ALIGN_CENTER_VERTICAL)
             tc = text_input(attr_hint)
             if is_leader:
@@ -15408,7 +15596,14 @@ class MyDialog(wx.Dialog):
             b.Hide()
             tm.Add(b, 0, wx.ALIGN_CENTER_VERTICAL)
             if is_leader:
-                tm.Add(wx.Panel(panel, size=(58, 1)), 0, wx.ALIGN_CENTER_VERTICAL)
+                auto_btn = wx.Button(panel, label="识别窗口", size=(74, 28), style=wx.BORDER_NONE)
+                auto_btn.SetBackgroundColour(self.C_GOLD)
+                auto_btn.SetForegroundColour(wx.Colour(255, 255, 255))
+                auto_btn.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+                auto_btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+                auto_btn.SetToolTip("根据游戏名称自动识别队友窗口")
+                auto_btn.Bind(wx.EVT_BUTTON, self.on_auto_detect_window)
+                tm.Add(auto_btn, 0, wx.ALIGN_CENTER_VERTICAL)
             elif "1" in txt:
                 def _toggle1(event, flag, container, off_btn, on_btn):
                     if flag:
@@ -15447,7 +15642,7 @@ class MyDialog(wx.Dialog):
             scene_label.SetForegroundColour(self.C_MUTED)
             scene_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
             auto_row.Add(scene_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-            for scene in ["战魂", "蛇", "四象"]:
+            for scene in ["战魂", "蛇", "四象", "浩劫"]:
                 cb = wx.CheckBox(auto_combat_panel, label=scene)
                 cb.SetForegroundColour(self.C_MUTED)
                 cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
@@ -15472,13 +15667,27 @@ class MyDialog(wx.Dialog):
                 self.liubeiCountInputs[idx] = tc
                 auto_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
 
-            auto_row.AddSpacer(12)
+            func_row = wx.BoxSizer(wx.HORIZONTAL)
+            func_label = wx.StaticText(auto_combat_panel, label="功能开关:")
+            func_label.SetForegroundColour(self.C_TEXT)
+            func_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            func_row.Add(func_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+
             self.use_heal_cb = wx.CheckBox(auto_combat_panel, label="吃药")
             self.use_heal_cb.SetForegroundColour(self.C_MUTED)
             self.use_heal_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            auto_row.Add(self.use_heal_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+            func_row.Add(self.use_heal_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
 
-            auto_combat_panel.SetSizer(auto_row)
+            self.clear_liubei_cb = wx.CheckBox(auto_combat_panel, label="清刘备")
+            self.clear_liubei_cb.SetForegroundColour(self.C_MUTED)
+            self.clear_liubei_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            self.clear_liubei_cb.SetValue(True)
+            func_row.Add(self.clear_liubei_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+
+            auto_panel_sizer = wx.BoxSizer(wx.VERTICAL)
+            auto_panel_sizer.Add(auto_row, 0, wx.EXPAND)
+            auto_panel_sizer.Add(func_row, 0, wx.TOP | wx.ALIGN_LEFT, 6)
+            auto_combat_panel.SetSizer(auto_panel_sizer)
             main_sizer.Add(auto_combat_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
         else:
             self.liubeiCountInputs = {0: 1, 1: 0, 2: 0}
@@ -16058,6 +16267,160 @@ class MyDialog(wx.Dialog):
         else:
             self.button.Disable()
 
+    def on_auto_detect_window(self, event):
+        """根据游戏名称自动识别360大厅的队友窗口并填充名称
+        匹配规则：
+        - 标题格式 "小号名 | 游戏名称" → 提取"小号名"，非独立窗口
+        - 其他格式（无后缀/后缀不匹配） → 填入完整标题，勾选独立窗口
+        """
+        game_name = self.team_leader_text.GetValue().strip()
+        if not game_name:
+            wx.MessageBox("请先输入游戏名称", "提示", wx.OK | wx.ICON_WARNING)
+            return
+
+        try:
+            dm = CreateObject("dm.dmsoft")
+            hwnds_str = dm.EnumWindow(0, "", "DUIWindow", 1 + 2)
+            if hwnds_str:
+                candidates = []
+                for item in hwnds_str.split(","):
+                    if not item:
+                        continue
+                    title = dm.GetWindowTitle(int(item))
+                    if not title or title == game_name:
+                        continue
+                    candidates.append(title)
+            else:
+                candidates = []
+        except Exception:
+            return
+
+        if not candidates:
+            return
+
+        # 选择队友1
+        idx1 = self._show_window_selector("请选择队友1的窗口", candidates)
+        if idx1 is None:
+            return
+        name1, indep1 = self._parse_window_title(candidates[idx1], game_name)
+        self.teammate1_text.SetValue(name1)
+        self._set_independent(1, indep1)
+
+        # 选择队友2（排除已选的）
+        remaining = [t for i, t in enumerate(candidates) if i != idx1]
+        if not remaining:
+            return
+        idx2 = self._show_window_selector("请选择队友2的窗口", remaining)
+        if idx2 is None:
+            return
+        name2, indep2 = self._parse_window_title(remaining[idx2], game_name)
+        self.teammate2_text.SetValue(name2)
+        self._set_independent(2, indep2)
+
+    def _show_window_selector(self, message, options):
+        """显示窗口选择对话框，返回选中索引或 None（取消）"""
+        dlg = wx.Dialog(self, title="自动识别", size=(420, 300),
+                        style=wx.DEFAULT_DIALOG_STYLE)
+        dlg.SetBackgroundColour(self.C_BG)
+
+        panel = wx.Panel(dlg)
+        panel.SetBackgroundColour(self.C_BG)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # 提示文字
+        hint = wx.StaticText(panel, label=message)
+        hint.SetForegroundColour(self.C_MUTED)
+        hint.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                             wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        sizer.Add(hint, 0, wx.ALL, 10)
+
+        # 窗口列表
+        lb = wx.ListBox(panel, size=(-1, 160),
+                        choices=options,
+                        style=wx.LB_SINGLE | wx.BORDER_SIMPLE)
+        lb.SetBackgroundColour(self.C_INPUT_BG)
+        lb.SetForegroundColour(self.C_TEXT)
+        lb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                           wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+        if options:
+            lb.SetSelection(0)
+        sizer.Add(lb, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+
+        # 按钮行
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_sizer.AddStretchSpacer()
+
+        for label_text, bg_color, is_ok in [("取消", self.C_SURFACE, False),
+                                             ("确定", self.C_GOLD, True)]:
+            btn = wx.Button(panel, label=label_text, size=(80, 30),
+                            style=wx.BORDER_NONE)
+            btn.SetBackgroundColour(bg_color)
+            btn.SetForegroundColour(wx.Colour(255, 255, 255) if is_ok else self.C_TEXT)
+            btn.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL,
+                                wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
+            btn.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+            btn_sizer.Add(btn, 0, wx.ALL, 4)
+        sizer.Add(btn_sizer, 0, wx.ALIGN_RIGHT | wx.RIGHT | wx.BOTTOM, 10)
+
+        panel.SetSizer(sizer)
+
+        selected = [None]
+
+        def on_ok(e):
+            sel = lb.GetSelection()
+            if sel != wx.NOT_FOUND:
+                selected[0] = sel
+            dlg.EndModal(wx.ID_OK)
+
+        def on_cancel(e):
+            dlg.EndModal(wx.ID_CANCEL)
+
+        # 绑定按钮：确定是最后一个(is_ok=True), 取消是第一个(is_ok=False)
+        children = btn_sizer.GetChildren()
+        for child in children:
+            w = child.GetWindow()
+            if w:
+                if w.GetLabel() == "确定":
+                    w.Bind(wx.EVT_BUTTON, on_ok)
+                elif w.GetLabel() == "取消":
+                    w.Bind(wx.EVT_BUTTON, on_cancel)
+
+        # 双击列表项 = 确定
+        lb.Bind(wx.EVT_LISTBOX_DCLICK, on_ok)
+
+        dlg.CenterOnParent()
+        dlg.ShowModal()
+        dlg.Destroy()
+        return selected[0]
+
+    def _parse_window_title(self, title, game_name):
+        """解析窗口标题，返回 (填入名称, 是否独立窗口)
+        - "小号名 | 主号名" 且主号名==game_name → 填入"小号名"，非独立
+        - 其他格式 → 填入完整标题，独立窗口
+        """
+        parts = title.split("|")
+        if len(parts) == 2 and parts[1].strip() == game_name:
+            return parts[0].strip(), False
+        return title, True
+
+    def _set_independent(self, team, checked):
+        """设置队友1/2的独立窗口开关状态"""
+        if team == 1:
+            off_btn = getattr(self, "independent_win1_off", None)
+            on_btn = getattr(self, "independent_win1_on", None)
+        else:
+            off_btn = getattr(self, "independent_win2_off", None)
+            on_btn = getattr(self, "independent_win2_on", None)
+        if not off_btn or not on_btn:
+            return
+        if checked:
+            off_btn.Hide()
+            on_btn.Show()
+        else:
+            on_btn.Hide()
+            off_btn.Show()
+        off_btn.GetParent().Layout()
+
     def load_config(self):
         if os.path.exists(self.config_file):
             try:
@@ -16119,6 +16482,8 @@ class MyDialog(wx.Dialog):
             "liubei_counts": {idx: (str(self.liubeiCountInputs[idx]) if isinstance(self.liubeiCountInputs[idx], int) else self.liubeiCountInputs[idx].GetValue()) for idx in self.liubeiCountInputs},
             "combat_auto_scenes": combat_auto_scenes,
             "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
+            "clear_liubei_enabled": self.clear_liubei_cb.GetValue() if hasattr(self, 'clear_liubei_cb') else True,
+            "auto_resize_window": self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False,
         }
 
     def apply_settings(self, settings):
@@ -16169,6 +16534,16 @@ class MyDialog(wx.Dialog):
                 cb.SetValue(scene in saved_scenes)
         if hasattr(self, 'use_heal_cb'):
             self.use_heal_cb.SetValue(settings.get("use_heal_item", False))
+        if hasattr(self, 'clear_liubei_cb'):
+            self.clear_liubei_cb.SetValue(settings.get("clear_liubei_enabled", True))
+        if hasattr(self, 'auto_resize_on'):
+            val = settings.get("auto_resize_window", False)
+            if val:
+                self.auto_resize_off.Hide()
+                self.auto_resize_on.Show()
+            else:
+                self.auto_resize_on.Hide()
+                self.auto_resize_off.Show()
 
     def on_scheme_select(self, event):
         scheme_name = self.scheme_choice.GetValue()
@@ -16311,7 +16686,9 @@ class MyDialog(wx.Dialog):
                 parent.liubeiCounts[idx] = int(val) if val.isdigit() else (1 if idx == 0 else 0)
         parent.independent_win1 = self.independent_win1_on.IsShown() if hasattr(self, "independent_win1_on") else False
         parent.independent_win2 = self.independent_win2_on.IsShown() if hasattr(self, "independent_win2_on") else False
+        parent.auto_resize_window = self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False
         parent.use_heal_item = self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False
+        parent.clear_liubei_enabled = self.clear_liubei_cb.GetValue() if hasattr(self, 'clear_liubei_cb') else True
         if self.IsModal():
             self.EndModal(wx.ID_OK)
 
