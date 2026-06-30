@@ -334,9 +334,10 @@ class MyThread(threading.Thread):
                 else:
                     self.combat_auto_instance.reconfigure(
                         enemy_keys_to_detect=clear_enemy_keys,
-                    keep_support_general=False,
+                        keep_support_general=False,
                         liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
                         enable_main_heal=_heal_on,
+                        enable_main_summon=True,
                         combat_scene=combat_scene,
                     )
 
@@ -393,7 +394,7 @@ class MyThread(threading.Thread):
         ):
             return "combat"
         if self.find_pic_or_str(
-            self.get_resource_path("serveAssets/images/beibao.bmp"),
+            self.get_resource_path("serveAssets/images/jineng.bmp"),
             self.gameLocation,
             0,
         ):
@@ -4889,6 +4890,7 @@ class MyThread(threading.Thread):
         self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
         time.sleep(0.001)
         self.dm.LeftClick()
+        self.set_pending_enemy_keys(["龙/猴子", "龙上龙","猴子狮","羊人参娃"])
         if auto_combat_key is not None:
             self._start_combat_auto()
         combat_result = self._wait_combat_result(base_image, auto_combat_key)

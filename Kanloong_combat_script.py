@@ -6191,7 +6191,8 @@ class CombatAutoScript:
                 self.liubei_counts = liubei_counts
                 self.liubei_remaining = dict(self.liubei_counts)
                 self.has_liubei = {i: self.liubei_remaining.get(i, 0) > 0 for i in range(3)}
-            self.combat_scene = combat_scene
+            if combat_scene is not None:
+                self.combat_scene = combat_scene
             self.current_turn = 0
             self.clear_zhugeliang = False
             self._liubei29_status1_detected = False
