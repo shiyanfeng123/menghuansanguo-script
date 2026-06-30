@@ -2055,7 +2055,7 @@ class CombatAutoScript:
                                         continue
                                     char_info = self.unit_info[acct]["main_char"]
                                     if char_info.get("reviving", False) or char_info.get("revive_pending_verification", False):
-                                        self._confirm_revive_failure(acct)
+                                        self._confirm_revive_failure_unlocked(acct)
                                     elif char_info.get("alive", True):
                                         char_info["reviving"] = False
                                         char_info["revive_pending_verification"] = False
@@ -3728,29 +3728,35 @@ class CombatAutoScript:
 
     # 确认复活失败（如果待验证但下个回合没有操作也没有蓝条）
     def _confirm_revive_failure(self, account_index):
-        """确认复活失败（下一回合没检测到蓝条）
+        """确认复活失败（下一回合没检测到蓝条）（带锁，供外部调用）
         :param account_index: 主角账号索引
         """
         with self._state_lock:
-            if account_index in self.unit_info:
-                char_info = self.unit_info[account_index]["main_char"]
-                if char_info.get("revive_pending_verification", False) or char_info.get("reviving", False):
-                    char_info["revive_pending_verification"] = False
-                    char_info["reviving"] = False
-                    char_info["alive"] = False  # 状态更新为死亡，数量不动（保持0）
-                    char_info["need_revive"] = True
-                    # 重新添加到全局阵亡记录
-                    dead_char_info = {
-                        "name": char_info.get("name", "主角"),
-                        "position": char_info.get("position", (793, 380)),
-                        "account_index": account_index,
-                    }
-                    if dead_char_info not in self.global_dead_units["main_chars"]:
-                        self.global_dead_units["main_chars"].append(dead_char_info)
-                    self.dead_units[account_index]["main_char"] = dead_char_info
-                    self.report_battle_info(
-                        f"账号{account_index} 主角复活失败，确认阵亡", "warning"
-                    )
+            self._confirm_revive_failure_unlocked(account_index)
+
+    def _confirm_revive_failure_unlocked(self, account_index):
+        """确认复活失败（下一回合没检测到蓝条）（不带锁，供锁内调用）
+        :param account_index: 主角账号索引
+        """
+        if account_index in self.unit_info:
+            char_info = self.unit_info[account_index]["main_char"]
+            if char_info.get("revive_pending_verification", False) or char_info.get("reviving", False):
+                char_info["revive_pending_verification"] = False
+                char_info["reviving"] = False
+                char_info["alive"] = False  # 状态更新为死亡，数量不动（保持0）
+                char_info["need_revive"] = True
+                # 重新添加到全局阵亡记录
+                dead_char_info = {
+                    "name": char_info.get("name", "主角"),
+                    "position": char_info.get("position", (793, 380)),
+                    "account_index": account_index,
+                }
+                if dead_char_info not in self.global_dead_units["main_chars"]:
+                    self.global_dead_units["main_chars"].append(dead_char_info)
+                self.dead_units[account_index]["main_char"] = dead_char_info
+                self.report_battle_info(
+                    f"账号{account_index} 主角复活失败，确认阵亡", "warning"
+                )
 
     # 复活主角
     def revive_main_char(self, account_index, dead_char_info):
