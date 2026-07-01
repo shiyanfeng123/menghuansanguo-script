@@ -629,6 +629,8 @@ class CombatAutoScript:
 
         # 赵云29状态2需清除时，是否跳过攻击技能仅加血/防御
         self.enable_zhaoyun29_hold = True
+        # 多刘备并行清除（默认关闭）
+        self.enable_multi_liubei = False
 
         # 战斗策略引擎（优先级排序的技能释放策略）
         self.skill_strategies = {
@@ -2218,7 +2220,7 @@ class CombatAutoScript:
                 break
             time.sleep(0.15)
         # 四象副本的敌军蓝条与实际点击位置Y偏移不同（四象+48，其他+70）
-        _enemy_y_offset = 48 if self.combat_scene == "四象" else 70
+        _enemy_y_offset = 48 if self.combat_scene in ["四象", "整点"] else 70
         self.enemy_target_positions = [(x + 26, y + _enemy_y_offset) for x, y in max_raw_positions]
         if not self.enemy_target_positions:
             self.enemy_target_positions = [(104, 344)]
@@ -4594,7 +4596,7 @@ class CombatAutoScript:
                                 and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
                                 has_liubei_in_account = True
                                 break
-                        # 刘备召唤简化（场上没有刘备就优先上刘备）
+                        # 刘备召唤简化（场上没有刘备就优先上刘备,暂时关闭必须需要清除状态才上刘备）
                         # if not field_has_liubei and not has_liubei_in_account and self.keep_support_general:
                         if not field_has_liubei and not has_liubei_in_account:
                             need_liubei = True
@@ -4617,87 +4619,95 @@ class CombatAutoScript:
                     else:
                         pass
 
-                # 多刘备并行（已禁用）
-                if False and not skip_side_effects:
-                  with self._state_lock:
-                    has_liubei_in_account_for_clear = False
-                    for gen_info in char_info.get("generals", []):
-                        if (gen_info.get("name") == "刘备" and gen_info.get("alive", True)
-                            and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
-                            if self._get_liubei_clear_cd_remaining(account_index) > 2:
-                                continue
-                            has_liubei_in_account_for_clear = True
-                            break
+                # 多刘备并行（默认关闭，需 enable_multi_liubei=True 开启）
+                if self.enable_multi_liubei and not skip_side_effects:
+                    # 守卫：当前账号已有刘备在替换中（replacing=True），跳过本轮，避免重复召唤
+                    has_replacing_liubei = any(
+                        g.get("name") == "刘备" and g.get("replacing", False)
+                        for g in char_info.get("generals", [])
+                    )
+                    if has_replacing_liubei:
+                        pass
+                    else:
+                        with self._state_lock:
+                            has_liubei_in_account_for_clear = False
+                            for gen_info in char_info.get("generals", []):
+                                if (gen_info.get("name") == "刘备" and gen_info.get("alive", True)
+                                    and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
+                                    if self._get_liubei_clear_cd_remaining(account_index) > 2:
+                                        continue
+                                    has_liubei_in_account_for_clear = True
+                                    break
 
-                    unclaimed_count = sum(1 for e in self.global_enemies_need_clear if e.get("claimed_by") is None)
+                            unclaimed_count = sum(1 for e in self.global_enemies_need_clear if e.get("claimed_by") is None)
 
-                    field_liubei_count = 0
-                    claimed_liubei_count = 0
-                    for i in range(self.get_account_count()):
-                        if i not in self.unit_info:
-                            continue
-                        for g in self.unit_info[i].get("main_char", {}).get("generals", []):
-                            if (g.get("name") == "刘备" and g.get("alive", True)
-                                and not g.get("replacing", False) and not g.get("pending_kick", False)):
-                                if self._get_liubei_clear_cd_remaining(i) > 2:
+                            field_liubei_count = 0
+                            claimed_liubei_count = 0
+                            for i in range(self.get_account_count()):
+                                if i not in self.unit_info:
                                     continue
-                                field_liubei_count += 1
-                                if any(e.get("claimed_by") == i for e in self.global_enemies_need_clear):
-                                    claimed_liubei_count += 1
+                                for g in self.unit_info[i].get("main_char", {}).get("generals", []):
+                                    if (g.get("name") == "刘备" and g.get("alive", True)
+                                        and not g.get("replacing", False) and not g.get("pending_kick", False)):
+                                        if self._get_liubei_clear_cd_remaining(i) > 2:
+                                            continue
+                                        field_liubei_count += 1
+                                        if any(e.get("claimed_by") == i for e in self.global_enemies_need_clear):
+                                            claimed_liubei_count += 1
 
-                    effective_available = field_liubei_count - claimed_liubei_count
-                    summoning_count = sum(1 for v in self._liubei_summon_in_progress.values() if v)
-                    need_summon_count = unclaimed_count - effective_available - summoning_count
+                            effective_available = field_liubei_count - claimed_liubei_count
+                            summoning_count = sum(1 for v in self._liubei_summon_in_progress.values() if v)
+                            need_summon_count = unclaimed_count - effective_available - summoning_count
 
-                    snake_unclaimed = sum(
-                        1 for e in self.global_enemies_need_clear
-                        if e.get("claimed_by") is None and e.get("enemy_name") == "蛇"
-                    )
-                    if snake_unclaimed > 0:
-                        field_any_liubei = any(
-                            g.get("name") == "刘备" and g.get("alive", True)
-                            and not g.get("replacing", False) and not g.get("pending_kick", False)
-                            for i in range(self.get_account_count())
-                            for g in self.unit_info[i].get("main_char", {}).get("generals", [])
-                        )
-                        if field_any_liubei:
-                            need_summon_count -= snake_unclaimed
-                            need_summon_count = max(0, need_summon_count)
+                            snake_unclaimed = sum(
+                                1 for e in self.global_enemies_need_clear
+                                if e.get("claimed_by") is None and e.get("enemy_name") == "蛇"
+                            )
+                            if snake_unclaimed > 0:
+                                field_any_liubei = any(
+                                    g.get("name") == "刘备" and g.get("alive", True)
+                                    and not g.get("replacing", False) and not g.get("pending_kick", False)
+                                    for i in range(self.get_account_count())
+                                    for g in self.unit_info[i].get("main_char", {}).get("generals", [])
+                                )
+                                if field_any_liubei:
+                                    need_summon_count -= snake_unclaimed
+                                    need_summon_count = max(0, need_summon_count)
 
-                    self.report_battle_info(
-                        f"账号{account_index} 多刘备并行: need_cnt={need_summon_count} "
-                        f"unclaimed={unclaimed_count} field_lb={field_liubei_count} "
-                        f"avail={effective_available} summoning={summoning_count} "
-                        f"no_own_lb={not has_liubei_in_account_for_clear} "
-                        f"alive={char_info.get('alive', True)} "
-                        f"has_lb={self.has_liubei.get(account_index)} "
-                        f"has_gen={self.has_general.get(account_index)} "
-                        f"in_progress={self._liubei_summon_in_progress}",
-                        "info",
-                    )
-                    if (need_summon_count > 0
-                        and not has_liubei_in_account_for_clear
-                        and char_info.get("alive", True)
-                        and self.has_liubei.get(account_index, False)
-                        and self.has_general.get(account_index, False)):
-                        if not self._liubei_summon_in_progress.get(account_index, False):
-                            self._liubei_summon_in_progress[account_index] = True
-                            need_self_liubei = True
-                            if not self.keep_support_general:
-                                self.keep_support_general = True
+                            self.report_battle_info(
+                                f"账号{account_index} 多刘备并行: need_cnt={need_summon_count} "
+                                f"unclaimed={unclaimed_count} field_lb={field_liubei_count} "
+                                f"avail={effective_available} summoning={summoning_count} "
+                                f"no_own_lb={not has_liubei_in_account_for_clear} "
+                                f"alive={char_info.get('alive', True)} "
+                                f"has_lb={self.has_liubei.get(account_index)} "
+                                f"has_gen={self.has_general.get(account_index)} "
+                                f"in_progress={self._liubei_summon_in_progress}",
+                                "info",
+                            )
+                            if (need_summon_count > 0
+                                and not has_liubei_in_account_for_clear
+                                and char_info.get("alive", True)
+                                and self.has_liubei.get(account_index, False)
+                                and self.has_general.get(account_index, False)):
+                                if not self._liubei_summon_in_progress.get(account_index, False):
+                                    self._liubei_summon_in_progress[account_index] = True
+                                    need_self_liubei = True
+                                    if not self.keep_support_general:
+                                        self.keep_support_general = True
 
-                    any_account_has_liubei = field_liubei_count > 0 or summoning_count > 0
-                    if (not need_self_liubei
-                        and (self.keep_support_general or self._zhugeliang_low_hp)
-                        and self.global_enemies_need_clear
-                        and not any_account_has_liubei
-                        and not has_liubei_in_account_for_clear
-                        and char_info.get("alive", True)
-                        and self.has_liubei.get(account_index, False)
-                        and self.has_general.get(account_index, False)):
-                        if not self._liubei_summon_in_progress.get(account_index, False):
-                            self._liubei_summon_in_progress[account_index] = True
-                            need_self_liubei = True
+                            any_account_has_liubei = field_liubei_count > 0 or summoning_count > 0
+                            if (not need_self_liubei
+                                and (self.keep_support_general or self._zhugeliang_low_hp)
+                                and self.global_enemies_need_clear
+                                and not any_account_has_liubei
+                                and not has_liubei_in_account_for_clear
+                                and char_info.get("alive", True)
+                                and self.has_liubei.get(account_index, False)
+                                and self.has_general.get(account_index, False)):
+                                if not self._liubei_summon_in_progress.get(account_index, False):
+                                    self._liubei_summon_in_progress[account_index] = True
+                                    need_self_liubei = True
                 # === 召唤判断结束 ===
 
                 # 可以加一个开关，如果需要清除状态，开关打开，召唤刘备 通过zhaohuan_index去控制召唤账号
@@ -4729,6 +4739,15 @@ class CombatAutoScript:
                     if need_self_liubei:
                         replace_pos = self._find_best_replace_position(account_index)
                     if self.summon_general_with_verification(account_index, "刘备", force_replace=need_self_liubei, replace_position=replace_pos):
+                        # 多刘备并行模式下，确认 unit_info 中确实存在替换中的刘备后才清除标志，
+                        # 避免施法被控/被杀等异常情况导致标志被误清
+                        if self.enable_multi_liubei:
+                            has_replacing_lb = any(
+                                g.get("name") == "刘备" and g.get("replacing", False)
+                                for g in self.unit_info.get(account_index, {}).get("main_char", {}).get("generals", [])
+                            )
+                            if has_replacing_lb:
+                                self._liubei_summon_in_progress[account_index] = False
                         time.sleep(0.1)
                         return True
                     # 召唤失败不设has_liubei=False/liubei_remaining=0，武将回到背包，下回合可重试
@@ -6039,6 +6058,29 @@ class CombatAutoScript:
                     pass
         except Exception as e:
             print(f"reset_state 出错: {e}")
+
+    # 注入 child_task 预检测到的敌军到待清除队列，省去 Mode 2 重新检测的一轮
+    def inject_pre_detected_enemy(self, enemy_key, status_name="状态1"):
+        config = self.enemy_general_config.get(enemy_key, {})
+        if not config:
+            return
+        with self._state_lock:
+            already_exists = any(e.get("enemy_name") == enemy_key for e in self.global_enemies_need_clear)
+            if not already_exists:
+                self.global_enemies_need_clear.insert(0, {
+                    "enemy_name": enemy_key,
+                    "position": config["cast_position"],
+                    "status_name": status_name,
+                    "claimed_by": None,
+                    "detected_turn": 0,
+                })
+                if enemy_key not in self.enemy_status_reported:
+                    self.report_battle_info(
+                        f"检测到敌军{enemy_key}需要清除状态",
+                        "warning",
+                    )
+                    self.enemy_status_reported[enemy_key] = True
+        self.keep_support_general = True
 
     def reconfigure(self, enemy_keys_to_detect=None, keep_support_general=None,
                     enable_main_heal=None, enable_main_summon=None,

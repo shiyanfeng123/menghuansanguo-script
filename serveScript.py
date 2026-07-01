@@ -278,6 +278,7 @@ class MyThread(threading.Thread):
         self.heifengWhileCount = 0
         self.richangSelection = []
         self.pending_combat_keys = False
+        self.pending_combat_flag = False
         self.click_hwnd = 0
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         self.zhengdianFb = ["官渡", "魔镜", "黑风","龙珠","龙岛", "战魂+红+整点",
@@ -339,7 +340,7 @@ class MyThread(threading.Thread):
         except Exception:
             pass
 
-    def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None):
+    def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None, pre_detected_enemies=None):
         try:
             with self._combat_lock:
                 if self.combat_auto_running:
@@ -367,6 +368,11 @@ class MyThread(threading.Thread):
                         enable_main_heal=_heal_on,
                         combat_scene=combat_scene,
                     )
+
+                # 注入 child_task 预检测到的敌军，省去 Mode 2 重新检测的一轮
+                if pre_detected_enemies:
+                    for enemy_key in pre_detected_enemies:
+                        self.combat_auto_instance.inject_pre_detected_enemy(enemy_key)
 
                 if self.combat_auto_instance.battle_report_dialog:
                     self.combat_auto_instance.battle_report_dialog.set_running(True)
@@ -1944,16 +1950,25 @@ class MyThread(threading.Thread):
                 )
             if not self.combat_auto_running:
                 if self.pending_combat_keys:
+                    # 收集本轮检测到的所有敌军，一次性注入 Mode 2，省去重新检测的一轮
+                    pre_detected = []
                     for enemy_key, config in self.enemy_general_config.items():
                         image_path = config["status_images"]["状态1"]
                         if self.find_pic_or_str(image_path, config["status_region"], 0):
-                            self._start_combat_auto(clear_enemy_keys=list(self.enemy_general_config.keys()))
-                            time.sleep(2)
-                            self.waitFor(self.get_resource_path("serveAssets/images/jineng.bmp"),self.gameBottomLocation)
-                            self._stop_combat_auto()
-                            self.pending_combat_keys = False
-                            break
-                else:
+                            pre_detected.append(enemy_key)
+                    if pre_detected:
+                        self.pending_combat_flag = True
+                        self._start_combat_auto(
+                            clear_enemy_keys=list(self.enemy_general_config.keys()),
+                            combat_scene="整点",
+                            pre_detected_enemies=pre_detected
+                        )
+                        time.sleep(2)
+                        self.waitFor(self.get_resource_path("serveAssets/images/jineng.bmp"), self.gameBottomLocation)
+                        self._stop_combat_auto()
+                        self.pending_combat_flag = False
+                        self.pending_combat_keys = False
+                if not self.pending_combat_flag:
                     zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
                     found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
                     if found:
