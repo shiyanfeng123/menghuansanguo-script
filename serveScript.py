@@ -411,10 +411,11 @@ class MyThread(threading.Thread):
 
     def _reset_auto_combat_state(self):
         """一次性重置自动战斗状态（检测到城镇时调用，防重复重置）
-        注意：_idle_skill_round_done 不在此处重置，保持首次全托管后始终点击自动
+        _idle_skill_round_done 也在此处重置为False，确保下一场战斗从全托管开始
         """
         if not self._combat_state_reset:
             self._combat_state_reset = True
+            self._idle_skill_round_done = False
 
     def print_and_speak(self, text):
         self.engine.say(text)
