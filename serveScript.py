@@ -366,6 +366,58 @@ class MyThread(threading.Thread):
             import traceback
             traceback.print_exc()
 
+    def _execute_single_round(self):
+        """执行一轮战斗操作（child_task Mode 1 调用，识别到自动按钮后执行）"""
+        try:
+            with self._combat_lock:
+                _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
+                self.combat_auto_running = True
+
+                if not self.combat_auto_instance:
+                    self.combat_auto_instance = CombatAutoScript(self, None)
+                    self.combat_auto_instance.keep_support_general = False
+                    self.combat_auto_instance.enable_main_heal = _heal_on
+                    self.combat_auto_instance.enable_main_summon = True
+                    self.combat_auto_instance.liubei_counts = self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0}
+                else:
+                    self.combat_auto_instance.reconfigure(
+                        enemy_keys_to_detect=None,
+                        liubei_counts=self.frame.liubeiCounts if hasattr(self.frame, 'liubeiCounts') else {0: 1, 1: 0, 2: 0},
+                        enable_main_heal=_heal_on,
+                        combat_scene=None,
+                    )
+
+                if self.combat_auto_instance.battle_report_dialog:
+                    self.combat_auto_instance.battle_report_dialog.set_running(True)
+
+                self.combat_auto_instance._polling_generation += 1
+                self.combat_auto_thread = threading.Thread(
+                    target=self.combat_auto_instance.run_combat_loop,
+                    kwargs={'single_round': True},
+                    daemon=True,
+                )
+                self.combat_auto_thread.start()
+
+            # 在锁外等待线程完成
+            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+                self.combat_auto_thread.join(timeout=90)
+            self.combat_auto_thread = None
+
+            # 清理状态
+            with self._combat_lock:
+                self.combat_auto_running = False
+                if self.combat_auto_instance:
+                    try:
+                        self.combat_auto_instance.reset_state()
+                    except Exception as e:
+                        print(f"重置战斗脚本状态时出错: {e}")
+
+        except Exception as e:
+            print(f"执行单轮战斗操作失败")
+            import traceback
+            traceback.print_exc()
+            self.combat_auto_running = False
+
     def print_and_speak(self, text):
         self.engine.say(text)
         self.engine.runAndWait()
@@ -1895,11 +1947,11 @@ class MyThread(threading.Thread):
             #     # )
             # else:
             if not self.combat_auto_running:
-                self.click_image(
-                    self.get_resource_path("serveAssets/images/zidong.bmp"),
-                    0.8,
-                    self.gameLocation,
-                )
+                zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
+                found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
+                if found:
+                    self._execute_single_round()
+                    self.click_image(zidong_path, 0.8, self.gameLocation)
             time.sleep(2)
 
     # 绑定第一个窗口
@@ -2049,12 +2101,12 @@ class MyThread(threading.Thread):
                 )
             if self.refreshFlag:
                 self.refresh_view_team1()
-            if not self.combat_auto_running:
-                self.click_image_team1(
-                    self.get_resource_path("serveAssets/images/zidong.bmp"),
-                    0.8,
-                    self.gameLocation,
-                )
+            # if not self.combat_auto_running:
+            #     self.click_image_team1(
+            #         self.get_resource_path("serveAssets/images/zidong.bmp"),
+            #         0.8,
+            #         self.gameLocation,
+            #     )
             time.sleep(1)
 
     def refresh_view_team1(self):
@@ -2322,12 +2374,12 @@ class MyThread(threading.Thread):
                     (self.locationX, 120, self.locationWidth,
                      self.locationHeight),
                 )
-            if not self.combat_auto_running:
-                self.click_image_team2(
-                    self.get_resource_path("serveAssets/images/zidong.bmp"),
-                    0.8,
-                    self.gameLocation,
-                )
+            # if not self.combat_auto_running:
+            #     self.click_image_team2(
+            #         self.get_resource_path("serveAssets/images/zidong.bmp"),
+            #         0.8,
+            #         self.gameLocation,
+            #     )
             if self.refreshFlag:
                 self.refresh_view_team2()
 

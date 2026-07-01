@@ -1167,7 +1167,7 @@ class CombatAutoScript:
             "防御按钮": f"{self.get_resource_path('serveAssets/images/auto/fangyu.bmp')}|{self.get_resource_path('serveAssets/images/auto/fangyu_active.bmp')}",  # 防御按钮
             "操作按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng_active.bmp')}",  # 操作按钮(检测是否在战斗页面)
             "重复按钮": f"{self.get_resource_path('serveAssets/images/auto/chongfu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu_active.bmp')}",  # 重复按钮(重复上回合操作)
-            "取消按钮": self.get_resource_path("serveAssets/images/quxiaozdzd.bmp"),  # 取消按钮
+            "取消按钮": f"{self.get_resource_path('serveAssets/images/quxiaozdzd.bmp')}|{self.get_resource_path('serveAssets/images/quxiaozdzd1.bmp')}",  # 取消按钮
         }
 
         # zdzd图片路径（需要检测并点击取消的弹窗）
@@ -5326,7 +5326,7 @@ class CombatAutoScript:
         self.report_battle_info("轮询监听线程已启动", "system")
 
     # 轮询监听循环(内部方法)
-    def _polling_loop(self):
+    def _polling_loop(self, single_round=False):
         """轮询监听循环(内部实现)"""
         self.report_battle_info("开始轮询监听战斗状态", "system")
         account_count = self.get_account_count()
@@ -5613,6 +5613,10 @@ class CombatAutoScript:
                     # 重置目标点位识别标志，为下一轮准备
                     self._target_positions_detected_this_round = False
 
+                    # 单轮模式：执行完一轮后退出
+                    if single_round:
+                        return
+
                     # 操作完成后，更新回合数（第一回合后，每回合递增）
                     # 注意：每个账号独立处理，但回合数只需要更新一次
                     if account_threads:
@@ -5707,11 +5711,11 @@ class CombatAutoScript:
         self.report_battle_info("轮询监听已停止", "system")
 
     # 兼容方法：run_combat_loop (供newMain.py调用)
-    def run_combat_loop(self):
+    def run_combat_loop(self, single_round=False):
         """运行战斗循环(兼容方法名，在当前线程中运行轮询循环)"""
         self.current_turn = 0
         self.polling_running = True
-        self._polling_loop()
+        self._polling_loop(single_round=single_round)
 
     # 清理资源
     def cleanup(self, join_timeout: float = 2.0):
