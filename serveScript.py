@@ -94,6 +94,48 @@ class MyThread(threading.Thread):
     def __init__(self, scriptName, userData):
         super().__init__()
         self.userData = userData
+        self.enemy_general_config = {
+            "龙/猴子": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (61, 241, 147, 316),
+                "cast_position": (115, 295),
+                "status_duration": 4,
+            },
+            "羊人参娃": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (169, 346, 259, 422),
+                "cast_position": (225, 501),
+                "status_duration": 4,
+            },
+            "龙上龙": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (54, 137, 137, 219),
+                "cast_position": (148, 175),
+                "status_duration": 4,
+            },
+            # "猴子": {
+            #     "status_images": {
+            #         "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+            #     },
+            #     "status_region": (56, 257, 145, 319),
+            #     "cast_position": (113, 302),
+            #     "status_duration": 4,
+            # },
+            "猴子狮": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (146, 154, 230, 221),
+                "cast_position": (225, 258),
+                "status_duration": 4,
+            },
+        }
         self.riChangList = [
             {"name": "战", "count": 6, "time": 25},
             {"name": "镇", "count": 6, "time": 10},
@@ -235,6 +277,7 @@ class MyThread(threading.Thread):
         self.heifengCount = 0
         self.heifengWhileCount = 0
         self.richangSelection = []
+        self.pending_combat_keys = False
         self.click_hwnd = 0
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         self.zhengdianFb = ["官渡", "魔镜", "黑风","龙珠","龙岛", "战魂+红+整点",
@@ -1899,75 +1942,27 @@ class MyThread(threading.Thread):
                     self.confidenceNum,
                     self.gameBottomLocation,
                 )
-            # 点自动
-            # if self.scriptName in ["官渡", "魔镜", "黑风", "矿产"]:
-            # if not self.guajiFlag:
-            #     print(111)
-            #     # return
-            #     # if self.find_pic(
-            #     #     self.get_resource_path("serveAssets/images/zhaohuan.bmp"),
-            #     #     self.gameBottomLocation,
-            #     #     0,
-            #     # ):
-            #     #     self.click_image(
-            #     #         self.get_resource_path("serveAssets/images/fangyu.bmp"),
-            #     #         0.8,
-            #     #         self.gameLocation,
-            #     #     )
-            #     # jineng = self.find_pic(
-            #     #     f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
-            #     #     self.gameBottomLocation,
-            #     #     0,
-            #     # )
-            #     # if jineng:
-            #     #     self.dm.MoveTo(jineng.x, jineng.y)
-            #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
-            #     #     time.sleep(0.5)
-            #     #     # jineng = self.auto_move_and_click()
-            #     #     if self.scriptName in ["官渡", "魔镜", "黑风"]:
-            #     #         self.dm.MoveTo(196, 255)
-            #     #     else:
-            #     #         self.dm.MoveTo(190, 383)
-            #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
-            #     #     time.sleep(2)
-            #     # jineng1 = self.find_pic(
-            #     #     f"{self.get_resource_path('serveAssets/images/caocao.bmp')}|{self.get_resource_path('serveAssets/images/moguan.bmp')}|{self.get_resource_path('serveAssets/images/zhuge.bmp')}|{self.get_resource_path('serveAssets/images/lvbu.bmp')}|{self.get_resource_path('serveAssets/images/daqiao.bmp')}||{self.get_resource_path('serveAssets/images/guojia.bmp')}||{self.get_resource_path('serveAssets/images/zhangliao.bmp')}",
-            #     #     self.gameBottomLocation,
-            #     #     0,
-            #     # )
-            #     # if jineng1:
-            #     #     self.dm.MoveTo(jineng1.x, jineng1.y)
-            #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
-            #     #     time.sleep(1.5)
-            #     #     # jineng1 = self.auto_move_and_click()
-            #     #     if self.scriptName in ["官渡", "魔镜", "黑风"]:
-            #     #         self.dm.MoveTo(196, 255)
-            #     #     else:
-            #     #         self.dm.MoveTo(190, 383)
-            #     #     time.sleep(0.001)
-            #     #     self.dm.LeftClick()
-            #     # if jineng1 or jineng:
-            #     #     self.guajiFlag = True
-            #     # # 193 294   190  383
-            #     # self.click_image(
-            #     #     self.get_resource_path("serveAssets/images/yes.bmp"),
-            #     #     0.8,
-            #     #     self.gameLocation,
-            #     # )
-            # else:
             if not self.combat_auto_running:
-                zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
-                found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
-                if found:
-                    if not self._single_round_done:
-                        self._execute_single_round()
-                        self._single_round_done = True
-                    else:
-                        self.click_image(zidong_path, 0.8, self.gameLocation)
-                        self._single_round_done = False
+                if self.pending_combat_keys:
+                    for enemy_key, config in self.enemy_general_config.items():
+                        image_path = config["status_images"]["状态1"]
+                        if self.find_pic_or_str(image_path, config["status_region"], 0):
+                            self._start_combat_auto(clear_enemy_keys=list(self.enemy_general_config.keys()))
+                            time.sleep(2)
+                            self.waitFor(self.get_resource_path("serveAssets/images/jineng.bmp"),self.gameBottomLocation)
+                            self._stop_combat_auto()
+                            self.pending_combat_keys = False
+                            break
+                else:
+                    zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
+                    found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
+                    if found:
+                        if not self._single_round_done:
+                            self._execute_single_round()
+                            self._single_round_done = True
+                        else:
+                            self.click_image(zidong_path, 0.8, self.gameLocation)
+                            self._single_round_done = False
             time.sleep(2)
 
     # 绑定第一个窗口
@@ -4876,10 +4871,13 @@ class MyThread(threading.Thread):
         time.sleep(0.001)
         self.dm.LeftClick()
         if auto_combat_key is not None:
-            self._start_combat_auto()
+            self._start_combat_auto(clear_enemy_keys = [auto_combat_key])
+        else:
+            self.pending_combat_keys = True
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
         if auto_combat_key is not None:
             self._stop_combat_auto()
+        self.pending_combat_keys = False
         return combat_result
 
     def _wait_combat_result(self, base_image, auto_combat_key):

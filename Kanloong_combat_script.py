@@ -549,14 +549,19 @@ class CombatAutoScript:
 
         # 张星彩单攻优先目标列表：检测到蓝条（存活）的特定敌军
         self._xingcai_single_targets = []  
-        # [{"enemy_key": str, "cast_position": tuple, "priority": int}]
         # 张星彩单攻目标优先级（数字越小优先级越高）
         self._XINGCAI_TARGET_PRIORITY = {
             "刘备28": 1, "赵云28": 2,
             "刘备29": 1, "赵云29": 2, "诸葛亮": 3,
         }
+        
         self._XINGCAI_LANTIAO_KEYS = {"刘备28", "刘备29", "赵云29", "赵云28", "诸葛亮"}
-
+        if "刘备28" not in self.enemy_keys_to_detect and "刘备29" not in self.enemy_keys_to_detect:
+            self._XINGCAI_TARGET_PRIORITY = {
+                "赵云28": 2,
+                "赵云29": 2, "诸葛亮": 3,
+            }
+            self._XINGCAI_LANTIAO_KEYS = {"赵云28", "赵云29", "诸葛亮"}
         # 清除状态认领优先级（(enemy_key, status_name) → 数字，越小越优先）
         self._CLEAR_PRIORITY = {
             ("刘备28", "状态1"): 1,
