@@ -1167,7 +1167,7 @@ class CombatAutoScript:
             "防御按钮": f"{self.get_resource_path('serveAssets/images/auto/fangyu.bmp')}|{self.get_resource_path('serveAssets/images/auto/fangyu_active.bmp')}",  # 防御按钮
             "操作按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng_active.bmp')}",  # 操作按钮(检测是否在战斗页面)
             "重复按钮": f"{self.get_resource_path('serveAssets/images/auto/chongfu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu_active.bmp')}",  # 重复按钮(重复上回合操作)
-            "取消按钮": self.get_resource_path("serveAssets/images/quxiaozdzd.bmp"),  # 取消按钮
+            "取消按钮": f"{self.get_resource_path('serveAssets/images/quxiaozdzd.bmp')}|{self.get_resource_path('serveAssets/images/quxiaozidong.bmp')}",  # 取消按钮
         }
 
         # zdzd图片路径（需要检测并点击取消的弹窗）
