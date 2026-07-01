@@ -447,6 +447,9 @@ class MyThread(threading.Thread):
                 if self.combat_auto_instance.battle_report_dialog:
                     self.combat_auto_instance.battle_report_dialog.set_running(True)
 
+                # idle Mode 1：刘备和张星彩只防御，不释放技能
+                self.combat_auto_instance.idle_defense_generals = {"support", "xingcai_support"}
+
                 self.combat_auto_instance._polling_generation += 1
                 my_thread = threading.Thread(
                     target=self.combat_auto_instance.run_combat_loop,
@@ -479,6 +482,11 @@ class MyThread(threading.Thread):
                 if self.combat_auto_thread is my_thread:
                     self.combat_auto_running = False
                     self.combat_auto_thread = None
+                if self.combat_auto_instance:
+                    try:
+                        self.combat_auto_instance.reset_state()
+                    except Exception as re:
+                        print(f"异常时重置战斗脚本状态出错: {re}")
 
     def print_and_speak(self, text):
         self.engine.say(text)
@@ -1219,7 +1227,7 @@ class MyThread(threading.Thread):
             )
             time.sleep(1)
             _haojie_auto = "浩劫" in self.combat_auto_scenes if hasattr(self, 'combat_auto_scenes') else False
-            _haojie_key = ["赵云29", "龙/猴子"] if _haojie_auto else None
+            _haojie_key = ["浩劫魔将", "浩劫小白虎"] if _haojie_auto else None
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
                     "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
@@ -1975,7 +1983,10 @@ class MyThread(threading.Thread):
                     found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
                     if found:
                         if not self._single_round_done:
-                            self._execute_single_round()
+                            try:
+                                self._execute_single_round()
+                            except Exception:
+                                pass  # _execute_single_round 内部已做清理
                             self._single_round_done = True
                         else:
                             # 队长 + 两个队友都点击自动按钮
@@ -5128,6 +5139,13 @@ class MyThread(threading.Thread):
                     if change_color_time > 0 and time.time() - change_color_time > 5:
                         break
                     zhengdian_btn1 = self.find_str("敢犯我帮", self.gameBottomLocation, 1)
+                    if zhengdian_btn1:
+                        self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
+                        time.sleep(0.001)
+                        self.dm.LeftClick()
+                        found_btn = True
+                        break
+                    zhengdian_btn1 = self.find_str("气数在我", self.gameBottomLocation, 1)
                     if zhengdian_btn1:
                         self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
                         time.sleep(0.001)

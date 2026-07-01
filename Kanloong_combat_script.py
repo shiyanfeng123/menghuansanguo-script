@@ -99,7 +99,7 @@ class BattleReportDialog(wx.Frame):
 
     def __init__(self, parent=None):
         super().__init__(
-            parent, title="战斗实时播报", size=(520, 500), pos=(0, 580),
+            parent, title="战斗实时播报", size=(520, 500), pos=(10, 450),
             style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
         )
         self.SetBackgroundColour(self.C_BG)
@@ -516,6 +516,8 @@ class CombatAutoScript:
         )  # 待召唤刘备记录：{target_account_index: {'target_char_index': int, 'target_char_info': dict}}
         self.has_liubei_on_field = True  # 场上是否有刘备（全局标志，所有账号共享），在我方回合通过图片检测
         self.liubei_missing_count = 0  # 连续未找到刘备的次数，用于判断场上是否有刘备
+        self.has_xingcai_on_field = True  # 场上是否有张星彩（全局标志，所有账号共享），在非我方回合通过图片检测
+        self.xingcai_missing_count = 0  # 连续未找到张星彩的次数
         self.low_hp_units = (
             {}
         )  # 血量低的单位记录：{account_index: [{'unit_type': 'main_char'/'general', 'unit_name': str, 'position': (x, y), 'region_index': int}, ...]}
@@ -631,6 +633,8 @@ class CombatAutoScript:
         self.enable_zhaoyun29_hold = True
         # 多刘备并行清除（默认关闭）
         self.enable_multi_liubei = False
+        # idle模式下仅防御的武将unit_type集合（child_task Mode 1 专用，刘备/张星彩不释放技能）
+        self.idle_defense_generals = set()
 
         # 战斗策略引擎（优先级排序的技能释放策略）
         self.skill_strategies = {
@@ -638,6 +642,8 @@ class CombatAutoScript:
                 {"priority": 80, "skill": "锁魂",       "condition": "always"},
                 {"priority": 60, "skill": "寂灭神劫",    "condition": "always"},
                 {"priority": 50, "skill": "天灾",        "condition": "always"},
+                {"priority": 40, "skill": "黑洞",      "condition": "enemy_single"},
+                {"priority": 30, "skill": "碎石穿魂",     "condition": "enemy_single"},
             ],
             "attack": [
                 {"priority": 90, "skill": "曹操单攻",    "condition": "enemy_single"},
@@ -817,6 +823,8 @@ class CombatAutoScript:
             "寂灭神劫": f"{self.get_resource_path('serveAssets/images/auto/jimie1.bmp')}|{self.get_resource_path('serveAssets/images/auto/jimie2.bmp')}",
             "锁魂": f"{self.get_resource_path('serveAssets/images/auto/suohun1.bmp')}|{self.get_resource_path('serveAssets/images/auto/suohun2.bmp')}",
             "天灾": f"{self.get_resource_path('serveAssets/images/auto/tianzai1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tianzai2.bmp')}",
+            "黑洞": f"{self.get_resource_path('serveAssets/images/auto/dimie1.bmp')}|{self.get_resource_path('serveAssets/images/auto/dimie2.bmp')}",
+            "碎石穿魂": f"{self.get_resource_path('serveAssets/images/auto/suishi1.bmp')}|{self.get_resource_path('serveAssets/images/auto/suishi2.bmp')}",
             # 辅助武将技能
             "加血": f"{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/tuanjiezhiquan2.bmp')}",
             "加攻击": f"{self.get_resource_path('serveAssets/images/auto/liubeizengshang1.bmp')}|{self.get_resource_path('serveAssets/images/auto/liubeizengshang2.bmp')}",
@@ -886,6 +894,8 @@ class CombatAutoScript:
             "寂灭神劫": 3,  # 3回合CD
             "锁魂": 2,  # 2回合CD
             "天灾": 2,  # 2回合CD
+            "黑洞": 0,  # 2回合CD
+            "碎石穿魂": 0,  # 2回合CD
             # 武将技能
             "剑阵灭杀": 0,  # 无CD
             "武神一怒": 0,  # 无CD
@@ -1107,6 +1117,30 @@ class CombatAutoScript:
                 "cast_position": (115, 295),
                 "status_duration": 4,
             },
+            "浩劫穷奇": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (60, 241, 147, 322),
+                "cast_position": (110, 379),
+                "status_duration": 4,
+            },
+            "浩劫魔将": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (60, 241, 147, 322),
+                "cast_position": (98, 316),
+                "status_duration": 4,
+            },
+            "浩劫小白虎": {
+                "status_images": {
+                    "状态1": f"{self.get_resource_path('serveAssets/images/auto/longdan1.bmp')}|{self.get_resource_path('serveAssets/images/auto/longdan2.bmp')}",
+                },
+                "status_region": (72, 342, 155, 422),
+                "cast_position": (98, 501),
+                "status_duration": 4,
+            },
             "羊人参娃": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
@@ -1261,7 +1295,6 @@ class CombatAutoScript:
                     posX = int(pos_res[1]) + (int(picW) * 0.5)
                     posY = int(pos_res[2]) + (int(picH) * 0.5)
                     return ResXy(int(posX), int(posY))
-                time.sleep(0.02)
             # 所有识别率都未找到，返回None
             return None
         except Exception:
@@ -1303,7 +1336,6 @@ class CombatAutoScript:
                         if not deduped or ((pos[0] - deduped[-1][0]) ** 2 + (pos[1] - deduped[-1][1]) ** 2) ** 0.5 > 5:
                             deduped.append(pos)
                     return deduped
-            time.sleep(0.02)
         return []
 
     def find_target_text(self, account_index, search_region, timeout=3.0):
@@ -1355,7 +1387,7 @@ class CombatAutoScript:
         # time.sleep(CombatConstants.ACTION_DELAY)
 
     def click_with_verification(
-        self, account_index, image_path, pos, region, item_name="物品", max_retries=2, verify_delay=0.8
+        self, account_index, image_path, pos, region, item_name="物品", max_retries=2, verify_delay=0.3
     ):
         """通用点击验证方法：点击后检查图片是否消失，如果未消失则重试
         :param account_index: 账号索引
@@ -2220,8 +2252,9 @@ class CombatAutoScript:
                 break
             time.sleep(0.15)
         # 四象副本的敌军蓝条与实际点击位置Y偏移不同（四象+48，其他+70）
-        _enemy_y_offset = 48 if self.combat_scene in ["四象", "整点"] else 70
-        self.enemy_target_positions = [(x + 26, y + _enemy_y_offset) for x, y in max_raw_positions]
+        _enemy_y_offset = 48 if self.combat_scene in ["四象","整点"] else 70
+        _enemy_x_offset = 15 if self.combat_scene in ["整点"] else 26
+        self.enemy_target_positions = [(x + _enemy_x_offset, y + _enemy_y_offset) for x, y in max_raw_positions]
         if not self.enemy_target_positions:
             self.enemy_target_positions = [(104, 344)]
         self.enemy_count = len(self.enemy_target_positions)
@@ -2322,6 +2355,27 @@ class CombatAutoScript:
                 if self.liubei_missing_count >= 4:
                     if self.has_liubei_on_field:
                         self.has_liubei_on_field = False
+
+    def _detect_xingcai_on_field(self):
+        """在非我方回合时，由大漠对象0检测场上是否有张星彩
+        在我方区域检测 self.xingcai_verify_image，连续4次未找到则设置 has_xingcai_on_field 为 False
+        """
+        account_index = 0  # 使用大漠对象0进行检测
+        dm = self.get_account_dm(account_index)
+        if not dm:
+            return
+
+        xingcai_pos = self.find_image(account_index, self.xingcai_verify_image, self.ally_region, 0)
+
+        with self._state_lock:
+            if xingcai_pos:
+                self.xingcai_missing_count = 0
+                self.has_xingcai_on_field = True
+            else:
+                self.xingcai_missing_count += 1
+                if self.xingcai_missing_count >= 4:
+                    if self.has_xingcai_on_field:
+                        self.has_xingcai_on_field = False
 
     def _track_ally_undead(self, dm_index):
         """非我方回合追踪我方武将免死被动轮次 + 替换中验证
@@ -4011,7 +4065,7 @@ class CombatAutoScript:
             if summon_btn:
                 return ("main_char", None)
 
-            time.sleep(0.1)  # 每次循环间隔0.1秒
+            time.sleep(0.02)  # 每次循环间隔
 
         return (None, None)
 
@@ -4274,7 +4328,7 @@ class CombatAutoScript:
                     if self.check_action_button(account_index):
                         is_finded = True
                         break
-                    time.sleep(0.05)
+                    time.sleep(0.02)
                 if not is_finded:
                     return False
                 # 进入第一个武将操作
@@ -4291,7 +4345,7 @@ class CombatAutoScript:
                     if self.check_action_button(account_index):
                         is_finded = True
                         break
-                    time.sleep(0.1)
+                    time.sleep(0.05)
                 if not is_finded:
                     return False
                 self._current_our_turn_call = 1
@@ -4358,7 +4412,7 @@ class CombatAutoScript:
                         if self.check_action_button(account_index):
                             action_found = True
                             break
-                        time.sleep(0.05)
+                        time.sleep(0.02)
                     if not action_found:
                         return
                     self.handle_our_turn(account_index, skip_side_effects=True)
@@ -4536,6 +4590,7 @@ class CombatAutoScript:
                 # === 召唤判断（仅主角操作执行） ===
                 char_info = self.unit_info[account_index]["main_char"]
                 need_liubei = False
+                need_xingcai = False
                 need_summon_general = False
                 need_self_liubei = False
                 is_first_turn = self.current_turn == 0 or self.current_turn == 1
@@ -4584,6 +4639,18 @@ class CombatAutoScript:
                                 1 for _v in self._liubei_summon_in_progress.values() if _v
                             )
                             field_has_liubei = (field_liubei_count_for_summon + summoning_count_for_summon) > 0
+                            # 检测场上是否有张星彩：unit_info 遍历 + 图片检测（OR 逻辑，任一检测到即认为在场）
+                            field_xingcai_count = 0
+                            for _acct in range(self.get_account_count()):
+                                if _acct not in self.unit_info:
+                                    continue
+                                for _g in self.unit_info[_acct]["main_char"].get("generals", []):
+                                    if (_g.get("name") == "张星彩" and _g.get("alive", True)
+                                        and not _g.get("replacing", False) and not _g.get("pending_kick", False)):
+                                        field_xingcai_count += 1
+                            field_has_xingcai_unit = field_xingcai_count > 0
+                            # OR 逻辑：unit_info 里有，或图片检测认为在场
+                            field_has_xingcai = field_has_xingcai_unit or self.has_xingcai_on_field
                             if (not field_has_liubei and self.keep_support_general
                                     and self.has_liubei.get(account_index, False)
                                     and self.has_general.get(account_index, False)
@@ -4596,13 +4663,25 @@ class CombatAutoScript:
                                 and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
                                 has_liubei_in_account = True
                                 break
-                        # 刘备召唤简化（场上没有刘备就优先上刘备,暂时关闭必须需要清除状态才上刘备）
-                        # if not field_has_liubei and not has_liubei_in_account and self.keep_support_general:
+                        has_xingcai_in_account = False
+                        for gen_info in char_info.get("generals", []):
+                            if (gen_info.get("name") == "张星彩" and gen_info.get("alive", True)
+                                and not gen_info.get("replacing", False) and not gen_info.get("pending_kick", False)):
+                                has_xingcai_in_account = True
+                                break
+                        # 召唤优先级：刘备(第一) > 张星彩(第二) > 正常顺序
                         if not field_has_liubei and not has_liubei_in_account:
                             need_liubei = True
                             need_summon_general = True
                             self.report_battle_info(
                                 f"账号{account_index} 判断需要召唤刘备",
+                                "info",
+                            )
+                        elif not field_has_xingcai and not has_xingcai_in_account:
+                            need_xingcai = True
+                            need_summon_general = True
+                            self.report_battle_info(
+                                f"账号{account_index} 判断需要召唤张星彩",
                                 "info",
                             )
                         else:
@@ -4765,6 +4844,20 @@ class CombatAutoScript:
                     if skill_btn:
                         self.click_position(account_index, skill_btn.x, skill_btn.y)
                         time.sleep(0.1)
+
+                # 4.1b 召唤张星彩（第二优先级：刘备已上场但场上没有张星彩时优先召唤）
+                if (need_xingcai
+                    and (time.time() - turn_start_time) < turn_timeout
+                    and self.has_general[account_index]
+                    and not skip_side_effects
+                ):
+                    self.report_battle_info(
+                        f"账号{account_index} 优先召唤张星彩",
+                        "info",
+                    )
+                    if self.summon_general_with_verification(account_index, "张星彩"):
+                        time.sleep(0.1)
+                        return True
 
                 # 4.2 召唤其他武将（如果需要）
                 if (
@@ -4997,6 +5090,17 @@ class CombatAutoScript:
                     return True
 
             elif unit_type == "support":
+                # idle防御模式：child_task Mode 1 调用时刘备只防御，不释放技能
+                if "support" in self.idle_defense_generals:
+                    defense_btn = self.find_image(
+                        account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
+                    )
+                    if defense_btn:
+                        self.click_position(account_index, defense_btn.x, defense_btn.y)
+                        self.report_battle_info(f"账号{account_index} 刘备[idle防御]执行防御", "action")
+                        time.sleep(CombatConstants.ACTION_DELAY)
+                        return True
+                    return False
                 # 刘备操作
                 # 修改点8: 检查清除技能是否可用（技能图标可见说明不在CD中）
                 clear_skill_pos = self.find_image(account_index, self.skill_images.get("清除状态"), self.skill_panel_region, 0)
@@ -5191,6 +5295,17 @@ class CombatAutoScript:
                         self._claimed_clear_target[account_index] = None
 
             elif unit_type == "xingcai_support":
+                # idle防御模式：child_task Mode 1 调用时张星彩只防御，不释放技能
+                if "xingcai_support" in self.idle_defense_generals:
+                    defense_btn = self.find_image(
+                        account_index, self.button_images.get("防御按钮"), self.right_button_region, 0
+                    )
+                    if defense_btn:
+                        self.click_position(account_index, defense_btn.x, defense_btn.y)
+                        self.report_battle_info(f"账号{account_index} 张星彩[idle防御]执行防御", "action")
+                        time.sleep(CombatConstants.ACTION_DELAY)
+                        return True
+                    return False
                 # 张星彩操作（第一回合辅助，后续群攻）
                 char_info = self.unit_info[account_index]["main_char"]
                 found_xingcai = any(g.get("name") == "张星彩" for g in char_info.get("generals", []))
@@ -5672,6 +5787,8 @@ class CombatAutoScript:
 
                     # 非我方回合时，由大漠对象0检测场上是否有刘备
                     self._detect_liubei_on_field()
+                    # 非我方回合时，由大漠对象0检测场上是否有张星彩
+                    self._detect_xingcai_on_field()
 
                     # 追踪我方武将免死被动轮次
                     self._track_ally_undead(main_account_index)
@@ -5874,6 +5991,8 @@ class CombatAutoScript:
                 self.pending_liubei_summon = {}
                 self.has_liubei_on_field = True
                 self.liubei_missing_count = 0
+                self.has_xingcai_on_field = True
+                self.xingcai_missing_count = 0
                 self.low_hp_units = {}
                 self._no_heal_item_missing_turn = {}
                 self._no_mana_item_missing_turn = {}
@@ -6001,6 +6120,8 @@ class CombatAutoScript:
             self._xingcai_single_targets = []
             self.has_liubei_on_field = True
             self.liubei_missing_count = 0
+            self.has_xingcai_on_field = True
+            self.xingcai_missing_count = 0
             self.keep_support_general = False
             self.low_hp_units = {}
             self._no_heal_item_missing_turn = {}
@@ -6135,6 +6256,7 @@ class CombatAutoScript:
             self.replace_fail_cooldown = {}
             self._dialog_closed = False
             self._battle_dialog_retry_count = 0
+            self.idle_defense_generals = set()
             if self.battle_report_dialog:
                 try:
                     self.battle_report_dialog.Show()
