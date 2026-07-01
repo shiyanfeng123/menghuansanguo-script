@@ -1977,7 +1977,15 @@ class MyThread(threading.Thread):
                             self._execute_single_round()
                             self._single_round_done = True
                         else:
-                            self.click_image(zidong_path, 0.8, self.gameLocation)
+                            # 队长 + 两个队友都点击自动按钮
+                            self.dm.MoveTo(found.x, found.y)
+                            self.dm.LeftClick()
+                            if self.win1_hwnd and self.win1_dm:
+                                self.win1_dm.MoveTo(found.x, found.y)
+                                self.win1_dm.LeftClick()
+                            if self.win2_hwnd and self.win2_dm:
+                                self.win2_dm.MoveTo(found.x, found.y)
+                                self.win2_dm.LeftClick()
                             self._single_round_done = False
             time.sleep(2)
 
