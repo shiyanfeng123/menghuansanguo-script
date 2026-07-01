@@ -5911,6 +5911,9 @@ class CombatAutoScript:
                 self.clear_zhugeliang = False
                 self._liubei29_status1_detected = False
                 self.enable_persistent_liubei = True
+                self.enable_zhaoyun29_hold = True
+                self.enable_multi_liubei = False
+                self.combat_scene = None
                 self._last_kicked_info = None
                 self.keep_support_general = False
                 self._proactive_replace_in_progress = False
@@ -6035,6 +6038,10 @@ class CombatAutoScript:
             self.zhaohuan_index = 0
             self.clear_zhugeliang = False
             self._liubei29_status1_detected = False
+            self.enable_persistent_liubei = True
+            self.enable_zhaoyun29_hold = True
+            self.enable_multi_liubei = False
+            self.combat_scene = None
             self.attack_buff_tracker = {}
             self.low_hp_accounts = {}
             self._zhugeliang_low_hp = False
@@ -6122,6 +6129,7 @@ class CombatAutoScript:
             self.enemy_status_reported = {}
             self._xingcai_single_targets = []
             self.zhugeliang_status1_missing_count = {}
+            self.zhugeliang_status2_missing_count = {}
             self._zhugeliang_low_hp = False
             self.replace_fail_count = {}
             self.replace_fail_cooldown = {}
