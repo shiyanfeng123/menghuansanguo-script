@@ -259,20 +259,14 @@ class MyThread(threading.Thread):
         self.combat_auto_instance = None
         self.combat_auto_thread = None
         self.combat_auto_running = False
-        # ==================== 三态自动战斗系统 ====================
+        # ==================== 双模态自动战斗系统 ====================
         # 调用方式:
         #   Mode 1 (IDLE交替): child_task 自动运行，无需外部调用
         #     - 识别到自动按钮 → 全托管一轮 → 点击自动 → 全托管一轮 → ... 交替循环
         #   Mode 2 (全托管): 外部脚本直接调用 _start_combat_auto(clear_enemy_keys, combat_scene)
         #     - clear_enemy_keys: 需检测的敌方key列表，如 ["赵云28","刘备28"]
         #     - combat_scene: 战斗场景标识，如 "四象"
-        #   Mode 3 (敌方状态介入): 由 child_task 自动触发，需先设置 _pending_enemy_keys
-        #     - 设置: set_pending_enemy_keys(["蛇","龙"])
-        #     - 设置后，IDLE状态每2秒检测敌方状态，发现则退出系统自动→全托管接管
-        #     - Mode 1 全托管时也会将 _pending_enemy_keys 传给 Mode 2 内部检测
-        self._pending_enemy_keys = []   # 敌方状态检测列表（空=不检测，非空=检测指定敌方）
         self._combat_state_reset = True # 一次性重置标志（True=已重置，待下次进入战斗）
-        self._mode3_triggered = False   # Mode 3 是否已触发（预留，暂未使用）
         self._idle_skill_round_done = False  # IDLE交替标志（False=下次全托管，True=下次点击自动）
         self._combat_lock = threading.Lock()  # 保护 start/stop 互斥
         # 副本统计：四象/噬魂 的成功、失败、已打、总次数
@@ -414,37 +408,11 @@ class MyThread(threading.Thread):
             self.combat_auto_instance = CombatAutoScript(self)
         return self.combat_auto_instance
 
-    def _check_enemy_status(self):
-        """检测敌方状态，返回触发的敌方 key 或 None
-        仅在 _pending_enemy_keys 已配置时才检测，为空时不做任何检测
-        """
-        if not self._pending_enemy_keys:
-            return None
-        script = self._ensure_combat_script()
-        return script.detect_enemy_status_for_hybrid(self._pending_enemy_keys)
-
-    def set_pending_enemy_keys(self, keys):
-        """设置需要检测敌方状态的 key 列表，激活 Mode 3 敌方状态介入
-        :param keys: 敌方 key 列表，如 ["蛇", "龙", "诸葛亮"]
-                     必须是 enemy_general_config 中已配置的 key
-                     设为空列表 [] 则关闭敌方状态检测
-        用法:
-            # 在 child_task 的副本脚本中，进入战斗前设置:
-            self.set_pending_enemy_keys(["蛇", "龙"])
-            # 之后三态系统会自动:
-            #   1. Mode 1 全托管时内部检测这些敌方状态
-            #   2. Mode 3 IDLE 时外层每2秒检测，发现则介入
-            # 战斗结束回到城镇时会自动重置为 []
-        """
-        self._pending_enemy_keys = keys if keys else []
-
     def _reset_auto_combat_state(self):
         """一次性重置自动战斗状态（检测到城镇时调用，防重复重置）
         注意：_idle_skill_round_done 不在此处重置，保持首次全托管后始终点击自动
         """
         if not self._combat_state_reset:
-            self._pending_enemy_keys = []
-            self._mode3_triggered = False
             self._combat_state_reset = True
 
     def print_and_speak(self, text):
@@ -1984,34 +1952,23 @@ class MyThread(threading.Thread):
             elif scene == "combat":
                 self._combat_state_reset = False
                 if not self.combat_auto_running:
-                    # 优先检测敌方状态
-                    enemy_key = self._check_enemy_status()
-                    if enemy_key:
-                        # Mode 3: 退出系统自动 → 全托管接管
-                        script = self._ensure_combat_script()
-                        if not script.check_any_action_button():
-                            script.exit_system_auto()
-                            time.sleep(0.5)
-                        self._start_combat_auto(clear_enemy_keys=self._pending_enemy_keys)
-                        self._mode3_triggered = True
+                    zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
+                    if not self._idle_skill_round_done:
+                        # 识别到自动按钮 → 全托管接管一轮（纯技能释放，不检测敌方状态）
+                        found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
+                        if found:
+                            self._start_combat_auto()
+                            self._idle_skill_round_done = True
                     else:
-                        zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
-                        if not self._idle_skill_round_done:
-                            # 识别到自动按钮 → 全托管接管一轮（纯技能释放，不检测敌方状态）
-                            found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
-                            if found:
-                                self._start_combat_auto()
-                                self._idle_skill_round_done = True
-                        else:
-                            # 点击自动按钮，维持系统自动，并重置标志
-                            # 下次再检测到自动按钮时将再次全托管
-                            found = self.click_image(zidong_path, 0.8, self.gameLocation)
-                            if self.win1_dm:
-                                self.click_image_team1(zidong_path, 0.8, self.gameLocation)
-                            if self.win2_dm:
-                                self.click_image_team2(zidong_path, 0.8, self.gameLocation)
-                            if found:
-                                self._idle_skill_round_done = False
+                        # 点击自动按钮，维持系统自动，并重置标志
+                        # 下次再检测到自动按钮时将再次全托管
+                        found = self.click_image(zidong_path, 0.8, self.gameLocation)
+                        if self.win1_dm:
+                            self.click_image_team1(zidong_path, 0.8, self.gameLocation)
+                        if self.win2_dm:
+                            self.click_image_team2(zidong_path, 0.8, self.gameLocation)
+                        if found:
+                            self._idle_skill_round_done = False
             time.sleep(2)
 
     # 绑定第一个窗口
@@ -4907,12 +4864,11 @@ class MyThread(threading.Thread):
         self.dm.MoveTo(int(zhengdian_btn.x + 5), int(zhengdian_btn.y + 5))
         time.sleep(0.001)
         self.dm.LeftClick()
-        if auto_combat_key == "蛇":
-            self.set_pending_enemy_keys(["蛇"])
-        else:
-            self.set_pending_enemy_keys(["龙/猴子", "龙上龙","猴子狮","羊人参娃"])
         if auto_combat_key is not None:
-            self._start_combat_auto(force=True)
+            if auto_combat_key == "蛇":
+                self._start_combat_auto(clear_enemy_keys=["蛇"], force=True)
+            else:
+                self._start_combat_auto(clear_enemy_keys=["龙/猴子", "龙上龙","猴子狮","羊人参娃"], force=True)
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
         if auto_combat_key is not None:
             self._stop_combat_auto()
