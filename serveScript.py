@@ -570,6 +570,7 @@ class MyThread(threading.Thread):
             self.frame.guandujy_count) if self.frame.guandujy_count else 1
         self.mingjiang_count = int(
             self.frame.mingjiang_count) if self.frame.mingjiang_count else 8
+        self.enable_pending_combat = self.frame.enable_pending_combat if hasattr(self.frame, 'enable_pending_combat') else False
         self.richang_zhengdian = self.frame.richang_zhengdian if hasattr(self.frame, 'richang_zhengdian') else False
         self.richang_mojing = self.frame.richang_mojing if hasattr(self.frame, 'richang_mojing') else False
         self.heifengFloor = self.frame.heifengFloor
