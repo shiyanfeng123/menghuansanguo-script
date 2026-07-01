@@ -969,6 +969,10 @@ class MyThread(threading.Thread):
                 print("未选择层数，自动打25层")
             self.guanduAndHongAndZd()
         elif self.scriptName == "日常":
+            self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": int(self.sixiang_count), "total_time": 0}
+            self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": self.shihun_count, "total_time": 0}
+            if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
+                wx.CallAfter(self.frame._refresh_dungeon_stats)
             self.richangeScript()
         elif self.scriptName == "五行":
             self.wuxingWhile()
@@ -1024,6 +1028,10 @@ class MyThread(threading.Thread):
             self.scriptName = "官渡"
             self.guanduWhile()
         elif self.scriptName == "49日常":
+            self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": int(self.sixiang_count), "total_time": 0}
+            self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": self.shihun_count, "total_time": 0}
+            if self.frame and hasattr(self.frame, "_refresh_dungeon_stats"):
+                wx.CallAfter(self.frame._refresh_dungeon_stats)
             self.richang49Script()
         elif self.scriptName == "49一键":
             self.all49Script()
@@ -1047,8 +1055,6 @@ class MyThread(threading.Thread):
                 if i > 0 and i % 15 == 0:
                     time.sleep(1)
                     self.clearBag()
-                    time.sleep(1)
-                    self.clear_hide_map()
                     time.sleep(1)
                 self.kuangchanScript()
                 if self.heifengCount == self.heifengWhileCount:
@@ -1098,7 +1104,7 @@ class MyThread(threading.Thread):
             )
             time.sleep(1)
             _haojie_auto = "浩劫" in self.combat_auto_scenes if hasattr(self, 'combat_auto_scenes') else False
-            _haojie_key = True if _haojie_auto else None
+            _haojie_key = ["赵云29", "龙/猴子"] if _haojie_auto else None
             self.find_zd_xiaolvren_v3(base_image = self.get_resource_path(
                     "serveAssets/images/longdao/dabenying.bmp"),auto_combat_key=_haojie_key,npc_count = 2,npc_zones=[(798, 49), (811, 49)])
             self.dm.MoveTo(self.locationX + 790, self.locationY + 75)
@@ -5029,8 +5035,21 @@ class MyThread(threading.Thread):
                         change_color_time = time.time()
                     if change_color_time > 0 and time.time() - change_color_time > 5:
                         break
-
-                    zhengdian_btn1 = self.find_str("血债血偿|敢犯我帮|恐惧", self.gameBottomLocation, 1)
+                    zhengdian_btn1 = self.find_str("敢犯我帮", self.gameBottomLocation, 1)
+                    if zhengdian_btn1:
+                        self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
+                        time.sleep(0.001)
+                        self.dm.LeftClick()
+                        found_btn = True
+                        break
+                    zhengdian_btn1 = self.find_str("恐惧", self.gameBottomLocation, 1)
+                    if zhengdian_btn1:
+                        self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
+                        time.sleep(0.001)
+                        self.dm.LeftClick()
+                        found_btn = True
+                        break
+                    zhengdian_btn1 = self.find_str("血债血偿", self.gameBottomLocation, 1)
                     if zhengdian_btn1:
                         self.dm.MoveTo(int(zhengdian_btn1.x + 5), int(zhengdian_btn1.y + 5))
                         time.sleep(0.001)
@@ -5044,7 +5063,7 @@ class MyThread(threading.Thread):
                     attacked_set.add((tl_x, tl_y))
                     continue
                 if auto_combat_key is not None:
-                    _keys = None if auto_combat_key is True else [auto_combat_key]
+                    _keys = None if auto_combat_key is True else auto_combat_key
                     self._start_combat_auto(clear_enemy_keys=_keys)
                 combat_ok = self._wait_combat_result(base_image, auto_combat_key)
                 if auto_combat_key is not None:
@@ -6823,13 +6842,42 @@ class MyThread(threading.Thread):
                         time.sleep(1)
                         self.mojingWhile()
                         return
+                    elif self.scriptName == "龙珠":
+                        print("超过15s没找到目标,重新进入龙珠")
+                        self.outScript()
+                        time.sleep(1)
+                        self.longzhuWhile()
+                        return
+                    elif self.scriptName == "龙岛":
+                        print("超过15s没找到目标,重新进入龙岛")
+                        self.outScript()
+                        time.sleep(1)
+                        while True:
+                            if self.check_stop_or_over():
+                                return
+                            hasLongDao = self.longdaoScript()
+                            if not hasLongDao:
+                                break
+                        return
                     elif self.scriptName == "黑风":
                         print("超过15s没找到目标,重新进入黑风")
                         self.outScript()
                         time.sleep(1)
                         self.heifengWhile()
                         return
-
+                    elif self.scriptName == "矿产":
+                        print("超过15s没找到目标,重新进入矿产")
+                        self.outScript()
+                        time.sleep(1)
+                        for i in range(self.heifengWhileCount):
+                            if self.check_stop_or_over():
+                                return
+                            if i > 0 and i % 15 == 0:
+                                time.sleep(1)
+                                self.clearBag()
+                                time.sleep(1)
+                            self.kuangchanScript()
+                        return
                 #   D找图片D点击‘
                 if (
                         D
@@ -9617,7 +9665,7 @@ class MyThread(threading.Thread):
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
         self.findAndClickPic(
             "东海之极",
-            f"{self.get_resource_path('serveAssets/images/richang/zixiaxianzi.bmp')}|{self.get_resource_path('serveAssets/images/richang/jintianti.bmp')}|{self.get_resource_path('serveAssets/images/richang/jintianti1.bmp')}|{self.get_resource_path('serveAssets/images/richang/jintianti2.bmp')}",
+            f"{self.get_resource_path('serveAssets/images/richang/zixiaxianzi2.bmp')}|{self.get_resource_path('serveAssets/images/richang/zixiaxianzi1.bmp')}|{self.get_resource_path('serveAssets/images/richang/zixiaxianzi.bmp')}|{self.get_resource_path('serveAssets/images/richang/jintianti.bmp')}|{self.get_resource_path('serveAssets/images/richang/jintianti1.bmp')}|{self.get_resource_path('serveAssets/images/richang/jintianti2.bmp')}",
             "进天梯",
             self.gameBottomLocation,
             "天梯",
