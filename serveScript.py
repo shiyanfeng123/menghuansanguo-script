@@ -253,6 +253,7 @@ class MyThread(threading.Thread):
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
         self.clear_liubei_enabled = True
+        self.enable_pending_combat = False    # 整点自动检测敌军状态开关
         self.auto_resize_window = False  # 是否在窗口绑定时自动调整大小和位置
         self.independent_win1 = False
         self.independent_win2 = False
@@ -4888,7 +4889,8 @@ class MyThread(threading.Thread):
         if auto_combat_key is not None:
             self._start_combat_auto(clear_enemy_keys = [auto_combat_key])
         else:
-            self.pending_combat_keys = True
+            if self.enable_pending_combat:
+                self.pending_combat_keys = True
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
         if auto_combat_key is not None:
             self._stop_combat_auto()
@@ -14413,6 +14415,7 @@ class MyFrame(wx.Frame):
         self.liubeiCounts = {0: 1, 1: 0, 2: 0}
         self.use_heal_item = False
         self.clear_liubei_enabled = True
+        self.enable_pending_combat = False    # 整点自动检测敌军状态开关
         self.auto_resize_window = False
         self.independent_win1 = False
         self.independent_win2 = False
@@ -15140,6 +15143,8 @@ class MyFrame(wx.Frame):
                 dialog.use_heal_cb.SetValue(self.use_heal_item)
             if hasattr(self, 'clear_liubei_enabled') and hasattr(dialog, 'clear_liubei_cb'):
                 dialog.clear_liubei_cb.SetValue(self.clear_liubei_enabled)
+            if hasattr(self, 'enable_pending_combat') and hasattr(dialog, 'enable_pending_cb'):
+                dialog.enable_pending_cb.SetValue(self.enable_pending_combat)
             if hasattr(self, 'auto_resize_window') and hasattr(dialog, 'auto_resize_on'):
                 if self.auto_resize_window:
                     dialog.auto_resize_off.Hide()
@@ -15723,7 +15728,13 @@ class MyDialog(wx.Dialog):
             self.clear_liubei_cb.SetForegroundColour(self.C_MUTED)
             self.clear_liubei_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
             self.clear_liubei_cb.SetValue(True)
-            func_row.Add(self.clear_liubei_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+            func_row.Add(self.clear_liubei_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
+
+            self.enable_pending_cb = wx.CheckBox(auto_combat_panel, label="整点清除")
+            self.enable_pending_cb.SetForegroundColour(self.C_MUTED)
+            self.enable_pending_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+            self.enable_pending_cb.SetValue(False)
+            func_row.Add(self.enable_pending_cb, 0, wx.ALIGN_CENTER_VERTICAL)
 
             auto_panel_sizer = wx.BoxSizer(wx.VERTICAL)
             auto_panel_sizer.Add(auto_row, 0, wx.EXPAND)
@@ -16524,6 +16535,7 @@ class MyDialog(wx.Dialog):
             "combat_auto_scenes": combat_auto_scenes,
             "use_heal_item": self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False,
             "clear_liubei_enabled": self.clear_liubei_cb.GetValue() if hasattr(self, 'clear_liubei_cb') else True,
+            "enable_pending_combat": self.enable_pending_cb.GetValue() if hasattr(self, 'enable_pending_cb') else False,
             "auto_resize_window": self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False,
         }
 
@@ -16577,6 +16589,8 @@ class MyDialog(wx.Dialog):
             self.use_heal_cb.SetValue(settings.get("use_heal_item", False))
         if hasattr(self, 'clear_liubei_cb'):
             self.clear_liubei_cb.SetValue(settings.get("clear_liubei_enabled", True))
+        if hasattr(self, 'enable_pending_cb'):
+            self.enable_pending_cb.SetValue(settings.get("enable_pending_combat", False))
         if hasattr(self, 'auto_resize_on'):
             val = settings.get("auto_resize_window", False)
             if val:
@@ -16730,6 +16744,7 @@ class MyDialog(wx.Dialog):
         parent.auto_resize_window = self.auto_resize_on.IsShown() if hasattr(self, "auto_resize_on") else False
         parent.use_heal_item = self.use_heal_cb.GetValue() if hasattr(self, 'use_heal_cb') else False
         parent.clear_liubei_enabled = self.clear_liubei_cb.GetValue() if hasattr(self, 'clear_liubei_cb') else True
+        parent.enable_pending_combat = self.enable_pending_cb.GetValue() if hasattr(self, 'enable_pending_cb') else False
         if self.IsModal():
             self.EndModal(wx.ID_OK)
 
