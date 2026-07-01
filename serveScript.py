@@ -346,6 +346,7 @@ class MyThread(threading.Thread):
                 if not self.combat_auto_running:
                     return
                 self.combat_auto_running = False
+                self._single_round_done = False  # Mode 2结束时重置，确保下次从单轮操作开始
 
                 if self.combat_auto_instance:
                     self.combat_auto_instance.polling_running = False
@@ -369,8 +370,13 @@ class MyThread(threading.Thread):
 
     def _execute_single_round(self):
         """执行一轮战斗操作（child_task Mode 1 调用，识别到自动按钮后执行）"""
+        my_thread = None
         try:
             with self._combat_lock:
+                # 如果已有Mode 2在运行，跳过
+                if self.combat_auto_running:
+                    return
+
                 _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
                 self.combat_auto_running = True
 
@@ -392,32 +398,37 @@ class MyThread(threading.Thread):
                     self.combat_auto_instance.battle_report_dialog.set_running(True)
 
                 self.combat_auto_instance._polling_generation += 1
-                self.combat_auto_thread = threading.Thread(
+                my_thread = threading.Thread(
                     target=self.combat_auto_instance.run_combat_loop,
                     kwargs={'single_round': True},
                     daemon=True,
                 )
-                self.combat_auto_thread.start()
+                self.combat_auto_thread = my_thread
+                my_thread.start()
 
-            # 在锁外等待线程完成
-            if self.combat_auto_thread and self.combat_auto_thread.is_alive():
-                self.combat_auto_thread.join(timeout=90)
-            self.combat_auto_thread = None
+            # 在锁外等待线程完成（使用本地引用，不被Mode 2覆盖）
+            if my_thread and my_thread.is_alive():
+                my_thread.join(timeout=90)
 
-            # 清理状态
+            # 仅当自己仍然是当前线程时才清理状态（防止覆盖Mode 2）
             with self._combat_lock:
-                self.combat_auto_running = False
-                if self.combat_auto_instance:
-                    try:
-                        self.combat_auto_instance.reset_state()
-                    except Exception as e:
-                        print(f"重置战斗脚本状态时出错: {e}")
+                if self.combat_auto_thread is my_thread:
+                    self.combat_auto_running = False
+                    self.combat_auto_thread = None
+                    if self.combat_auto_instance:
+                        try:
+                            self.combat_auto_instance.reset_state()
+                        except Exception as e:
+                            print(f"重置战斗脚本状态时出错: {e}")
 
         except Exception as e:
             print(f"执行单轮战斗操作失败")
             import traceback
             traceback.print_exc()
-            self.combat_auto_running = False
+            with self._combat_lock:
+                if self.combat_auto_thread is my_thread:
+                    self.combat_auto_running = False
+                    self.combat_auto_thread = None
 
     def print_and_speak(self, text):
         self.engine.say(text)
