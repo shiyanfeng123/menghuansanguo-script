@@ -260,6 +260,7 @@ class MyThread(threading.Thread):
         self.combat_auto_thread = None
         self.combat_auto_running = False
         self._combat_lock = threading.Lock()  # 保护 start/stop 互斥
+        self._single_round_done = False  # 单轮操作已完成标志（True=下次直接点自动，False=下次执行单轮操作）
         # 副本统计：四象/噬魂 的成功、失败、已打、总次数
         self.sixiang_stats = {"win": 0, "fail": 0, "done": 0, "total": 0, "total_time": 0}
         self.shihun_stats = {"win": 0, "fail": 0, "done": 0, "total": 0, "total_time": 0}
@@ -1950,8 +1951,12 @@ class MyThread(threading.Thread):
                 zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
                 found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
                 if found:
-                    self._execute_single_round()
-                    self.click_image(zidong_path, 0.8, self.gameLocation)
+                    if not self._single_round_done:
+                        self._execute_single_round()
+                        self._single_round_done = True
+                    else:
+                        self.click_image(zidong_path, 0.8, self.gameLocation)
+                        self._single_round_done = False
             time.sleep(2)
 
     # 绑定第一个窗口
