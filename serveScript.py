@@ -310,11 +310,14 @@ class MyThread(threading.Thread):
         except Exception:
             pass
 
-    def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None):
+    def _start_combat_auto(self, clear_enemy_keys=None, combat_scene=None, force=False):
         try:
             with self._combat_lock:
                 if self.combat_auto_running:
-                    return
+                    if not force:
+                        return
+                    # 外部脚本强制接管，先停止当前运行的自动战斗
+                    self._stop_combat_auto_internal()
                 if self.frame.has_script == "free" and datetime.now() > datetime(2026, 9, 30):
                     return
                 _heal_on = self.frame.use_heal_item if hasattr(self.frame, 'use_heal_item') else False
@@ -357,27 +360,30 @@ class MyThread(threading.Thread):
             traceback.print_exc()
             self.combat_auto_running = False
 
+    def _stop_combat_auto_internal(self):
+        """内部停止方法，假设已持有 _combat_lock"""
+        if self.combat_auto_instance:
+            self.combat_auto_instance.polling_running = False
+            if self.combat_auto_instance.battle_report_dialog:
+                self.combat_auto_instance.battle_report_dialog.set_running(False)
+
+        if self.combat_auto_thread and self.combat_auto_thread.is_alive():
+            self.combat_auto_thread.join(timeout=5)
+        self.combat_auto_thread = None
+
+        if self.combat_auto_instance:
+            try:
+                self.combat_auto_instance.reset_state()
+            except Exception as e:
+                print(f"重置战斗脚本状态时出错: {e}")
+
     def _stop_combat_auto(self):
         try:
             with self._combat_lock:
                 if not self.combat_auto_running:
                     return
                 self.combat_auto_running = False
-
-                if self.combat_auto_instance:
-                    self.combat_auto_instance.polling_running = False
-                    if self.combat_auto_instance.battle_report_dialog:
-                        self.combat_auto_instance.battle_report_dialog.set_running(False)
-
-                if self.combat_auto_thread and self.combat_auto_thread.is_alive():
-                    self.combat_auto_thread.join(timeout=5)
-                self.combat_auto_thread = None
-
-                if self.combat_auto_instance:
-                    try:
-                        self.combat_auto_instance.reset_state()
-                    except Exception as e:
-                        print(f"重置战斗脚本状态时出错: {e}")
+                self._stop_combat_auto_internal()
 
         except Exception as e:
             print(f"停止战斗自动操作失败")
@@ -4906,7 +4912,7 @@ class MyThread(threading.Thread):
         else:
             self.set_pending_enemy_keys(["龙/猴子", "龙上龙","猴子狮","羊人参娃"])
         if auto_combat_key is not None:
-            self._start_combat_auto()
+            self._start_combat_auto(force=True)
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
         if auto_combat_key is not None:
             self._stop_combat_auto()
@@ -5162,7 +5168,7 @@ class MyThread(threading.Thread):
                     continue
                 if auto_combat_key is not None:
                     _keys = None if auto_combat_key is True else auto_combat_key
-                    self._start_combat_auto(clear_enemy_keys=_keys)
+                    self._start_combat_auto(clear_enemy_keys=_keys, force=True)
                 combat_ok = self._wait_combat_result(base_image, auto_combat_key)
                 if auto_combat_key is not None:
                     self._stop_combat_auto()
@@ -8470,7 +8476,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if self.zhanhunFloorNew == "27层自动战斗":
-            self._start_combat_auto()
+            self._start_combat_auto(force=True)
         self.findAndClickPic(
             "战魂",
             "人参娃",
@@ -8513,7 +8519,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if self.zhanhunFloorNew == "27层自动战斗":
-            self._start_combat_auto()
+            self._start_combat_auto(force=True)
         self.findAndClickPic(
             "魂",
             "周瑜",
@@ -8609,7 +8615,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if "战魂" in self.combat_auto_scenes:
-            self._start_combat_auto(clear_enemy_keys=["赵云28","刘备28"])
+            self._start_combat_auto(clear_enemy_keys=["赵云28","刘备28"], force=True)
         self.findAndClickPic(
             "噬魂",
             "马超",
@@ -8661,7 +8667,7 @@ class MyThread(threading.Thread):
             "",
         )
         if "战魂" in self.combat_auto_scenes:
-            self._start_combat_auto(clear_enemy_keys=["赵云29","刘备29","诸葛亮"])
+            self._start_combat_auto(clear_enemy_keys=["赵云29","刘备29","诸葛亮"], force=True)
         self.findAndClickPic(
             "噬魂",
             "诸葛亮",
@@ -11564,7 +11570,7 @@ class MyThread(threading.Thread):
         time.sleep(1)
         _sixiang_auto_combat = "四象" in self.combat_auto_scenes and self.sixiang_difficulty in ("精英", "炼狱")
         if _sixiang_auto_combat:
-            self._start_combat_auto(combat_scene="四象")
+            self._start_combat_auto(combat_scene="四象", force=True)
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/sixiangjitan.bmp"),
             '玄水龙马',
@@ -11605,7 +11611,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if _sixiang_auto_combat:
-            self._start_combat_auto(combat_scene="四象",clear_enemy_keys=["玄武"])
+            self._start_combat_auto(combat_scene="四象",clear_enemy_keys=["玄武"], force=True)
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/hanyuanbindian.bmp"),
             '玄武',
@@ -11655,7 +11661,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if _sixiang_auto_combat:
-            self._start_combat_auto(combat_scene="四象")
+            self._start_combat_auto(combat_scene="四象", force=True)
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/chiyantiangong.bmp"),
             '朱雀',
@@ -11705,7 +11711,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if _sixiang_auto_combat:
-            self._start_combat_auto(combat_scene="四象")
+            self._start_combat_auto(combat_scene="四象", force=True)
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/cangleizhuhai.bmp"),
             '青龙',
@@ -11755,7 +11761,7 @@ class MyThread(threading.Thread):
         self.huifu_yijian_main()
         time.sleep(1)
         if _sixiang_auto_combat:
-            self._start_combat_auto(combat_scene="四象")
+            self._start_combat_auto(combat_scene="四象", force=True)
         self.findAndClickPic(
             self.get_resource_path("serveAssets/images/sixiang/xuezhanhuangyuan.bmp"),
             '白虎',

@@ -2,7 +2,7 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, test]
   workflow_dispatch:
 
 permissions:
@@ -74,10 +74,14 @@ jobs:
           "@
           Set-Content -Path "version_info.txt" -Value $vi -Encoding UTF8
           Write-Host "Updated version_info.txt to $ver"
+          $branch = "${{ github.ref_name }}"
+          $suffix = if ($branch -eq "test") { "(测试版本)" } else { "" }
+          $exeName = "脚本v${ver}${suffix}"
           $spec = Get-Content "serveScript.spec" -Raw
-          $spec = $spec -replace "name='脚本v[^']*'", "name='脚本v$ver'"
+          $spec = $spec -replace "name='脚本v[^']*'", "name='$exeName'"
           Set-Content -Path "serveScript.spec" -Value $spec -Encoding UTF8
-          Write-Host "Updated serveScript.spec exe name to 脚本v$ver"
+          echo "EXE_NAME=$exeName" >> $env:GITHUB_ENV
+          Write-Host "Updated serveScript.spec exe name to $exeName"
         shell: pwsh
 
       - name: Install dependencies
@@ -124,9 +128,10 @@ jobs:
           New-Item -ItemType Directory -Path release -Force
           $v = Get-Content "version.json" -Raw | ConvertFrom-Json
           $ver = $v.version
-          Write-Host "Building version: $ver"
+          $exeName = $env:EXE_NAME
+          Write-Host "Building version: $ver, exe name: $exeName"
           $src = (Get-ChildItem -Path dist -Filter "*.exe")[0]
-          Copy-Item $src.FullName -Destination "release\脚本v$ver.exe"
+          Copy-Item $src.FullName -Destination "release\$exeName.exe"
           $v.release_date = (Get-Date -Format "yyyy-MM-dd")
           $v | ConvertTo-Json -Depth 10 | Set-Content -Path "release\version.json" -Encoding UTF8
           echo "VERSION=$ver" >> $env:GITHUB_ENV
@@ -144,7 +149,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: "脚本v${{ env.VERSION }} #${{ github.run_number }}"
+          name: "${{ env.EXE_NAME }} #${{ github.run_number }}"
           body: "由 GitHub Actions 自动构建\n版本: ${{ env.VERSION }}\n提交: ${{ github.sha }}"
           files: release/*
           make_latest: true
