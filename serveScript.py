@@ -377,6 +377,7 @@ class MyThread(threading.Thread):
                 if not self.combat_auto_running:
                     return
                 self.combat_auto_running = False
+                self._idle_skill_round_done = True  # 停止时重置为True，防止child_task在间隙做全托管
                 self._stop_combat_auto_internal()
 
         except Exception as e:
