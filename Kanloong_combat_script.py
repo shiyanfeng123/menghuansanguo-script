@@ -1070,12 +1070,20 @@ class CombatAutoScript:
         # 敌军武将配置（每个武将的检测状态图片、检测状态区域、施法点位）
         # 格式：{武将名称: {'status_images': {...}, 'status_region': (x, y, w, h), 'cast_position': (x, y)}}
         self.enemy_general_config = {
-            "刘备": {
+            "刘备26": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
                 },
-                "status_region": (165, 258, 246, 291),
-                "cast_position": (203, 346),
+                "status_region": (42, 142, 138, 222),
+                "cast_position": (107, 287),
+                "status_duration": 4,
+            },
+            "人参娃26": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (61, 241, 154, 336),
+                "cast_position": (113, 395),
                 "status_duration": 4,
             },
             "刘备28": {
@@ -1212,6 +1220,7 @@ class CombatAutoScript:
             "操作按钮": f"{self.get_resource_path('serveAssets/images/auto/jineng.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng1.bmp')}|{self.get_resource_path('serveAssets/images/auto/jineng_active.bmp')}",  # 操作按钮(检测是否在战斗页面)
             "重复按钮": f"{self.get_resource_path('serveAssets/images/auto/chongfu1.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu2.bmp')}|{self.get_resource_path('serveAssets/images/auto/chongfu_active.bmp')}",  # 重复按钮(重复上回合操作)
             "取消按钮": f"{self.get_resource_path('serveAssets/images/quxiaozdzd.bmp')}|{self.get_resource_path('serveAssets/images/quxiaozdzd1.bmp')}",  # 取消按钮
+            "逃跑按钮": f"{self.get_resource_path('serveAssets/images/auto/taopao_btn1.bmp')}|{self.get_resource_path('serveAssets/images/auto/taopao_btn2.bmp')}",  # 逃跑按钮
         }
 
         # zdzd图片路径（需要检测并点击取消的弹窗）
@@ -4128,9 +4137,12 @@ class CombatAutoScript:
                 if skill_pos:
                     return ("support", "控制")
 
-            # 6. 查找召唤按钮（主角特有）—— 兜底，技能都没找到才认为是主角
+            # 6. 查找主角特有按钮（召唤/逃跑）—— 兜底，技能都没找到才认为是主角
             summon_btn = self.find_image(account_index, self.button_images["召唤按钮"], self.right_button_region, 0)
             if summon_btn:
+                return ("main_char", None)
+            escape_btn = self.find_image(account_index, self.button_images["逃跑按钮"], self.right_button_region, 0)
+            if escape_btn:
                 return ("main_char", None)
 
             time.sleep(0.02)  # 每次循环间隔
@@ -5171,6 +5183,10 @@ class CombatAutoScript:
                         self.click_position(account_index, defense_btn.x, defense_btn.y)
                         self.report_battle_info(f"账号{account_index} 刘备[idle防御]执行防御", "action")
                         time.sleep(CombatConstants.ACTION_DELAY)
+                        return 
+                    else:
+                        dm = self.get_account_dm(account_index)
+                        dm.KeyPressChar('d')
                         return True
                     return False
                 # 刘备操作
@@ -5379,6 +5395,10 @@ class CombatAutoScript:
                         self.report_battle_info(f"账号{account_index} 张星彩[idle防御]执行防御", "action")
                         time.sleep(CombatConstants.ACTION_DELAY)
                         return True
+                    else:
+                        dm = self.get_account_dm(account_index)
+                        dm.KeyPressChar('d')
+                        return True
                     return False
                 # 张星彩操作（第一回合辅助，后续群攻）
                 char_info = self.unit_info[account_index]["main_char"]
@@ -5443,6 +5463,10 @@ class CombatAutoScript:
                     self.report_battle_info(f"账号{account_index} 张星彩执行防御", "action")
                     time.sleep(CombatConstants.ACTION_DELAY)
                     return True
+                else:
+                    dm = self.get_account_dm(account_index)
+                    dm.KeyPressChar('d')
+                    return True
 
             elif unit_type == "zhugeliang_attack":
                 # 诸葛亮操作（第一回合辅助，后续群攻 > 单攻 > 防御）
@@ -5502,6 +5526,10 @@ class CombatAutoScript:
                     self.report_battle_info(f"账号{account_index} 诸葛亮执行防御", "action")
                     time.sleep(CombatConstants.ACTION_DELAY)
                     return True
+                else:
+                    dm = self.get_account_dm(account_index)
+                    dm.KeyPressChar('d')
+                    return True
             
             # 未识别到单位类型，进入兜底决策链
             # ① 灰图标检测 → 蓝耗尽恢复（仅四象模式）
@@ -5522,6 +5550,10 @@ class CombatAutoScript:
                 self.click_position(account_index, defense_btn.x, defense_btn.y)
                 self.report_battle_info(f"账号{account_index} 未识别单位类型，执行防御兜底", "action")
                 time.sleep(CombatConstants.ACTION_DELAY)
+                return True
+            else:
+                dm = self.get_account_dm(account_index)
+                dm.KeyPressChar('d')
                 return True
 
             return False

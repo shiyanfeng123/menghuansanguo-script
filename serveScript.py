@@ -95,6 +95,22 @@ class MyThread(threading.Thread):
         super().__init__()
         self.userData = userData
         self.enemy_general_config = {
+            "刘备26": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/tiandihudun1.bmp")
+                },
+                "status_region": (42, 142, 138, 222),
+                "cast_position": (107, 287),
+                "status_duration": 4,
+            },
+            "人参娃26": {
+                "status_images": {
+                    "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
+                },
+                "status_region": (61, 241, 154, 336),
+                "cast_position": (113, 395),
+                "status_duration": 4,
+            },
             "龙/猴子": {
                 "status_images": {
                     "状态1": self.get_resource_path("serveAssets/images/auto/mianyisiwang1.bmp"),
@@ -278,7 +294,7 @@ class MyThread(threading.Thread):
         self.heifengCount = 0
         self.heifengWhileCount = 0
         self.richangSelection = []
-        self.pending_combat_keys = False
+        self.pending_combat_keys = []
         self.pending_combat_flag = False
         self.click_hwnd = 0
         self.color_format = "ffffff-00000|00ff00-000000|ffff00-000000|0ff000-000000|ff0000-000000|fff200-000000|00fe0d-000000|fdff1b-000000|ff1c13-000000|fdff1b-000000|00ef0b-000000"
@@ -1959,13 +1975,15 @@ class MyThread(threading.Thread):
                     self.gameBottomLocation,
                 )
             if not self.combat_auto_running:
-                if self.pending_combat_keys:
+                if len(self.pending_combat_keys):
                     # 收集本轮检测到的所有敌军，一次性注入 Mode 2，省去重新检测的一轮
                     pre_detected = []
-                    for enemy_key, config in self.enemy_general_config.items():
-                        image_path = config["status_images"]["状态1"]
-                        if self.find_pic_or_str(image_path, config["status_region"], 0):
-                            pre_detected.append(enemy_key)
+                    for enemy_key in self.pending_combat_keys:
+                        config = self.enemy_general_config.get(enemy_key)
+                        if config:
+                            image_path = config["status_images"]["状态1"]
+                            if self.find_pic_or_str(image_path, config["status_region"], 0):
+                                pre_detected.append(enemy_key)
                     if pre_detected:
                         self.pending_combat_flag = True
                         self._start_combat_auto(
@@ -1977,7 +1995,7 @@ class MyThread(threading.Thread):
                         self.waitFor(self.get_resource_path("serveAssets/images/jineng.bmp"), self.gameBottomLocation)
                         self._stop_combat_auto()
                         self.pending_combat_flag = False
-                        self.pending_combat_keys = False
+                        self.pending_combat_keys = []
                 if not self.pending_combat_flag:
                     zidong_path = self.get_resource_path("serveAssets/images/zidong.bmp")
                     found = self.find_pic_or_str(zidong_path, self.gameLocation, 0)
@@ -4910,11 +4928,11 @@ class MyThread(threading.Thread):
             self._start_combat_auto(clear_enemy_keys = [auto_combat_key])
         else:
             if self.enable_pending_combat:
-                self.pending_combat_keys = True
+                self.pending_combat_keys = ['龙/猴子','羊人参娃','龙上龙','猴子狮']
         combat_result = self._wait_combat_result(base_image, auto_combat_key)
         if auto_combat_key is not None:
             self._stop_combat_auto()
-        self.pending_combat_keys = False
+        self.pending_combat_keys = []
         return combat_result
 
     def _wait_combat_result(self, base_image, auto_combat_key):
@@ -8481,8 +8499,7 @@ class MyThread(threading.Thread):
             return False
         self.huifu_yijian_main()
         time.sleep(1)
-        if self.zhanhunFloorNew == "27层自动战斗":
-            self._start_combat_auto()
+        self.pending_combat_keys = ['人参娃26','刘备26']
         self.findAndClickPic(
             "战魂",
             "人参娃",
@@ -8494,9 +8511,8 @@ class MyThread(threading.Thread):
         )
         self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"),
                      self.gameLocation)
+        self.pending_combat_keys = []
         self.addBloud()
-        if self.zhanhunFloorNew == "27层自动战斗":
-            self._stop_combat_auto()
         waitForTwoRes = self.waitForTwo(
             "战魂",
             "洛阳",
@@ -8524,8 +8540,6 @@ class MyThread(threading.Thread):
         )
         self.huifu_yijian_main()
         time.sleep(1)
-        if self.zhanhunFloorNew == "27层自动战斗":
-            self._start_combat_auto()
         self.findAndClickPic(
             "魂",
             "周瑜",
@@ -8537,8 +8551,6 @@ class MyThread(threading.Thread):
         )
         self.waitFor(self.get_resource_path("serveAssets/images/xiulian.bmp"),
                      self.gameLocation)
-        if self.zhanhunFloorNew == "27层自动战斗":
-            self._stop_combat_auto()
         self.addBloud()
         waitForTwoRes = self.waitForTwo(
             "魂",
@@ -15741,13 +15753,14 @@ class MyDialog(wx.Dialog):
                 auto_row.Add(tc, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 2)
 
             func_row = wx.BoxSizer(wx.HORIZONTAL)
-            func_label = wx.StaticText(auto_combat_panel, label="功能开关:")
+            func_label = wx.StaticText(auto_combat_panel, label="功能开关")
             func_label.SetForegroundColour(self.C_TEXT)
             func_label.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, faceName="微软雅黑"))
             func_row.Add(func_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
 
             self.use_heal_cb = wx.CheckBox(auto_combat_panel, label="吃药")
             self.use_heal_cb.SetForegroundColour(self.C_MUTED)
+            self.use_heal_cb.SetToolTip("自动战斗期间没技能释放的时候自动吃药(只给张星彩跟刘备吃)")
             self.use_heal_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
             func_row.Add(self.use_heal_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
 
@@ -15755,13 +15768,16 @@ class MyDialog(wx.Dialog):
             self.clear_liubei_cb.SetForegroundColour(self.C_MUTED)
             self.clear_liubei_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
             self.clear_liubei_cb.SetValue(True)
+            self.clear_liubei_cb.SetToolTip("战魂28、29优先清除刘备不死被动")
             func_row.Add(self.clear_liubei_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
 
-            self.enable_pending_cb = wx.CheckBox(auto_combat_panel, label="整点清除")
-            self.enable_pending_cb.SetForegroundColour(self.C_MUTED)
-            self.enable_pending_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
-            self.enable_pending_cb.SetValue(False)
-            func_row.Add(self.enable_pending_cb, 0, wx.ALIGN_CENTER_VERTICAL)
+            if has_script != "free":
+                self.enable_pending_cb = wx.CheckBox(auto_combat_panel, label="整点清除")
+                self.enable_pending_cb.SetForegroundColour(self.C_MUTED)
+                self.enable_pending_cb.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName="微软雅黑"))
+                self.enable_pending_cb.SetValue(False)
+                self.enable_pending_cb.SetToolTip("清除猴、羊、龙、战魂26的不死被动")
+                func_row.Add(self.enable_pending_cb, 0, wx.ALIGN_CENTER_VERTICAL)
 
             auto_panel_sizer = wx.BoxSizer(wx.VERTICAL)
             auto_panel_sizer.Add(auto_row, 0, wx.EXPAND)
@@ -15946,7 +15962,7 @@ class MyDialog(wx.Dialog):
         self.zhanhun_start_floor.SetValue("1层")
         self.zhanhun_start_floor.SetBackgroundColour(self.C_INPUT_BG)
         self.zhanhun_start_floor.SetForegroundColour(self.C_TEXT)
-        self.choiceZhanHunCeng = wx.ComboBox(f_floor, size=(-1, 28), choices=["26层", "27层", "27层自动战斗"])
+        self.choiceZhanHunCeng = wx.ComboBox(f_floor, size=(-1, 28), choices=["26层", "27层"])
         self.choiceZhanHunCeng.SetHint("镇魂层数")
         self.choiceZhanHunCeng.SetBackgroundColour(self.C_INPUT_BG)
         self.choiceZhanHunCeng.SetForegroundColour(self.C_TEXT)
